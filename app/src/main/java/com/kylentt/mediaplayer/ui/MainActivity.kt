@@ -1,9 +1,10 @@
-package com.kylentt.mediaplayer
+package com.kylentt.mediaplayer.ui
 
 import android.content.ComponentName
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.runtime.Composable
 import androidx.media3.common.MediaItem
 import androidx.media3.session.MediaBrowser
@@ -11,24 +12,24 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
+import com.kylentt.mediaplayer.domain.presenter.ControllerViewModel
 import com.kylentt.mediaplayer.domain.service.MusicService
+import dagger.hilt.android.AndroidEntryPoint
 
-
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-
-    // Media
-    private lateinit var futureMediaController: ListenableFuture<MediaController>
-    private val mediaController: MediaController?
-        get() = if (futureMediaController.isDone) futureMediaController.get() else null
 
     // List
     private var mediaItems = listOf<MediaItem>()
+
+    val controller: ControllerViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         if (checkPermission()) {
-            setupService()
+            controller
+            // TODO: Permission Screen
         }
 
         setContent {
@@ -38,23 +39,6 @@ class MainActivity : ComponentActivity() {
 
     private fun checkPermission(): Boolean {
         return true
-    }
-
-    private fun setupService() {
-        val sessionToken = SessionToken(this, ComponentName(
-            this, MusicService::class.java
-        ))
-        val browser = MediaBrowser.Builder(applicationContext, sessionToken).buildAsync()
-        browser.addListener( {
-            setupController(sessionToken)
-        } , MoreExecutors.directExecutor())
-    }
-
-    private fun setupController(token: SessionToken) {
-        futureMediaController = MediaController.Builder(
-            this, token
-        ).buildAsync()
-        mediaController?.isPlaying
     }
 
     @Composable

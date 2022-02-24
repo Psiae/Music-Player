@@ -20,11 +20,11 @@ class LocalSourceImpl(
 
     override suspend fun fetchSong(): Flow<List<Song>> {
         return flow {
-            queryDeviceSong()
+            emit(queryDeviceSong())
         }
     }
 
-    suspend fun queryDeviceSong() = withContext(Dispatchers.IO) {
+    private suspend fun queryDeviceSong() = withContext(Dispatchers.IO) {
         val deviceSong = mutableListOf<Song>()
         try {
             // Folder Name
@@ -99,6 +99,7 @@ class LocalSourceImpl(
                         artist = artist,
                         artistId = artistId.toString(),
                         duration = duration,
+                        fileName = fileName,
                         imageUri = imageUri,
                         mediaId = songId.toString(),
                         mediaUri = songUri,

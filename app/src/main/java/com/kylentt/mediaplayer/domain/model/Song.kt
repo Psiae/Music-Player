@@ -67,7 +67,9 @@ fun Song.toMediaItem(): MediaItem {
                 .setAlbumTitle(album)
                 .setArtworkUri(imageUri.toUri())
                 .setDisplayTitle(title)
+                .setMediaUri(mediaUri.toUri())
                 .setSubtitle(artist.ifEmpty { album })
+                .setIsPlayable(true)
                 .build())
         .build()
 }

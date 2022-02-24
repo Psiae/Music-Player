@@ -5,10 +5,12 @@ import android.content.Context
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
+import androidx.media3.session.MediaBrowser
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
+import com.kylentt.mediaplayer.domain.model.Song
 import com.kylentt.mediaplayer.domain.service.MusicService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,7 +21,7 @@ class ServiceConnectorImpl(
     val context: Context
 ) : ServiceConnector {
 
-    // TODO: Find usage of MediaBrowser
+    // TODO: Find suitable usage of MediaBrowser
 
     private val _isPlaying = MutableStateFlow<Boolean?>(null)
     val isPlaying = _isPlaying.asStateFlow()
@@ -30,12 +32,36 @@ class ServiceConnectorImpl(
     private val _mediaItems = MutableStateFlow<List<MediaItem>?>(null)
     val mediaItems = _mediaItems.asStateFlow()
 
-    lateinit var mediaController: MediaController
+    var songList = listOf<Song>()
 
-    fun controller(command: (MediaController) -> Boolean ): Boolean {
-        return if (::mediaController.isInitialized) {
-            command(mediaController)
-        } else false
+    lateinit var mediaController: MediaController
+    private var ready = false
+        set(value) {
+            if (value && !field) {
+                synchronized(this) {
+                    whenReady.forEach { it(mediaController) }
+                    whenReady = emptyList()
+                    field = value
+                }
+            } else field = value
+        }
+
+    var whenReady = listOf<( (MediaController) -> Unit)>()
+
+    // callback false it not initialized yet
+    // might make synchronized listener when connected
+    fun controller(q: Boolean = true,command: (MediaController) -> Unit): Boolean {
+        return when {
+            ::mediaController.isInitialized -> {
+                command(mediaController)
+                true
+            }
+            q -> {
+                whenReady = whenReady + command
+                true
+            }
+            else -> false
+        }
     }
 
     // Media
@@ -51,13 +77,11 @@ class ServiceConnectorImpl(
     }
 
     override fun connectService() {
-        sessionToken = SessionToken(context, ComponentName(context, MusicService::class.java))
-        futureMediaController = MediaController.Builder(context, sessionToken).buildAsync()
+        sessionToken = SessionToken(context.applicationContext, ComponentName(context.applicationContext, MusicService::class.java))
+        futureMediaController = MediaController.Builder(context.applicationContext, sessionToken).buildAsync()
 
-        _mediaController?.let {
-            mediaController = it
-        } ?: futureMediaController.addListener(
-            { mediaController = _mediaController!! ; setupController(mediaController) },
+        _mediaController?.let { mediaController = it ; ready = true } ?: futureMediaController.addListener(
+            { mediaController = _mediaController!! ; ready = true ; setupController(mediaController) },
             MoreExecutors.directExecutor()
         )
     }

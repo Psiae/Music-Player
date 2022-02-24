@@ -4,4 +4,7 @@ object Constants {
 
     // Song
     const val ALBUM_ART_PATH = "content://media/external/audio/albumart"
+
+    // Service
+    const val MEDIA_SESSION_ID = "Kylentt"
 }

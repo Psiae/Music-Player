@@ -8,6 +8,8 @@ import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.MediaSourceFactory
+import com.kylentt.mediaplayer.data.repository.SongRepositoryImpl
+import com.kylentt.mediaplayer.data.source.local.LocalSourceImpl
 import com.kylentt.mediaplayer.domain.presenter.ServiceConnectorImpl
 import dagger.Module
 import dagger.Provides
@@ -28,20 +30,26 @@ object AppModule {
         @ApplicationContext context: Context
     ) = ServiceConnectorImpl(context)
 
-}
+    @Singleton
+    @Provides
+    fun provideLocalSource(
+        @ApplicationContext context: Context
+    ) = LocalSourceImpl(context)
 
-@Module
-@InstallIn(ServiceComponent::class)
-object serviceModule {
+    @Singleton
+    @Provides
+    fun provideSongRepository(
+        source: LocalSourceImpl
+    ) = SongRepositoryImpl(source)
 
-    @ServiceScoped
+    @Singleton
     @Provides
     fun provideAudioAttr() = AudioAttributes.Builder()
         .setContentType(CONTENT_TYPE_MUSIC)
         .setUsage(USAGE_MEDIA)
         .build()
 
-    @ServiceScoped
+    @Singleton
     @Provides
     fun provideExoPlayer(
         @ApplicationContext context: Context,
@@ -49,4 +57,11 @@ object serviceModule {
     ) = ExoPlayer.Builder(context)
         .setAudioAttributes(attr, true)
         .build()
+
+}
+
+@Module
+@InstallIn(ServiceComponent::class)
+object ServiceModule {
+
 }

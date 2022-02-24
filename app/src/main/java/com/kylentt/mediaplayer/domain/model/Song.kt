@@ -59,7 +59,7 @@ fun List<Song>.toMediaItems(): List<MediaItem> {
 
 fun Song.toMediaItem(): MediaItem {
     return MediaItem.Builder()
-        .setMediaId(mediaUri)
+        .setMediaId(mediaId)
         .setUri(mediaUri)
         .setMediaMetadata(
             MediaMetadata.Builder()
@@ -69,7 +69,17 @@ fun Song.toMediaItem(): MediaItem {
                 .setDisplayTitle(title)
                 .setMediaUri(mediaUri.toUri())
                 .setSubtitle(artist.ifEmpty { album })
+                .setTitle(title)
                 .setIsPlayable(true)
                 .build())
+        .build()
+}
+
+// because of localConfig issue
+fun MediaItem.rebuild(): MediaItem {
+    return MediaItem.Builder()
+        .setMediaId(mediaId)
+        .setUri(this.mediaMetadata.mediaUri)
+        .setMediaMetadata(mediaMetadata)
         .build()
 }

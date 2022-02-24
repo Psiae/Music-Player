@@ -16,7 +16,12 @@ class SongRepositoryImpl(
     private val source: LocalSourceImpl
 ) : SongRepository {
 
+    var songList = listOf<Song>()
+
     override suspend fun getSongs(): Flow<List<Song>> {
-        return source.fetchSong()
+        return flow { source.fetchSong().collect {
+            songList = it
+            emit(it)
+        } }
     }
 }

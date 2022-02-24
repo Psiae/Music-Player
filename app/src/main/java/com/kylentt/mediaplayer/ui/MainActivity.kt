@@ -28,7 +28,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         if (checkPermission()) {
-            controller
+            controller // simple call so viewModel init is called
             // TODO: Permission Screen
         }
 

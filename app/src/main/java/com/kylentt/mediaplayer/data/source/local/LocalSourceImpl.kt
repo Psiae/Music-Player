@@ -18,11 +18,7 @@ class LocalSourceImpl(
     private val context: Context
 ) : LocalSource {
 
-    override suspend fun fetchSong(): Flow<List<Song>> {
-        return flow {
-            emit(queryDeviceSong())
-        }
-    }
+    override suspend fun fetchSong(): Flow<List<Song>> = flow { emit(queryDeviceSong()) }
 
     private suspend fun queryDeviceSong() = withContext(Dispatchers.IO) {
         val deviceSong = mutableListOf<Song>()

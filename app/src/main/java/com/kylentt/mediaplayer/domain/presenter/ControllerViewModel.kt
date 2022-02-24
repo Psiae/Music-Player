@@ -1,38 +1,23 @@
 package com.kylentt.mediaplayer.domain.presenter
 
-import android.content.Context
-import android.media.session.PlaybackState
-import android.widget.Toast
-import androidx.annotation.MainThread
-import androidx.compose.runtime.mutableStateOf
-import androidx.core.net.toUri
+import androidx.annotation.FloatRange
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
-import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.session.MediaController
-import com.kylentt.mediaplayer.data.repository.SongRepository
 import com.kylentt.mediaplayer.data.repository.SongRepositoryImpl
-import com.kylentt.mediaplayer.domain.model.Song
-import com.kylentt.mediaplayer.domain.model.toMediaItem
-import com.kylentt.mediaplayer.domain.model.toMediaItems
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.forEach
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import timber.log.Timber
 import javax.inject.Inject
 
 @HiltViewModel
 class ControllerViewModel @Inject constructor(
-    private val repository: SongRepositoryImpl,
-    private val connector: ServiceConnectorImpl
+    private val connector: ServiceConnectorImpl,
+    private val repository: SongRepositoryImpl
 ) : ViewModel() {
 
     /** Connector State */
@@ -40,27 +25,74 @@ class ControllerViewModel @Inject constructor(
     val playerIndex = connector.playerIndex
     val mediaItem = connector.mediaItem
     val mediaItems = connector.mediaItems
+    val position = MutableStateFlow(-1L)
+    val duration = MutableStateFlow(-1L)
 
-    init {
-        viewModelScope.launch(Dispatchers.IO) {
-            repository.getSongs().collect { songs ->
-                connector.songList = songs
-                withContext(Dispatchers.Main) {
-                    if (!connector.isServiceConnected()) {
-                        connector.connectService()
-                    }
-                }
-                delay(5000)
-                withContext(Dispatchers.Main) {
-                    justPrepare(songs)
-                }
+    /** Controller Command */
+    fun skipToNext() = connector.controller { it.seekToNext() }
+    fun skipToPrev() = connector.controller { it.seekToPrevious() }
+
+    fun seekTo(
+        @FloatRange(from = 0.0, to = 1.0)
+        f: Float
+    ) = connector.controller { it.seekTo( (it.duration * f).toLong() ) }
+    fun seekTo(l: Long) = connector.controller { it.seekTo(l) }
+    fun seekToIndex(i: Int, p: Long = 0) = connector.controller { it.seekTo(i, p) }
+
+    fun setMediaItems(list: List<MediaItem>)
+            = connector.controller { it.setMediaItems(list) }
+
+    fun setMediaItems(list: List<MediaItem>, bool: Boolean)
+            = connector.controller { it.setMediaItems(list, bool) }
+
+    fun setMediaItems(list: List<MediaItem>, i: Int, p: Long)
+            = connector.controller { it.setMediaItems(list, i, p) }
+
+    fun setMediaItem(m: MediaItem)
+            = connector.controller { it.setMediaItem(m) }
+
+    fun setMediaItem(m: MediaItem, bool: Boolean)
+            = connector.controller { it.setMediaItem(m, bool) }
+
+    fun setMediaItem(m: MediaItem, p: Long)
+            = connector.controller { it.setMediaItem(m, p) }
+
+    fun addMediaItems(list: List<MediaItem>)
+            = connector.controller { it.addMediaItems(list) }
+
+    fun addMediaItems(list: List<MediaItem>, i: Int)
+            = connector.controller { it.addMediaItems(i, list) }
+    
+    fun addMediaItem(m: MediaItem)
+            = connector.controller { it.addMediaItem(m) }
+    
+    fun addMediaItem(m: MediaItem, i: Int)
+            = connector.controller { it.addMediaItem(i, m) }
+
+    fun setRepeatMode(@Player.RepeatMode r: Int)
+            = connector.controller { it.repeatMode = r }
+
+    fun play() = connector.controller { it.play() }
+    fun pause() = connector.controller { it.pause() }
+    fun stop() = connector.controller { it.stop() }
+    fun getItemAt(i: Int) = connector.controller { it.getMediaItemAt(i) }
+
+    suspend fun startUpdatePlaying() = withContext(Dispatchers.IO) {
+        while (true) {
+            val pos = connector.getPos()
+            val dur = connector.getDur()
+            if (pos > -1 && pos <= dur) {
+                position.value = pos
+                duration.value = pos
             }
+            delay(1000)
         }
     }
 
-    fun justPrepare(list: List<Song>) {
-        connector.mediaController.addMediaItems(list.toMediaItems())
-        connector.mediaController.prepare()
-        connector.mediaController.playWhenReady = true
+    init {
+        viewModelScope.launch {
+            connector.connectService()
+            repository.getSongs()
+        }
     }
 }

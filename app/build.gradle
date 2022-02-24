@@ -70,9 +70,9 @@ dependencies {
     kapt "com.google.dagger:hilt-android-compiler:2.40.5"
 
     // Media
-    implementation "androidx.media3:media3-exoplayer:1.0.0-alpha02"
-    implementation "androidx.media3:media3-session:1.0.0-alpha02"
-    implementation "androidx.media3:media3-common:1.0.0-alpha02"
+    implementation "androidx.media3:media3-exoplayer:1.0.0-alpha01"
+    implementation "androidx.media3:media3-session:1.0.0-alpha01"
+    implementation "androidx.media3:media3-common:1.0.0-alpha01"
 
     // Image Loading
     implementation "io.coil-kt:coil:1.4.0"

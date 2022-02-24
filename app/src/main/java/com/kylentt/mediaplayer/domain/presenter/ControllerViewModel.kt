@@ -1,17 +1,19 @@
 package com.kylentt.mediaplayer.domain.presenter
 
 import androidx.annotation.FloatRange
+import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import com.kylentt.mediaplayer.data.repository.SongRepositoryImpl
+import com.kylentt.mediaplayer.domain.model.Song
+import com.kylentt.mediaplayer.domain.model.toMediaItem
+import com.kylentt.mediaplayer.domain.model.toMediaItems
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.collectLatest
 import javax.inject.Inject
 
 @HiltViewModel
@@ -72,13 +74,15 @@ class ControllerViewModel @Inject constructor(
     fun setRepeatMode(@Player.RepeatMode r: Int)
             = connector.controller { it.repeatMode = r }
 
+    fun prepare() = connector.controller { it.prepare() }
     fun play() = connector.controller { it.play() }
     fun pause() = connector.controller { it.pause() }
     fun stop() = connector.controller { it.stop() }
     fun getItemAt(i: Int) = connector.controller { it.getMediaItemAt(i) }
 
-    suspend fun startUpdatePlaying() = withContext(Dispatchers.IO) {
-        while (true) {
+    private val updater = CoroutineScope( Dispatchers.IO + Job())
+    private suspend fun startUpdatePlaying() = withContext(Dispatchers.IO) {
+        while (updater.isActive) {
             val pos = connector.getPos()
             val dur = connector.getDur()
             if (pos > -1 && pos <= dur) {
@@ -91,8 +95,20 @@ class ControllerViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
+            repository.getSongs().collectLatest { songs ->
+                connector.controller {
+                    with(it) {
+                        addMediaItems(songs.toMediaItems())
+                        prepare()
+                    }
+                }
+            }
             connector.connectService()
-            repository.getSongs()
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        if (updater.isActive) updater.cancel()
     }
 }

@@ -2,6 +2,7 @@ package com.kylentt.mediaplayer.domain.presenter
 
 import android.content.ComponentName
 import android.content.Context
+import androidx.annotation.MainThread
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
@@ -59,7 +60,7 @@ class ServiceConnectorImpl(
             } else field = value
         }
 
-    // callback false it not initialized yet, limit listener to 10 since it feels wrong.
+    @MainThread
     fun controller(f: Boolean = true, command: (MediaController) -> Unit): Boolean {
         return when {
             ::mediaController.isInitialized -> {
@@ -75,6 +76,7 @@ class ServiceConnectorImpl(
         }
     }
 
+    @MainThread
     override fun connectService() {
         if (isServiceConnected()) return
         sessionToken = SessionToken(context, ComponentName(context, MusicService::class.java))
@@ -115,8 +117,6 @@ class ServiceConnectorImpl(
                     }
                     _mediaItems.value = toReturn
                 }
-
-
             })
         }
     }

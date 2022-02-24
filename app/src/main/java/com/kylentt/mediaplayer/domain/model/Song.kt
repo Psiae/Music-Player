@@ -1,15 +1,11 @@
 package com.kylentt.mediaplayer.domain.model
 
+import android.net.Uri
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-
-/*
-idk if its right, but i want a bit of class separation for ViewModel when interacting
-between UI & Repo
-*/
 
 @Entity
 data class SongEntity(
@@ -60,14 +56,15 @@ fun List<Song>.toMediaItems(): List<MediaItem> {
 fun Song.toMediaItem(): MediaItem {
     return MediaItem.Builder()
         .setMediaId(mediaId)
-        .setUri(mediaUri)
+        .setUri(Uri.parse(mediaUri))
         .setMediaMetadata(
             MediaMetadata.Builder()
                 .setArtist(artist)
+                .setAlbumArtist(artist)
                 .setAlbumTitle(album)
-                .setArtworkUri(imageUri.toUri())
+                .setArtworkUri(Uri.parse(imageUri))
                 .setDisplayTitle(title)
-                .setMediaUri(mediaUri.toUri())
+                .setMediaUri(Uri.parse(mediaUri))
                 .setSubtitle(artist.ifEmpty { album })
                 .setTitle(title)
                 .setIsPlayable(true)

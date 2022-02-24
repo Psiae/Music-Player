@@ -42,14 +42,17 @@ object AppModule {
         source: LocalSourceImpl
     ) = SongRepositoryImpl(source)
 
-    @Singleton
+
+@Module
+@InstallIn(ServiceComponent::class)
+object ServiceModule {
+
     @Provides
     fun provideAudioAttr() = AudioAttributes.Builder()
         .setContentType(CONTENT_TYPE_MUSIC)
         .setUsage(USAGE_MEDIA)
         .build()
 
-    @Singleton
     @Provides
     fun provideExoPlayer(
         @ApplicationContext context: Context,
@@ -57,11 +60,5 @@ object AppModule {
     ) = ExoPlayer.Builder(context)
         .setAudioAttributes(attr, true)
         .build()
-
 }
-
-@Module
-@InstallIn(ServiceComponent::class)
-object ServiceModule {
-
 }

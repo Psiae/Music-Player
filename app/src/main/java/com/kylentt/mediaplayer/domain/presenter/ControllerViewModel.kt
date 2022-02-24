@@ -1,14 +1,11 @@
 package com.kylentt.mediaplayer.domain.presenter
 
 import androidx.annotation.FloatRange
-import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import com.kylentt.mediaplayer.data.repository.SongRepositoryImpl
-import com.kylentt.mediaplayer.domain.model.Song
-import com.kylentt.mediaplayer.domain.model.toMediaItem
 import com.kylentt.mediaplayer.domain.model.toMediaItems
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.*
@@ -99,7 +96,6 @@ class ControllerViewModel @Inject constructor(
                 connector.controller {
                     with(it) {
                         addMediaItems(songs.toMediaItems())
-                        prepare()
                     }
                 }
             }

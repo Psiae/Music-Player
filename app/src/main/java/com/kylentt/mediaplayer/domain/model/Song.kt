@@ -73,7 +73,7 @@ fun Song.toMediaItem(): MediaItem {
 }
 
 // because of localConfig issue
-fun MediaItem.rebuild(): MediaItem {
+inline fun MediaItem.rebuild(): MediaItem {
     return MediaItem.Builder()
         .setMediaId(mediaId)
         .setUri(this.mediaMetadata.mediaUri)

@@ -3,6 +3,15 @@
   <component name="DesignSurface">
     <option name="filePathToZoomLevelMap">
       <map>
+        <entry key="..\:/Users/Kyle/AndroidStudioProjects/MediaPlayer2/app/src/main/res/drawable-v24/ic_notif_next.xml" value="0.1035" />
+        <entry key="..\:/Users/Kyle/AndroidStudioProjects/MediaPlayer2/app/src/main/res/drawable-v24/ic_notif_pause.xml" value="0.1035" />
+        <entry key="..\:/Users/Kyle/AndroidStudioProjects/MediaPlayer2/app/src/main/res/drawable-v24/ic_notif_play.xml" value="0.1035" />
+        <entry key="..\:/Users/Kyle/AndroidStudioProjects/MediaPlayer2/app/src/main/res/drawable-v24/ic_notif_prev.xml" value="0.1035" />
+        <entry key="..\:/Users/Kyle/AndroidStudioProjects/MediaPlayer2/app/src/main/res/drawable-v24/ic_notif_repeat_all.xml" value="0.1035" />
+        <entry key="..\:/Users/Kyle/AndroidStudioProjects/MediaPlayer2/app/src/main/res/drawable-v24/ic_notif_repeat_one.xml" value="0.1035" />
+        <entry key="..\:/Users/Kyle/AndroidStudioProjects/MediaPlayer2/app/src/main/res/drawable-v24/ic_play_24_dn.xml" value="0.1035" />
+        <entry key="..\:/Users/Kyle/AndroidStudioProjects/MediaPlayer2/app/src/main/res/drawable/ic_baseline_music_note_24.xml" value="0.1035" />
+        <entry key="..\:/Users/Kyle/AndroidStudioProjects/MediaPlayer2/app/src/main/res/drawable/ic_notif_cancel.xml" value="0.1035" />
         <entry key="..\:/Users/Kyle/AndroidStudioProjects/MediaPlayer2/app/src/main/res/xml/lint.xml" value="0.19010416666666666" />
       </map>
     </option>

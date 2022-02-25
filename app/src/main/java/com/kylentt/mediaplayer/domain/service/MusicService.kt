@@ -1,5 +1,6 @@
 package com.kylentt.mediaplayer.domain.service
 
+import android.app.Notification
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
@@ -17,6 +18,7 @@ import androidx.media3.session.MediaSession
 import coil.ImageLoader
 import coil.request.CachePolicy
 import coil.request.ImageRequest
+import coil.size.Scale
 import com.kylentt.mediaplayer.core.util.Constants.ACTION
 import com.kylentt.mediaplayer.core.util.Constants.ACTION_CANCEL
 import com.kylentt.mediaplayer.core.util.Constants.ACTION_NEXT
@@ -30,10 +32,12 @@ import com.kylentt.mediaplayer.core.util.Constants.MEDIA_SESSION_ID
 import com.kylentt.mediaplayer.core.util.Constants.NOTIFICATION_ID
 import com.kylentt.mediaplayer.core.util.Constants.PLAYBACK_INTENT
 import com.kylentt.mediaplayer.data.repository.SongRepositoryImpl
+import com.kylentt.mediaplayer.domain.model.artUri
 import com.kylentt.mediaplayer.domain.model.rebuild
 import com.kylentt.mediaplayer.domain.presenter.ServiceConnectorImpl
 import com.kylentt.mediaplayer.ui.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
+import jp.wasabeef.transformers.coil.CropSquareTransformation
 import kotlinx.coroutines.*
 import timber.log.Timber
 import javax.inject.Inject
@@ -108,10 +112,12 @@ class MusicService : MediaLibraryService() {
     private lateinit var mSession: MediaSession
     private lateinit var manager: NotificationManager
     private lateinit var notification: PlayerNotificationImpl
+    private lateinit var mNotif: Notification
 
     private var isForeground = false
 
     // Notification update should call here
+    // Return MediaNotification to have it handled by Media3 else null
     override fun onUpdateNotification(session: MediaSession): MediaNotification? {
         Timber.d("$TAG OnUpdateNotification")
         mSession = session
@@ -119,16 +125,16 @@ class MusicService : MediaLibraryService() {
         if (!::notification.isInitialized) {
             notification = PlayerNotificationImpl(this, this, mSession)
         }
+
         serviceScope.launch {
-            val notif = notification.makeNotif(NOTIFICATION_ID, session,
-                makeBm(session.player.currentMediaItem?.mediaMetadata?.artworkUri)
+            mNotif = notification.makeNotif(NOTIFICATION_ID, session,
+                makeBm(session.player.currentMediaItem?.artUri)
             )
             if (!isForeground) {
-                startForeground(NOTIFICATION_ID, notif)
+                startForeground(NOTIFICATION_ID, mNotif)
+                isForeground = true
             }
-            manager.notify( NOTIFICATION_ID, notification.makeNotif(NOTIFICATION_ID, session,
-                makeBm(session.player.currentMediaItem?.mediaMetadata?.artworkUri))
-            )
+            manager.notify(NOTIFICATION_ID, mNotif)
         }
         return null
     }
@@ -136,6 +142,9 @@ class MusicService : MediaLibraryService() {
     private suspend fun makeBm(uri: Uri?) = withContext(Dispatchers.IO) {
         val req = ImageRequest.Builder(this@MusicService)
             .diskCachePolicy(CachePolicy.ENABLED)
+            .transformations(CropSquareTransformation())
+            .size(256)
+            .scale(Scale.FILL)
             .data(uri)
             .build()
         ((coil.execute(req).drawable) as BitmapDrawable?)?.bitmap

@@ -62,7 +62,7 @@ fun Song.toMediaItem(): MediaItem {
                 .setArtist(artist)
                 .setAlbumArtist(artist)
                 .setAlbumTitle(album)
-                .setArtworkUri(imageUri.toUri())
+                .setArtworkUri((imageUri + "ART").toUri())
                 .setDisplayTitle(title)
                 .setMediaUri(mediaUri.toUri())
                 .setSubtitle(artist.ifEmpty { album })
@@ -87,3 +87,6 @@ inline val MediaItem.getArtist: CharSequence?
 
 inline val MediaItem.getTitle: CharSequence?
     get() = mediaMetadata.title
+
+inline val MediaItem.artUri: Uri
+    get() = mediaMetadata.artworkUri.toString().removeSuffix("ART").toUri()

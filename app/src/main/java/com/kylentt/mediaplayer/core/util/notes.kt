@@ -13,7 +13,9 @@ package com.kylentt.mediaplayer.core.util
  * from a MediaController to the MediaSession.  */
 
 // TODO: Make this app has `Flow` & smooth like feeling :)
-// TODO: Separate Controller, UI & Presenter use MediaController. Service use ExoPlayer
+// TODO: Separate Controller, UI & Presenter use MediaController. Service use Scoped ExoPlayer
 // TODO: Find Applicable MediaBrowser use case
 // TODO: Remote Downloadable Source ( no Streaming for now, but will be implemented for myself )
 // TODO: Make Command go one place then decouple if necessary
+// TODO: Make Customizable Queue
+// TODO: PlayerWrapper sync fix

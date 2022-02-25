@@ -19,7 +19,9 @@ class SongRepositoryImpl(
     var songList = listOf<Song>()
 
     override suspend fun getSongs(): Flow<List<Song>> {
-        return flow { source.fetchSong().collect {
+        return flow {
+            emit(songList)
+            source.fetchSong().collect {
             songList = it
             emit(it)
         } }

@@ -62,9 +62,9 @@ fun Song.toMediaItem(): MediaItem {
                 .setArtist(artist)
                 .setAlbumArtist(artist)
                 .setAlbumTitle(album)
-                .setArtworkUri(Uri.parse(imageUri))
+                .setArtworkUri(imageUri.toUri())
                 .setDisplayTitle(title)
-                .setMediaUri(Uri.parse(mediaUri))
+                .setMediaUri(mediaUri.toUri())
                 .setSubtitle(artist.ifEmpty { album })
                 .setTitle(title)
                 .setIsPlayable(true)
@@ -80,3 +80,10 @@ inline fun MediaItem.rebuild(): MediaItem {
         .setMediaMetadata(mediaMetadata)
         .build()
 }
+
+
+inline val MediaItem.getArtist: CharSequence?
+    get() = mediaMetadata.artist
+
+inline val MediaItem.getTitle: CharSequence?
+    get() = mediaMetadata.title

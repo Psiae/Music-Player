@@ -11,8 +11,10 @@ import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import com.kylentt.mediaplayer.domain.service.MusicService
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 // Application Context
@@ -34,10 +36,32 @@ class ServiceConnectorImpl(
     private val _mediaItems = MutableStateFlow<List<MediaItem>?>(null)
     val mediaItems = _mediaItems.asStateFlow()
 
-    fun getPos() = mediaController.currentPosition
+    private val _position = MutableStateFlow(-1L)
+    val position = _position.asStateFlow()
 
-    fun getDur() = mediaController.duration
+    private val _duration = MutableStateFlow(-1L)
+    val duration = _position.asStateFlow()
 
+    // this has better interval than ::isInitialized for some reason
+    private suspend fun getPos() = withContext(Dispatchers.Main) {
+        if (isServiceConnected()) mediaController.currentPosition else -1L
+    }
+    private suspend fun getDur() = withContext(Dispatchers.Main) {
+        if (isServiceConnected()) mediaController.duration else -1L
+    }
+
+    suspend fun positionEmitter() = flow<Boolean> {
+        while (true) {
+            val pos = getPos()
+            val dur = getDur()
+            if (pos > -1 && pos <= dur) {
+                _position.value = pos
+                _duration.value = dur
+                emit(true)
+            } else emit(false)
+            delay(1000)
+        }
+    }.conflate().flowOn(Dispatchers.IO)
 
     // Media
     private var sessionToken: SessionToken? = null
@@ -47,70 +71,61 @@ class ServiceConnectorImpl(
         get() = if (futureMediaController.isDone) futureMediaController.get() else null
 
     override fun isServiceConnected(): Boolean {
-        if (!::mediaController.isInitialized) return false
         if (sessionToken == null) return false
-        if (mediaController.connectedToken == null) return false
+        if (!::mediaController.isInitialized) return false
         return (mediaController.isConnected)
     }
 
     fun releaseSession() {
-        controlReady = false
         sessionToken = null
         mediaController.release()
     }
 
     private var controlReadyListener = mutableListOf<( (MediaController) -> Unit )>()
-
     private fun clearListener() = controlReadyListener.clear()
-
-    private var controlReady = false
-        set(value) {
-            if (value && !field) {
-                synchronized(this) {
-                    controlReadyListener.forEach { it(mediaController) }
-                    clearListener()
-                    field = value
-                }
-            } else field = value
+    private val lock = Any()
+    private fun onReady () = synchronized(lock) {
+        controlReadyListener.forEach {
+            Timber.d("onReady Executed")
+            it(mediaController)
         }
-
-    var retry = true
+        clearListener()
+    }
 
     @MainThread
-    fun controller(f: Boolean = true, command: (MediaController) -> Unit): Boolean {
-        Timber.d("Controller $sessionToken")
+    fun controller(f: Boolean = false, command: (MediaController) -> Unit): Boolean {
+        Timber.d("ServiceConnector Controller")
         return when {
-            sessionToken == null -> {
-                connectService()
-                return if (retry) {
-                    retry = false
-                    controller(command = command)
-                } else false
-            }
-            ::mediaController.isInitialized -> {
+            isServiceConnected() -> {
+                Timber.d("ServiceConnector Controller Command")
                 command(mediaController)
                 true
             }
             f -> {
+                Timber.d("ServiceConnector Controller add Command")
                 if (controlReadyListener.size > 10) controlReadyListener.removeAt(0)
                 controlReadyListener += command
-                true
+                false
             }
             else -> false
         }
     }
 
-    @MainThread
-    override fun connectService() {
-        if (isServiceConnected()) return
-        Timber.d("Service Not Connected")
+    override fun connectService(): Boolean {
+        if (isServiceConnected()) {
+            Timber.d("Service Already Connected, returning...")
+            return true
+        }
+        Timber.d("Service Not Connected, Connecting...")
+
         sessionToken = SessionToken(context, ComponentName(context, MusicService::class.java))
         futureMediaController = MediaController.Builder(context, sessionToken!!).buildAsync()
         futureMediaController.addListener( {
             mediaController = _mediaController!!
             setupController(mediaController)
-            controlReady = true
+            executeOnReady(this, "Future Executor")
         }, MoreExecutors.directExecutor())
+        return (_mediaController == null)
     }
 
     private fun setupController(controller: MediaController) {
@@ -139,6 +154,14 @@ class ServiceConnectorImpl(
                     _mediaItems.value = toReturn
                 }
             })
+        }
+    }
+
+    companion object {
+        @MainThread
+        fun executeOnReady(serviceConnectorImpl: ServiceConnectorImpl, caller: String) {
+            Timber.d("ServiceConnector executeOnReady $caller")
+            serviceConnectorImpl.onReady()
         }
     }
 }

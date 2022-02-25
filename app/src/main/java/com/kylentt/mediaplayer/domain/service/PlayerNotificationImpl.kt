@@ -5,12 +5,12 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import androidx.media3.common.Player
 import androidx.media3.session.MediaSession
-import androidx.media3.session.MediaSessionService
 import androidx.media3.session.MediaStyleNotificationHelper
 import com.kylentt.mediaplayer.R
 import com.kylentt.mediaplayer.core.util.Constants.ACTION
@@ -31,17 +31,20 @@ import com.kylentt.mediaplayer.core.util.Constants.ACTION_REPEAT_OFF_TO_ONE_CODE
 import com.kylentt.mediaplayer.core.util.Constants.ACTION_REPEAT_ONE_TO_ALL
 import com.kylentt.mediaplayer.core.util.Constants.ACTION_REPEAT_ONE_TO_ALL_CODE
 import com.kylentt.mediaplayer.core.util.Constants.NOTIFICATION_CHANNEL_ID
-import com.kylentt.mediaplayer.core.util.Constants.NOTIFICATION_ID
 import com.kylentt.mediaplayer.core.util.Constants.NOTIFICATION_NAME
 import com.kylentt.mediaplayer.core.util.Constants.PLAYBACK_INTENT
 import com.kylentt.mediaplayer.core.util.VersionHelper
+import com.kylentt.mediaplayer.domain.model.getArtist
+import com.kylentt.mediaplayer.domain.model.getTitle
 
-class PlayerNotification(
+class PlayerNotificationImpl(
     private val service: MusicService,
     private val context: Context,
+    private val session: MediaSession
 ) {
-
-    private val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    private val manager = context.getSystemService(
+        Context.NOTIFICATION_SERVICE
+    ) as NotificationManager
 
     init {
         if (VersionHelper.isOreo()) createNotificationChannel()
@@ -58,33 +61,55 @@ class PlayerNotification(
     var havePrevButton = false
     var haveNextButton = false
 
-    fun makeNotif(id: Int, session: MediaSession) = NotificationCompat.Builder(context, NOTIFICATION_NAME).apply {
-        service.activityIntent?.let { setContentIntent(it) }
+    val actionPlay = makeActionPlay()
+    val actionPause = makeActionPause()
+    val actionPrev = makeActionPrev()
+    val actionNext = makeActionNext()
+    val actionCancel = makeActionCancel()
+    val actionRepeatOff = makeActionRepeatOffToOne()
+    val actionRepeatOne = makeActionRepeatOneToAll()
+    val actionRepeatAll = makeActionRepeatAllToOff()
+
+    val activityIntent = context.packageManager?.getLaunchIntentForPackage(context.packageName)?.let {
+        PendingIntent.getActivity(context, 445,
+            it, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
+
+    fun makeNotif(id: Int, session: MediaSession, bm: Bitmap?) = NotificationCompat.Builder(
+        context, NOTIFICATION_NAME
+    ).apply {
+
+        activityIntent?.let { setContentIntent(it) }
+
+        val p = session.player
+        val mi = p.currentMediaItem
+
+        setContentTitle(mi?.getTitle)
+        setContentText(mi?.getArtist)
         setSmallIcon(R.drawable.ic_baseline_music_note_24)
-        setUsesChronometer(true)
         setChannelId(NOTIFICATION_CHANNEL_ID)
         setColorized(true)
         setOngoing(true)
 
-        when (service.exo.repeatMode) {
-            Player.REPEAT_MODE_OFF -> addAction(makeActionRepeatOffToOne())
-            Player.REPEAT_MODE_ONE -> addAction(makeActionRepeatOneToAll())
-            Player.REPEAT_MODE_ALL -> addAction(makeActionRepeatAllToOff())
+        when (p.repeatMode) {
+            Player.REPEAT_MODE_OFF -> addAction(actionRepeatOff)
+            Player.REPEAT_MODE_ONE -> addAction(actionRepeatOne)
+            Player.REPEAT_MODE_ALL -> addAction(actionRepeatAll)
         }
-        havePrevButton = if (service.exo.hasPreviousMediaItem()) {
-            addAction(makeActionPrev())
+        havePrevButton = if (p.hasPreviousMediaItem()) {
+            addAction(actionPrev)
             true
         } else false
 
-        if (service.exo.playWhenReady) { addAction(makeActionPause()) }
-        else addAction( makeActionPlay() )
+        if (p.playWhenReady) { addAction(actionPause) } else addAction( actionPlay )
 
-        haveNextButton = if (service.exo.hasNextMediaItem()) {
-            addAction(makeActionNext())
+        haveNextButton = if (p.hasNextMediaItem()) {
+            addAction(actionNext)
             true
         } else false
 
-        addAction(makeActionCancel())
+        addAction(actionCancel)
 
         val media = MediaStyleNotificationHelper.MediaStyle(session)
             .setCancelButtonIntent(setCancelButtonIntent())
@@ -92,11 +117,13 @@ class PlayerNotification(
 
         when {
             haveNextButton && havePrevButton -> media.setShowActionsInCompactView(1,2,3)
-            havePrevButton -> media.setShowActionsInCompactView(1,2)
-            haveNextButton -> media.setShowActionsInCompactView(1,2)
+            havePrevButton && !haveNextButton -> media.setShowActionsInCompactView(1,2)
+            haveNextButton && !havePrevButton -> media.setShowActionsInCompactView(1,2)
             else -> media.setShowActionsInCompactView(1)
         }
+
         setStyle( media )
+        setLargeIcon(bm)
 
     }.build()
 
@@ -178,15 +205,4 @@ class PlayerNotification(
             }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
     ).build()
-
-    fun make( id: Int = NOTIFICATION_ID, session: MediaSession ) = makeNotif( id, session )
-    fun cancel(id: Int = NOTIFICATION_ID) = manager.cancel(id)
-
-    fun notify(id: Int = NOTIFICATION_ID, session: MediaSession) {
-        manager.notify(id, makeNotif(id, session))
-    }
-    fun get(id: Int, session: MediaSession): MediaSessionService.MediaNotification {
-       return MediaSessionService.MediaNotification(id, makeNotif(id,session))
-    }
-
 }

@@ -1,19 +1,24 @@
 package com.kylentt.mediaplayer.domain.service
 
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.graphics.drawable.BitmapDrawable
+import android.net.Uri
 import androidx.annotation.MainThread
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
+import coil.ImageLoader
+import coil.request.CachePolicy
+import coil.request.ImageRequest
 import com.kylentt.mediaplayer.core.util.Constants.ACTION
 import com.kylentt.mediaplayer.core.util.Constants.ACTION_CANCEL
-import com.kylentt.mediaplayer.core.util.Constants.MEDIA_SESSION_ID
 import com.kylentt.mediaplayer.core.util.Constants.ACTION_NEXT
 import com.kylentt.mediaplayer.core.util.Constants.ACTION_PAUSE
 import com.kylentt.mediaplayer.core.util.Constants.ACTION_PLAY
@@ -21,6 +26,7 @@ import com.kylentt.mediaplayer.core.util.Constants.ACTION_PREV
 import com.kylentt.mediaplayer.core.util.Constants.ACTION_REPEAT_ALL_TO_OFF
 import com.kylentt.mediaplayer.core.util.Constants.ACTION_REPEAT_OFF_TO_ONE
 import com.kylentt.mediaplayer.core.util.Constants.ACTION_REPEAT_ONE_TO_ALL
+import com.kylentt.mediaplayer.core.util.Constants.MEDIA_SESSION_ID
 import com.kylentt.mediaplayer.core.util.Constants.NOTIFICATION_ID
 import com.kylentt.mediaplayer.core.util.Constants.PLAYBACK_INTENT
 import com.kylentt.mediaplayer.data.repository.SongRepositoryImpl
@@ -44,6 +50,8 @@ class MusicService : MediaLibraryService() {
     }
 
     @Inject
+    lateinit var coil: ImageLoader
+    @Inject
     lateinit var exo: ExoPlayer
     @Inject
     lateinit var repositoryImpl: SongRepositoryImpl
@@ -52,25 +60,28 @@ class MusicService : MediaLibraryService() {
 
     val serviceScope = (CoroutineScope(Dispatchers.Main + SupervisorJob()))
 
+    /** onCreate() called before onGetSession*/
+    override fun onCreate() {
+        Timber.d("$TAG onCreate")
+        super.onCreate()
+        isActive = true
+        manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        registerReceiver()
+        initializeSession()
+    }
+
+    /** Player */
     // Idk if its good approach
     private var exoListener = mutableListOf<( (ExoPlayer) -> Unit )>()
 
     // executed when player goes STATE_READY
-    var lock = Any()
-    var exoReady = false
-        set(value) {
-            field = if (value && !field) {
-                val idk = synchronized(lock) {
-                    exoListener.forEach {
-                        it(exo)
-                    }
-                    exoListener.clear()
-                    value
-                }
-                idk
-            } else value
-        }
+    private var lock = Any()
+    fun exoReady() = synchronized(lock) {
+        exoListener.forEach { it(exo) }
+        exoListener.clear()
+    }
 
+    // Just forward any possible command here for now
     @MainThread
     fun controller(f: Boolean = true, command: ( (ExoPlayer) -> Unit) ) {
         if (exoListener.size > 10) exoListener.removeAt(0)
@@ -93,58 +104,41 @@ class MusicService : MediaLibraryService() {
         }
     }
 
+    /** MediaSession & Notification */
     private lateinit var mSession: MediaSession
-    private lateinit var playerNotification: PlayerNotification
+    private lateinit var manager: NotificationManager
+    private lateinit var notification: PlayerNotificationImpl
+
     private var isForeground = false
 
-    inner class SessionCallback : MediaLibrarySession.MediaLibrarySessionCallback {}
-
-    // TODO: Simplify This
+    // Notification update should call here
     override fun onUpdateNotification(session: MediaSession): MediaNotification? {
         Timber.d("$TAG OnUpdateNotification")
         mSession = session
-        playerNotification.notify(NOTIFICATION_ID, mSession)
 
-        if (!isForeground) {
-            startForeground(NOTIFICATION_ID, playerNotification.make(NOTIFICATION_ID, mSession))
-            isForeground = true
+        if (!::notification.isInitialized) {
+            notification = PlayerNotificationImpl(this, this, mSession)
+        }
+        serviceScope.launch {
+            val notif = notification.makeNotif(NOTIFICATION_ID, session,
+                makeBm(session.player.currentMediaItem?.mediaMetadata?.artworkUri)
+            )
+            if (!isForeground) {
+                startForeground(NOTIFICATION_ID, notif)
+            }
+            manager.notify( NOTIFICATION_ID, notification.makeNotif(NOTIFICATION_ID, session,
+                makeBm(session.player.currentMediaItem?.mediaMetadata?.artworkUri))
+            )
         }
         return null
     }
 
-    // TODO: Looking for better solution
-    inner class RepoItemFiller : MediaSession.MediaItemFiller {
-        override fun fillInLocalConfiguration(
-            session: MediaSession,
-            controller: MediaSession.ControllerInfo,
-            mediaItem: MediaItem,
-        ) = mediaItem.rebuild()
-    }
-
-    // Session
-    private var session: MediaLibrarySession? = null
-    var activityIntent: PendingIntent? = null
-
-    // Binder
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? {
-        Timber.d("$TAG onGetSession")
-        return session ?: activityIntent?.let { intent ->
-            MediaLibrarySession.Builder(this, exo, SessionCallback())
-                .setId(MEDIA_SESSION_ID)
-                .setSessionActivity(intent)
-                .setMediaItemFiller(RepoItemFiller())
-                .build().also { session = it }
-        }
-    }
-
-    // onCreate() called before onGetSession
-    override fun onCreate() {
-        Timber.d("$TAG onCreate")
-        super.onCreate()
-        isActive = true
-        playerNotification = PlayerNotification(this, this)
-        registerReceiver()
-        initializeSession()
+    private suspend fun makeBm(uri: Uri?) = withContext(Dispatchers.IO) {
+        val req = ImageRequest.Builder(this@MusicService)
+            .diskCachePolicy(CachePolicy.ENABLED)
+            .data(uri)
+            .build()
+        ((coil.execute(req).drawable) as BitmapDrawable?)?.bitmap
     }
 
     private fun initializeSession() {
@@ -153,7 +147,7 @@ class MusicService : MediaLibraryService() {
         exo.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
                 super.onPlaybackStateChanged(playbackState)
-                exoReady = playbackState == Player.STATE_READY
+                if (playbackState == Player.STATE_READY) exoReady()
             }
         })
     }
@@ -199,10 +193,39 @@ class MusicService : MediaLibraryService() {
             }
 
             serviceScope.launch {
-                delay(500)
-                if (::mSession.isInitialized) playerNotification.notify(NOTIFICATION_ID, mSession)
+                if (::mSession.isInitialized) {
+                    onUpdateNotification(mSession)
+                    delay(1000)
+                    onUpdateNotification(mSession)
+                }
             }
         }
+    }
+
+    // LibrarySession
+    private var session: MediaLibrarySession? = null
+    var activityIntent: PendingIntent? = null
+
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? {
+        Timber.d("$TAG onGetSession")
+        return session ?: activityIntent?.let { intent ->
+            MediaLibrarySession.Builder(this, exo, SessionCallback())
+                .setId(MEDIA_SESSION_ID)
+                .setSessionActivity(intent)
+                .setMediaItemFiller(RepoItemFiller())
+                .build().also { session = it }
+        }
+    }
+
+    inner class SessionCallback : MediaLibrarySession.MediaLibrarySessionCallback
+
+    // TODO: Looking for better solution
+    inner class RepoItemFiller : MediaSession.MediaItemFiller {
+        override fun fillInLocalConfiguration(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            mediaItem: MediaItem,
+        ) = mediaItem.rebuild()
     }
 
     override fun onDestroy() {

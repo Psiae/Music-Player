@@ -6,6 +6,6 @@ interface ServiceConnector {
 
     fun isServiceConnected(): Boolean
 
-    fun connectService()
+    fun connectService(): Boolean
 
 }

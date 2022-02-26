@@ -9,6 +9,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
+import android.widget.Toast
 import androidx.annotation.MainThread
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
@@ -162,11 +163,9 @@ class MusicService : MediaLibraryService() {
 
             override fun onPlayerError(error: PlaybackException) {
                 super.onPlayerError(error)
-                when (error.errorCode) {
-                    PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND -> {
-                        exo.removeMediaItem(exo.currentMediaItemIndex)
-                    }
-                }
+                Toast.makeText(this@MusicService,
+                    "Unable to play this Song, code: $error", Toast.LENGTH_LONG
+                ).show()
             }
         })
     }

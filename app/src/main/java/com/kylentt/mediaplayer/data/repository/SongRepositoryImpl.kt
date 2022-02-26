@@ -26,4 +26,8 @@ class SongRepositoryImpl(
             emit(it)
         } }
     }
+
+    fun fetchSongs(): Flow<List<Song>> {
+        return flow { source.fetchSong().collect { songList = it ; emit(it)} }
+    }
 }

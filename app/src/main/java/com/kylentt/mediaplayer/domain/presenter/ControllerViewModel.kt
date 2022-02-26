@@ -1,21 +1,17 @@
 package com.kylentt.mediaplayer.domain.presenter
 
 import android.net.Uri
-import android.widget.Toast
-import androidx.annotation.FloatRange
-import androidx.annotation.MainThread
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
-import androidx.media3.common.Player
 import com.kylentt.mediaplayer.data.repository.SongRepositoryImpl
-import com.kylentt.mediaplayer.domain.model.*
+import com.kylentt.mediaplayer.domain.model.toMediaItems
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.collectLatest
 import timber.log.Timber
-import java.io.File
 import javax.inject.Inject
 
 @HiltViewModel
@@ -42,17 +38,17 @@ class ControllerViewModel @Inject constructor(
     fun getItemAt(f: Boolean, i: Int) = connector.controller(f) { it.getMediaItemAt(i) }
 
     // might add some more
-    fun handlePlayIntent(name: String, byte: Long, lastModified: Long) = viewModelScope.launch {
+    fun handlePlayIntent(name: String, byte: Long, lastModified: Long, uri: Uri) = viewModelScope.launch {
         connector.connectService()
-        handlePlayIntentFromRepo(name, byte, lastModified)
+        handlePlayIntentFromRepo(name, byte, lastModified, uri)
     }
 
     private suspend fun handlePlayIntentFromRepo(
         name: String,
         byte: Long,
-        lastModified: Long
-    ) = withContext(Dispatchers.Default) { repository.getSongs().collectLatest { list ->
-        if (list.isEmpty()) return@collectLatest
+        lastModified: Long,
+        uri: Uri
+    ) = withContext(Dispatchers.Default) { repository.fetchSongs().collectLatest { list ->
         val song = list.find {
             lastModified.toString().contains(it.lastModified.toString()) && it.fileName == name
         } ?: list.find {
@@ -61,16 +57,21 @@ class ControllerViewModel @Inject constructor(
             it.lastModified == lastModified
         } ?: list.find {
             it.fileName == name
-        } ?: run { Timber.e("Idk what happen but it goes here for whatever reason") ; null }
+        } ?: run { connector.sController { it.setMediaItem(MediaItem.Builder()
+            .setUri(uri)
+            .setMediaMetadata(MediaMetadata.Builder().setMediaUri(uri).build())
+            .build(), 0)
+            it.prepare()
+            it.playWhenReady = true
+            Timber.d("Controller Handle Intent File NOT Found, Handled with Uri")
+        } ; null }
         song?.let {
-            withContext(Dispatchers.Main) {
-                connector.controller(true) {
-                    Timber.d("Controller Handle Intent by Connector")
-                    it.setMediaItems(list.toMediaItems(), list.indexOf(song), 0)
-                    it.prepare()
-                    it.playWhenReady = true
-                    Timber.d("Controller Handle Intent From Repo Handled")
-                }
+            connector.sController {
+                Timber.d("Controller Handle Intent File Found, Handled with Repo")
+                it.setMediaItems(list.toMediaItems(), list.indexOf(song), 0)
+                it.prepare()
+                it.playWhenReady = true
+                Timber.d("Controller Handle Intent From Repo Handled")
             }
         }
     } }
@@ -79,7 +80,6 @@ class ControllerViewModel @Inject constructor(
     private val ioUpdater = CoroutineScope( Dispatchers.IO + Job() )
 
     init {
-
         connector.connectService()
         ioUpdater.launch {
             connector.positionEmitter().collect {

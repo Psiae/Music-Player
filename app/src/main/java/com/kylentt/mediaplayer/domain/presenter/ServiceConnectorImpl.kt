@@ -2,6 +2,7 @@ package com.kylentt.mediaplayer.domain.presenter
 
 import android.content.ComponentName
 import android.content.Context
+import android.widget.Toast
 import androidx.annotation.MainThread
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
@@ -50,6 +51,8 @@ class ServiceConnectorImpl(
         if (isServiceConnected()) mediaController.duration else -1L
     }
 
+    fun connectorToast(msg: String) = Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+
     suspend fun positionEmitter() = flow {
         while (true) {
             val pos = getPos()
@@ -91,6 +94,10 @@ class ServiceConnectorImpl(
         }
         clearListener()
     }
+
+    // for Dispatchers
+    suspend fun sController(f: Boolean = false, command: (MediaController) -> Unit): Boolean
+    = withContext(Dispatchers.Main) { controller(f) { command(it) } }
 
     @MainThread
     fun controller(f: Boolean = false, command: (MediaController) -> Unit): Boolean {

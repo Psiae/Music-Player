@@ -93,8 +93,13 @@ class PlayerNotificationImpl(
             )
         })
 
-        setContentTitle(mi?.getDisplayTitle)
-        setContentText(mi?.getSubtitle)
+        val title = mi?.getDisplayTitle
+        if (!title.isNullOrBlank()) setContentTitle(title)
+        val subtitle = mi?.getSubtitle
+        if (!subtitle.isNullOrBlank()) setContentText(subtitle)
+
+        mi?.getDisplayTitle?.isNotEmpty()
+
         setSmallIcon(R.drawable.ic_baseline_music_note_24)
         setChannelId(NOTIFICATION_CHANNEL_ID)
         setColorized(true)

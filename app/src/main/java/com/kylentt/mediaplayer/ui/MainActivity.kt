@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.DocumentsContract
+import android.provider.DocumentsProvider
 import android.provider.OpenableColumns
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -14,8 +15,12 @@ import com.kylentt.mediaplayer.core.util.removeSuffix
 import com.kylentt.mediaplayer.domain.presenter.ControllerViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.io.File
+import java.io.FileOutputStream
+import java.io.OutputStream
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -37,8 +42,6 @@ class MainActivity : ComponentActivity() {
 
         handleIntent(intent)
 
-
-
         if (checkPermission()) {
             // TODO: Permission Screen
         }
@@ -46,6 +49,12 @@ class MainActivity : ComponentActivity() {
         setContent {
 
         }
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        Timber.d("MainActivity onNewIntent")
+        intent?.let { handleIntent(intent) }
     }
 
     private fun handleIntent(intent: Intent) {
@@ -58,15 +67,31 @@ class MainActivity : ComponentActivity() {
         intent.data?.let { uri ->
             Timber.d("Activity Intent $uri")
             when (uri.scheme) {
-                "content" -> {
-                    if (uri.toString().startsWith("content://com.android.providers")) {
-                        handlePlayWithIntent(uri)
-                    } else handlePlayWithIntent(uri) // later
+                "content" -> when {
+                    uri.toString().startsWith("content://com.android.providers")
+                    -> handlePlayWithIntent(uri)
+                    uri.toString().startsWith("content://com.google.android.apps.docs.storage.legacy/")
+                    -> handlePlayWithIntent(uri)
                 }
-                else -> Timber.e("Activity Intent Invalid Uri $uri")
             }
         } ?: Timber.e("Activity Intent ActionView null Data")
     }
+
+    /*private fun handlePlayDriveIntent(uri: Uri) {
+        val res = contentResolver.openInputStream(uri)
+        res?.let { inputStream ->
+            val buffer = ByteArray(8192)
+            val output = FileOutputStream(filesDir.absolutePath + "")
+            var length = inputStream.read(buffer)
+            output.use { outStream ->
+                while (length >= 0) {
+                    length = inputStream.read(buffer)
+                    outStream.write(buffer, 0, length)
+                }
+                outStream.flush()
+            }
+        }
+    }*/
 
     private fun handlePlayWithIntent(uri: Uri) {
         lifecycleScope.launch(Dispatchers.Default) {
@@ -82,7 +107,7 @@ class MainActivity : ComponentActivity() {
                     val name = cursor.getString(nameIndex)
                     val byte = cursor.getLong(byteIndex)
                     val last = cursor.getLong(lastIndex)
-                    controller.handlePlayIntent(name, byte, last.removeSuffix("000"))
+                    controller.handlePlayIntent(name, byte, last.removeSuffix("000"), uri)
                     Timber.d("MainActivity intent handler $name $byte $last ")
                 }
             }

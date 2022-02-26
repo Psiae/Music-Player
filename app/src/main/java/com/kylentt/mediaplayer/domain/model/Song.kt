@@ -4,49 +4,24 @@ import android.net.Uri
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
-import androidx.room.Entity
-import androidx.room.PrimaryKey
-
-@Entity
-data class SongEntity(
-    val album: String = "",
-    val albumId: String = "",
-    val artist: String = "",
-    val artistId: String = "",
-    val duration: Long = 0L,
-    val fileName: String = "",
-    val imageUri: String = "",
-    val mediaId: String = "", // preferably Long
-    val mediaUri: String = "",
-    val title: String = "",
-    @PrimaryKey val id: Int? = null
-)
+import timber.log.Timber
 
 data class Song(
     val album: String = "",
     val albumId: String = "",
     val artist: String = "",
     val artistId: String = "",
+    val byteSize: Long = 0L, // Intent Handler
     val duration: Long = 0L,
+    val data: String = "",
     val fileName: String = "",
     val imageUri: String = "",
+    val lastModified: Long = 0L, // Intent Handler
     val mediaId: String = "", // preferably Long
     val mediaUri: String = "",
     val title: String = "",
 )
 
-fun List<Song>.toSongEntities(): List<SongEntity> {
-    return map { it.toSongEntity() }
-}
-fun List<SongEntity>.toSongs(): List<Song> {
-    return map { it.toSong() }
-}
-fun SongEntity.toSong(): Song = Song(
-    album, albumId, artist, artistId, duration, fileName, imageUri, mediaId, mediaUri, title
-)
-fun Song.toSongEntity(): SongEntity = SongEntity(
-    album, albumId, artist, artistId, duration, imageUri, fileName,  mediaId, mediaUri, title
-)
 fun List<Song>.toMediaItems(): List<MediaItem> {
     return map { it.toMediaItem() }
 }
@@ -54,6 +29,7 @@ fun List<Song>.toMediaItems(): List<MediaItem> {
 // MediaItem for ExoPlayer Queue Management, will use this for UI for now
 
 fun Song.toMediaItem(): MediaItem {
+    Timber.d("toMediaItem $lastModified")
     return MediaItem.Builder()
         .setMediaId(mediaId)
         .setUri(Uri.parse(mediaUri))
@@ -62,11 +38,13 @@ fun Song.toMediaItem(): MediaItem {
                 .setArtist(artist)
                 .setAlbumArtist(artist)
                 .setAlbumTitle(album)
-                .setArtworkUri((imageUri + "ART").toUri())
+                .setArtworkUri(("ART$imageUri").toUri())
                 .setDisplayTitle(title)
+                .setDescription(fileName)
                 .setMediaUri(mediaUri.toUri())
                 .setSubtitle(artist.ifEmpty { album })
-                .setTitle(title)
+                .setCompilation(byteSize.toString())
+                .setConductor(lastModified.toString())
                 .setIsPlayable(true)
                 .build())
         .build()
@@ -74,6 +52,7 @@ fun Song.toMediaItem(): MediaItem {
 
 // because of localConfig issue
 inline fun MediaItem.rebuild(): MediaItem {
+    Timber.d("rebuild ${this.mediaMetadata.conductor}")
     return MediaItem.Builder()
         .setMediaId(mediaId)
         .setUri(this.mediaMetadata.mediaUri)
@@ -81,12 +60,23 @@ inline fun MediaItem.rebuild(): MediaItem {
         .build()
 }
 
+inline val MediaItem.getDateModified: Long?
+    get() = mediaMetadata.conductor.toString().toLong()
+
+inline val MediaItem.fileName: CharSequence?
+    get() = mediaMetadata.title
+
+inline val MediaItem.byteSize: Long?
+    get() = mediaMetadata.compilation.toString().toLong()
 
 inline val MediaItem.getArtist: CharSequence?
     get() = mediaMetadata.artist
 
-inline val MediaItem.getTitle: CharSequence?
-    get() = mediaMetadata.title
+inline val MediaItem.getSubtitle: CharSequence?
+    get() = mediaMetadata.subtitle
+
+inline val MediaItem.getDisplayTitle: CharSequence?
+    get() = mediaMetadata.displayTitle
 
 inline val MediaItem.artUri: Uri
-    get() = mediaMetadata.artworkUri.toString().removeSuffix("ART").toUri()
+    get() = mediaMetadata.artworkUri.toString().removePrefix("ART").toUri()

@@ -11,6 +11,7 @@ import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import androidx.annotation.MainThread
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaLibraryService
@@ -158,6 +159,15 @@ class MusicService : MediaLibraryService() {
                 super.onPlaybackStateChanged(playbackState)
                 if (playbackState == Player.STATE_READY) exoReady()
             }
+
+            override fun onPlayerError(error: PlaybackException) {
+                super.onPlayerError(error)
+                when (error.errorCode) {
+                    PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND -> {
+                        exo.removeMediaItem(exo.currentMediaItemIndex)
+                    }
+                }
+            }
         })
     }
 
@@ -240,11 +250,9 @@ class MusicService : MediaLibraryService() {
     override fun onDestroy() {
         Timber.d("$TAG onDestroy")
         isActive = false
-
         exo.release()
         serviceScope.cancel()
         unregisterReceiver(playbackReceiver)
-
         if (!MainActivity.isActive) exitProcess(0)
         super.onDestroy()
     }

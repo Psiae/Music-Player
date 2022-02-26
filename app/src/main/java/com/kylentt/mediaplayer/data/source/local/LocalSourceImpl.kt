@@ -9,7 +9,6 @@ import com.kylentt.mediaplayer.core.util.VersionHelper
 import com.kylentt.mediaplayer.domain.model.Song
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -20,7 +19,7 @@ class LocalSourceImpl(
 
     override suspend fun fetchSong(): Flow<List<Song>> = flow { emit(queryDeviceSong()) }
 
-    private suspend fun queryDeviceSong() = withContext(Dispatchers.IO) {
+    private suspend fun queryDeviceSong() = withContext(Dispatchers.Default) {
         val deviceSong = mutableListOf<Song>()
         try {
             // Folder Name
@@ -37,8 +36,11 @@ class LocalSourceImpl(
                 MediaStore.Audio.AudioColumns.ALBUM_ID,
                 MediaStore.Audio.AudioColumns.ARTIST,
                 MediaStore.Audio.AudioColumns.ARTIST_ID,
+                MediaStore.Audio.AudioColumns.DATA,
                 MediaStore.Audio.AudioColumns.DISPLAY_NAME,
                 MediaStore.Audio.AudioColumns.DURATION,
+                MediaStore.Audio.AudioColumns.DATE_MODIFIED,
+                MediaStore.Audio.AudioColumns.SIZE,
                 MediaStore.Audio.AudioColumns.TITLE,
                 songPath,
                 songPathId
@@ -67,11 +69,20 @@ class LocalSourceImpl(
                     val artistId = cursor.getLong(
                         cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.ARTIST_ID)
                     )
-                    val fileName = cursor.getString(
-                        cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.DISPLAY_NAME)
+                    val byteSize = cursor.getLong(
+                        cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.SIZE)
+                    )
+                    val d = cursor.getColumnIndex(MediaStore.Audio.AudioColumns.DATA)
+                    val data = if (d > -1) cursor.getString(d) else "DEPRECATED"
+
+                    val dateModified = cursor.getLong(
+                        cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.DATE_MODIFIED)
                     )
                     val duration = cursor.getLong(
                         cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.DURATION)
+                    )
+                    val fileName = cursor.getString(
+                        cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.DISPLAY_NAME)
                     )
                     val title = cursor.getString(
                         cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.TITLE)
@@ -94,9 +105,12 @@ class LocalSourceImpl(
                         albumId = albumId.toString(),
                         artist = artist,
                         artistId = artistId.toString(),
+                        byteSize = byteSize,
                         duration = duration,
+                        data = data,
                         fileName = fileName,
                         imageUri = imageUri,
+                        lastModified = dateModified,
                         mediaId = songId.toString(),
                         mediaUri = songUri,
                         title = title

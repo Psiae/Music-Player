@@ -50,7 +50,7 @@ class ServiceConnectorImpl(
         if (isServiceConnected()) mediaController.duration else -1L
     }
 
-    suspend fun positionEmitter() = flow<Boolean> {
+    suspend fun positionEmitter() = flow {
         while (true) {
             val pos = getPos()
             val dur = getDur()
@@ -111,6 +111,7 @@ class ServiceConnectorImpl(
         }
     }
 
+    @MainThread
     override fun connectService(): Boolean {
         if (isServiceConnected()) {
             Timber.d("Service Already Connected, returning...")

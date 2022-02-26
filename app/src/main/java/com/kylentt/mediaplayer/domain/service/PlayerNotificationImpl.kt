@@ -35,8 +35,8 @@ import com.kylentt.mediaplayer.core.util.Constants.NOTIFICATION_CHANNEL_ID
 import com.kylentt.mediaplayer.core.util.Constants.NOTIFICATION_NAME
 import com.kylentt.mediaplayer.core.util.Constants.PLAYBACK_INTENT
 import com.kylentt.mediaplayer.core.util.VersionHelper
-import com.kylentt.mediaplayer.domain.model.getArtist
-import com.kylentt.mediaplayer.domain.model.getTitle
+import com.kylentt.mediaplayer.domain.model.getDisplayTitle
+import com.kylentt.mediaplayer.domain.model.getSubtitle
 
 class PlayerNotificationImpl(
     private val service: MusicService,
@@ -81,13 +81,20 @@ class PlayerNotificationImpl(
         context, NOTIFICATION_NAME
     ).apply {
 
-        activityIntent?.let { setContentIntent(it) }
-
         val p = session.player
         val mi = p.currentMediaItem
 
-        setContentTitle(mi?.getTitle)
-        setContentText(mi?.getArtist)
+        setContentIntent(context.packageManager?.getLaunchIntentForPackage(context.packageName)?.let {
+            PendingIntent.getActivity(context, 445,
+                it.apply {
+                    this.putExtra("NOTIFICATION_CONTENT", mi?.mediaMetadata?.mediaUri)
+                }
+                , PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        })
+
+        setContentTitle(mi?.getDisplayTitle)
+        setContentText(mi?.getSubtitle)
         setSmallIcon(R.drawable.ic_baseline_music_note_24)
         setChannelId(NOTIFICATION_CHANNEL_ID)
         setColorized(true)

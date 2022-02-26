@@ -12,6 +12,9 @@ fun Long?.orInv() = this ?: -1L
 fun Int?.orZero() = this ?: 0
 fun Long?.orZero() = this ?: 0L
 
-fun <T> T?.orDefault(default: T): T {
-    return this ?: default
+fun Long.removeSuffix(suffix: String): Long {
+    val s = this.toString()
+    return if (s.endsWith(suffix)) s.removeSuffix(suffix).toLong() else this
 }
+
+fun <T> T?.orDefault(default: T) = this ?: default

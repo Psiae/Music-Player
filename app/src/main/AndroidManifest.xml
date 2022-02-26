@@ -2,7 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.kylentt.mediaplayer">
 
+
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
 
     <application
@@ -16,7 +19,9 @@
 
         <service
             android:name="com.kylentt.mediaplayer.domain.service.MusicService"
-            android:exported="false">
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback">
             <intent-filter>
                 <action android:name="androidx.media3.session.MediaLibraryService"/>
             </intent-filter>
@@ -28,8 +33,18 @@
             android:theme="@style/Theme.MediaPlayer">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+
+                <category android:name="android.intent.category.APP_MUSIC"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+
+                <data android:scheme="file"/>
+                <data android:scheme="content"/>
+                <data android:mimeType="audio/*"/>
             </intent-filter>
         </activity>
     </application>

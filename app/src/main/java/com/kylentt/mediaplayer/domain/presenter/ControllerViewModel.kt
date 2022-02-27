@@ -38,12 +38,13 @@ class ControllerViewModel @Inject constructor(
     fun skipToPrev(f: Boolean) = connector.controller(f) { it.seekToPrevious() }
     fun getItemAt(f: Boolean, i: Int) = connector.controller(f) { it.getMediaItemAt(i) }
 
-    suspend fun handleItemIntent(item: MediaItem) = withContext(Dispatchers.Main) {
-        Timber.d("Controller IntentHandler handling ${item.mediaMetadata.title}")
+    suspend fun handleItemIntent(uri: Uri) = withContext(Dispatchers.Main) {
+        Timber.d("IntentHandler ItemIntent $uri")
         connector.connectService()
+        val item = repository.fetchMetaFromUri(uri)
         connector.sController(true) {
-            it.seekTo(0,0)
             it.stop()
+            it.seekTo(0,0)
             it.repeatMode = Player.REPEAT_MODE_OFF
             it.setMediaItems(listOf(item))
             it.prepare()
@@ -72,22 +73,17 @@ class ControllerViewModel @Inject constructor(
             it.lastModified == lastModified
         } ?: list.find {
             it.fileName == name
-        } ?: run { connector.sController(true) {
-            it.setMediaItem(MediaItem.Builder()
-            .setUri(uri)
-            .setMediaMetadata(MediaMetadata.Builder().setMediaUri(uri).build())
-            .build(), 0)
-            it.prepare()
-            it.playWhenReady = true
-            Timber.d("Controller Handle Intent File NOT Found, Handled with Uri")
-        } ; null }
+        } ?: run {
+            handleItemIntent(uri)
+            Timber.d("IntentHandler Repository not Found, Forwarding with Uri") ; null
+        }
         song?.let {
             connector.sController(true) {
-                Timber.d("Controller Handle Intent File Found, Handled with Repo")
+                Timber.d("IntentHandler Repository File Found, Handled with Repo")
                 it.setMediaItems(list.toMediaItems(), list.indexOf(song), 0)
                 it.prepare()
                 it.playWhenReady = true
-                Timber.d("Controller Handle Intent From Repo Handled")
+                Timber.d("IntentHandler Repository Handled")
             }
         }
     } }

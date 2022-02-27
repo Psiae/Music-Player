@@ -9,6 +9,7 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
+import coil.ImageLoader
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import com.kylentt.mediaplayer.domain.service.MusicService
@@ -20,7 +21,8 @@ import timber.log.Timber
 
 // Application Context
 class ServiceConnectorImpl(
-    val context: Context
+    val context: Context,
+    val coil: ImageLoader
 ) : ServiceConnector {
 
     // TODO: Find suitable usage of MediaBrowser

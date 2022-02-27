@@ -88,49 +88,25 @@ class MainActivity : ComponentActivity() {
                     Timber.d("IntentHandler scheme : ${uri.scheme}")
                     when {
                         uri.toString()
-                            .startsWith("content://com.android.providers") -> handlePlayWithIntent(uri)
+                            .startsWith("content://com.android.providers") -> {
+                            handlePlayWithIntent(uri)
+                        }
                         uri.toString()
-                            .startsWith("content://com.google.android.apps.docs.storage.legacy/") -> handlePlayDriveIntent(uri)
-                        else -> Toast.makeText(this, "unsupported, please inform us", Toast.LENGTH_LONG)
+                            .startsWith("content://com.google.android.apps.docs.storage.legacy/") -> {
+                            lifecycleScope.launch {
+                                controller.handleItemIntent(uri)
+                            }
+                        }
+                        uri.toString()
+                            .startsWith("content://com.android.externalstorage") -> {
+                            handlePlayWithIntent(uri)
+                        }
+                        else -> Toast.makeText(this, "unsupported, please inform us", Toast.LENGTH_LONG).show()
                     }
                 }
-                else -> Toast.makeText(this, "unsupported, please inform us", Toast.LENGTH_LONG)
+                else -> Toast.makeText(this, "unsupported, please inform us", Toast.LENGTH_LONG).show()
             }
         } ?: Timber.e("IntentHandler ActionView null Data")
-    }
-
-    private fun handlePlayDriveIntent(uri: Uri) {
-        Timber.d("IntentHandler Handling PlayDriveIntent...")
-        lifecycleScope.launch(Dispatchers.Default) {
-            val mtr = MediaMetadataRetriever()
-            mtr.setDataSource(applicationContext, uri)
-            val artist = mtr.extractMetadata(METADATA_KEY_ARTIST)
-            val album = mtr.extractMetadata(METADATA_KEY_ALBUM)
-            val title = mtr.extractMetadata(METADATA_KEY_TITLE)
-            val pict = mtr.embeddedPicture
-
-            val art = pict?.let {
-                BitmapFactory.decodeByteArray(pict, 0, pict.size).squareWithCoil()
-            }
-            val bArr = art?.let {
-                val stream = ByteArrayOutputStream()
-                it.compress(Bitmap.CompressFormat.PNG, 100, stream)
-                stream.toByteArray()
-            }
-            val item = MediaItem.Builder().setUri(uri).setMediaMetadata(
-                MediaMetadata.Builder()
-                    .setArtist(artist)
-                    .setAlbumTitle(album)
-                    .setArtworkData(bArr, PICTURE_TYPE_MEDIA)
-                    .setTitle(title)
-                    .setDisplayTitle(title)
-                    .setSubtitle(artist ?: album)
-                    .setMediaUri(uri)
-                    .build()
-            ).build()
-            Timber.d("IntentHandler PlayDriveIntent forwarded ${item.getDisplayTitle})")
-            controller.handleItemIntent(item)
-        }
     }
 
     private suspend fun Bitmap.squareWithCoil(): Bitmap? {
@@ -195,6 +171,8 @@ class MainActivity : ComponentActivity() {
 
         override fun onDestroy() {
             isActive = false
+            applicationContext.externalCacheDir?.deleteRecursively()
+            applicationContext.cacheDir.deleteRecursively()
             super.onDestroy()
         }
 }

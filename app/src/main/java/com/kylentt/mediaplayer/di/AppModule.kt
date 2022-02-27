@@ -29,8 +29,9 @@ object AppModule {
     @Singleton
     @Provides
     fun provideServiceConnector(
-        @ApplicationContext context: Context
-    ) = ServiceConnectorImpl(context)
+        @ApplicationContext context: Context,
+        coil: ImageLoader
+    ) = ServiceConnectorImpl(context, coil)
 
     @Singleton
     @Provides
@@ -41,8 +42,10 @@ object AppModule {
     @Singleton
     @Provides
     fun provideSongRepository(
-        source: LocalSourceImpl
-    ) = SongRepositoryImpl(source)
+        source: LocalSourceImpl,
+        @ApplicationContext context: Context,
+        coil: ImageLoader
+    ) = SongRepositoryImpl(source, context, coil)
 
     @Singleton
     @Provides

@@ -148,6 +148,7 @@ class MusicService : MediaLibraryService() {
 
     private suspend fun mapBM(bm: Bitmap?) = withContext(Dispatchers.IO) {
         val req = ImageRequest.Builder(this@MusicService)
+            .diskCachePolicy(CachePolicy.ENABLED)
             .size(256)
             .scale(Scale.FILL)
             .data(bm)
@@ -157,6 +158,7 @@ class MusicService : MediaLibraryService() {
 
     private suspend fun makeBm(uri: Uri?) = withContext(Dispatchers.IO) {
         val req = ImageRequest.Builder(this@MusicService)
+            .diskCachePolicy(CachePolicy.ENABLED)
             .size(256)
             .scale(Scale.FILL)
             .data(uri)

@@ -1,26 +1,36 @@
 package com.kylentt.mediaplayer.ui
 
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.drawable.BitmapDrawable
+import android.media.MediaMetadataRetriever
+import android.media.MediaMetadataRetriever.*
 import android.net.Uri
 import android.os.Bundle
 import android.provider.DocumentsContract
-import android.provider.DocumentsProvider
 import android.provider.OpenableColumns
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
+import androidx.media3.common.MediaMetadata.PICTURE_TYPE_MEDIA
+import coil.ImageLoader
+import coil.request.CachePolicy
+import coil.request.ImageRequest
+import coil.size.Scale
 import com.kylentt.mediaplayer.core.util.removeSuffix
 import com.kylentt.mediaplayer.domain.presenter.ControllerViewModel
 import dagger.hilt.android.AndroidEntryPoint
+import jp.wasabeef.transformers.coil.CropSquareTransformation
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import java.io.File
-import java.io.FileOutputStream
-import java.io.OutputStream
+import java.io.ByteArrayOutputStream
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -29,6 +39,9 @@ class MainActivity : ComponentActivity() {
         val TAG: String = this::class.java.simpleName
         var isActive = false
     }
+
+    @Inject
+    lateinit var coil: ImageLoader
 
     // List
     private var mediaItems = listOf<MediaItem>()
@@ -71,26 +84,73 @@ class MainActivity : ComponentActivity() {
                     uri.toString().startsWith("content://com.android.providers")
                     -> handlePlayWithIntent(uri)
                     uri.toString().startsWith("content://com.google.android.apps.docs.storage.legacy/")
-                    -> handlePlayWithIntent(uri)
+                    -> handlePlayDriveIntent(uri)
+                    else -> Toast.makeText(this, "unsupported, please inform us", Toast.LENGTH_LONG)
                 }
+                else -> Toast.makeText(this, "unsupported, please inform us", Toast.LENGTH_LONG)
             }
         } ?: Timber.e("Activity Intent ActionView null Data")
     }
 
-    /*private fun handlePlayDriveIntent(uri: Uri) {
+    private fun handlePlayDriveIntent(uri: Uri) {
+        lifecycleScope.launch(Dispatchers.Default) {
+            val mtr = MediaMetadataRetriever()
+            mtr.setDataSource(applicationContext, uri)
+            val artist = mtr.extractMetadata(METADATA_KEY_ARTIST)
+            val album = mtr.extractMetadata(METADATA_KEY_ALBUM)
+            val title = mtr.extractMetadata(METADATA_KEY_TITLE)
+            val pict = mtr.embeddedPicture
+
+            val art = pict?.let {
+                BitmapFactory.decodeByteArray(pict, 0, pict.size).squareWithCoil()
+            }
+            val bArr = art?.let {
+                val stream = ByteArrayOutputStream()
+                it.compress(Bitmap.CompressFormat.PNG, 100, stream)
+                stream.toByteArray()
+            }
+            val item = MediaItem.Builder().setUri(uri).setMediaMetadata(
+                MediaMetadata.Builder()
+                    .setArtist(artist)
+                    .setAlbumTitle(album)
+                    .setArtworkData(bArr, PICTURE_TYPE_MEDIA)
+                    .setTitle(title)
+                    .setMediaUri(uri)
+                    .build()
+            ).build()
+            controller.handleItemIntent(item)
+        }
+    }
+
+    private suspend fun Bitmap.squareWithCoil(): Bitmap? {
+        val req = ImageRequest.Builder(this@MainActivity)
+            .diskCachePolicy(CachePolicy.ENABLED)
+            .transformations(CropSquareTransformation())
+            .size(256)
+            .scale(Scale.FILL)
+            .data(this)
+            .build()
+        return ((coil.execute(req).drawable) as BitmapDrawable?)?.bitmap
+    }
+
+    /*// Legit just uploaded the files to G-Drive LOL
+    private fun handlePlayDriveIntent(uri: Uri) {
         val res = contentResolver.openInputStream(uri)
+        val ofd = contentResolver.openFileDescriptor(uri, "rw")
         res?.let { inputStream ->
             val buffer = ByteArray(8192)
-            val output = FileOutputStream(filesDir.absolutePath + "")
-            var length = inputStream.read(buffer)
+            val output = FileOutputStream(ofd!!.fileDescriptor)
             output.use { outStream ->
-                while (length >= 0) {
-                    length = inputStream.read(buffer)
+                while (true) {
+                    val length = inputStream.read(buffer)
+                    if (length <= 0) break
                     outStream.write(buffer, 0, length)
                 }
                 outStream.flush()
+                outStream.close()
             }
         }
+        handlePlayWithIntent(uri)
     }*/
 
     private fun handlePlayWithIntent(uri: Uri) {

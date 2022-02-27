@@ -21,6 +21,7 @@ package com.kylentt.mediaplayer.core.util
 // TODO: Make Command go one place then decouple if necessary
 // TODO: Make Customizable Queue
 // TODO: PlayerWrapper sync fix
+// TODO: Handle Intent Filter
 
 // Idk, but useful
 // content providers column for Intent Handling playlist

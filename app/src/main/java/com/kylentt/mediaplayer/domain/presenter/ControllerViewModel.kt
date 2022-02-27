@@ -37,6 +37,15 @@ class ControllerViewModel @Inject constructor(
     fun skipToPrev(f: Boolean) = connector.controller(f) { it.seekToPrevious() }
     fun getItemAt(f: Boolean, i: Int) = connector.controller(f) { it.getMediaItemAt(i) }
 
+    suspend fun handleItemIntent(item: MediaItem) {
+        connector.connectService()
+        connector.sController(true) {
+            it.setMediaItem(item, 0)
+            it.prepare()
+            it.playWhenReady = true
+        }
+    }
+
     // might add some more
     fun handlePlayIntent(name: String, byte: Long, lastModified: Long, uri: Uri) = viewModelScope.launch {
         connector.connectService()
@@ -57,7 +66,8 @@ class ControllerViewModel @Inject constructor(
             it.lastModified == lastModified
         } ?: list.find {
             it.fileName == name
-        } ?: run { connector.sController { it.setMediaItem(MediaItem.Builder()
+        } ?: run { connector.sController(true) {
+            it.setMediaItem(MediaItem.Builder()
             .setUri(uri)
             .setMediaMetadata(MediaMetadata.Builder().setMediaUri(uri).build())
             .build(), 0)
@@ -66,7 +76,7 @@ class ControllerViewModel @Inject constructor(
             Timber.d("Controller Handle Intent File NOT Found, Handled with Uri")
         } ; null }
         song?.let {
-            connector.sController {
+            connector.sController(true) {
                 Timber.d("Controller Handle Intent File Found, Handled with Repo")
                 it.setMediaItems(list.toMediaItems(), list.indexOf(song), 0)
                 it.prepare()

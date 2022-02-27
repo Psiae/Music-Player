@@ -133,7 +133,7 @@ class ServiceConnectorImpl(
             setupController(mediaController)
             executeOnReady(this, "Future Executor")
         }, MoreExecutors.directExecutor())
-        return (_mediaController == null)
+        return (_mediaController != null)
     }
 
     private fun setupController(controller: MediaController) {

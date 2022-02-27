@@ -7,6 +7,8 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.widget.Toast
@@ -82,15 +84,15 @@ class MusicService : MediaLibraryService() {
 
     // executed when player goes STATE_READY
     private var lock = Any()
-    fun exoReady() = synchronized(lock) {
-        exoListener.forEach { it(exo) }
-        exoListener.clear()
-    }
+    fun exoReady() = synchronized(lock) { exoListener.forEach { it(exo) } ; exoListener.clear() }
 
     // Just forward any possible command here for now
     @MainThread
     fun controller(f: Boolean = true, command: ( (ExoPlayer) -> Unit) ) {
-        if (exoListener.size > 10) exoListener.removeAt(0)
+        if (exoListener.size > 10) {
+            exoListener.removeAt(0)
+            exo.prepare()
+        }
         when {
             ::exo.isInitialized -> {
                 if (exo.playbackState != Player.STATE_IDLE) {
@@ -124,14 +126,17 @@ class MusicService : MediaLibraryService() {
         Timber.d("$TAG OnUpdateNotification")
         mSession = session
 
-        if (!::notification.isInitialized) {
-            notification = PlayerNotificationImpl(this, this, mSession)
-        }
+        if (!::notification.isInitialized) notification = PlayerNotificationImpl(
+            this, this, mSession
+        )
 
         serviceScope.launch {
-            mNotif = notification.makeNotif(NOTIFICATION_ID, session,
-                makeBm(session.player.currentMediaItem?.artUri)
-            )
+            val pict = session.player.currentMediaItem?.mediaMetadata?.artworkData
+            val uri = session.player.currentMediaItem?.artUri
+            val bm = pict?.let { mapBM( BitmapFactory.decodeByteArray(
+                it, 0, it.size
+            )) } ?: makeBm(uri)
+            mNotif = notification.makeNotif(NOTIFICATION_ID, session, bm)
             if (!isForeground) {
                 startForeground(NOTIFICATION_ID, mNotif)
                 isForeground = true
@@ -141,10 +146,17 @@ class MusicService : MediaLibraryService() {
         return null
     }
 
+    private suspend fun mapBM(bm: Bitmap?) = withContext(Dispatchers.IO) {
+        val req = ImageRequest.Builder(this@MusicService)
+            .size(256)
+            .scale(Scale.FILL)
+            .data(bm)
+            .build()
+        ((coil.execute(req).drawable) as BitmapDrawable?)?.bitmap
+    }
+
     private suspend fun makeBm(uri: Uri?) = withContext(Dispatchers.IO) {
         val req = ImageRequest.Builder(this@MusicService)
-            .diskCachePolicy(CachePolicy.ENABLED)
-            .transformations(CropSquareTransformation())
             .size(256)
             .scale(Scale.FILL)
             .data(uri)
@@ -163,7 +175,7 @@ class MusicService : MediaLibraryService() {
 
             override fun onPlayerError(error: PlaybackException) {
                 super.onPlayerError(error)
-                Toast.makeText(this@MusicService,
+                Toast.makeText(this@MusicService.applicationContext,
                     "Unable to play this Song, code: $error", Toast.LENGTH_LONG
                 ).show()
             }
@@ -199,15 +211,14 @@ class MusicService : MediaLibraryService() {
                 ACTION_REPEAT_OFF_TO_ONE -> exo.repeatMode = Player.REPEAT_MODE_ONE
                 ACTION_REPEAT_ONE_TO_ALL -> exo.repeatMode = Player.REPEAT_MODE_ALL
                 ACTION_REPEAT_ALL_TO_OFF -> exo.repeatMode = Player.REPEAT_MODE_OFF
-                ACTION_CANCEL -> {
-                    session?.let {
-                        exo.stop()
-                        stopSelf()
-                        stopForeground(true)
-                        isForeground = false
-                        return
-                    }
-                }
+                ACTION_CANCEL -> { session?.let {
+                    exo.stop()
+                    stopSelf()
+                    stopForeground(true)
+                    isForeground = false
+                    if (!MainActivity.isActive) serviceConnectorImpl.releaseSession()
+                    return
+                } }
             }
 
             serviceScope.launch {
@@ -248,8 +259,8 @@ class MusicService : MediaLibraryService() {
 
     override fun onDestroy() {
         Timber.d("$TAG onDestroy")
-        isActive = false
         exo.release()
+        isActive = false
         serviceScope.cancel()
         unregisterReceiver(playbackReceiver)
         if (!MainActivity.isActive) exitProcess(0)

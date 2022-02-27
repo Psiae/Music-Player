@@ -23,6 +23,7 @@ import coil.request.CachePolicy
 import coil.request.ImageRequest
 import coil.size.Scale
 import com.kylentt.mediaplayer.core.util.removeSuffix
+import com.kylentt.mediaplayer.domain.model.getDisplayTitle
 import com.kylentt.mediaplayer.domain.presenter.ControllerViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import jp.wasabeef.transformers.coil.CropSquareTransformation
@@ -66,8 +67,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
-        Timber.d("MainActivity onNewIntent")
-        intent?.let { handleIntent(intent) }
+        Timber.d("IntentHandler MainActivity NewIntent")
+        intent?.let {
+            Timber.d("IntentHandler Forwarding Intent")
+            handleIntent(intent)
+        }
     }
 
     private fun handleIntent(intent: Intent) {
@@ -78,21 +82,25 @@ class MainActivity : ComponentActivity() {
 
     private fun handleIntentActionView(intent: Intent) {
         intent.data?.let { uri ->
-            Timber.d("Activity Intent $uri")
+            Timber.d("IntentHandler Activity Intent $uri")
             when (uri.scheme) {
-                "content" -> when {
-                    uri.toString().startsWith("content://com.android.providers")
-                    -> handlePlayWithIntent(uri)
-                    uri.toString().startsWith("content://com.google.android.apps.docs.storage.legacy/")
-                    -> handlePlayDriveIntent(uri)
-                    else -> Toast.makeText(this, "unsupported, please inform us", Toast.LENGTH_LONG)
+                "content" -> {
+                    Timber.d("IntentHandler scheme : ${uri.scheme}")
+                    when {
+                        uri.toString()
+                            .startsWith("content://com.android.providers") -> handlePlayWithIntent(uri)
+                        uri.toString()
+                            .startsWith("content://com.google.android.apps.docs.storage.legacy/") -> handlePlayDriveIntent(uri)
+                        else -> Toast.makeText(this, "unsupported, please inform us", Toast.LENGTH_LONG)
+                    }
                 }
                 else -> Toast.makeText(this, "unsupported, please inform us", Toast.LENGTH_LONG)
             }
-        } ?: Timber.e("Activity Intent ActionView null Data")
+        } ?: Timber.e("IntentHandler ActionView null Data")
     }
 
     private fun handlePlayDriveIntent(uri: Uri) {
+        Timber.d("IntentHandler Handling PlayDriveIntent...")
         lifecycleScope.launch(Dispatchers.Default) {
             val mtr = MediaMetadataRetriever()
             mtr.setDataSource(applicationContext, uri)
@@ -115,16 +123,19 @@ class MainActivity : ComponentActivity() {
                     .setAlbumTitle(album)
                     .setArtworkData(bArr, PICTURE_TYPE_MEDIA)
                     .setTitle(title)
+                    .setDisplayTitle(title)
+                    .setSubtitle(artist ?: album)
                     .setMediaUri(uri)
                     .build()
             ).build()
+            Timber.d("IntentHandler PlayDriveIntent forwarded ${item.getDisplayTitle})")
             controller.handleItemIntent(item)
         }
     }
 
     private suspend fun Bitmap.squareWithCoil(): Bitmap? {
         val req = ImageRequest.Builder(this@MainActivity)
-            .diskCachePolicy(CachePolicy.ENABLED)
+            .diskCachePolicy(CachePolicy.DISABLED)
             .transformations(CropSquareTransformation())
             .size(256)
             .scale(Scale.FILL)

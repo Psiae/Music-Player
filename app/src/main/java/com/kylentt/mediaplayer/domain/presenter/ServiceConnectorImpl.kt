@@ -43,7 +43,6 @@ class ServiceConnectorImpl(
     private val _duration = MutableStateFlow(-1L)
     val duration = _position.asStateFlow()
 
-    // this has better interval than ::isInitialized for some reason
     private suspend fun getPos() = withContext(Dispatchers.Main) {
         if (isServiceConnected()) mediaController.currentPosition else -1L
     }

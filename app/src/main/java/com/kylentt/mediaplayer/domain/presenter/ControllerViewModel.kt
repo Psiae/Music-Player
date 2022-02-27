@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.Player
 import com.kylentt.mediaplayer.data.repository.SongRepositoryImpl
 import com.kylentt.mediaplayer.domain.model.toMediaItems
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -37,12 +38,17 @@ class ControllerViewModel @Inject constructor(
     fun skipToPrev(f: Boolean) = connector.controller(f) { it.seekToPrevious() }
     fun getItemAt(f: Boolean, i: Int) = connector.controller(f) { it.getMediaItemAt(i) }
 
-    suspend fun handleItemIntent(item: MediaItem) {
+    suspend fun handleItemIntent(item: MediaItem) = withContext(Dispatchers.Main) {
+        Timber.d("Controller IntentHandler handling ${item.mediaMetadata.title}")
         connector.connectService()
         connector.sController(true) {
-            it.setMediaItem(item, 0)
+            it.seekTo(0,0)
+            it.stop()
+            it.repeatMode = Player.REPEAT_MODE_OFF
+            it.setMediaItems(listOf(item))
             it.prepare()
             it.playWhenReady = true
+            Timber.d("Controller IntentHandler handling ${item.mediaMetadata.title} handled")
         }
     }
 
@@ -57,7 +63,7 @@ class ControllerViewModel @Inject constructor(
         byte: Long,
         lastModified: Long,
         uri: Uri
-    ) = withContext(Dispatchers.Default) { repository.fetchSongs().collectLatest { list ->
+    ) = withContext(Dispatchers.IO) { repository.fetchSongs().collectLatest { list ->
         val song = list.find {
             lastModified.toString().contains(it.lastModified.toString()) && it.fileName == name
         } ?: list.find {

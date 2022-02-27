@@ -6,7 +6,6 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
@@ -47,9 +46,7 @@ class PlayerNotificationImpl(
         Context.NOTIFICATION_SERVICE
     ) as NotificationManager
 
-    init {
-        if (VersionHelper.isOreo()) createNotificationChannel()
-    }
+    init { if (VersionHelper.isOreo()) createNotificationChannel() }
 
     @RequiresApi(Build.VERSION_CODES.O)
     private fun createNotificationChannel(
@@ -88,8 +85,8 @@ class PlayerNotificationImpl(
             PendingIntent.getActivity(context, 445,
                 it.apply {
                     this.putExtra("NOTIFICATION_CONTENT", mi?.mediaMetadata?.mediaUri)
-                }
-                , PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    this.putExtra("NOTIFICATION_CONTENT_ID", mi?.mediaMetadata?.mediaUri)
+                }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
         })
 
@@ -97,8 +94,6 @@ class PlayerNotificationImpl(
         if (!title.isNullOrBlank()) setContentTitle(title)
         val subtitle = mi?.getSubtitle
         if (!subtitle.isNullOrBlank()) setContentText(subtitle)
-
-        mi?.getDisplayTitle?.isNotEmpty()
 
         setSmallIcon(R.drawable.ic_baseline_music_note_24)
         setChannelId(NOTIFICATION_CHANNEL_ID)
@@ -115,7 +110,7 @@ class PlayerNotificationImpl(
             true
         } else false
 
-        if (p.playWhenReady) { addAction(actionPause) } else addAction( actionPlay )
+        if (p.playWhenReady) { addAction(actionPause) } else addAction(actionPlay)
 
         haveNextButton = if (p.hasNextMediaItem()) {
             addAction(actionNext)
@@ -135,13 +130,7 @@ class PlayerNotificationImpl(
             else -> media.setShowActionsInCompactView(1)
         }
 
-        val b = true
-
-        if (b) {
-            bm?.let {
-                setLargeIcon(bm)
-            } ?: run { /* Background Options */ }
-        }
+        setLargeIcon( bm )
         setStyle( media )
     }.build()
 

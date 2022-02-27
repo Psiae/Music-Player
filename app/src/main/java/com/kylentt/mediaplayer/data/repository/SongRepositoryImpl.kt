@@ -4,8 +4,12 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.drawable.BitmapDrawable
+import android.media.MediaDataSource
 import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.os.Environment
+import android.widget.Toast
+import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import coil.ImageLoader
@@ -25,6 +29,10 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.FileDescriptor
+import java.io.FileInputStream
+import java.lang.Exception
 
 
 // Local Repository for available Song
@@ -51,33 +59,41 @@ class SongRepositoryImpl(
     }
 
     suspend fun fetchMetaFromUri(uri: Uri) = withContext(Dispatchers.Default) {
-        val mtr = MediaMetadataRetriever()
-        mtr.setDataSource(context.applicationContext, uri)
-        val artist = mtr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
-        val album = mtr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
-        val title = mtr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
-        val pict = mtr.embeddedPicture
-        val art = pict?.let {
-            BitmapFactory.decodeByteArray(pict, 0, pict.size).squareWithCoil()
+        try {
+            val mtr = MediaMetadataRetriever()
+            mtr.setDataSource(context.applicationContext, uri)
+            val artist = mtr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
+            val album = mtr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
+            val title = mtr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
+            val pict = mtr.embeddedPicture
+            val art = pict?.let {
+                BitmapFactory.decodeByteArray(pict, 0, pict.size).squareWithCoil()
+            }
+            val bArr = art?.let {
+                val stream = ByteArrayOutputStream()
+                it.compress(Bitmap.CompressFormat.PNG, 100, stream)
+                stream.toByteArray()
+            }
+            val item = MediaItem.Builder().setUri(uri).setMediaMetadata(
+                MediaMetadata.Builder()
+                    .setArtist(artist)
+                    .setAlbumTitle(album)
+                    .setArtworkData(bArr, MediaMetadata.PICTURE_TYPE_MEDIA)
+                    .setTitle(title)
+                    .setDisplayTitle(title)
+                    .setSubtitle(artist ?: album)
+                    .setMediaUri(uri)
+                    .build()
+            ).build()
+            Timber.d("SongRepository Handled Uri to MediaItem ${item.getDisplayTitle}")
+            item
+        } catch (e : Exception) {
+            if (e is IllegalArgumentException) withContext(Dispatchers.Main) {
+                e.printStackTrace()
+                Toast.makeText(context, "Unsupported", Toast.LENGTH_LONG).show()
+            }
+            null
         }
-        val bArr = art?.let {
-            val stream = ByteArrayOutputStream()
-            it.compress(Bitmap.CompressFormat.PNG, 100, stream)
-            stream.toByteArray()
-        }
-        val item = MediaItem.Builder().setUri(uri).setMediaMetadata(
-            MediaMetadata.Builder()
-                .setArtist(artist)
-                .setAlbumTitle(album)
-                .setArtworkData(bArr, MediaMetadata.PICTURE_TYPE_MEDIA)
-                .setTitle(title)
-                .setDisplayTitle(title)
-                .setSubtitle(artist ?: album)
-                .setMediaUri(uri)
-                .build()
-        ).build()
-        Timber.d("SongRepository Handled Uri to MediaItem ${item.getDisplayTitle}")
-        item
     }
 
     private suspend fun Bitmap.squareWithCoil(): Bitmap? {

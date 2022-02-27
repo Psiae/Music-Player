@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
+import com.kylentt.mediaplayer.core.util.Version
+import com.kylentt.mediaplayer.core.util.VersionHelper
 import com.kylentt.mediaplayer.data.repository.SongRepositoryImpl
 import com.kylentt.mediaplayer.domain.model.toMediaItems
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -42,14 +44,16 @@ class ControllerViewModel @Inject constructor(
         Timber.d("IntentHandler ItemIntent $uri")
         connector.connectService()
         val item = repository.fetchMetaFromUri(uri)
-        connector.sController(true) {
-            it.stop()
-            it.seekTo(0,0)
-            it.repeatMode = Player.REPEAT_MODE_OFF
-            it.setMediaItems(listOf(item))
-            it.prepare()
-            it.playWhenReady = true
-            Timber.d("Controller IntentHandler handling ${item.mediaMetadata.title} handled")
+        item?.let {
+            connector.sController(true) {
+                it.stop()
+                it.seekTo(0,0)
+                it.repeatMode = Player.REPEAT_MODE_OFF
+                it.setMediaItems(listOf(item))
+                it.prepare()
+                it.playWhenReady = true
+                Timber.d("Controller IntentHandler handling ${item.mediaMetadata.title} handled")
+            }
         }
     }
 

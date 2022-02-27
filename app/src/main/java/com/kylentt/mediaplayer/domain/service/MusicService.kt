@@ -11,12 +11,19 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
+import android.os.Handler
 import android.widget.Toast
 import androidx.annotation.MainThread
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.Renderer
+import androidx.media3.exoplayer.RenderersFactory
+import androidx.media3.exoplayer.audio.AudioRendererEventListener
+import androidx.media3.exoplayer.metadata.MetadataOutput
+import androidx.media3.exoplayer.text.TextOutput
+import androidx.media3.exoplayer.video.VideoRendererEventListener
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import coil.ImageLoader
@@ -149,6 +156,7 @@ class MusicService : MediaLibraryService() {
     private suspend fun mapBM(bm: Bitmap?) = withContext(Dispatchers.IO) {
         val req = ImageRequest.Builder(this@MusicService)
             .diskCachePolicy(CachePolicy.ENABLED)
+            .transformations(CropSquareTransformation())
             .size(256)
             .scale(Scale.FILL)
             .data(bm)
@@ -159,6 +167,7 @@ class MusicService : MediaLibraryService() {
     private suspend fun makeBm(uri: Uri?) = withContext(Dispatchers.IO) {
         val req = ImageRequest.Builder(this@MusicService)
             .diskCachePolicy(CachePolicy.ENABLED)
+            .transformations(CropSquareTransformation())
             .size(256)
             .scale(Scale.FILL)
             .data(uri)

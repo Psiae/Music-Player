@@ -104,7 +104,10 @@ class MainActivity : ComponentActivity() {
                             .startsWith("content://com.android.externalstorage") -> {
                             lifecycleScope.launch { controller.handleDocsIntent(uri) }
                         }
-                        else -> Toast.makeText(this, "unsupported, please inform us", Toast.LENGTH_LONG).show()
+                        else -> {
+                            lifecycleScope.launch { controller.handleDocsIntent(uri) }
+                            Toast.makeText(this, "unsupported, please inform us", Toast.LENGTH_LONG).show()
+                        }
                     }
                 }
                 else -> Toast.makeText(this, "unsupported, please inform us", Toast.LENGTH_LONG).show()

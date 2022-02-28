@@ -2,11 +2,13 @@ package com.kylentt.mediaplayer.domain.presenter
 
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.widget.Toast
 import androidx.annotation.MainThread
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import coil.ImageLoader
@@ -163,6 +165,32 @@ class ServiceConnectorImpl(
                     _mediaItems.value = toReturn
                 }
             })
+        }
+    }
+
+    fun broadcast(intent: Intent) {
+        context.sendBroadcast(intent)
+    }
+
+    var fading = false
+    suspend fun exoFade(listener: (MediaController) -> Unit )
+    = withContext(Dispatchers.Main) {
+        if (!isServiceConnected()) connectService()
+        if (fading) { listener(mediaController) ; return@withContext }
+        if (!::mediaController.isInitialized) { listener(mediaController) ; return@withContext}
+        if (!mediaController.isPlaying) { listener(mediaController) ; return@withContext}
+
+        fading = true
+        val exo = mediaController
+        while (exo.volume >= 0f) {
+            if (exo.volume < 0.1f) {
+                listener(exo)
+                exo.volume = 1f
+                fading = false
+                break
+            }
+            exo.volume = exo.volume -0.1f
+            delay(100)
         }
     }
 

@@ -4,15 +4,12 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.drawable.BitmapDrawable
-import android.media.MediaDataSource
 import android.media.MediaMetadataRetriever
 import android.net.Uri
-import android.os.Environment
 import android.provider.DocumentsContract
+import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.widget.Toast
-import androidx.core.net.toUri
-import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import coil.ImageLoader
@@ -20,7 +17,6 @@ import coil.request.CachePolicy
 import coil.request.ImageRequest
 import coil.size.Scale
 import com.kylentt.mediaplayer.core.util.removeSuffix
-import com.kylentt.mediaplayer.data.source.local.LocalSource
 import com.kylentt.mediaplayer.data.source.local.LocalSourceImpl
 import com.kylentt.mediaplayer.domain.model.Song
 import com.kylentt.mediaplayer.domain.model.getDisplayTitle
@@ -28,16 +24,10 @@ import jp.wasabeef.transformers.coil.CropSquareTransformation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.ByteArrayOutputStream
-import java.io.File
-import java.io.FileDescriptor
-import java.io.FileInputStream
-import java.lang.Exception
 
 
 // Local Repository for available Song
@@ -48,7 +38,7 @@ class SongRepositoryImpl(
     private val coil: ImageLoader
 ) : SongRepository {
 
-    var songList = listOf<Song>()
+    private var songList = listOf<Song>()
 
     override suspend fun getSongs(): Flow<List<Song>> {
         return flow {
@@ -65,24 +55,34 @@ class SongRepositoryImpl(
 
     suspend fun fetchSongFromDocs(uri: Uri) = withContext(Dispatchers.Default) {
         var toReturn: Triple<String, Long, Long>? = null
-        context.applicationContext.contentResolver.query(uri,
-            null, null, null, null
-        )?.use { cursor ->
-            val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-            val byteIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
-            val lastIndex = cursor.getColumnIndex(
-                DocumentsContract.Document.COLUMN_LAST_MODIFIED
-            )
-            while(cursor.moveToNext()) {
-                val name = cursor.getString(nameIndex)
-                val byte = cursor.getLong(byteIndex)
-                val last = cursor.getLong(lastIndex)
-                Timber.d("MainActivity intent handler $name $byte $last ")
-                toReturn = Triple(name, byte, last.removeSuffix("000"))
+        try {
+            context.applicationContext.contentResolver.query(uri,
+                null, null, null, null
+            )?.use { cursor ->
+                val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                val byteIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
+                var lastIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_LAST_MODIFIED)
+                if (lastIndex == -1) lastIndex = cursor.getColumnIndex(MediaStore.Audio.AudioColumns.DATA)
+                if (lastIndex == -1) lastIndex = 0
+                for (i in 0 until cursor.columnCount) {
+                    val n = cursor.getColumnName(i)
+                    Timber.d("Cursor Column Name $n")
+                }
+                while (cursor.moveToNext()) {
+                    val name = cursor.getString(nameIndex)
+                    val byte = cursor.getLong(byteIndex)
+                    val last = cursor.getLong(lastIndex)
+                    Timber.d("MainActivity intent handler $name $byte $last ")
+                    toReturn = Triple(name, byte, last.removeSuffix("000"))
+                }
             }
+            if (toReturn == null) Toast.makeText(context, "Unsupported", Toast.LENGTH_LONG).show()
+            toReturn
+        } catch (e : Exception) {
+            Timber.e("Error Repo ${e.printStackTrace()}")
+            e.printStackTrace()
+            toReturn
         }
-        if (toReturn == null) Toast.makeText(context, "Unsupported", Toast.LENGTH_LONG).show()
-        toReturn
     }
 
     suspend fun fetchMetaFromUri(uri: Uri) = withContext(Dispatchers.Default) {

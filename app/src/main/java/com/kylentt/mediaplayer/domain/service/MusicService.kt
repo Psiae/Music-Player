@@ -11,19 +11,12 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
-import android.os.Handler
 import android.widget.Toast
 import androidx.annotation.MainThread
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.Renderer
-import androidx.media3.exoplayer.RenderersFactory
-import androidx.media3.exoplayer.audio.AudioRendererEventListener
-import androidx.media3.exoplayer.metadata.MetadataOutput
-import androidx.media3.exoplayer.text.TextOutput
-import androidx.media3.exoplayer.video.VideoRendererEventListener
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import coil.ImageLoader
@@ -32,6 +25,7 @@ import coil.request.ImageRequest
 import coil.size.Scale
 import com.kylentt.mediaplayer.core.util.Constants.ACTION
 import com.kylentt.mediaplayer.core.util.Constants.ACTION_CANCEL
+import com.kylentt.mediaplayer.core.util.Constants.ACTION_FADE
 import com.kylentt.mediaplayer.core.util.Constants.ACTION_NEXT
 import com.kylentt.mediaplayer.core.util.Constants.ACTION_PAUSE
 import com.kylentt.mediaplayer.core.util.Constants.ACTION_PLAY
@@ -185,17 +179,33 @@ class MusicService : MediaLibraryService() {
         exo.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
                 super.onPlaybackStateChanged(playbackState)
-                if (playbackState == Player.STATE_READY) exoReady()
-                if (playbackState == Player.STATE_ENDED && !exo.hasNextMediaItem()) exo.pause()
+                when (playbackState) {
+                    Player.STATE_IDLE -> {
+                        Timber.d("Event PlaybackState STATE_IDLE")
+                        // TODO Something to do while Idling
+                    }
+                    Player.STATE_BUFFERING -> {
+                        Timber.d("Event PlaybackState STATE_BUFFERING")
+                        // TODO Something to do while Buffering
+                    }
+                    Player.STATE_READY -> {
+                        Timber.d("Event PlaybackState STATE_READY")
+                        exoReady()
+                        // TODO Another thing to do when Ready
+                    }
+                    Player.STATE_ENDED -> {
+                        Timber.d("Event PlaybackState STATE_ENDED")
+                        if (!exo.hasNextMediaItem()) exo.pause()
+                        // TODO Another thing to do when ENDED
+                    }
+                }
             }
 
-            override fun onPositionDiscontinuity(
-                oldPosition: Player.PositionInfo,
-                newPosition: Player.PositionInfo,
-                reason: Int,
-            ) {
-                super.onPositionDiscontinuity(oldPosition, newPosition, reason)
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                super.onMediaItemTransition(mediaItem, reason)
             }
+
+
 
             override fun onPlayerError(error: PlaybackException) {
                 super.onPlayerError(error)
@@ -224,6 +234,7 @@ class MusicService : MediaLibraryService() {
         if (it.playbackState == Player.STATE_ENDED && !it.hasNextMediaItem()) it.seekTo(0)
         if (it.playbackState == Player.STATE_ENDED && it.hasNextMediaItem()) it.seekToNextMediaItem()
         it.playWhenReady = !it.playWhenReady
+        if (::mSession.isInitialized) invalidateNotification(mSession)
     }
 
     fun play() = controller { it.play() }
@@ -231,34 +242,39 @@ class MusicService : MediaLibraryService() {
     var stillFading = false
 
     var fading = false
-    fun exoCrossFade(listener: ( (ExoPlayer) -> Unit )) {
-        if (fading) { controller { listener(it) } ; return }
+    fun exoFade(listener: ( (ExoPlayer) -> Unit )) {
+        if (fading) { controller { listener(it) } ;return }
         serviceScope.launch {
             fading = true
-            while (true) {
-                exo.volume = exo.volume - 0.1f
-                if (exo.volume < 0.3) {
+
+            while (exo.volume > 0f) {
+                Timber.d("MusicService AudioEvent FadingAudio ${exo.volume}")
+                if (exo.volume <= 0.1f) {
+                    listener(exo)
                     exo.volume = 1f
                     fading = false
-                    controller {
-                        listener(it)
-                    }
                     break
                 }
+                exo.volume = exo.volume -0.1f
                 delay(100)
             }
+
+            // Line After Loop
+            Timber.d("MusicService Event AudioFaded")
         }
     }
+
 
     // TODO: make request processor function like connector
     inner class PlaybackReceiver: BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.getStringExtra(ACTION)) {
-                ACTION_NEXT -> { exoCrossFade() { it.seekToNext() } }
-                ACTION_PREV -> { exoCrossFade() { it.seekToPrevious() } }
+                ACTION_NEXT -> { exoFade() { it.seekToNext() } }
+                ACTION_PREV -> { exoFade() { it.seekToPreviousMediaItem() } }
                 ACTION_PLAY -> toggleExo()
                 ACTION_PAUSE -> toggleExo()
                 ACTION_UNIT -> Unit
+                ACTION_FADE -> exoFade {  }
                 ACTION_REPEAT_OFF_TO_ONE -> exo.repeatMode = Player.REPEAT_MODE_ONE
                 ACTION_REPEAT_ONE_TO_ALL -> exo.repeatMode = Player.REPEAT_MODE_ALL
                 ACTION_REPEAT_ALL_TO_OFF -> exo.repeatMode = Player.REPEAT_MODE_OFF
@@ -271,15 +287,15 @@ class MusicService : MediaLibraryService() {
                     return
                 } }
             }
-
-            serviceScope.launch {
-                if (::mSession.isInitialized) {
-                    onUpdateNotification(mSession)
-                    delay(1000)
-                    onUpdateNotification(mSession)
-                }
+            if (::mSession.isInitialized) {
+                onUpdateNotification(mSession)
             }
         }
+    }
+
+    private fun invalidateNotification(session: MediaSession) = serviceScope.launch {
+        delay(500)
+        onUpdateNotification(session)
     }
 
     // LibrarySession

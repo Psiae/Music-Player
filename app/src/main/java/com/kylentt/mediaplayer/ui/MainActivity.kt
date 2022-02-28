@@ -10,6 +10,8 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.DocumentsContract
 import android.provider.OpenableColumns
+import android.util.AttributeSet
+import android.view.animation.Animation
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -53,7 +55,6 @@ class MainActivity : ComponentActivity() {
         isActive = true
 
         controller // simple call so viewModel init is called
-
         handleIntent(intent)
 
         if (checkPermission()) {
@@ -61,8 +62,12 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-
+            // TODO: Handle With Compose
         }
+    }
+
+    private fun checkPermission(): Boolean {
+        return true
     }
 
     override fun onNewIntent(intent: Intent?) {
@@ -82,24 +87,22 @@ class MainActivity : ComponentActivity() {
 
     private fun handleIntentActionView(intent: Intent) {
         intent.data?.let { uri ->
-            Timber.d("IntentHandler Activity Intent $uri")
+            Timber.d("IntentHandler Activity Intent ActionView")
             when (uri.scheme) {
                 "content" -> {
                     Timber.d("IntentHandler scheme : ${uri.scheme}")
                     when {
                         uri.toString()
                             .startsWith("content://com.android.providers") -> {
-                            handlePlayWithIntent(uri)
+                            lifecycleScope.launch { controller.handleDocsIntent(uri) }
                         }
                         uri.toString()
                             .startsWith("content://com.google.android.apps.docs.storage.legacy/") -> {
-                            lifecycleScope.launch {
-                                controller.handleItemIntent(uri)
-                            }
+                            lifecycleScope.launch { controller.handleItemIntent(uri) }
                         }
                         uri.toString()
                             .startsWith("content://com.android.externalstorage") -> {
-                            handlePlayWithIntent(uri)
+                            lifecycleScope.launch { controller.handleDocsIntent(uri) }
                         }
                         else -> Toast.makeText(this, "unsupported, please inform us", Toast.LENGTH_LONG).show()
                     }
@@ -140,40 +143,15 @@ class MainActivity : ComponentActivity() {
         handlePlayWithIntent(uri)
     }*/
 
-    private fun handlePlayWithIntent(uri: Uri) {
-        lifecycleScope.launch(Dispatchers.Default) {
-            contentResolver.query(uri,
-                null, null, null, null
-            )?.use { cursor ->
-                while(cursor.moveToNext()) {
-                    val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                    val byteIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
-                    val lastIndex = cursor.getColumnIndex(
-                        DocumentsContract.Document.COLUMN_LAST_MODIFIED
-                    )
-                    val name = cursor.getString(nameIndex)
-                    val byte = cursor.getLong(byteIndex)
-                    val last = cursor.getLong(lastIndex)
-                    controller.handlePlayIntent(name, byte, last.removeSuffix("000"), uri)
-                    Timber.d("MainActivity intent handler $name $byte $last ")
-                }
-            }
-        }
+    override fun onResume() {
+        super.onResume()
     }
 
-        override fun onResume() {
-            super.onResume()
-        }
-
-        private fun checkPermission(): Boolean {
-            return true
-        }
-
-        override fun onDestroy() {
-            isActive = false
-            applicationContext.externalCacheDir?.deleteRecursively()
-            applicationContext.cacheDir.deleteRecursively()
-            super.onDestroy()
-        }
+    override fun onDestroy() {
+        isActive = false
+        applicationContext.externalCacheDir?.deleteRecursively()
+        applicationContext.cacheDir.deleteRecursively()
+        super.onDestroy()
+    }
 }
 

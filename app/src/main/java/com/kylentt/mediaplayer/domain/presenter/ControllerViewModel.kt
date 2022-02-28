@@ -1,6 +1,7 @@
 package com.kylentt.mediaplayer.domain.presenter
 
 import android.net.Uri
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
@@ -40,13 +41,20 @@ class ControllerViewModel @Inject constructor(
     fun skipToPrev(f: Boolean) = connector.controller(f) { it.seekToPrevious() }
     fun getItemAt(f: Boolean, i: Int) = connector.controller(f) { it.getMediaItemAt(i) }
 
+    suspend fun handleDocsIntent(uri: Uri) = withContext(Dispatchers.Main) {
+        Timber.d("IntentHandler DocsIntent $uri")
+        connector.connectService()
+        repository.fetchSongFromDocs(uri)?.let {
+            handlePlayIntentFromRepo(it.first, it.second, it.third, uri)
+        }
+    }
+
     suspend fun handleItemIntent(uri: Uri) = withContext(Dispatchers.Main) {
         Timber.d("IntentHandler ItemIntent $uri")
         connector.connectService()
         val item = repository.fetchMetaFromUri(uri)
         item?.let {
             connector.sController(true) {
-                it.stop()
                 it.seekTo(0,0)
                 it.repeatMode = Player.REPEAT_MODE_OFF
                 it.setMediaItems(listOf(item))
@@ -55,12 +63,6 @@ class ControllerViewModel @Inject constructor(
                 Timber.d("Controller IntentHandler handling ${item.mediaMetadata.title} handled")
             }
         }
-    }
-
-    // might add some more
-    fun handlePlayIntent(name: String, byte: Long, lastModified: Long, uri: Uri) = viewModelScope.launch {
-        connector.connectService()
-        handlePlayIntentFromRepo(name, byte, lastModified, uri)
     }
 
     private suspend fun handlePlayIntentFromRepo(
@@ -79,11 +81,14 @@ class ControllerViewModel @Inject constructor(
             it.fileName == name
         } ?: run {
             handleItemIntent(uri)
-            Timber.d("IntentHandler Repository not Found, Forwarding with Uri") ; null
+            Timber.d("IntentHandler Repository not Found, Forwarding with Uri")
+            Timber.d("IntentHandler Repository to Uri with $name $byte $lastModified")
+            null
         }
         song?.let {
             connector.sController(true) {
                 Timber.d("IntentHandler Repository File Found, Handled with Repo")
+                it.seekTo(0,0)
                 it.setMediaItems(list.toMediaItems(), list.indexOf(song), 0)
                 it.prepare()
                 it.playWhenReady = true

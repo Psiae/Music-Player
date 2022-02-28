@@ -132,7 +132,6 @@ class MusicService : MediaLibraryService() {
     override fun onUpdateNotification(session: MediaSession): MediaNotification? {
         Timber.d("$TAG OnUpdateNotification")
         mSession = session
-
         if (!::notification.isInitialized) notification = PlayerNotificationImpl(
             this, this, mSession
         )
@@ -178,10 +177,12 @@ class MusicService : MediaLibraryService() {
     private fun initializeSession() {
         makeActivityIntent()
         exo.repeatMode = Player.REPEAT_MODE_ALL
+        exo.prepare()
         exo.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
                 super.onPlaybackStateChanged(playbackState)
                 if (playbackState == Player.STATE_READY) exoReady()
+                if (playbackState == Player.STATE_ENDED && !exo.hasNextMediaItem()) exo.pause()
             }
 
             override fun onPlayerError(error: PlaybackException) {
@@ -208,8 +209,13 @@ class MusicService : MediaLibraryService() {
     }
 
     fun toggleExo() = controller {
+        if (it.playbackState == Player.STATE_ENDED && !it.hasNextMediaItem()) it.seekTo(0)
+        if (it.playbackState == Player.STATE_ENDED && it.hasNextMediaItem()) it.seekToNextMediaItem()
         it.playWhenReady = !it.playWhenReady
     }
+
+    fun play() = controller { it.play() }
+    fun pause() = controller { it.pause() }
 
     // TODO: make request processor function like connector
     inner class PlaybackReceiver: BroadcastReceiver() {

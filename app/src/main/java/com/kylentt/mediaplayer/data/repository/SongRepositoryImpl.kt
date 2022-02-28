@@ -8,14 +8,18 @@ import android.media.MediaDataSource
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Environment
+import android.provider.DocumentsContract
+import android.provider.OpenableColumns
 import android.widget.Toast
 import androidx.core.net.toUri
+import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import coil.ImageLoader
 import coil.request.CachePolicy
 import coil.request.ImageRequest
 import coil.size.Scale
+import com.kylentt.mediaplayer.core.util.removeSuffix
 import com.kylentt.mediaplayer.data.source.local.LocalSource
 import com.kylentt.mediaplayer.data.source.local.LocalSourceImpl
 import com.kylentt.mediaplayer.domain.model.Song
@@ -26,6 +30,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.ByteArrayOutputStream
@@ -58,6 +63,28 @@ class SongRepositoryImpl(
         return flow { source.fetchSong().collect { songList = it ; emit(it)} }
     }
 
+    suspend fun fetchSongFromDocs(uri: Uri) = withContext(Dispatchers.Default) {
+        var toReturn: Triple<String, Long, Long>? = null
+        context.applicationContext.contentResolver.query(uri,
+            null, null, null, null
+        )?.use { cursor ->
+            val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            val byteIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
+            val lastIndex = cursor.getColumnIndex(
+                DocumentsContract.Document.COLUMN_LAST_MODIFIED
+            )
+            while(cursor.moveToNext()) {
+                val name = cursor.getString(nameIndex)
+                val byte = cursor.getLong(byteIndex)
+                val last = cursor.getLong(lastIndex)
+                Timber.d("MainActivity intent handler $name $byte $last ")
+                toReturn = Triple(name, byte, last.removeSuffix("000"))
+            }
+        }
+        if (toReturn == null) Toast.makeText(context, "Unsupported", Toast.LENGTH_LONG).show()
+        toReturn
+    }
+
     suspend fun fetchMetaFromUri(uri: Uri) = withContext(Dispatchers.Default) {
         try {
             val mtr = MediaMetadataRetriever()
@@ -74,8 +101,8 @@ class SongRepositoryImpl(
                 it.compress(Bitmap.CompressFormat.PNG, 100, stream)
                 stream.toByteArray()
             }
-            val item = MediaItem.Builder().setUri(uri).setMediaMetadata(
-                MediaMetadata.Builder()
+            val item = MediaItem.Builder()
+                .setUri(uri).setMediaMetadata(MediaMetadata.Builder()
                     .setArtist(artist)
                     .setAlbumTitle(album)
                     .setArtworkData(bArr, MediaMetadata.PICTURE_TYPE_MEDIA)
@@ -84,15 +111,14 @@ class SongRepositoryImpl(
                     .setSubtitle(artist ?: album)
                     .setMediaUri(uri)
                     .build()
-            ).build()
+                ).build()
             Timber.d("SongRepository Handled Uri to MediaItem ${item.getDisplayTitle}")
             item
         } catch (e : Exception) {
             if (e is IllegalArgumentException) withContext(Dispatchers.Main) {
                 e.printStackTrace()
                 Toast.makeText(context, "Unsupported", Toast.LENGTH_LONG).show()
-            }
-            null
+            } ; null
         }
     }
 

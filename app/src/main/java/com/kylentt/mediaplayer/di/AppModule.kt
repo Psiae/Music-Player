@@ -73,6 +73,7 @@ object ServiceModule {
         attr: AudioAttributes
     ) = ExoPlayer.Builder(context)
         .setAudioAttributes(attr, true)
+        .setHandleAudioBecomingNoisy(true)
         .build()
 }
 }

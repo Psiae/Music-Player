@@ -11,6 +11,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
+import android.os.Looper
 import android.widget.Toast
 import androidx.annotation.MainThread
 import androidx.media3.common.MediaItem
@@ -209,11 +210,23 @@ class MusicService : MediaLibraryService() {
 
             override fun onPlayerError(error: PlaybackException) {
                 super.onPlayerError(error)
-                Toast.makeText(this@MusicService.applicationContext,
-                    "Unable to play this Song, code: $error", Toast.LENGTH_LONG
-                ).show()
+                serviceToast("Unable to Play This Song $error")
             }
         })
+    }
+
+    private suspend fun sServiceToast(msg: String, long: Boolean = true) = withContext(Dispatchers.Main) {
+        Toast.makeText(this@MusicService, msg, if (long) Toast.LENGTH_LONG else Toast.LENGTH_SHORT).show()
+    }
+
+    private fun serviceToast(msg: String, long: Boolean = true) {
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            serviceScope.launch { sServiceToast(msg, long) }
+            return
+        }
+        Toast.makeText(this@MusicService, msg,
+            if (long) Toast.LENGTH_LONG else Toast.LENGTH_SHORT
+        ).show()
     }
 
     private fun makeActivityIntent() {

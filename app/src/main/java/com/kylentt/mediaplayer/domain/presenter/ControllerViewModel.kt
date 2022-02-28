@@ -70,15 +70,15 @@ class ControllerViewModel @Inject constructor(
     private suspend fun handlePlayIntentFromRepo(
         name: String,
         byte: Long,
-        identifier: Long,
+        identifier: String,
         uri: Uri
     ) = withContext(Dispatchers.IO) { repository.fetchSongs().collect { list ->
         val song = list.find {
-            identifier.toString().trim() == it.data.trim()
+            identifier.trim() == it.data.trim()
         } ?: list.find {
-            identifier.toString().contains(it.lastModified.toString()) && it.fileName == name
+            identifier.contains(it.lastModified.toString()) && it.fileName == name
         } ?: list.find {
-            identifier.toString().contains(it.lastModified.toString()) && it.byteSize == byte
+            identifier.contains(it.lastModified.toString()) && it.byteSize == byte
         } ?: list.find {
             it.fileName == name && it.byteSize == byte
         } ?: run {

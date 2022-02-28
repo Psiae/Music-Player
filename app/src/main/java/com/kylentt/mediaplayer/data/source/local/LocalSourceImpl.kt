@@ -27,6 +27,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
+import org.jetbrains.annotations.Contract
 import timber.log.Timber
 import java.io.ByteArrayOutputStream
 
@@ -38,7 +39,7 @@ class LocalSourceImpl(
     override suspend fun fetchSong(): Flow<List<Song>> = flow { emit(queryDeviceSong()) }
 
     suspend fun fetchSongFromDocument(uri: Uri) = withContext(Dispatchers.Default) { flow {
-        var toReturn: Triple<String, Long, Long>? = null
+        var toReturn: Triple<String, Long, String>? = null
         try {
             context.applicationContext.contentResolver.query(uri,
                 null, null, null, null
@@ -47,15 +48,18 @@ class LocalSourceImpl(
                 val byteIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
                 var lastIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_LAST_MODIFIED)
                 if (lastIndex == -1) lastIndex = cursor.getColumnIndex(MediaStore.Audio.AudioColumns.DATA)
-                if (lastIndex == -1) lastIndex = 0
-                for (i in 0 until cursor.columnCount) {
-                    val n = cursor.getColumnName(i)
-                    Timber.d("Cursor Column Name $n")
+                if (lastIndex == -1) {
+                    for (i in 0 until cursor.columnCount) {
+                        val n = cursor.getColumnName(i)
+                        if (n == "_data") lastIndex = i
+                        Timber.d("Cursor Column Name $n")
+                    }
                 }
+                if (lastIndex == -1) lastIndex = 0
                 while (cursor.moveToNext()) {
                     val name = cursor.getString(nameIndex)
                     val byte = cursor.getLong(byteIndex)
-                    val last = cursor.getLong(lastIndex)
+                    val last = cursor.getString(lastIndex)
                     Timber.d("MainActivity intent handler $name $byte $last ")
                     toReturn = Triple(name, byte, last.removeSuffix("000"))
                 }

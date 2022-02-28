@@ -88,29 +88,32 @@ class MainActivity : ComponentActivity() {
     private fun handleIntentActionView(intent: Intent) {
         intent.data?.let { uri ->
             Timber.d("IntentHandler Activity Intent ActionView")
+            val uris = uri.toString()
             when (uri.scheme) {
                 "content" -> {
                     Timber.d("IntentHandler scheme : ${uri.scheme}")
                     when {
-                        uri.toString()
-                            .startsWith("content://com.android.providers") -> {
+                        uris.startsWith("content://com.android.providers") -> {
                             lifecycleScope.launch { controller.handleDocsIntent(uri) }
                         }
-                        uri.toString()
-                            .startsWith("content://com.google.android.apps.docs.storage.legacy/") -> {
+                        uris.startsWith("content://com.google.android.apps.docs.storage.legacy/") -> {
                             lifecycleScope.launch { controller.handleItemIntent(uri) }
                         }
-                        uri.toString()
-                            .startsWith("content://com.android.externalstorage") -> {
+                        uris.startsWith("content://com.android.externalstorage") -> {
+                            lifecycleScope.launch { controller.handleDocsIntent(uri) }
+                        }
+                        uris.startsWith("content://com.coloros.filemanager.fileprovider") -> {
                             lifecycleScope.launch { controller.handleDocsIntent(uri) }
                         }
                         else -> {
                             lifecycleScope.launch { controller.handleDocsIntent(uri) }
-                            Toast.makeText(this, "unsupported, please inform us", Toast.LENGTH_LONG).show()
+                            Toast.makeText(this, "unsupported, please inform us \n " + uris.split("/")[2], Toast.LENGTH_LONG).show()
                         }
                     }
                 }
-                else -> Toast.makeText(this, "unsupported, please inform us", Toast.LENGTH_LONG).show()
+                else -> {
+                    Toast.makeText(this, "unsupported, please inform us \n" + uris.split("/")[2], Toast.LENGTH_LONG).show()
+                }
             }
         } ?: Timber.e("IntentHandler ActionView null Data")
     }

@@ -12,6 +12,7 @@ object Constants {
     const val NOTIFICATION_NAME = "Ky_NOTIFICATION"
 
     const val ACTION = "ACTION"
+    const val ACTION_UNIT = "ACTION_UNIT"
     const val ACTION_CANCEL = "ACTION_CANCEL"
     const val ACTION_PLAY = "ACTION_PLAY"
     const val ACTION_PAUSE = "ACTION_PAUSE"

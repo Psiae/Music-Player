@@ -39,6 +39,7 @@ import com.kylentt.mediaplayer.core.util.Constants.ACTION_PREV
 import com.kylentt.mediaplayer.core.util.Constants.ACTION_REPEAT_ALL_TO_OFF
 import com.kylentt.mediaplayer.core.util.Constants.ACTION_REPEAT_OFF_TO_ONE
 import com.kylentt.mediaplayer.core.util.Constants.ACTION_REPEAT_ONE_TO_ALL
+import com.kylentt.mediaplayer.core.util.Constants.ACTION_UNIT
 import com.kylentt.mediaplayer.core.util.Constants.MEDIA_SESSION_ID
 import com.kylentt.mediaplayer.core.util.Constants.NOTIFICATION_ID
 import com.kylentt.mediaplayer.core.util.Constants.PLAYBACK_INTENT
@@ -132,9 +133,12 @@ class MusicService : MediaLibraryService() {
     override fun onUpdateNotification(session: MediaSession): MediaNotification? {
         Timber.d("$TAG OnUpdateNotification")
         mSession = session
-        if (!::notification.isInitialized) notification = PlayerNotificationImpl(
-            this, this, mSession
-        )
+        if (!::notification.isInitialized) {
+            notification = PlayerNotificationImpl(this, this, mSession)
+            sendBroadcast(Intent(PLAYBACK_INTENT).apply {
+                putExtra(ACTION, ACTION_UNIT) ; setPackage(this@MusicService.packageName)
+            })
+        }
 
         serviceScope.launch {
             val pict = session.player.currentMediaItem?.mediaMetadata?.artworkData
@@ -185,6 +189,14 @@ class MusicService : MediaLibraryService() {
                 if (playbackState == Player.STATE_ENDED && !exo.hasNextMediaItem()) exo.pause()
             }
 
+            override fun onPositionDiscontinuity(
+                oldPosition: Player.PositionInfo,
+                newPosition: Player.PositionInfo,
+                reason: Int,
+            ) {
+                super.onPositionDiscontinuity(oldPosition, newPosition, reason)
+            }
+
             override fun onPlayerError(error: PlaybackException) {
                 super.onPlayerError(error)
                 Toast.makeText(this@MusicService.applicationContext,
@@ -216,15 +228,37 @@ class MusicService : MediaLibraryService() {
 
     fun play() = controller { it.play() }
     fun pause() = controller { it.pause() }
+    var stillFading = false
+
+    var fading = false
+    fun exoCrossFade(listener: ( (ExoPlayer) -> Unit )) {
+        if (fading) { controller { listener(it) } ; return }
+        serviceScope.launch {
+            fading = true
+            while (true) {
+                exo.volume = exo.volume - 0.1f
+                if (exo.volume < 0.3) {
+                    exo.volume = 1f
+                    fading = false
+                    controller {
+                        listener(it)
+                    }
+                    break
+                }
+                delay(100)
+            }
+        }
+    }
 
     // TODO: make request processor function like connector
     inner class PlaybackReceiver: BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.getStringExtra(ACTION)) {
-                ACTION_NEXT -> controller { it.seekToNext() }
-                ACTION_PREV -> controller { it.seekToPrevious() }
+                ACTION_NEXT -> { exoCrossFade() { it.seekToNext() } }
+                ACTION_PREV -> { exoCrossFade() { it.seekToPrevious() } }
                 ACTION_PLAY -> toggleExo()
                 ACTION_PAUSE -> toggleExo()
+                ACTION_UNIT -> Unit
                 ACTION_REPEAT_OFF_TO_ONE -> exo.repeatMode = Player.REPEAT_MODE_ONE
                 ACTION_REPEAT_ONE_TO_ALL -> exo.repeatMode = Player.REPEAT_MODE_ALL
                 ACTION_REPEAT_ALL_TO_OFF -> exo.repeatMode = Player.REPEAT_MODE_OFF

@@ -36,8 +36,9 @@ object AppModule {
     @Singleton
     @Provides
     fun provideLocalSource(
-        @ApplicationContext context: Context
-    ) = LocalSourceImpl(context)
+        @ApplicationContext context: Context,
+        coil: ImageLoader
+    ) = LocalSourceImpl(context, coil)
 
     @Singleton
     @Provides

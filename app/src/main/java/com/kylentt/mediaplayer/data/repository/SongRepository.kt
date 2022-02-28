@@ -7,5 +7,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface SongRepository {
 
-    suspend fun getSongs(): Flow<List<Song>>
+    suspend fun getSongs(): Flow<List<Song>> // fetch available on variable then query
+    suspend fun fetchSongs(): Flow<List<Song>>  // directly fetch from query
+
 }

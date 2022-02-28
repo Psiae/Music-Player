@@ -2,24 +2,16 @@ package com.kylentt.mediaplayer.domain.presenter
 
 import android.content.Intent
 import android.net.Uri
-import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import androidx.media3.common.MediaItem
-import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
-import androidx.media3.session.MediaController
 import com.kylentt.mediaplayer.core.util.Constants.ACTION
 import com.kylentt.mediaplayer.core.util.Constants.ACTION_FADE
 import com.kylentt.mediaplayer.core.util.Constants.PLAYBACK_INTENT
-import com.kylentt.mediaplayer.core.util.Version
-import com.kylentt.mediaplayer.core.util.VersionHelper
 import com.kylentt.mediaplayer.data.repository.SongRepositoryImpl
 import com.kylentt.mediaplayer.domain.model.toMediaItems
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.collectLatest
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -49,25 +41,28 @@ class ControllerViewModel @Inject constructor(
     suspend fun handleDocsIntent(uri: Uri) = withContext(Dispatchers.Main) {
         Timber.d("IntentHandler DocsIntent $uri")
         connector.connectService()
-        repository.fetchSongFromDocs(uri)?.let {
-            handlePlayIntentFromRepo(it.first, it.second, it.third, uri)
-        } ?: handleItemIntent(uri)
+        repository.fetchSongFromDocs(uri).collect {
+            it?.let{
+                handlePlayIntentFromRepo(it.first, it.second, it.third, uri)
+            } ?: handleItemIntent(uri)
+        }
     }
 
     suspend fun handleItemIntent(uri: Uri) = withContext(Dispatchers.Main) {
         Timber.d("IntentHandler ItemIntent $uri")
         connector.connectService()
-        val item = repository.fetchMetaFromUri(uri)
-        item?.let {
-            connector.broadcast(Intent(PLAYBACK_INTENT).apply { putExtra(ACTION, ACTION_FADE) })
-            delay(750)
-            connector.controller(true) {
-                it.seekTo(0,0)
-                it.repeatMode = Player.REPEAT_MODE_OFF
-                it.setMediaItems(listOf(item))
-                it.prepare()
-                it.playWhenReady = true
-                Timber.d("Controller IntentHandler handling ${item.mediaMetadata.title} handled")
+        repository.fetchMetaFromUri(uri).collect { item ->
+            item?.let {
+                connector.broadcast(Intent(PLAYBACK_INTENT).apply { putExtra(ACTION, ACTION_FADE) })
+                delay(750)
+                connector.controller(true) {
+                    it.seekTo(0,0)
+                    it.repeatMode = Player.REPEAT_MODE_OFF
+                    it.setMediaItems(listOf(item))
+                    it.prepare()
+                    it.playWhenReady = true
+                    Timber.d("Controller IntentHandler handling ${item.mediaMetadata.title} handled")
+                }
             }
         }
     }
@@ -75,24 +70,26 @@ class ControllerViewModel @Inject constructor(
     private suspend fun handlePlayIntentFromRepo(
         name: String,
         byte: Long,
-        lastModified: Long,
+        identifier: Long,
         uri: Uri
     ) = withContext(Dispatchers.IO) { repository.fetchSongs().collect { list ->
         val song = list.find {
-            lastModified.toString().contains(it.lastModified.toString()) && it.fileName == name
+            identifier.toString().trim() == it.data.trim()
+        } ?: list.find {
+            identifier.toString().contains(it.lastModified.toString()) && it.fileName == name
+        } ?: list.find {
+            identifier.toString().contains(it.lastModified.toString()) && it.byteSize == byte
         } ?: list.find {
             it.fileName == name && it.byteSize == byte
-        } ?: list.find {
-            lastModified.toString().contains(it.lastModified.toString()) && it.byteSize == byte
         } ?: run {
             handleItemIntent(uri)
             Timber.d("IntentHandler Repository not Found, Forwarding with Uri")
-            Timber.d("IntentHandler Repository to Uri with $name $byte $lastModified")
+            Timber.d("IntentHandler Repository to Uri with $name $byte $identifier")
             null
         }
         song?.let {
             connector.broadcast(Intent(PLAYBACK_INTENT).apply { putExtra(ACTION, ACTION_FADE) })
-            delay(750)
+            delay(500)
             withContext(Dispatchers.Main) {
                 connector.controller(true) {
                     Timber.d("IntentHandler Repository File Found, Handled with Repo")
@@ -100,7 +97,7 @@ class ControllerViewModel @Inject constructor(
                     it.setMediaItems(list.toMediaItems(), list.indexOf(song), 0)
                     it.prepare()
                     it.playWhenReady = true
-                    Timber.d("IntentHandler Repository Handled $name $byte $lastModified")
+                    Timber.d("IntentHandler Repository Handled $name $byte $identifier")
                 }
             }
         }

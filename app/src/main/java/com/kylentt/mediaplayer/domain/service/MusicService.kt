@@ -244,18 +244,21 @@ class MusicService : MediaLibraryService() {
     var fading = false
     fun exoFade(listener: ( (ExoPlayer) -> Unit )) {
         if (fading) { controller { listener(it) } ;return }
+
         serviceScope.launch {
             fading = true
 
             while (exo.volume > 0f) {
                 Timber.d("MusicService AudioEvent FadingAudio ${exo.volume}")
+
                 if (exo.volume <= 0.1f) {
                     listener(exo)
                     exo.volume = 1f
                     fading = false
                     break
                 }
-                exo.volume = exo.volume -0.1f
+
+                exo.volume = exo.volume -0.2f
                 delay(100)
             }
 
@@ -271,26 +274,35 @@ class MusicService : MediaLibraryService() {
             when (intent?.getStringExtra(ACTION)) {
                 ACTION_NEXT -> { exoFade() { it.seekToNext() } }
                 ACTION_PREV -> { exoFade() { it.seekToPreviousMediaItem() } }
+
                 ACTION_PLAY -> toggleExo()
                 ACTION_PAUSE -> toggleExo()
+
                 ACTION_UNIT -> Unit
-                ACTION_FADE -> exoFade {  }
+                ACTION_FADE -> exoFade { /* TODO: Something todo while its fading? */ }
+
                 ACTION_REPEAT_OFF_TO_ONE -> exo.repeatMode = Player.REPEAT_MODE_ONE
                 ACTION_REPEAT_ONE_TO_ALL -> exo.repeatMode = Player.REPEAT_MODE_ALL
                 ACTION_REPEAT_ALL_TO_OFF -> exo.repeatMode = Player.REPEAT_MODE_OFF
+
                 ACTION_CANCEL -> { session?.let {
-                    exo.stop()
-                    stopSelf()
-                    stopForeground(true)
-                    isForeground = false
-                    if (!MainActivity.isActive) serviceConnectorImpl.releaseSession()
+                    endSession(it)
                     return
                 } }
             }
+
             if (::mSession.isInitialized) {
                 onUpdateNotification(mSession)
             }
         }
+    }
+
+    private fun endSession(session: MediaLibrarySession) {
+        exo.stop()
+        stopSelf()
+        stopForeground(true)
+        isForeground = false
+        if (!MainActivity.isActive) serviceConnectorImpl.releaseSession()
     }
 
     private fun invalidateNotification(session: MediaSession) = serviceScope.launch {
@@ -300,7 +312,7 @@ class MusicService : MediaLibraryService() {
 
     // LibrarySession
     private var session: MediaLibrarySession? = null
-    var activityIntent: PendingIntent? = null
+    private var activityIntent: PendingIntent? = null
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? {
         Timber.d("$TAG onGetSession")

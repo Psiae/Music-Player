@@ -84,15 +84,12 @@ class ControllerViewModel @Inject constructor(
 
         val song = identified.let {
             Timber.d("IntentHandler Repo Identified as $identified")
-            list.findIdentified( iden = it,
-                str = Triple(
-                    first = identifier,
-                    second = Pair(identifier, name),
-                    third = Triple(identifier, byte.toString(), name)
-                )).also { it?.let { Timber.d("IntentHandler Repo Handled with Identifier $identified $identifier") } }
-
+            list.findIdentified( iden = it, str = Triple(
+                first = identifier,
+                second = Pair(identifier, name),
+                third = Triple(identifier, byte.toString(), name)
+            )).also { it?.let { Timber.d("IntentHandler Repo Handled with Identifier $identified $identifier") } }
         } ?: run { Timber.d("IntentHandler Unable to Find with $identifier")
-
             list.find {
                 identifier.trim() == it.data.trim()
             } ?: list.find {

@@ -114,6 +114,7 @@ class ServiceConnectorImpl(
             f -> {
                 Timber.d("ServiceConnector Controller add Command")
                 if (controlReadyListener.size > 10) controlReadyListener.removeAt(0)
+
                 controlReadyListener += command
                 false
             }
@@ -172,27 +173,6 @@ class ServiceConnectorImpl(
         context.sendBroadcast(intent)
     }
 
-    var fading = false
-    suspend fun exoFade(listener: (MediaController) -> Unit )
-    = withContext(Dispatchers.Main) {
-        if (!isServiceConnected()) connectService()
-        if (fading) { listener(mediaController) ; return@withContext }
-        if (!::mediaController.isInitialized) { listener(mediaController) ; return@withContext}
-        if (!mediaController.isPlaying) { listener(mediaController) ; return@withContext}
-
-        fading = true
-        val exo = mediaController
-        while (exo.volume >= 0f) {
-            if (exo.volume < 0.1f) {
-                listener(exo)
-                exo.volume = 1f
-                fading = false
-                break
-            }
-            exo.volume = exo.volume -0.1f
-            delay(100)
-        }
-    }
 
     companion object {
         @MainThread

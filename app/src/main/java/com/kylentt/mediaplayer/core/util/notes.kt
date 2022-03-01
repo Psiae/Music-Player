@@ -17,7 +17,8 @@ package com.kylentt.mediaplayer.core.util
 // TODO: Make this app has `Flow` & smooth like feeling :)
 // TODO: Separate Controller. UI & Presenter use MediaController. Service use Scoped ExoPlayer
     // In case Presenter must command ExoPlayer directly, should be done via broadcast.
-    // control such as setMediaItems must be done via Controller
+    // control such as setMediaItems must be done via Controller, however if its not possible
+    // then can be done through lambda listener but broadcast is a must to access service
 // TODO: Find Applicable MediaBrowser use case
     // Might not be Implemented until Remote Source is Implemented
 // TODO: Remote Downloadable Source ( no Streaming for now, but will be implemented for myself )
@@ -44,4 +45,4 @@ package com.kylentt.mediaplayer.core.util
 29012-29054/com.kylentt.mediaplayer D/MainActivity$onCreate: MainActivity column 6 = _size
  */
 
-// AndroidQ Color os : FileName, ByteSize, _DATA
+// AndroidQ ColorOS : FileName, ByteSize, _DATA

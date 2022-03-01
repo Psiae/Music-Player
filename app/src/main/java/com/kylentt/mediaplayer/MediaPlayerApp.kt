@@ -10,7 +10,7 @@ class MediaPlayerApp : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        if (BuildConfig.DEBUG) {
+        if (false) {
             Timber.plant(Timber.DebugTree())
             Timber.i("Timber Planted")
         }

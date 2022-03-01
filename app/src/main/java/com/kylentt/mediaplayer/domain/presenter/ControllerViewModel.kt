@@ -7,7 +7,10 @@ import androidx.media3.common.Player
 import com.kylentt.mediaplayer.core.util.Constants.ACTION
 import com.kylentt.mediaplayer.core.util.Constants.ACTION_FADE
 import com.kylentt.mediaplayer.core.util.Constants.PLAYBACK_INTENT
+import com.kylentt.mediaplayer.core.util.Constants.SONG_DATA
+import com.kylentt.mediaplayer.core.util.Constants.SONG_LAST_MODIFIED
 import com.kylentt.mediaplayer.data.repository.SongRepositoryImpl
+import com.kylentt.mediaplayer.domain.model.findIdentified
 import com.kylentt.mediaplayer.domain.model.toMediaItems
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.*
@@ -67,26 +70,45 @@ class ControllerViewModel @Inject constructor(
         }
     }
 
+    // I dare you to read this, GlHf
     private suspend fun handlePlayIntentFromRepo(
         name: String,
         byte: Long,
         identifier: String,
         uri: Uri
     ) = withContext(Dispatchers.IO) { repository.fetchSongs().collect { list ->
-        val song = list.find {
-            identifier.trim() == it.data.trim()
-        } ?: list.find {
-            identifier.contains(it.lastModified.toString()) && it.fileName == name
-        } ?: list.find {
-            identifier.contains(it.lastModified.toString()) && it.byteSize == byte
-        } ?: list.find {
-            it.fileName == name && it.byteSize == byte
-        } ?: run {
-            handleItemIntent(uri)
-            Timber.d("IntentHandler Repository not Found, Forwarding with Uri")
-            Timber.d("IntentHandler Repository to Uri with $name $byte $identifier")
-            null
+        val identified = when {
+            identifier.endsWith(name) -> SONG_DATA
+            else -> SONG_LAST_MODIFIED
         }
+
+        val song = identified.let {
+            Timber.d("IntentHandler Repo Identified as $identified")
+            list.findIdentified( iden = it,
+                str = Triple(
+                    first = identifier,
+                    second = Pair(identifier, name),
+                    third = Triple(identifier, byte.toString(), name)
+                )).also { it?.let { Timber.d("IntentHandler Repo Handled with Identifier $identified $identifier") } }
+
+        } ?: run { Timber.d("IntentHandler Unable to Find with $identifier")
+
+            list.find {
+                identifier.trim() == it.data.trim()
+            } ?: list.find {
+                identifier.contains(it.lastModified.toString()) && it.fileName == name
+            } ?: list.find {
+                identifier.contains(it.lastModified.toString()) && it.byteSize == byte
+            } ?: list.find {
+                it.fileName == name && it.byteSize == byte
+            } ?: run {
+                handleItemIntent(uri)
+                Timber.d("IntentHandler Repository not Found, Forwarding with Uri")
+                Timber.d("IntentHandler Repository to Uri with $name $byte $identifier")
+                null
+            }
+        }
+
         song?.let {
             connector.broadcast(Intent(PLAYBACK_INTENT).apply { putExtra(ACTION, ACTION_FADE) })
             delay(500)

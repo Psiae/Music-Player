@@ -2,8 +2,7 @@ package com.kylentt.mediaplayer.di
 
 import android.content.Context
 import androidx.media3.common.AudioAttributes
-import androidx.media3.common.C.CONTENT_TYPE_MUSIC
-import androidx.media3.common.C.USAGE_MEDIA
+import androidx.media3.common.C.*
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.MediaSource

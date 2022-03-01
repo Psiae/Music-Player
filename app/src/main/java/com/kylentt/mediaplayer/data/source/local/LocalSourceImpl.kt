@@ -39,15 +39,17 @@ class LocalSourceImpl(
     override suspend fun fetchSong(): Flow<List<Song>> = flow { emit(queryDeviceSong()) }
 
     suspend fun fetchSongFromDocument(uri: Uri) = withContext(Dispatchers.Default) { flow {
+
         var toReturn: Triple<String, Long, String>? = null
+
         try {
             context.applicationContext.contentResolver.query(uri,
                 null, null, null, null
             )?.use { cursor ->
                 val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
                 val byteIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
-                var lastIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_LAST_MODIFIED)
-                if (lastIndex == -1) lastIndex = cursor.getColumnIndex(MediaStore.Audio.AudioColumns.DATA)
+                var lastIndex  = cursor.getColumnIndex(MediaStore.Audio.AudioColumns.DATA)
+                if (lastIndex == -1) lastIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_LAST_MODIFIED)
                 if (lastIndex == -1) {
                     for (i in 0 until cursor.columnCount) {
                         val n = cursor.getColumnName(i)
@@ -213,6 +215,8 @@ class LocalSourceImpl(
                         duration = duration,
                         data = data,
                         fileName = fileName,
+                        fileParent = path,
+                        fileParentId = pathId.toLong(),
                         imageUri = imageUri,
                         lastModified = dateModified,
                         mediaId = songId.toString(),

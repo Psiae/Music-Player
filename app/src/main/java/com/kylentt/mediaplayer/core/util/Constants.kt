@@ -5,6 +5,13 @@ object Constants {
     // Song
     const val ALBUM_ART_PATH = "content://media/external/audio/albumart"
 
+    const val SONG_DATA = "data"
+    const val SONG_BYTE = "byteSize"
+    const val SONG_FILE_NAME = "fileName"
+    const val SONG_FILE_PARENT = "fileParent"
+    const val SONG_FILE_PARENT_ID = "fileParentId"
+    const val SONG_LAST_MODIFIED = "lastModified"
+
     // Service
     const val MEDIA_SESSION_ID = "Kylentt"
     const val NOTIFICATION_CHANNEL_ID = "Ky_NOTIFICATION_ID"

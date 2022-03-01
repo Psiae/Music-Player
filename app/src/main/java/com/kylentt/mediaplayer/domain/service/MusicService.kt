@@ -75,7 +75,6 @@ class MusicService : MediaLibraryService() {
     override fun onCreate() {
         Timber.d("$TAG onCreate")
         super.onCreate()
-        isActive = true
         manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         registerReceiver()
         initializeSession()
@@ -175,6 +174,7 @@ class MusicService : MediaLibraryService() {
 
     private fun initializeSession() {
         makeActivityIntent()
+        try { isActive = true } catch (e: Exception) { e.printStackTrace() }
         exo.repeatMode = Player.REPEAT_MODE_ALL
         exo.prepare()
         exo.addListener(object : Player.Listener {
@@ -191,6 +191,7 @@ class MusicService : MediaLibraryService() {
                     }
                     Player.STATE_READY -> {
                         Timber.d("Event PlaybackState STATE_READY")
+                        if (::mSession.isInitialized) invalidateNotification(mSession)
                         exoReady()
                         // TODO Another thing to do when Ready
                     }
@@ -205,8 +206,6 @@ class MusicService : MediaLibraryService() {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 super.onMediaItemTransition(mediaItem, reason)
             }
-
-
 
             override fun onPlayerError(error: PlaybackException) {
                 super.onPlayerError(error)
@@ -261,19 +260,16 @@ class MusicService : MediaLibraryService() {
         serviceScope.launch {
             fading = true
 
-            while (exo.volume > 0f) {
+            while (exo.volume > 0.1f && exo.playWhenReady) {
                 Timber.d("MusicService AudioEvent FadingAudio ${exo.volume}")
-
-                if (exo.volume <= 0.1f) {
-                    listener(exo)
-                    exo.volume = 1f
-                    fading = false
-                    break
-                }
-
                 exo.volume = exo.volume -0.2f
                 delay(100)
             }
+            Timber.d("MusicService AudioEvent FadingAudio Done ${exo.volume}")
+
+            exo.volume = 1f
+            listener(exo)
+            fading = false
 
             // Line After Loop
             Timber.d("MusicService Event AudioFaded")

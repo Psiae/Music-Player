@@ -36,45 +36,43 @@ class LocalSourceImpl(
     private val coil: ImageLoader
 ) : LocalSource {
 
+    // simply query Audio Files from MediaStore
     override suspend fun fetchSong(): Flow<List<Song>> = flow { emit(queryDeviceSong()) }
 
-    suspend fun fetchSongFromDocument(uri: Uri) = withContext(Dispatchers.Default) { flow {
+    suspend fun fetchSongFromDocument(uri: Uri) = withContext(Dispatchers.Default) {
+        flow {
+            var toReturn: Triple<String, Long, String>? = null
+            try {
+                context.applicationContext.contentResolver.query(uri,
+                    null, null, null, null
+                )?.use { cursor ->
+                    // OpenableColumns Should always be provided (so far)
+                    val nameIndex = cursor.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME)
+                    val byteIndex = cursor.getColumnIndexOrThrow(OpenableColumns.SIZE)
 
-        var toReturn: Triple<String, Long, String>? = null
+                    // Identifier Columns, either the deprecated _data for <=Q or lastModified with above
+                    // fortunately MediaStore still provide _data columns so either is Fine
+                    var identifierIndex = cursor.getColumnIndex(MediaStore.Audio.AudioColumns.DATA)
+                    if (identifierIndex == -1) identifierIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_LAST_MODIFIED)
 
-        try {
-            context.applicationContext.contentResolver.query(uri,
-                null, null, null, null
-            )?.use { cursor ->
-                val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                val byteIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
-                var lastIndex  = cursor.getColumnIndex(MediaStore.Audio.AudioColumns.DATA)
-                if (lastIndex == -1) lastIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_LAST_MODIFIED)
-                if (lastIndex == -1) {
-                    for (i in 0 until cursor.columnCount) {
-                        val n = cursor.getColumnName(i)
-                        if (n == "_data") lastIndex = i
-                        Timber.d("Cursor Column Name $n")
-                    }
+                    cursor.moveToFirst()
+                    val display_name = cursor.getString(nameIndex)
+                    val byte_size = cursor.getLong(byteIndex)
+                    val identifier = cursor.getString(identifierIndex)
+
+                    Timber.d("IntentHandler LocalSource $display_name $byte_size $identifier")
+
+                    toReturn = Triple(display_name, byte_size, identifier.removeSuffix("000"))
                 }
-                if (lastIndex == -1) lastIndex = 0
-                while (cursor.moveToNext()) {
-                    val name = cursor.getString(nameIndex)
-                    val byte = cursor.getLong(byteIndex)
-                    val last = cursor.getString(lastIndex)
-                    Timber.d("MainActivity intent handler $name $byte $last ")
-                    toReturn = Triple(name, byte, last.removeSuffix("000"))
-                }
+                if (toReturn == null) Toast.makeText(context, "Unsupported", Toast.LENGTH_LONG).show()
+                emit(toReturn)
+            } catch (e : Exception) {
+                Timber.d("IntentHandler LocalSource Error repo")
+                e.printStackTrace()
+                emit(toReturn)
             }
-            if (toReturn == null) Toast.makeText(context, "Unsupported", Toast.LENGTH_LONG).show()
-            emit(toReturn)
-        } catch (e : Exception) {
-            Timber.e("Error Repo ${e.printStackTrace()}")
-            e.printStackTrace()
-            emit(toReturn)
         }
-
-    } }
+    }
 
     suspend fun fetchMetadataFromUri(uri: Uri) = withContext(Dispatchers.Default) { flow {
         try {
@@ -187,6 +185,7 @@ class LocalSourceImpl(
                     val duration = cursor.getLong(
                         cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.DURATION)
                     )
+
                     val fileName = cursor.getString(
                         cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.DISPLAY_NAME)
                     )
@@ -230,6 +229,9 @@ class LocalSourceImpl(
             }
         } catch (e : Exception) {
             Timber.e(e)
+        }
+        deviceSong.forEach {
+            Timber.d("LocalSourceImpl QueryDeviceSong $it \n")
         }
         deviceSong
     }

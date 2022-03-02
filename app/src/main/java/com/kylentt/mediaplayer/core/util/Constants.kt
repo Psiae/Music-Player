@@ -2,6 +2,12 @@ package com.kylentt.mediaplayer.core.util
 
 object Constants {
 
+    // Providers
+    const val PROVIDER_ANDROID = "content://com.android.providers"
+    const val PROVIDER_DRIVE_LEGACY = "content://com.google.android.apps.docs.storage.legacy/"
+    const val PROVIDER_EXTERNAL_STORAGE = "content://com.android.externalstorage"
+    const val PROVIDER_COLOROS_FM = "content://com.coloros.filemanager"
+
     // Song
     const val ALBUM_ART_PATH = "content://media/external/audio/albumart"
 
@@ -26,6 +32,7 @@ object Constants {
     const val ACTION_NEXT = "ACTION_NEXT"
     const val ACTION_UNIT = "ACTION_UNIT"
     const val ACTION_FADE ="ACTION_FADE"
+    const val ACTION_FADE_PAUSE ="ACTION_FADE_PAUSE"
 
     const val ACTION_REPEAT_OFF_TO_ONE = "ACTION_REPEAT_OFF_TO_ONE"
     const val ACTION_REPEAT_ONE_TO_ALL = "ACTION_REPEAT_ONE_TO_ALL"

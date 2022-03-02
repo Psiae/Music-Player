@@ -1,34 +1,15 @@
 package com.kylentt.mediaplayer.data.repository
 
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.drawable.BitmapDrawable
-import android.media.MediaMetadataRetriever
 import android.net.Uri
-import android.provider.DocumentsContract
-import android.provider.MediaStore
-import android.provider.OpenableColumns
-import android.widget.Toast
-import androidx.media3.common.MediaItem
-import androidx.media3.common.MediaMetadata
 import coil.ImageLoader
-import coil.request.CachePolicy
-import coil.request.ImageRequest
-import coil.size.Scale
-import com.kylentt.mediaplayer.core.util.removeSuffix
 import com.kylentt.mediaplayer.data.source.local.LocalSourceImpl
 import com.kylentt.mediaplayer.domain.model.Song
-import com.kylentt.mediaplayer.domain.model.getDisplayTitle
-import jp.wasabeef.transformers.coil.CropSquareTransformation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
-import timber.log.Timber
-import java.io.ByteArrayOutputStream
 
 
 // Local Repository for available Song
@@ -53,11 +34,40 @@ class SongRepositoryImpl(
         source.fetchSong().collect { songList = it ; emit(it)}
     }
 
-    suspend fun fetchSongFromDocs(uri : Uri) = withContext(Dispatchers.Default) { flow {
-        source.fetchSongFromDocument(uri).collect { emit(it) }
-    } }
-
     suspend fun fetchMetaFromUri(uri: Uri) = withContext(Dispatchers.Default) { flow {
         source.fetchMetadataFromUri(uri).collect { emit(it) }
     } }
+
+    // Get Data from this uri Column, for now its Display_Name, ByteSize & ( _data or lastModified )
+    suspend fun fetchSongsFromDocs(uri : Uri) = withContext(Dispatchers.Default) {
+        var list = listOf<Song>()
+        source.fetchSong().collect { list = it }
+
+        flow { // for now I will just do check then return without brute forcing it
+            var toReturn: Pair<Song, List<Song>>? = null
+            source.fetchSongFromDocument(uri).collect { _column ->
+                _column?.let { column ->
+                    val a = column.first
+                    val b = column.second
+                    val c = column.third
+
+                    // check if it has _data
+                    if (c.endsWith(a)) list.find { c == it.data }?.let {
+                        toReturn = Pair(it, list)
+                        return@collect
+                    }
+                    if (c.toLongOrNull() != null) list.find { c.contains(it.lastModified.toString()) && b == it.byteSize }?.let {
+                        toReturn = Pair(it, list)
+                        return@collect
+                    }
+                }
+            }
+
+            return@flow emit(toReturn)
+        }
+    }
+
+
+
+
 }

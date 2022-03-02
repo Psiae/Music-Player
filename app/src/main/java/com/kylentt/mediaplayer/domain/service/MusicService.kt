@@ -27,6 +27,7 @@ import coil.size.Scale
 import com.kylentt.mediaplayer.core.util.Constants.ACTION
 import com.kylentt.mediaplayer.core.util.Constants.ACTION_CANCEL
 import com.kylentt.mediaplayer.core.util.Constants.ACTION_FADE
+import com.kylentt.mediaplayer.core.util.Constants.ACTION_FADE_PAUSE
 import com.kylentt.mediaplayer.core.util.Constants.ACTION_NEXT
 import com.kylentt.mediaplayer.core.util.Constants.ACTION_PAUSE
 import com.kylentt.mediaplayer.core.util.Constants.ACTION_PLAY
@@ -82,36 +83,65 @@ class MusicService : MediaLibraryService() {
 
     /** Player */
     // Idk if its good approach
-    private var exoListener = mutableListOf<( (ExoPlayer) -> Unit )>()
+    private var exoReadyListener = mutableListOf<( (ExoPlayer) -> Unit )>()
+    private var exoBufferListener = mutableListOf<( (ExoPlayer) -> Unit )>()
+    private var exoEndedListener = mutableListOf<( (ExoPlayer) -> Unit )>()
+    private var exoIdleListener = mutableListOf<( (ExoPlayer) -> Unit)>()
 
-    // executed when player goes STATE_READY
+    // executed when Player.STATE changed
     private var lock = Any()
-    fun exoReady() = synchronized(lock) { exoListener.forEach { it(exo) } ; exoListener.clear() }
+    fun exoReady() = synchronized(lock) { exoReadyListener.forEach { it(exo) }
+        exoReadyListener.clear()
+    }
+    private var lock1 = Any()
+    fun exoBuffer() = synchronized(lock1) { exoBufferListener.forEach { it(exo) }
+        exoBufferListener.clear()
+    }
+    private var lock2 = Any()
+    fun exoEnded() = synchronized(lock2) { exoEndedListener.forEach { it(exo) }
+        exoEndedListener.clear()
+    }
+    private var lock3 = Any()
+    fun exoIdle() = synchronized(lock3) { exoIdleListener.forEach { it(exo) }
+        exoIdleListener.clear()
+    }
+
+    @MainThread
+    private fun whenReady( command: ( (ExoPlayer) -> Unit ) ) {
+        if (exoReadyListener.size > 10) exoReadyListener.removeAt(0)
+        if (exo.playbackState == Player.STATE_READY) {
+            command(exo)
+        } else { exoReadyListener.add(command) }
+    }
+
+    @MainThread
+    private fun whenBuffer( command: ( (ExoPlayer) -> Unit ) ) {
+        if (exoBufferListener.size > 10) exoBufferListener.removeAt(0)
+        if (exo.playbackState == Player.STATE_BUFFERING) {
+            command(exo)
+        } else exoBufferListener.add(command)
+    }
+
+    @MainThread
+    private fun whenEnded(command: ( (ExoPlayer) -> Unit ) ) {
+        if (exoEndedListener.size > 10) exoEndedListener.removeAt(0)
+        if (exo.playbackState == Player.STATE_ENDED) {
+            command(exo)
+        } else exoEndedListener.add(command)
+    }
+
+    @MainThread
+    private fun whenIdle( command: ( (ExoPlayer) -> Unit ) ) {
+        if (exoIdleListener.size > 10) exoIdleListener.removeAt(0)
+        if (exo.playbackState == Player.STATE_IDLE) {
+            command(exo)
+        } else exoReadyListener.add(command)
+    }
 
     // Just forward any possible command here for now
     @MainThread
-    fun controller(f: Boolean = true, command: ( (ExoPlayer) -> Unit) ) {
-        if (exoListener.size > 10) {
-            exoListener.removeAt(0)
-            exo.prepare()
-        }
-        when {
-            ::exo.isInitialized -> {
-                if (exo.playbackState != Player.STATE_IDLE) {
-                    Timber.d("Exoplayer Controller Command")
-                    command(exo)
-                } else {
-                    Timber.d("Exoplayer Controller add Command & Prepare")
-                    exoListener.add(command)
-                    exo.prepare()
-                }
-            }
-            f -> {
-                Timber.d("Exoplayer Controller not Initialized, add Command")
-                exoListener.add(command)
-            }
-            else -> Timber.e("Exoplayer Controller Exception")
-        }
+    fun controller(command: ( (ExoPlayer) -> Unit) ) {
+        command(exo)
     }
 
     /** MediaSession & Notification */
@@ -155,6 +185,7 @@ class MusicService : MediaLibraryService() {
             .diskCachePolicy(CachePolicy.ENABLED)
             .transformations(CropSquareTransformation())
             .size(256)
+            .target {  }
             .scale(Scale.FILL)
             .data(bm)
             .build()
@@ -175,18 +206,18 @@ class MusicService : MediaLibraryService() {
     private fun initializeSession() {
         makeActivityIntent()
         try { isActive = true } catch (e: Exception) { e.printStackTrace() }
-        exo.repeatMode = Player.REPEAT_MODE_ALL
-        exo.prepare()
         exo.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
                 super.onPlaybackStateChanged(playbackState)
                 when (playbackState) {
                     Player.STATE_IDLE -> {
                         Timber.d("Event PlaybackState STATE_IDLE")
+                        exoIdle()
                         // TODO Something to do while Idling
                     }
                     Player.STATE_BUFFERING -> {
                         Timber.d("Event PlaybackState STATE_BUFFERING")
+                        exoBuffer()
                         // TODO Something to do while Buffering
                     }
                     Player.STATE_READY -> {
@@ -197,18 +228,17 @@ class MusicService : MediaLibraryService() {
                     }
                     Player.STATE_ENDED -> {
                         Timber.d("Event PlaybackState STATE_ENDED")
+                        exoEnded()
                         if (!exo.hasNextMediaItem()) exo.pause()
                         // TODO Another thing to do when ENDED
                     }
-                }
-            }
 
-            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                super.onMediaItemTransition(mediaItem, reason)
+                }
             }
 
             override fun onPlayerError(error: PlaybackException) {
                 super.onPlayerError(error)
+                Timber.d("Event PlaybackException onPlayerError ${error.errorCodeName}")
                 serviceToast("Unable to Play This Song $error")
             }
         })
@@ -242,34 +272,38 @@ class MusicService : MediaLibraryService() {
         registerReceiver(playbackReceiver, IntentFilter(PLAYBACK_INTENT))
     }
 
-    fun toggleExo() = controller {
+    private fun toggleExo() = controller {
         if (it.playbackState == Player.STATE_ENDED && !it.hasNextMediaItem()) it.seekTo(0)
         if (it.playbackState == Player.STATE_ENDED && it.hasNextMediaItem()) it.seekToNextMediaItem()
         it.playWhenReady = !it.playWhenReady
-        if (::mSession.isInitialized) invalidateNotification(mSession)
+        if (::mSession.isInitialized)invalidateNotification(mSession)
     }
 
     fun play() = controller { it.play() }
     fun pause() = controller { it.pause() }
-    var stillFading = false
 
     var fading = false
-    fun exoFade(listener: ( (ExoPlayer) -> Unit )) {
-        if (fading) { controller { listener(it) } ;return }
-
+    private fun exoFade(listener: ( (ExoPlayer) -> Unit )) {
+        if (fading) {
+            controller { listener(it) }
+            return
+        }
+        fading = true
         serviceScope.launch {
-            fading = true
-
             while (exo.volume > 0.1f && exo.playWhenReady) {
                 Timber.d("MusicService AudioEvent FadingAudio ${exo.volume}")
-                exo.volume = exo.volume -0.2f
+                exo.volume = exo.volume -0.20f
                 delay(100)
             }
-            Timber.d("MusicService AudioEvent FadingAudio Done ${exo.volume}")
 
-            exo.volume = 1f
-            listener(exo)
-            fading = false
+            Timber.d("MusicService AudioEvent FadingAudio Done ${exo.volume}")
+            controller {
+                listener(it)
+                whenReady {
+                    fading = false
+                    it.volume = 1f
+                }
+            }
 
             // Line After Loop
             Timber.d("MusicService Event AudioFaded")
@@ -277,7 +311,6 @@ class MusicService : MediaLibraryService() {
     }
 
 
-    // TODO: make request processor function like connector
     inner class PlaybackReceiver: BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.getStringExtra(ACTION)) {
@@ -289,6 +322,7 @@ class MusicService : MediaLibraryService() {
 
                 ACTION_UNIT -> Unit
                 ACTION_FADE -> exoFade { /* TODO: Something todo while its fading? */ }
+                ACTION_FADE_PAUSE -> exoFade { it.pause() }
 
                 ACTION_REPEAT_OFF_TO_ONE -> exo.repeatMode = Player.REPEAT_MODE_ONE
                 ACTION_REPEAT_ONE_TO_ALL -> exo.repeatMode = Player.REPEAT_MODE_ALL
@@ -345,12 +379,16 @@ class MusicService : MediaLibraryService() {
         ) = mediaItem.rebuild()
     }
 
-    override fun onDestroy() {
-        Timber.d("$TAG onDestroy")
+    private fun releaseSession() {
         exo.release()
-        isActive = false
         serviceScope.cancel()
         unregisterReceiver(playbackReceiver)
+    }
+
+    override fun onDestroy() {
+        Timber.d("$TAG onDestroy")
+        releaseSession()
+        isActive = false
         if (!MainActivity.isActive) exitProcess(0)
         super.onDestroy()
     }

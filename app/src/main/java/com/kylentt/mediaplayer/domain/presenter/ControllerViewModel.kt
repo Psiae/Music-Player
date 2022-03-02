@@ -6,6 +6,8 @@ import androidx.lifecycle.ViewModel
 import androidx.media3.common.Player
 import com.kylentt.mediaplayer.core.util.Constants.ACTION
 import com.kylentt.mediaplayer.core.util.Constants.ACTION_FADE
+import com.kylentt.mediaplayer.core.util.Constants.ACTION_FADE_PAUSE
+import com.kylentt.mediaplayer.core.util.Constants.ACTION_PAUSE
 import com.kylentt.mediaplayer.core.util.Constants.PLAYBACK_INTENT
 import com.kylentt.mediaplayer.core.util.Constants.SONG_DATA
 import com.kylentt.mediaplayer.core.util.Constants.SONG_LAST_MODIFIED
@@ -24,6 +26,8 @@ class ControllerViewModel @Inject constructor(
     private val repository: SongRepositoryImpl
 ) : ViewModel() {
 
+    // This ViewModel is responsible for managing UI state by Service Event
+
     /** Connector State */
     val mediaItems = connector.mediaItems
     val mediaItem = connector.mediaItem
@@ -32,22 +36,23 @@ class ControllerViewModel @Inject constructor(
     val position = connector.position
     val duration = connector.duration
 
-    /** Controller Command */
-    fun play(f: Boolean) = connector.controller(f) { it.play() }
-    fun stop(f: Boolean) = connector.controller(f) { it.stop() }
-    fun pause(f: Boolean) = connector.controller(f) { it.pause() }
-    fun prepare(f: Boolean) = connector.controller(f) { it.prepare() }
-    fun skipToNext(f: Boolean) = connector.controller(f) { it.seekToNext() }
-    fun skipToPrev(f: Boolean) = connector.controller(f) { it.seekToPrevious() }
-    fun getItemAt(f: Boolean, i: Int) = connector.controller(f) { it.getMediaItemAt(i) }
+    /** Intent Handler */
 
+    // Intent From Document Provider like FileManager
     suspend fun handleDocsIntent(uri: Uri) = withContext(Dispatchers.Main) {
-        Timber.d("IntentHandler DocsIntent $uri")
-        connector.connectService()
-        repository.fetchSongFromDocs(uri).collect {
-            it?.let{
-                handlePlayIntentFromRepo(it.first, it.second, it.third, uri)
-            } ?: handleItemIntent(uri)
+        Timber.d("IntentHandler ViewModel DocsIntent")
+        if (!connector.isServiceConnected()) connector.connectService()
+
+        repository.fetchSongsFromDocs(uri).collect {
+            it?.let {
+                val song = it.first
+                val list = it.second
+                connector.readyWithFade { controller ->
+                    controller.setMediaItems(list.toMediaItems(), list.indexOf(song), 0)
+                    controller.prepare()
+                    controller.playWhenReady = true
+                }
+            }
         }
     }
 
@@ -56,11 +61,8 @@ class ControllerViewModel @Inject constructor(
         connector.connectService()
         repository.fetchMetaFromUri(uri).collect { item ->
             item?.let {
-                connector.broadcast(Intent(PLAYBACK_INTENT).apply { putExtra(ACTION, ACTION_FADE) })
-                delay(750)
-                connector.controller(true) {
+                connector.readyWithFade {
                     it.seekTo(0,0)
-                    it.repeatMode = Player.REPEAT_MODE_OFF
                     it.setMediaItems(listOf(item))
                     it.prepare()
                     it.playWhenReady = true
@@ -70,8 +72,7 @@ class ControllerViewModel @Inject constructor(
         }
     }
 
-    // I dare you to read this, GlHf
-    private suspend fun handlePlayIntentFromRepo(
+    /*private suspend fun handlePlayIntentFromRepo(
         name: String,
         byte: Long,
         identifier: String,
@@ -107,12 +108,10 @@ class ControllerViewModel @Inject constructor(
         }
 
         song?.let {
-            connector.broadcast(Intent(PLAYBACK_INTENT).apply { putExtra(ACTION, ACTION_FADE) })
-            delay(500)
+            *//*connector.broadcast(Intent(PLAYBACK_INTENT).apply { putExtra(ACTION, ACTION_FADE_PAUSE) })*//*
             withContext(Dispatchers.Main) {
-                connector.controller(true) {
+                connector.exoFade {
                     Timber.d("IntentHandler Repository File Found, Handled with Repo")
-                    it.seekTo(0,0)
                     it.setMediaItems(list.toMediaItems(), list.indexOf(song), 0)
                     it.prepare()
                     it.playWhenReady = true
@@ -120,18 +119,18 @@ class ControllerViewModel @Inject constructor(
                 }
             }
         }
-    } }
+    } }*/
 
     private val mainUpdater = CoroutineScope( Dispatchers.Main + Job() )
     private val ioUpdater = CoroutineScope( Dispatchers.IO + Job() )
 
     init {
-        connector.connectService()
+        /*connector.connectService()
         ioUpdater.launch {
             connector.positionEmitter().collect {
                 Timber.d("positionEmitter isValid $it")
             }
-        }
+        }*/
     }
 
     override fun onCleared() {

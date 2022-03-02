@@ -31,12 +31,6 @@ data class Song(
     val title: String = "", // Embedded Title, without ext e.g : .mp3 / fileName have that one
 )
 
-// so far only either data + byteSize or lastModified + byteSize + fileName is provided
-fun Song.findIdentifier(str: String): Pair<String, String>? {
-    // TODO: Something maybe
-    return null
-}
-
 // Using concatenating list.find{ (a1 == b1 && a2 == b2) || a3.contains(b3) } ?: list.find {another}
 // Doesn't seems fun so i'll just use this for now, just curious, really,  don't scold me
 // Might as well help me in this project :)
@@ -68,10 +62,10 @@ fun List<Song>.findIdentified(
 
     // so far data or path alone is enough, but deprecated so might change with fileName & parent file name
     // since its practically not possible to have same file name inside a folder unless those
-    // vendors just make it possible for god only knows reason?
+    // they just make it possible for god only knows reason?
     if (iden == data) {
         Timber.d("IntentHandler try find with $data")
-        return find { song -> abs == song.data }
+        find { song -> abs == song.data }?.let { return it } ?: findIdentified(lastModified, str)
     }
 
     if (iden == lastModified) {

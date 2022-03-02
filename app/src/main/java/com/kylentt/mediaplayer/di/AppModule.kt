@@ -53,6 +53,8 @@ object AppModule {
         @ApplicationContext context: Context
     ) = Coil.imageLoader(context = context)
 
+}
+
 @Module
 @InstallIn(ServiceComponent::class)
 object ServiceModule {
@@ -75,5 +77,4 @@ object ServiceModule {
         .setAudioAttributes(attr, true)
         .setHandleAudioBecomingNoisy(true)
         .build()
-}
 }

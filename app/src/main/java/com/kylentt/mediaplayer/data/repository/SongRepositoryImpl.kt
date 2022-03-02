@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
+import timber.log.Timber
 
 
 // Local Repository for available Song
@@ -53,13 +54,24 @@ class SongRepositoryImpl(
 
                     // check if it has _data
                     if (c.endsWith(a)) list.find { c == it.data }?.let {
+                        Timber.d("IntentHandler FetchFromDocs ${it.data} found")
                         toReturn = Pair(it, list)
                         return@collect
                     }
                     if (c.toLongOrNull() != null) list.find { c.contains(it.lastModified.toString()) && b == it.byteSize }?.let {
+                        Timber.d("IntentHandler FetchFromDocs ${it.lastModified} found")
                         toReturn = Pair(it, list)
                         return@collect
                     }
+
+                    // 1 Minute Difference So I guess its fine?
+                    if (c.toLongOrNull() != null) list.find { c.contains(it.lastModified.toString().take(8)) && b == it.byteSize }?.let {
+                        Timber.d("IntentHandler FetchFromDocs first 8 of ${it.lastModified} found")
+                        toReturn = Pair(it, list)
+                        return@collect
+                    }
+
+                    Timber.d("IntentHandler FetchFromDocs nothing found $_column")
                 }
             }
 

@@ -292,7 +292,7 @@ class MusicService : MediaLibraryService() {
         serviceScope.launch {
             while (exo.volume > 0.1f && exo.playWhenReady) {
                 Timber.d("MusicService AudioEvent FadingAudio ${exo.volume}")
-                exo.volume = exo.volume -0.20f
+                exo.volume = exo.volume - 0.20f
                 delay(100)
             }
 
@@ -328,8 +328,8 @@ class MusicService : MediaLibraryService() {
                 ACTION_REPEAT_ONE_TO_ALL -> exo.repeatMode = Player.REPEAT_MODE_ALL
                 ACTION_REPEAT_ALL_TO_OFF -> exo.repeatMode = Player.REPEAT_MODE_OFF
 
-                ACTION_CANCEL -> { session?.let {
-                    endSession(it)
+                ACTION_CANCEL -> { session?.let { session ->
+                    exoFade { endSession(session) }
                     return
                 } }
             }

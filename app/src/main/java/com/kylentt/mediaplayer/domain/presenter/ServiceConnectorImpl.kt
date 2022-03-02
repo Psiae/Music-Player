@@ -61,7 +61,6 @@ class ServiceConnectorImpl(
     // for VM and Service to Toast
     fun connectorToast(msg: String) = Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
 
-
     private var fading = false
     suspend fun readyWithFade(listener: (MediaController) -> Unit) {
         if (fading || !isServiceConnected()) {
@@ -148,22 +147,28 @@ class ServiceConnectorImpl(
     private fun isPlayerReady() = mediaController.playbackState == Player.STATE_READY
     private fun isPlayerEnded() = mediaController.playbackState == Player.STATE_ENDED
 
+
+    var connecting = false
+
     @MainThread
     override fun connectService(): Boolean {
-        if (isServiceConnected()) {
+        if (isServiceConnected() || connecting) {
             controlConnected()
             Timber.d("Service Already Connected, returning...")
             return true
         }
         Timber.d("Service Not Connected, Connecting...")
+        connecting = true
 
         sessionToken = SessionToken(context, ComponentName(context, MusicService::class.java))
+
         futureMediaController = MediaController.Builder(context, sessionToken!!).buildAsync()
         futureMediaController.addListener( {
             mediaController = _mediaController!!
             setupController(mediaController)
             controlConnected()
         }, MoreExecutors.directExecutor())
+
         return (_mediaController != null)
     }
 
@@ -180,7 +185,6 @@ class ServiceConnectorImpl(
                     }
                 }
             })
-
         }
     }
 

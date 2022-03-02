@@ -62,7 +62,7 @@ class LocalSourceImpl(
 
                     Timber.d("IntentHandler LocalSource $display_name $byte_size $identifier")
 
-                    toReturn = Triple(display_name, byte_size, identifier.removeSuffix("000"))
+                    toReturn = Triple(display_name, byte_size, identifier)
                 }
                 if (toReturn == null) Toast.makeText(context, "Unsupported", Toast.LENGTH_LONG).show()
                 emit(toReturn)
@@ -182,6 +182,7 @@ class LocalSourceImpl(
                     val dateModified = cursor.getLong(
                         cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.DATE_MODIFIED)
                     )
+
                     val duration = cursor.getLong(
                         cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.DURATION)
                     )
@@ -231,7 +232,7 @@ class LocalSourceImpl(
             Timber.e(e)
         }
         deviceSong.forEach {
-            Timber.d("LocalSourceImpl QueryDeviceSong $it \n")
+            Timber.d("LocalSourceImpl QueryDeviceSong ${it.fileName} ${it.data} ${it.lastModified} \n")
         }
         deviceSong
     }

@@ -44,6 +44,7 @@ class ControllerViewModel @Inject constructor(
         if (!connector.isServiceConnected()) connector.connectService()
 
         repository.fetchSongsFromDocs(uri).collect {
+            Timber.d("IntentHandler ViewModel DocsIntent ${it?.first} ${it?.second}")
             it?.let {
                 val song = it.first
                 val list = it.second
@@ -52,18 +53,17 @@ class ControllerViewModel @Inject constructor(
                     controller.prepare()
                     controller.playWhenReady = true
                 }
-            }
+            } ?: handleItemIntent(uri)
         }
     }
 
     suspend fun handleItemIntent(uri: Uri) = withContext(Dispatchers.Main) {
         Timber.d("IntentHandler ItemIntent $uri")
-        connector.connectService()
+        if (!connector.isServiceConnected()) connector.connectService()
         repository.fetchMetaFromUri(uri).collect { item ->
             item?.let {
                 connector.readyWithFade {
-                    it.seekTo(0,0)
-                    it.setMediaItems(listOf(item))
+                    it.setMediaItems(listOf(item),0,0)
                     it.prepare()
                     it.playWhenReady = true
                     Timber.d("Controller IntentHandler handling ${item.mediaMetadata.title} handled")

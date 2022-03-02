@@ -42,33 +42,26 @@ class ControllerViewModel @Inject constructor(
     suspend fun handleDocsIntent(uri: Uri) = withContext(Dispatchers.Main) {
         Timber.d("IntentHandler ViewModel DocsIntent")
         if (!connector.isServiceConnected()) connector.connectService()
-
         repository.fetchSongsFromDocs(uri).collect {
             Timber.d("IntentHandler ViewModel DocsIntent ${it?.first} ${it?.second}")
-            it?.let {
-                val song = it.first
-                val list = it.second
-                connector.readyWithFade { controller ->
-                    controller.setMediaItems(list.toMediaItems(), list.indexOf(song), 0)
-                    controller.prepare()
-                    controller.playWhenReady = true
-                }
-            } ?: handleItemIntent(uri)
+            it?.let { connector.readyWithFade { controller ->
+                controller.setMediaItems(it.second.toMediaItems(), it.second.indexOf(it.first), 0)
+                controller.prepare()
+                controller.playWhenReady = true
+            } } ?: handleItemIntent(uri)
         }
     }
 
     suspend fun handleItemIntent(uri: Uri) = withContext(Dispatchers.Main) {
         Timber.d("IntentHandler ItemIntent $uri")
         if (!connector.isServiceConnected()) connector.connectService()
-        repository.fetchMetaFromUri(uri).collect { item ->
-            item?.let {
-                connector.readyWithFade {
-                    it.setMediaItems(listOf(item),0,0)
-                    it.prepare()
-                    it.playWhenReady = true
-                    Timber.d("Controller IntentHandler handling ${item.mediaMetadata.title} handled")
-                }
-            }
+        repository.fetchMetaFromUri(uri).collect { _item ->
+            _item?.let { item -> connector.readyWithFade {
+                it.setMediaItems(listOf(item),0,0)
+                it.prepare()
+                it.playWhenReady = true
+                Timber.d("Controller IntentHandler handling ${item.mediaMetadata.title} handled")
+            } }
         }
     }
 

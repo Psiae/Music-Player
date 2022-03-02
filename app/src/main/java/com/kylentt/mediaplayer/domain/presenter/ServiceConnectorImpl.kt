@@ -121,10 +121,10 @@ class ServiceConnectorImpl(
     @MainThread
     fun controller(
         onBuffer: (MediaController) -> Unit = {},
-        onConnected: (MediaController) -> Unit = {},
         onEnded: (MediaController) -> Unit = {},
         onIdle: (MediaController) -> Unit = {},
         onReady: (MediaController) -> Unit = {},
+        onConnected: (MediaController) -> Unit = {},
     ): Boolean {
         if (!isServiceConnected()) {
             controlConnectListener.add(onBuffer)

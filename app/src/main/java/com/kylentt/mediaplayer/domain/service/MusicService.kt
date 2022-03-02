@@ -12,7 +12,6 @@ import android.graphics.BitmapFactory
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.os.Looper
-import android.widget.Toast
 import androidx.annotation.MainThread
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
@@ -70,13 +69,14 @@ class MusicService : MediaLibraryService() {
     @Inject
     lateinit var serviceConnectorImpl: ServiceConnectorImpl
 
-    val serviceScope = (CoroutineScope(Dispatchers.Main + SupervisorJob()))
+    private val serviceScope = (CoroutineScope(Dispatchers.Main + SupervisorJob()))
 
     /** onCreate() called before onGetSession*/
     override fun onCreate() {
         Timber.d("$TAG onCreate")
         super.onCreate()
         manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
         registerReceiver()
         initializeSession()
     }
@@ -159,17 +159,15 @@ class MusicService : MediaLibraryService() {
         mSession = session
         if (!::notification.isInitialized) {
             notification = PlayerNotificationImpl(this, this, mSession)
-            sendBroadcast(Intent(PLAYBACK_INTENT).apply {
-                putExtra(ACTION, ACTION_UNIT) ; setPackage(this@MusicService.packageName)
-            })
+            sendBroadcast(Intent(PLAYBACK_INTENT)
+                .apply { putExtra(ACTION, ACTION_UNIT) ; setPackage(this@MusicService.packageName) }
+            )
         }
 
         serviceScope.launch {
             val pict = session.player.currentMediaItem?.mediaMetadata?.artworkData
             val uri = session.player.currentMediaItem?.artUri
-            val bm = pict?.let { mapBM( BitmapFactory.decodeByteArray(
-                it, 0, it.size
-            )) } ?: makeBm(uri)
+            val bm = pict?.let { mapBM( BitmapFactory.decodeByteArray(it, 0, it.size)) } ?: makeBm(uri)
             mNotif = notification.makeNotif(NOTIFICATION_ID, session, bm)
             if (!isForeground) {
                 startForeground(NOTIFICATION_ID, mNotif)
@@ -222,7 +220,7 @@ class MusicService : MediaLibraryService() {
                     }
                     Player.STATE_READY -> {
                         Timber.d("Event PlaybackState STATE_READY")
-                        if (::mSession.isInitialized) invalidateNotification(mSession)
+                        if (::mSession.isInitialized) validateNotification(mSession)
                         exoReady()
                         // TODO Another thing to do when Ready
                     }
@@ -232,20 +230,23 @@ class MusicService : MediaLibraryService() {
                         if (!exo.hasNextMediaItem()) exo.pause()
                         // TODO Another thing to do when ENDED
                     }
-
                 }
             }
 
+            var retry = true
             override fun onPlayerError(error: PlaybackException) {
                 super.onPlayerError(error)
+                if (error.errorCodeName == "ERROR_CODE_DECODING_FAILED" && retry) {
+                    controller { it.prepare() ; retry = false}
+                }
                 Timber.d("Event PlaybackException onPlayerError ${error.errorCodeName}")
-                serviceToast("Unable to Play This Song $error")
+                serviceToast("Unable to Play This Song ${error.errorCodeName}")
             }
         })
     }
 
     private suspend fun sServiceToast(msg: String, long: Boolean = true) = withContext(Dispatchers.Main) {
-        Toast.makeText(this@MusicService, msg, if (long) Toast.LENGTH_LONG else Toast.LENGTH_SHORT).show()
+        serviceConnectorImpl.connectorToast(msg)
     }
 
     private fun serviceToast(msg: String, long: Boolean = true) {
@@ -253,9 +254,7 @@ class MusicService : MediaLibraryService() {
             serviceScope.launch { sServiceToast(msg, long) }
             return
         }
-        Toast.makeText(this@MusicService, msg,
-            if (long) Toast.LENGTH_LONG else Toast.LENGTH_SHORT
-        ).show()
+        serviceConnectorImpl.connectorToast(msg)
     }
 
     private fun makeActivityIntent() {
@@ -276,7 +275,7 @@ class MusicService : MediaLibraryService() {
         if (it.playbackState == Player.STATE_ENDED && !it.hasNextMediaItem()) it.seekTo(0)
         if (it.playbackState == Player.STATE_ENDED && it.hasNextMediaItem()) it.seekToNextMediaItem()
         it.playWhenReady = !it.playWhenReady
-        if (::mSession.isInitialized)invalidateNotification(mSession)
+        if (::mSession.isInitialized) validateNotification(mSession)
     }
 
     fun play() = controller { it.play() }
@@ -348,7 +347,7 @@ class MusicService : MediaLibraryService() {
         if (!MainActivity.isActive) serviceConnectorImpl.releaseSession()
     }
 
-    private fun invalidateNotification(session: MediaSession) = serviceScope.launch {
+    private fun validateNotification(session: MediaSession) = serviceScope.launch {
         delay(500)
         onUpdateNotification(session)
     }

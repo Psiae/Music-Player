@@ -4,43 +4,29 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
 import android.os.Bundle
-import android.view.animation.OvershootInterpolator
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
-import androidx.navigation.NavController
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
 import coil.ImageLoader
 import coil.request.CachePolicy
 import coil.request.ImageRequest
 import coil.size.Scale
-import com.kylentt.mediaplayer.R
 import com.kylentt.mediaplayer.core.util.Constants.PROVIDER_ANDROID
 import com.kylentt.mediaplayer.core.util.Constants.PROVIDER_COLOROS_FM
 import com.kylentt.mediaplayer.core.util.Constants.PROVIDER_DRIVE_LEGACY
 import com.kylentt.mediaplayer.core.util.Constants.PROVIDER_EXTERNAL_STORAGE
 import com.kylentt.mediaplayer.domain.presenter.ControllerViewModel
+import com.kylentt.mediaplayer.ui.theme.MediaPlayerTheme3
 import dagger.hilt.android.AndroidEntryPoint
 import jp.wasabeef.transformers.coil.CropSquareTransformation
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
@@ -59,14 +45,25 @@ class MainActivity : ComponentActivity() {
     private val controllerVM: ControllerViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen().apply {}
         super.onCreate(savedInstanceState)
-
         isActive = true
+
+        WindowCompat.setDecorFitsSystemWindows(this.window, false)
+
         onNewIntent(intent)
 
         setContent {
-            Navigation()
+            MediaPlayerTheme3 {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colors.background
+                ) {
+                    Navigation()
+                }
+            }
         }
+
 
         // Check For Storage Permission
         if (checkPermission()) {
@@ -150,53 +147,6 @@ class MainActivity : ComponentActivity() {
         applicationContext.externalCacheDir?.deleteRecursively()
         applicationContext.cacheDir.deleteRecursively()
         super.onDestroy()
-    }
-}
-
-@Composable
-fun Navigation() {
-    val navController = rememberNavController()
-    NavHost(navController = navController, startDestination = "splash_screen") {
-        composable("splash_screen") {
-            SplashScreen(navController = navController)
-        }
-        composable("home_screen") {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(text = "Home Screen", color = Color.LightGray)
-            }
-        }
-    }
-}
-
-@Composable
-fun SplashScreen(navController: NavController) {
-    val scale = remember {
-        Animatable(0f)
-    }
-    LaunchedEffect(key1 = true) {
-        scale.animateTo(
-            targetValue = 2f,
-            animationSpec = tween(
-                durationMillis = 500,
-                easing = {
-                    OvershootInterpolator(2f).getInterpolation(it)
-                }
-            )
-        )
-        delay(1000)
-        navController.popBackStack()
-        navController.navigate("home_screen")
-    }
-
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier.fillMaxSize()
-    ) {
-        Image(
-            painter = painterResource(id = R.drawable.ic_launcher_3_foreground),
-            contentDescription = "Splash",
-            modifier = Modifier.scale(scale.value)
-        )
     }
 }
 

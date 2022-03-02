@@ -26,3 +26,4 @@ local.properties
 build/
 .signing/
 *.log
+/.idea/

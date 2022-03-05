@@ -1,4 +1,4 @@
-package com.kylentt.mediaplayer.ui.screen.main
+package com.kylentt.mediaplayer.ui.screen.main.search
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -12,8 +12,8 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class HomeViewModel @Inject constructor(
-    private val repository: SongRepositoryImpl
+class SearchViewModel @Inject constructor(
+    val repository: SongRepositoryImpl
 ) : ViewModel() {
 
     private val _songList = MutableStateFlow(listOf<Song>())
@@ -26,5 +26,4 @@ class HomeViewModel @Inject constructor(
             }
         }
     }
-
 }

@@ -1,8 +1,6 @@
 package com.kylentt.mediaplayer.ui
 
-import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -18,6 +16,7 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -91,30 +90,30 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun RootNavigation() {
-        val navController = rememberNavController()
+        val rootNavController = rememberNavController()
 
         NavHost(
-            navController = navController,
+            navController = rootNavController,
             startDestination = Main_route,
             route = Root_route
         ) {
             // TODO : landingNavGraph
-            mainNavGraph(navController = navController)
-            extraNavGraph(navController = navController)
+            mainNavGraph(navController = rootNavController)
+            extraNavGraph(navController = rootNavController)
         }
     }
 
     // Navigation that have the Bottom Navigation Bar.
     // basically the NavGraph that have the Screen in which it display the Main Functionality of this App
     fun NavGraphBuilder.mainNavGraph(
-        navController: NavController
+        navController: NavHostController
     ) {
         navigation(
             startDestination = Screen.MainScreen.route,
             route = Main_route
         ) {
             composable(Screen.MainScreen.route) {
-                MainScreen(navController = navController)
+                MainScreen(rootController = navController)
             }
         }
     }
@@ -132,7 +131,7 @@ class MainActivity : ComponentActivity() {
                 PermissionScreen(navController)
             }
             composable(Screen.SettingsScreen.route) {
-
+                // TODO: Settings Screen
             }
         }
     }

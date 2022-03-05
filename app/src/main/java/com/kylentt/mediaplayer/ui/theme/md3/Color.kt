@@ -1,10 +1,13 @@
 package com.kylentt.mediaplayer.ui.theme.md3
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.graphics.Color
 
 val Icon1 = Color(0xFFC5E3F6)
 val Icon2 = Color(0xFFFC5C9C)
 
 val BabyBlue = Color(0xFF89cff0)
+
+var TextColor = Color.White
 
 val md_theme_light_primary = Color(0xFF00668a)
 val md_theme_light_onPrimary = Color(0xFFffffff)
@@ -50,8 +53,8 @@ val md_theme_dark_error = Color(0xFFF2B8B5)
 val md_theme_dark_errorContainer = Color(0xFF8C1D18)
 val md_theme_dark_onError = Color(0xFF601410)
 val md_theme_dark_onErrorContainer = Color(0xFFF9DEDC)
-val md_theme_dark_background = Color(0xFF1C1B1F)
-val md_theme_dark_onBackground = Color(0xFFE6E1E5)
+val md_theme_dark_background = Color(0xFF0C0C0C)
+val md_theme_dark_onBackground = Color(0xFFFAFAFA)
 val md_theme_dark_surface = Color(0xFF1C1B1F)
 val md_theme_dark_onSurface = Color(0xFFE6E1E5)
 val md_theme_dark_surfaceVariant = Color(0xFF49454F)

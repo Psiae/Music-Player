@@ -91,8 +91,10 @@ fun MaterialTheme3(
 		if (darkTheme) { DarkThemeColors } else { LightThemeColors }
 	}
 
-	systemUiController.setSystemBarsColor(color = Color.Transparent)
+	TextColor = if (darkTheme) Color.White else MaterialTheme.colorScheme.onSurface
+	systemUiController.setStatusBarColor(Color.Transparent)
 	systemUiController.statusBarDarkContentEnabled = !darkTheme
+	systemUiController.navigationBarDarkContentEnabled = !darkTheme
 
 	MaterialTheme(
 		colorScheme = color,

@@ -1,4 +1,4 @@
-package com.kylentt.mediaplayer.ui.screen.main
+package com.kylentt.mediaplayer.ui.screen.main.search
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -13,20 +13,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.kylentt.mediaplayer.domain.model.getDisplayTitle
 import com.kylentt.mediaplayer.domain.presenter.ControllerViewModel
+import com.kylentt.mediaplayer.ui.screen.main.home.HomeViewModel
 
-@OptIn(ExperimentalPermissionsApi::class)
 @Composable
-fun MainScreen(
+fun SearchScreen(
     navController: NavController,
-    controller: ControllerViewModel = hiltViewModel(),
-    vm: HomeViewModel = hiltViewModel(),
+    vm: SearchViewModel = hiltViewModel()
 ) {
     val songList = vm.songList.collectAsState()
-    val currentlyPlaying = controller.playerCurrentMediaItem
-    val currentPlayState = controller.playerCurrentPlaystate
     val textColor = MaterialTheme.colorScheme.onBackground
     Box(
         modifier = Modifier
@@ -40,10 +36,8 @@ fun MainScreen(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(text = "Home Screen", color = textColor)
-            Text(text = "Song Found: ${songList.value.size}", color = textColor)
-            Text(text = "Currently Playing: ${currentlyPlaying.value.getDisplayTitle}", color = textColor)
-            Text(text = "Currently Playing State: ${currentPlayState.value}", color = textColor)
+            Text(text = "Search Screen", color = textColor)
+            Text(text = "Local Song Found: ${songList.value.size}", color = textColor)
         }
     }
 }

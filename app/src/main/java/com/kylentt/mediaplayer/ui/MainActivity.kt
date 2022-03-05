@@ -1,8 +1,8 @@
 package com.kylentt.mediaplayer.ui
 
+import android.Manifest
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.drawable.BitmapDrawable
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -11,27 +11,33 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
-import coil.ImageLoader
-import coil.request.CachePolicy
-import coil.request.ImageRequest
-import coil.size.Scale
+import androidx.navigation.NavController
+import androidx.navigation.NavGraphBuilder
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navigation
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.kylentt.mediaplayer.core.util.Constants.PROVIDER_ANDROID
 import com.kylentt.mediaplayer.core.util.Constants.PROVIDER_COLOROS_FM
 import com.kylentt.mediaplayer.core.util.Constants.PROVIDER_DRIVE_LEGACY
 import com.kylentt.mediaplayer.core.util.Constants.PROVIDER_EXTERNAL_STORAGE
 import com.kylentt.mediaplayer.domain.presenter.ControllerViewModel
 import com.kylentt.mediaplayer.domain.presenter.util.State.ServiceState
+import com.kylentt.mediaplayer.ui.screen.*
+import com.kylentt.mediaplayer.ui.screen.landing.PermissionScreen
+import com.kylentt.mediaplayer.ui.screen.main.MainScreen
 import com.kylentt.mediaplayer.ui.theme.md3.MaterialTheme3
 import dagger.hilt.android.AndroidEntryPoint
-import jp.wasabeef.transformers.coil.CropSquareTransformation
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import javax.inject.Inject
 
+@ExperimentalPermissionsApi
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
@@ -40,55 +46,95 @@ class MainActivity : ComponentActivity() {
         var isActive = false
     }
 
-    @Inject
-    lateinit var coil: ImageLoader
-
     private val controllerVM: ControllerViewModel by viewModels()
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Timber.d("InitDebug MainActivity onCreate")
         isActive = true
 
         // Connect to the Service then handle Intent that opens this App
+        // This should be fine since onNewIntent is not called when Activity is first created
         onNewIntent(intent)
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        // I know its still unstable but sometimes its stop checking midway.
         installSplashScreen()
             .apply {
                 setKeepOnScreenCondition {
+                    Timber.d("MainActivity KeepOnScreenCondition ${controllerVM.serviceState.value}")
                     when (controllerVM.serviceState.value) {
                         is ServiceState.Disconnected, is ServiceState.Connecting -> true
                         else -> false
                     }
                 }
+
                 /* TODO: setOnExitAnimationListener { } */
-                Timber.d("InitDebug MainActivity STATE SplashScreen")
             }
 
-        val havePermission = checkPermission()
         setContent {
             MaterialTheme3 {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    Navigation(
-                        start = when {
-                            !havePermission -> Screen.PermissionScreen.route
-                            else -> Screen.HomeScreen.route
-                        },
-                        vm = controllerVM
-                    ) {
-                        // TODO something todo after navigation?
-                    }
-                }
+                Root()
             }
         }
     }
 
-    private fun checkPermission(): Boolean {
-        return true
+    @Composable
+    fun Root() {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background
+        ) {
+            RootNavigation()
+        }
+    }
+
+    @Composable
+    fun RootNavigation() {
+        val navController = rememberNavController()
+
+        NavHost(
+            navController = navController,
+            startDestination = Main_route,
+            route = Root_route
+        ) {
+            // TODO : landingNavGraph
+            mainNavGraph(navController = navController)
+            extraNavGraph(navController = navController)
+        }
+    }
+
+    // Navigation that have the Bottom Navigation Bar.
+    // basically the NavGraph that have the Screen in which it display the Main Functionality of this App
+    fun NavGraphBuilder.mainNavGraph(
+        navController: NavController
+    ) {
+        navigation(
+            startDestination = Screen.MainScreen.route,
+            route = Main_route
+        ) {
+            composable(Screen.MainScreen.route) {
+                MainScreen(navController = navController)
+            }
+        }
+    }
+
+    // extra's composable which is basically the old `Permission_Activity` or `Settings_Activity`
+    // or them as Fragment in which is navigate-able globally
+    fun NavGraphBuilder.extraNavGraph(
+        navController: NavController
+    ) {
+        navigation(
+            startDestination = Screen.PermissionScreen.route,
+            route = Extra_route
+        ) {
+            composable(Screen.PermissionScreen.route) {
+                PermissionScreen(navController)
+            }
+            composable(Screen.SettingsScreen.route) {
+
+            }
+        }
     }
 
     // Handle Incoming Intent such as ACTION_VIEW for Audio Files
@@ -96,15 +142,16 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
 
-        Timber.d("IntentHandler MainActivity NewIntent")
+        Timber.d("IntentHandler MainActivity NewIntent $intent")
         intent?.let {
+            Timber.d("IntentHandler MainActivity forwarding Intent ${intent.action}")
             handleIntent(intent)
         }
     }
 
     // check the requested action of the Intent
+    // maybe make class for Intent request
     private fun handleIntent(intent: Intent) {
-        Timber.d("IntentHandler MainActivity forwarding Intent ${intent.action}")
         controllerVM.connectService(
             onConnected = {
                 when (intent.action) {
@@ -119,7 +166,7 @@ class MainActivity : ComponentActivity() {
         Timber.d("IntentHandler MainActivity IntentActionView")
 
         intent.data?.let { uri ->
-            Timber.d("IntentHandler MainActivity handling uri scheme ${uri.scheme}")
+            Timber.d("IntentHandler MainActivity handling uri scheme ${uri.scheme} from $uri")
 
             val uris = uri.toString()
             when (uri.scheme) {
@@ -148,17 +195,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
         } ?: Timber.e("IntentHandler ActionView null Data")
-    }
-
-    private suspend fun Bitmap.squareWithCoil(): Bitmap? {
-        val req = ImageRequest.Builder(this@MainActivity)
-            .diskCachePolicy(CachePolicy.DISABLED)
-            .transformations(CropSquareTransformation())
-            .size(256)
-            .scale(Scale.FILL)
-            .data(this)
-            .build()
-        return ((coil.execute(req).drawable) as BitmapDrawable?)?.bitmap
     }
 
     override fun onDestroy() {

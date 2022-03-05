@@ -25,15 +25,13 @@ class ControllerViewModel @Inject constructor(
     private val repository: SongRepositoryImpl
 ) : ViewModel() {
 
-    // This ViewModel is responsible for managing UI state by Service Event
-
-
-    private val _songList = MutableStateFlow(listOf<Song>())
-    val songList get() = _songList.asStateFlow()
+    // This VM is responsible for Managing Service State and Scoped to Activity
+    // Composable will have their own scoped VM
 
     /** Connector State */
     val serviceState = connector.serviceState
-    fun connectService(onConnected: (MediaController) -> Unit) {
+    fun checkServiceState() = connector.checkServiceState()
+    fun connectService(onConnected: (MediaController) -> Unit = {} ) {
         connector.connectService(onConnected = onConnected)
     }
 
@@ -85,9 +83,6 @@ class ControllerViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            repository.getSongs().collect {
-                _songList.value = it
-            }
             collectPlayerState()
         }
         viewModelScope.launch {

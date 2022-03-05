@@ -1,10 +1,9 @@
 package com.kylentt.mediaplayer.domain.presenter.util
 
 import androidx.media3.common.MediaItem
-import kotlin.random.Random
 
-// The State of App Component such as Service & Playback
-// Provided by Domain & Data Layer
+// TODO: Separate this
+
 sealed class State {
 
     sealed class ServiceState : State() {

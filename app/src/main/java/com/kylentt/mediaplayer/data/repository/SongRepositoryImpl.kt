@@ -16,7 +16,7 @@ import timber.log.Timber
 // Local Repository for available Song
 
 class SongRepositoryImpl(
-    private val source: LocalSourceImpl,
+    private val localSource: LocalSourceImpl,
     private val context: Context,
     private val coil: ImageLoader
 ) : SongRepository {
@@ -25,32 +25,32 @@ class SongRepositoryImpl(
 
     // Just make ALl of them Flow idc just like it
 
-    override suspend fun getSongs(): Flow<List<Song>> = flow {
+    override suspend fun getLocalSongs(): Flow<List<Song>> = flow {
         emit(songList)
-        source.fetchSong().collect {
+        localSource.fetchSong().collect {
             songList = it
             emit(it)
         }
     }
 
-    override suspend fun fetchSongs(): Flow<List<Song>> = flow {
-        source.fetchSong().collect {
+    override suspend fun fetchLocalSongs(): Flow<List<Song>> = flow {
+        localSource.fetchSong().collect {
             emit(it)
         }
     }
 
     suspend fun fetchMetaFromUri(uri: Uri) = withContext(Dispatchers.Default) { flow {
-        source.fetchMetadataFromUri(uri).collect { emit(it) }
+        localSource.fetchMetadataFromUri(uri).collect { emit(it) }
     } }
 
     // Get Data from this uri Column, for now its Display_Name, ByteSize & ( _data or lastModified )
     suspend fun fetchSongsFromDocs(uri : Uri) = withContext(Dispatchers.Default) {
         var list = listOf<Song>()
-        source.fetchSong().collect { list = it }
+        localSource.fetchSong().collect { list = it }
 
         flow { // for now I will just do check then return without brute forcing it
             var toReturn: Pair<Song, List<Song>>? = null
-            source.fetchSongFromDocument(uri).collect { _column ->
+            localSource.fetchSongFromDocument(uri).collect { _column ->
                 _column?.let { column ->
                     val a = column.first
                     val b = column.second

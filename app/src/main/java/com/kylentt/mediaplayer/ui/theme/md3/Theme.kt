@@ -82,12 +82,17 @@ fun MaterialTheme3(
     val systemUiController = rememberSystemUiController()
     val color = if (VersionHelper.isSnowCone()) {
     	val context = LocalContext.current
-		if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+		if (darkTheme) {
+			dynamicDarkColorScheme(context)
+		} else {
+			dynamicLightColorScheme(context)
+		}
 	} else {
 		if (darkTheme) { DarkThemeColors } else { LightThemeColors }
 	}
 
 	systemUiController.setSystemBarsColor(color = Color.Transparent)
+	systemUiController.statusBarDarkContentEnabled = !darkTheme
 
 	MaterialTheme(
 		colorScheme = color,

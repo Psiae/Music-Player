@@ -1,19 +1,27 @@
-package com.kylentt.mediaplayer.ui.landing
+package com.kylentt.mediaplayer.ui.screen.landing
 
 import android.view.animation.OvershootInterpolator
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.TweenSpec
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleObserver
+import androidx.lifecycle.whenResumed
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.kylentt.mediaplayer.R
 import com.kylentt.mediaplayer.domain.presenter.ControllerViewModel
 import com.kylentt.mediaplayer.domain.presenter.util.State.ServiceState
@@ -21,14 +29,22 @@ import kotlinx.coroutines.delay
 
 
 @Composable
-fun PermissionScreen() {
+fun PermissionScreen(
+    navController: NavController,
+) {
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f)),
         contentAlignment = Alignment.Center
     ) {
-        StoragePermissionButton()
+        Column(
+            modifier = Modifier
+                .fillMaxSize(),
+            verticalArrangement = Arrangement.Center
+        ) {
+            StoragePermissionButton()
+        }
     }
 }
 
@@ -44,7 +60,7 @@ fun StoragePermissionButton() {
 
 }
 
-// Temporary Splash Screen if the app opened from Intent which the SplashScreen API won't show for some reason 
+
 @Composable
 fun SplashScreen(navController: NavController, vm: ControllerViewModel) {
     val scale = remember { Animatable(0f) }

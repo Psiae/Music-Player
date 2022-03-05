@@ -65,6 +65,7 @@ class ServiceConnectorImpl(
     // Idk why sometimes it throws NPE when I use lateinit, even tho the listener is supposed to be executed
     // when the computation is Done, looking at this I'll just make stuff nullable instead of lateinit because why not
     // and onConnected is one-time Event so I'm not making lambda list for it.
+
     @MainThread
     override fun connectService(
         onConnected: (MediaController) -> Unit
@@ -88,6 +89,12 @@ class ServiceConnectorImpl(
             }, MoreExecutors.directExecutor())
 
         } else _serviceState.value = State.ServiceState.Error(NullPointerException("Couldn't Initialize Session"))
+    }
+
+    fun checkServiceState() {
+        if (isServiceConnected()) {
+            _serviceState.value = State.ServiceState.Connected
+        } else _serviceState.value = State.ServiceState.Disconnected
     }
 
     // for VM and Service to Toast
@@ -146,6 +153,7 @@ class ServiceConnectorImpl(
 
     // whenever using controller, its already assumed that Service is already connected
     // so i'll delete the onConnect listener
+
     @MainThread
     fun controller(
         onBuffer: (MediaController) -> Unit = {},

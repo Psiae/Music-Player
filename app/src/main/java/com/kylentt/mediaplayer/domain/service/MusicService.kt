@@ -56,7 +56,7 @@ import kotlin.system.exitProcess
 class MusicService : MediaLibraryService() {
 
     companion object {
-        val TAG: String = MusicService::class.java.simpleName
+        val TAG = "MusicService"
         var isActive = false
     }
 
@@ -76,7 +76,7 @@ class MusicService : MediaLibraryService() {
         Timber.d("$TAG onCreate")
         super.onCreate()
         manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
+        notification = PlayerNotificationImpl(this, this)
         registerReceiver()
         initializeSession()
     }
@@ -157,12 +157,6 @@ class MusicService : MediaLibraryService() {
     override fun onUpdateNotification(session: MediaSession): MediaNotification? {
         Timber.d("$TAG OnUpdateNotification")
         mSession = session
-        if (!::notification.isInitialized) {
-            notification = PlayerNotificationImpl(this, this, mSession)
-            sendBroadcast(Intent(PLAYBACK_INTENT)
-                .apply { putExtra(ACTION, ACTION_UNIT) ; setPackage(this@MusicService.packageName) }
-            )
-        }
 
         serviceScope.launch {
             val pict = session.player.currentMediaItem?.mediaMetadata?.artworkData
@@ -180,9 +174,9 @@ class MusicService : MediaLibraryService() {
 
     private suspend fun mapBM(bm: Bitmap?) = withContext(Dispatchers.IO) {
         val req = ImageRequest.Builder(this@MusicService)
-            .diskCachePolicy(CachePolicy.ENABLED)
+            .memoryCachePolicy(CachePolicy.ENABLED)
             .transformations(CropSquareTransformation())
-            .size(256)
+            .size(512)
             .target {  }
             .scale(Scale.FILL)
             .data(bm)
@@ -192,9 +186,9 @@ class MusicService : MediaLibraryService() {
 
     private suspend fun makeBm(uri: Uri?) = withContext(Dispatchers.IO) {
         val req = ImageRequest.Builder(this@MusicService)
-            .diskCachePolicy(CachePolicy.ENABLED)
+            .memoryCachePolicy(CachePolicy.ENABLED)
             .transformations(CropSquareTransformation())
-            .size(256)
+            .size(512)
             .scale(Scale.FILL)
             .data(uri)
             .build()
@@ -225,7 +219,7 @@ class MusicService : MediaLibraryService() {
                         // TODO Another thing to do when Ready
                     }
                     Player.STATE_ENDED -> {
-                        Timber.d("Event PlaybackState STATE_ENDED")
+                        Timber.d("MusicService Event PlaybackState STATE_ENDED")
                         exoEnded()
                         if (!exo.hasNextMediaItem()) exo.pause()
                         // TODO Another thing to do when ENDED
@@ -236,10 +230,23 @@ class MusicService : MediaLibraryService() {
             var retry = true
             override fun onPlayerError(error: PlaybackException) {
                 super.onPlayerError(error)
-                if (error.errorCodeName == "ERROR_CODE_DECODING_FAILED" && retry) {
-                    controller { it.prepare() ; retry = false}
+                if (error.errorCodeName == "ERROR_CODE_DECODING_FAILED") {
+                    controller {
+                        it.stop()
+                        it.prepare()
+                        whenReady {
+                            retry = true
+                        }
+                    }
                 }
-                Timber.d("Event PlaybackException onPlayerError ${error.errorCodeName}")
+                if (error.errorCodeName == "ERROR_CODE_IO_FILE_NOT_FOUND") {
+                    controller {
+                        it.removeMediaItem(it.currentMediaItemIndex)
+                        it.pause()
+                        it.prepare()
+                    }
+                }
+                Timber.d("MusicService PlaybackException onPlayerError ${error.errorCodeName}")
                 serviceToast("Unable to Play This Song ${error.errorCodeName}")
             }
         })
@@ -328,7 +335,7 @@ class MusicService : MediaLibraryService() {
                 ACTION_REPEAT_ALL_TO_OFF -> exo.repeatMode = Player.REPEAT_MODE_OFF
 
                 ACTION_CANCEL -> { session?.let { session ->
-                    exoFade { endSession(session) }
+                    exoFade { stopService(session) }
                     return
                 } }
             }
@@ -337,14 +344,6 @@ class MusicService : MediaLibraryService() {
                 onUpdateNotification(mSession)
             }
         }
-    }
-
-    private fun endSession(session: MediaLibrarySession) {
-        exo.stop()
-        stopSelf()
-        stopForeground(true)
-        isForeground = false
-        if (!MainActivity.isActive) serviceConnectorImpl.releaseSession()
     }
 
     private fun validateNotification(session: MediaSession) = serviceScope.launch {
@@ -378,15 +377,24 @@ class MusicService : MediaLibraryService() {
         ) = mediaItem.rebuild()
     }
 
-    private fun releaseSession() {
-        exo.release()
+    private fun stopService(session: MediaLibrarySession) {
+        exo.stop()
+        stopForeground(true)
+        isForeground = false
+        stopSelf()
+        if (!MainActivity.isActive) releaseSession(session)
+    }
+
+    private fun releaseSession(session: MediaLibrarySession) {
         serviceScope.cancel()
         unregisterReceiver(playbackReceiver)
+        exo.release()
+        serviceConnectorImpl.releaseSession()
+        session.release()
     }
 
     override fun onDestroy() {
         Timber.d("$TAG onDestroy")
-        releaseSession()
         isActive = false
         if (!MainActivity.isActive) exitProcess(0)
         super.onDestroy()

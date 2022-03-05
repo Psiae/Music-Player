@@ -116,7 +116,7 @@ class LocalSourceImpl(
         val req = ImageRequest.Builder(context.applicationContext)
             .diskCachePolicy(CachePolicy.DISABLED)
             .transformations(CropSquareTransformation())
-            .size(256)
+            .size(512)
             .scale(Scale.FILL)
             .data(this)
             .build()

@@ -49,4 +49,9 @@ object Constants {
 
     const val PLAYBACK_INTENT = "com.kylennt.mediaplayer.PLAYBACK_INTENT"
 
+    // UI
+    const val HOME_SCREEN = "HOME_SCREEN"
+    const val PERMISSION_SCREEN = "PERMISSION_SCREEN"
+    const val SPLASH_SCREEN = "SPLASH_SCREEN"
+
 }

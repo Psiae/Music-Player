@@ -11,10 +11,10 @@
             <aapt:attr
                 name="android:fillColor">
                 <gradient
-                    android:startX="2"
-                    android:startY="16"
-                    android:endX="28.79"
-                    android:endY="16"
+                    android:startX="17.5"
+                    android:startY="7"
+                    android:endX="30"
+                    android:endY="20"
                     android:tileMode="clamp">
                     <item
                         android:color="#C5E3F6"

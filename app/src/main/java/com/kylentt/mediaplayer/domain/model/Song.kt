@@ -31,51 +31,6 @@ data class Song(
     val title: String = "", // Embedded Title, without ext e.g : .mp3 / fileName have that one
 )
 
-// Using concatenating list.find{ (a1 == b1 && a2 == b2) || a3.contains(b3) } ?: list.find {another}
-// Doesn't seems fun so i'll just use this for now, just curious, really,  don't scold me
-// Might as well help me in this project :)
-fun List<Song>.findIdentified(
-    iden: String,
-    str: Triple<String?, Pair<String, String>?, Triple<String, String, String>?>,
-): Song? {
-
-    val data = SONG_DATA
-    val byte = SONG_BYTE
-    val fileName = SONG_FILE_NAME
-    val fileParent = SONG_FILE_PARENT
-    val fileParentId = SONG_FILE_PARENT_ID
-    val lastModified = SONG_LAST_MODIFIED
-
-    // absolute single identifier
-    val abs = str.first
-
-    // pair identifier
-    val pair1 = str.second?.first
-    val pair2 = str.second?.second
-
-    // Triple identifier
-    val tri1 = str.third?.first
-    val tri2 = str.third?.second
-    val tri3 = str.third?.third
-
-    // Maybe Quadruple and so on in the future?
-
-    // so far data or path alone is enough, but deprecated so might change with fileName & parent file name
-    // since its practically not possible to have same file name inside a folder unless those
-    // they just make it possible for god only knows reason?
-    if (iden == data) {
-        Timber.d("IntentHandler try find with $data")
-        find { song -> abs == song.data }?.let { return it } ?: findIdentified(lastModified, str)
-    }
-
-    if (iden == lastModified) {
-        Timber.d("IntentHandler try find with $tri1 && $tri2 && $tri3")
-        return find { song -> tri1?.contains(song.lastModified.toString()) == true && tri2 == song.byteSize.toString() && tri3 == song.fileName}
-    }
-
-    return null
-}
-
 fun List<Song>.toMediaItems(): List<MediaItem> {
     return map { it.toMediaItem() }
 }

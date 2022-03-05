@@ -1,10 +1,10 @@
-package com.kylentt.mediaplayer.ui.theme
+package com.kylentt.mediaplayer.ui.theme.defaults
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.darkColors
 import androidx.compose.material.lightColors
-import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
@@ -53,6 +53,11 @@ fun MediaPlayerTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Compo
         content = content
     )
 }
+
+private val lightColorScheme = lightColorScheme(
+    primary = Purple500,
+
+)
 
 private val LightColorPalette3 = lightColors(
     primary = Purple500,

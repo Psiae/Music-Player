@@ -1,21 +1,20 @@
 package com.kylentt.mediaplayer.domain.presenter
 
-import android.content.Intent
 import android.net.Uri
+import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
-import androidx.media3.common.Player
-import com.kylentt.mediaplayer.core.util.Constants.ACTION
-import com.kylentt.mediaplayer.core.util.Constants.ACTION_FADE
-import com.kylentt.mediaplayer.core.util.Constants.ACTION_FADE_PAUSE
-import com.kylentt.mediaplayer.core.util.Constants.ACTION_PAUSE
-import com.kylentt.mediaplayer.core.util.Constants.PLAYBACK_INTENT
-import com.kylentt.mediaplayer.core.util.Constants.SONG_DATA
-import com.kylentt.mediaplayer.core.util.Constants.SONG_LAST_MODIFIED
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.common.MediaItem
+import androidx.media3.session.MediaController
 import com.kylentt.mediaplayer.data.repository.SongRepositoryImpl
-import com.kylentt.mediaplayer.domain.model.findIdentified
+import com.kylentt.mediaplayer.domain.model.Song
 import com.kylentt.mediaplayer.domain.model.toMediaItems
+import com.kylentt.mediaplayer.domain.presenter.util.State
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import timber.log.Timber
 import javax.inject.Inject
@@ -28,22 +27,81 @@ class ControllerViewModel @Inject constructor(
 
     // This ViewModel is responsible for managing UI state by Service Event
 
+
+    private val _songList = MutableStateFlow(listOf<Song>())
+    val songList get() = _songList.asStateFlow()
+
     /** Connector State */
-    val mediaItems = connector.mediaItems
-    val mediaItem = connector.mediaItem
-    val isPlaying = connector.isPlaying
-    val playerIndex = connector.playerIndex
+    val serviceState = connector.serviceState
+    fun connectService(onConnected: (MediaController) -> Unit) {
+        connector.connectService(onConnected = onConnected)
+    }
+
+    val playerPlaybackState = mutableStateOf<State.PlayerState.PlayerPlaybackState>(State.PlayerState.PlayerPlaybackState.Unit)
+    val playerCurrentPlaystate = mutableStateOf("Unit")
+    val playerCurrentMediaItem = mutableStateOf(MediaItem.EMPTY)
+
     val position = connector.position
     val duration = connector.duration
+
+    private suspend fun collectPlayerItemState() {
+        connector.playerItemState.collect {
+            when (it) {
+                is State.PlayerState.PlayerItemState.CurrentlyPlaying -> {
+                    playerCurrentMediaItem.value = it.CurrentMediaItem
+                }
+            }
+        }
+    }
+
+    // TODO : some processing
+    private suspend fun collectPlayerState() {
+        connector.playerPlaybackState.collect {
+            when (it) {
+                is State.PlayerState.PlayerPlaybackState.Idle -> {
+                    playerPlaybackState.value = it
+                    playerCurrentPlaystate.value = "Idle"
+                }
+                is State.PlayerState.PlayerPlaybackState.Buffering -> {
+                    playerPlaybackState.value = it
+                    playerCurrentPlaystate.value = "Buffering"
+                }
+                is State.PlayerState.PlayerPlaybackState.Ready -> {
+                    playerPlaybackState.value = it
+                    playerCurrentPlaystate.value = "Ready"
+                }
+                is State.PlayerState.PlayerPlaybackState.Ended -> {
+                    playerPlaybackState.value = it
+                    playerCurrentPlaystate.value = "Ended"
+                }
+                is State.PlayerState.PlayerPlaybackState.Error -> {
+                    playerPlaybackState.value = it
+                    playerCurrentPlaystate.value = "Error"
+                }
+                else -> { Unit }
+            }
+        }
+    }
+
+    init {
+        viewModelScope.launch {
+            repository.getSongs().collect {
+                _songList.value = it
+            }
+            collectPlayerState()
+        }
+        viewModelScope.launch {
+            collectPlayerItemState()
+        }
+    }
 
     /** Intent Handler */
 
     // Intent From Document Provider like FileManager
     suspend fun handleDocsIntent(uri: Uri) = withContext(Dispatchers.Main) {
         Timber.d("IntentHandler ViewModel DocsIntent")
-        if (!connector.isServiceConnected()) connector.connectService()
         repository.fetchSongsFromDocs(uri).collect {
-            Timber.d("IntentHandler ViewModel DocsIntent ${it?.first} ${it?.second}")
+            Timber.d("IntentHandler ViewModel DocsIntent ${it?.first} ${it?.second?.size}")
             it?.let { connector.readyWithFade { controller ->
                 controller.setMediaItems(it.second.toMediaItems(), it.second.indexOf(it.first), 0)
                 controller.prepare()
@@ -54,7 +112,6 @@ class ControllerViewModel @Inject constructor(
 
     suspend fun handleItemIntent(uri: Uri) = withContext(Dispatchers.Main) {
         Timber.d("IntentHandler ItemIntent $uri")
-        if (!connector.isServiceConnected()) connector.connectService()
         repository.fetchMetaFromUri(uri).collect { _item ->
             _item?.let { item -> connector.readyWithFade {
                 it.setMediaItems(listOf(item),0,0)
@@ -65,66 +122,8 @@ class ControllerViewModel @Inject constructor(
         }
     }
 
-    /*private suspend fun handlePlayIntentFromRepo(
-        name: String,
-        byte: Long,
-        identifier: String,
-        uri: Uri
-    ) = withContext(Dispatchers.IO) { repository.fetchSongs().collect { list ->
-        val identified = when {
-            identifier.endsWith(name) -> SONG_DATA
-            else -> SONG_LAST_MODIFIED
-        }
-
-        val song = identified.let {
-            Timber.d("IntentHandler Repo Identified as $identified")
-            list.findIdentified( iden = it, str = Triple(
-                first = identifier,
-                second = Pair(identifier, name),
-                third = Triple(identifier, byte.toString(), name)
-            )).also { it?.let { Timber.d("IntentHandler Repo Handled with Identifier $identified $identifier") } }
-        } ?: run { Timber.d("IntentHandler Unable to Find with $identifier")
-            list.find {
-                identifier.trim() == it.data.trim()
-            } ?: list.find {
-                identifier.contains(it.lastModified.toString()) && it.fileName == name
-            } ?: list.find {
-                identifier.contains(it.lastModified.toString()) && it.byteSize == byte
-            } ?: list.find {
-                it.fileName == name && it.byteSize == byte
-            } ?: run {
-                handleItemIntent(uri)
-                Timber.d("IntentHandler Repository not Found, Forwarding with Uri")
-                Timber.d("IntentHandler Repository to Uri with $name $byte $identifier")
-                null
-            }
-        }
-
-        song?.let {
-            *//*connector.broadcast(Intent(PLAYBACK_INTENT).apply { putExtra(ACTION, ACTION_FADE_PAUSE) })*//*
-            withContext(Dispatchers.Main) {
-                connector.exoFade {
-                    Timber.d("IntentHandler Repository File Found, Handled with Repo")
-                    it.setMediaItems(list.toMediaItems(), list.indexOf(song), 0)
-                    it.prepare()
-                    it.playWhenReady = true
-                    Timber.d("IntentHandler Repository Handled $name $byte $identifier")
-                }
-            }
-        }
-    } }*/
-
     private val mainUpdater = CoroutineScope( Dispatchers.Main + Job() )
     private val ioUpdater = CoroutineScope( Dispatchers.IO + Job() )
-
-    init {
-        /*connector.connectService()
-        ioUpdater.launch {
-            connector.positionEmitter().collect {
-                Timber.d("positionEmitter isValid $it")
-            }
-        }*/
-    }
 
     override fun onCleared() {
         super.onCleared()

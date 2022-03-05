@@ -4,6 +4,10 @@ import kotlin.reflect.KMutableProperty
 import kotlin.reflect.KMutableProperty0
 import kotlin.reflect.KProperty
 
+sealed class STATE() {
+    class STATE_CHECKING() : STATE()
+}
+
 fun Any?.isNull() = this == null
 
 fun Int?.orInv() = this ?: -1

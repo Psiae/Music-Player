@@ -25,14 +25,18 @@ class SongRepositoryImpl(
 
     // Just make ALl of them Flow idc just like it
 
-    override suspend fun getSongs(): Flow<List<Song>> = flow { emit(songList)
-        source.fetchSong().collect { songList = it
+    override suspend fun getSongs(): Flow<List<Song>> = flow {
+        emit(songList)
+        source.fetchSong().collect {
+            songList = it
             emit(it)
         }
     }
 
     override suspend fun fetchSongs(): Flow<List<Song>> = flow {
-        source.fetchSong().collect { songList = it ; emit(it)}
+        source.fetchSong().collect {
+            emit(it)
+        }
     }
 
     suspend fun fetchMetaFromUri(uri: Uri) = withContext(Dispatchers.Default) { flow {

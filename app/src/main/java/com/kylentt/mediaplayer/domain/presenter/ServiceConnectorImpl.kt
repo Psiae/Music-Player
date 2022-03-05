@@ -3,8 +3,6 @@ package com.kylentt.mediaplayer.domain.presenter
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.media.session.PlaybackState
-import android.media.session.PlaybackState.STATE_PLAYING
 import android.widget.Toast
 import androidx.annotation.MainThread
 import androidx.media3.common.MediaItem
@@ -15,6 +13,7 @@ import androidx.media3.session.SessionToken
 import coil.ImageLoader
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
+import com.kylentt.mediaplayer.domain.presenter.util.State
 import com.kylentt.mediaplayer.domain.service.MusicService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -29,21 +28,21 @@ import timber.log.Timber
 class ServiceConnectorImpl(
     val context: Context,
     val coil: ImageLoader
-) : ServiceConnector {
+) : MusicServiceConnector {
 
     // TODO: Find suitable usage of MediaBrowser
 
-    private val _isPlaying = MutableStateFlow<Boolean?>(null)
-    val isPlaying = _isPlaying.asStateFlow()
+    private val _serviceState = MutableStateFlow<State.ServiceState>(State.ServiceState.Disconnected)
+    val serviceState = _serviceState.asStateFlow()
 
-    private val _playerIndex = MutableStateFlow<Int?>(null)
-    val playerIndex = _playerIndex.asStateFlow()
+    private val _playerPlaybackState = MutableStateFlow<State.PlayerState.PlayerPlaybackState>(State.PlayerState.PlayerPlaybackState.Unit)
+    val playerPlaybackState = _playerPlaybackState.asStateFlow()
 
-    private val _mediaItem = MutableStateFlow<MediaItem?>(null)
-    val mediaItem = _mediaItem.asStateFlow()
+    private val _playerPlayState = MutableStateFlow<State.PlayerState.PlayerPlayState>(State.PlayerState.PlayerPlayState.PlayWhenReadyDisabled)
+    val playerPlayState = _playerPlayState.asStateFlow()
 
-    private val _mediaItems = MutableStateFlow<List<MediaItem>?>(null)
-    val mediaItems = _mediaItems.asStateFlow()
+    private val _playerItemState = MutableStateFlow<State.PlayerState.PlayerItemState>(State.PlayerState.PlayerItemState.CurrentlyPlaying(-1, MediaItem.EMPTY, emptyList()))
+    val playerItemState = _playerItemState.asStateFlow()
 
     private val _position = MutableStateFlow(-1L)
     val position = _position.asStateFlow()
@@ -58,33 +57,66 @@ class ServiceConnectorImpl(
         if (isServiceConnected()) mediaController.duration else -1L
     }
 
+    // Media
+    private var sessionToken: SessionToken? = null
+    private var futureMediaController: ListenableFuture<MediaController>? = null
+    private lateinit var mediaController: MediaController
+
+    // Idk why sometimes it throws NPE when I use lateinit, even tho the listener is supposed to be executed
+    // when the computation is Done, looking at this I'll just make stuff nullable instead of lateinit because why not
+    // and onConnected is one-time Event so I'm not making lambda list for it.
+    @MainThread
+    override fun connectService(
+        onConnected: (MediaController) -> Unit
+    ) {
+        if (isServiceConnected()) {
+            onConnected(mediaController)
+            return
+        }
+
+        _serviceState.value = State.ServiceState.Connecting
+        sessionToken = SessionToken(context, ComponentName(context, MusicService::class.java))
+        futureMediaController = MediaController.Builder(context, sessionToken!!).buildAsync()
+
+        if (sessionToken != null && futureMediaController != null) {
+
+            futureMediaController!!.addListener( {
+                mediaController = futureMediaController!!.get()
+                setupController(mediaController)
+                onConnected(mediaController)
+                _serviceState.value = State.ServiceState.Connected
+            }, MoreExecutors.directExecutor())
+
+        } else _serviceState.value = State.ServiceState.Error(NullPointerException("Couldn't Initialize Session"))
+    }
+
     // for VM and Service to Toast
     fun connectorToast(msg: String) = Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
 
     private var fading = false
     suspend fun readyWithFade(listener: (MediaController) -> Unit) {
         if (fading || !isServiceConnected()) {
-            Timber.d("AudioEvent FadingAudio Skipped")
-            controller(onConnected = listener)
+            Timber.d("ServiceConnector AudioEvent FadingAudio Skipped")
+            controller(onReady = listener)
             return
         }
         fading = true
 
-        while (mediaController.volume > 0.1f && mediaController.playWhenReady) {
-            Timber.d("AudioEvent FadingAudio ${mediaController.volume}")
+        while (mediaController.volume > 0.11f && mediaController.playWhenReady) {
+            Timber.d("ServiceConnector AudioEvent FadingAudio ${mediaController.volume}")
             mediaController.volume = mediaController.volume -0.1f
             delay(100)
         }
 
+        listener(mediaController)
         controller(
-            onConnected = listener,
             onReady = {
                 fading = false
                 it.volume = 1f
             }
         )
 
-        Timber.d("MusicService Event AudioFaded ${mediaController.volume}")
+        Timber.d("ServiceConnector Event AudioFaded ${mediaController.volume}")
     }
 
     suspend fun positionEmitter() = flow {
@@ -100,12 +132,6 @@ class ServiceConnectorImpl(
         }
     }.conflate()
 
-    // Media
-    private var sessionToken: SessionToken? = null
-    private lateinit var futureMediaController: ListenableFuture<MediaController>
-    private lateinit var mediaController: MediaController
-    private val _mediaController: MediaController?
-        get() = if (futureMediaController.isDone) futureMediaController.get() else null
 
     override fun isServiceConnected(): Boolean {
         if (sessionToken == null) return false
@@ -118,28 +144,19 @@ class ServiceConnectorImpl(
         mediaController.release()
     }
 
+    // whenever using controller, its already assumed that Service is already connected
+    // so i'll delete the onConnect listener
     @MainThread
     fun controller(
         onBuffer: (MediaController) -> Unit = {},
         onEnded: (MediaController) -> Unit = {},
         onIdle: (MediaController) -> Unit = {},
-        onReady: (MediaController) -> Unit = {},
-        onConnected: (MediaController) -> Unit = {},
-    ): Boolean {
-        if (!isServiceConnected()) {
-            controlConnectListener.add(onBuffer)
-            controlConnectListener.add(onConnected)
-            controlConnectListener.add(onEnded)
-            controlConnectListener.add(onIdle)
-            controlConnectListener.add(onReady)
-            return false
-        }
-        onConnected(mediaController)
+        onReady: (MediaController) -> Unit = {}
+    ) {
         whenIdle(onIdle)
         whenBuffer(onBuffer)
         whenReady(onReady)
         whenEnded(onEnded)
-        return true
     }
 
     private fun isPlayerIdling() = mediaController.playbackState == Player.STATE_IDLE
@@ -147,42 +164,49 @@ class ServiceConnectorImpl(
     private fun isPlayerReady() = mediaController.playbackState == Player.STATE_READY
     private fun isPlayerEnded() = mediaController.playbackState == Player.STATE_ENDED
 
-
-    var connecting = false
-
-    @MainThread
-    override fun connectService(): Boolean {
-        if (isServiceConnected() || connecting) {
-            controlConnected()
-            Timber.d("Service Already Connected, returning...")
-            return true
-        }
-        Timber.d("Service Not Connected, Connecting...")
-        connecting = true
-
-        sessionToken = SessionToken(context, ComponentName(context, MusicService::class.java))
-
-        futureMediaController = MediaController.Builder(context, sessionToken!!).buildAsync()
-        futureMediaController.addListener( {
-            mediaController = _mediaController!!
-            setupController(mediaController)
-            controlConnected()
-        }, MoreExecutors.directExecutor())
-
-        return (_mediaController != null)
-    }
-
     private fun setupController(controller: MediaController) {
         with(controller) {
             addListener( object : Player.Listener {
                 override fun onPlaybackStateChanged(playbackState: Int) {
                     super.onPlaybackStateChanged(playbackState)
                     when (playbackState) {
-                        Player.STATE_IDLE -> controlIdle()
-                        Player.STATE_BUFFERING -> controlBuffer()
-                        Player.STATE_READY -> controlReady()
-                        Player.STATE_ENDED -> controlEnded()
+                        Player.STATE_IDLE -> {
+                            controlIdle()
+                            _playerPlaybackState.value = State.PlayerState.PlayerPlaybackState.Idle
+                        }
+                        Player.STATE_BUFFERING -> {
+                            controlBuffer()
+                            _playerPlaybackState.value = State.PlayerState.PlayerPlaybackState.Buffering
+                        }
+                        Player.STATE_READY -> {
+                            controlReady()
+                            _playerPlaybackState.value = State.PlayerState.PlayerPlaybackState.Ready
+                        }
+                        Player.STATE_ENDED -> {
+                            controlEnded()
+                            _playerPlaybackState.value = State.PlayerState.PlayerPlaybackState.Ended
+                        }
                     }
+                }
+
+                override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
+                    super.onMediaMetadataChanged(mediaMetadata)
+                    val list = mutableListOf<MediaItem>()
+                    for (i in 0 until mediaController.mediaItemCount) {
+                        list.add(mediaController.getMediaItemAt(i))
+                    }
+                    _playerItemState.value = State.PlayerState.PlayerItemState.CurrentlyPlaying(
+                        mediaController.currentMediaItemIndex,
+                        mediaController.currentMediaItem ?: MediaItem.EMPTY,
+                        list
+                    )
+                }
+
+                override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+                    super.onPlayWhenReadyChanged(playWhenReady, reason)
+                    _playerPlayState.value =
+                        if (playWhenReady) State.PlayerState.PlayerPlayState.PlayWhenReadyEnabled
+                        else State.PlayerState.PlayerPlayState.PlayWhenReadyDisabled
                 }
             })
         }
@@ -197,17 +221,11 @@ class ServiceConnectorImpl(
     private var controlBufferListener = mutableListOf<( (MediaController) -> Unit )>()
     private var controlEndedListener = mutableListOf<( (MediaController) -> Unit )>()
     private var controlIdleListener = mutableListOf<( (MediaController) -> Unit)>()
-    private var controlConnectListener = mutableListOf<( (MediaController) -> Unit )>()
-
-    private var locke = Any()
-    private fun controlConnected() = synchronized(locke) { controlConnectListener.forEach { it(mediaController) }
-        this.controlReadyListener.clear()
-    }
 
     // executed when Player.STATE changed
     private var lock = Any()
     private fun controlReady() = synchronized(lock) { controlReadyListener.forEach { it(mediaController) }
-        this.controlReadyListener.clear()
+        controlReadyListener.clear()
     }
     private var lock1 = Any()
     private fun controlBuffer() = synchronized(lock1) { controlBufferListener.forEach { it(mediaController) }
@@ -252,14 +270,5 @@ class ServiceConnectorImpl(
         if (mediaController.playbackState == Player.STATE_IDLE) {
             command(mediaController)
         } else this.controlReadyListener.add(command)
-    }
-
-
-    companion object {
-        @MainThread
-        fun executeOnReady(serviceConnectorImpl: ServiceConnectorImpl, caller: String) {
-            Timber.d("ServiceConnector executeOnReady $caller")
-            serviceConnectorImpl.controlConnected()
-        }
     }
 }

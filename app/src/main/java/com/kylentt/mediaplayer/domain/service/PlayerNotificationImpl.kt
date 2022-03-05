@@ -40,7 +40,6 @@ import com.kylentt.mediaplayer.domain.model.getSubtitle
 class PlayerNotificationImpl(
     private val service: MusicService,
     private val context: Context,
-    private val session: MediaSession
 ) {
     private val manager = context.getSystemService(
         Context.NOTIFICATION_SERVICE

@@ -27,7 +27,8 @@
             android:name="com.kylentt.mediaplayer.domain.service.MusicService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="mediaPlayback">
+            android:foregroundServiceType="mediaPlayback"
+            >
             <intent-filter>
                 <action android:name="androidx.media3.session.MediaLibraryService"/>
             </intent-filter>

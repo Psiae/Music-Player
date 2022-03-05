@@ -9,7 +9,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material.MaterialTheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -24,7 +24,8 @@ import com.kylentt.mediaplayer.core.util.Constants.PROVIDER_COLOROS_FM
 import com.kylentt.mediaplayer.core.util.Constants.PROVIDER_DRIVE_LEGACY
 import com.kylentt.mediaplayer.core.util.Constants.PROVIDER_EXTERNAL_STORAGE
 import com.kylentt.mediaplayer.domain.presenter.ControllerViewModel
-import com.kylentt.mediaplayer.ui.theme.MediaPlayerTheme3
+import com.kylentt.mediaplayer.domain.presenter.util.State.ServiceState
+import com.kylentt.mediaplayer.ui.theme.md3.MaterialTheme3
 import dagger.hilt.android.AndroidEntryPoint
 import jp.wasabeef.transformers.coil.CropSquareTransformation
 import kotlinx.coroutines.launch
@@ -45,29 +46,44 @@ class MainActivity : ComponentActivity() {
     private val controllerVM: ControllerViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen().apply {}
         super.onCreate(savedInstanceState)
+        Timber.d("InitDebug MainActivity onCreate")
         isActive = true
 
-        WindowCompat.setDecorFitsSystemWindows(this.window, false)
-
+        // Connect to the Service then handle Intent that opens this App
         onNewIntent(intent)
 
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        installSplashScreen()
+            .apply {
+                setKeepOnScreenCondition {
+                    when (controllerVM.serviceState.value) {
+                        is ServiceState.Disconnected, is ServiceState.Connecting -> true
+                        else -> false
+                    }
+                }
+                /* TODO: setOnExitAnimationListener { } */
+                Timber.d("InitDebug MainActivity STATE SplashScreen")
+            }
+
+        val havePermission = checkPermission()
         setContent {
-            MediaPlayerTheme3 {
+            MaterialTheme3 {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colors.background
+                    color = MaterialTheme.colorScheme.background
                 ) {
-                    Navigation()
+                    Navigation(
+                        start = when {
+                            !havePermission -> Screen.PermissionScreen.route
+                            else -> Screen.HomeScreen.route
+                        },
+                        vm = controllerVM
+                    ) {
+                        // TODO something todo after navigation?
+                    }
                 }
             }
-        }
-
-
-        // Check For Storage Permission
-        if (checkPermission()) {
-            // TODO: Permission Screen
         }
     }
 
@@ -89,10 +105,13 @@ class MainActivity : ComponentActivity() {
     // check the requested action of the Intent
     private fun handleIntent(intent: Intent) {
         Timber.d("IntentHandler MainActivity forwarding Intent ${intent.action}")
-
-        when (intent.action) {
-            Intent.ACTION_VIEW -> handleIntentActionView(intent)
-        }
+        controllerVM.connectService(
+            onConnected = {
+                when (intent.action) {
+                    Intent.ACTION_VIEW -> handleIntentActionView(intent)
+                }
+            }
+        )
     }
 
     // check for Data Availability then forward it to ControllerVM
@@ -144,8 +163,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         isActive = false
-        applicationContext.externalCacheDir?.deleteRecursively()
-        applicationContext.cacheDir.deleteRecursively()
         super.onDestroy()
     }
 }

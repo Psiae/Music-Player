@@ -1,4 +1,4 @@
-package com.kylentt.mediaplayer.ui.theme
+package com.kylentt.mediaplayer.ui.theme.defaults
 
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Shapes

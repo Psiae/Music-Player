@@ -3,15 +3,12 @@ package com.kylentt.mediaplayer.ui.theme.md3
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
-import com.google.android.material.color.MaterialColors
 import com.kylentt.mediaplayer.core.util.VersionHelper
 import com.kylentt.mediaplayer.ui.theme.md3.*
+import timber.log.Timber
 
 private val LightThemeColors = lightColorScheme(
 
@@ -78,6 +75,7 @@ fun MaterialTheme3(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
+	Timber.d("ComposeDebug MaterialTheme3")
 
     val systemUiController = rememberSystemUiController()
     val color = if (VersionHelper.isSnowCone()) {
@@ -91,7 +89,6 @@ fun MaterialTheme3(
 		if (darkTheme) { DarkThemeColors } else { LightThemeColors }
 	}
 
-	TextColor = if (darkTheme) Color.White else MaterialTheme.colorScheme.onSurface
 	systemUiController.setStatusBarColor(Color.Transparent)
 	systemUiController.statusBarDarkContentEnabled = !darkTheme
 	systemUiController.navigationBarDarkContentEnabled = !darkTheme

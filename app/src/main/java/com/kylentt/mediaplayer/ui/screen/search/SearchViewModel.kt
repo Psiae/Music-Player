@@ -1,4 +1,4 @@
-package com.kylentt.mediaplayer.ui.screen.main.search
+package com.kylentt.mediaplayer.ui.screen.search
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

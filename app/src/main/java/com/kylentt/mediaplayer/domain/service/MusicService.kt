@@ -13,6 +13,7 @@ import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.os.Looper
 import androidx.annotation.MainThread
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -23,6 +24,7 @@ import coil.ImageLoader
 import coil.request.CachePolicy
 import coil.request.ImageRequest
 import coil.size.Scale
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.kylentt.mediaplayer.core.util.Constants.ACTION
 import com.kylentt.mediaplayer.core.util.Constants.ACTION_CANCEL
 import com.kylentt.mediaplayer.core.util.Constants.ACTION_FADE
@@ -52,6 +54,7 @@ import kotlin.system.exitProcess
 
 // Service for UI to interact With ViewModel Controller through Music Service Connector
 
+@OptIn(ExperimentalPermissionsApi::class)
 @AndroidEntryPoint
 class MusicService : MediaLibraryService() {
 
@@ -71,7 +74,7 @@ class MusicService : MediaLibraryService() {
 
     private val serviceScope = (CoroutineScope(Dispatchers.Main + SupervisorJob()))
 
-    /** onCreate() called before onGetSession*/
+    // onCreate() called before onGetSession
     override fun onCreate() {
         Timber.d("$TAG onCreate")
         super.onCreate()
@@ -81,27 +84,26 @@ class MusicService : MediaLibraryService() {
         initializeSession()
     }
 
-    /** Player */
-    // Idk if its good approach
+    // Player
     private var exoReadyListener = mutableListOf<( (ExoPlayer) -> Unit )>()
     private var exoBufferListener = mutableListOf<( (ExoPlayer) -> Unit )>()
     private var exoEndedListener = mutableListOf<( (ExoPlayer) -> Unit )>()
     private var exoIdleListener = mutableListOf<( (ExoPlayer) -> Unit)>()
 
     // executed when Player.STATE changed
-    private var lock = Any()
+    private val lock = Any()
     fun exoReady() = synchronized(lock) { exoReadyListener.forEach { it(exo) }
         exoReadyListener.clear()
     }
-    private var lock1 = Any()
+    private val lock1 = Any()
     fun exoBuffer() = synchronized(lock1) { exoBufferListener.forEach { it(exo) }
         exoBufferListener.clear()
     }
-    private var lock2 = Any()
+    private val lock2 = Any()
     fun exoEnded() = synchronized(lock2) { exoEndedListener.forEach { it(exo) }
         exoEndedListener.clear()
     }
-    private var lock3 = Any()
+    private val lock3 = Any()
     fun exoIdle() = synchronized(lock3) { exoIdleListener.forEach { it(exo) }
         exoIdleListener.clear()
     }
@@ -145,10 +147,10 @@ class MusicService : MediaLibraryService() {
     }
 
     /** MediaSession & Notification */
-    private lateinit var mSession: MediaSession
+    private var mSession: MediaSession? = null
+    private var mNotif: Notification? = null
     private lateinit var manager: NotificationManager
     private lateinit var notification: PlayerNotificationImpl
-    private lateinit var mNotif: Notification
 
     private var isForeground = false
 
@@ -177,7 +179,6 @@ class MusicService : MediaLibraryService() {
             .memoryCachePolicy(CachePolicy.ENABLED)
             .transformations(CropSquareTransformation())
             .size(512)
-            .target {  }
             .scale(Scale.FILL)
             .data(bm)
             .build()
@@ -214,7 +215,7 @@ class MusicService : MediaLibraryService() {
                     }
                     Player.STATE_READY -> {
                         Timber.d("Event PlaybackState STATE_READY")
-                        if (::mSession.isInitialized) validateNotification(mSession)
+                        mSession?.let { validateNotification(it) }
                         exoReady()
                         // TODO Another thing to do when Ready
                     }
@@ -282,7 +283,6 @@ class MusicService : MediaLibraryService() {
         if (it.playbackState == Player.STATE_ENDED && !it.hasNextMediaItem()) it.seekTo(0)
         if (it.playbackState == Player.STATE_ENDED && it.hasNextMediaItem()) it.seekToNextMediaItem()
         it.playWhenReady = !it.playWhenReady
-        if (::mSession.isInitialized) validateNotification(mSession)
     }
 
     fun play() = controller { it.play() }
@@ -340,9 +340,7 @@ class MusicService : MediaLibraryService() {
                 } }
             }
 
-            if (::mSession.isInitialized) {
-                onUpdateNotification(mSession)
-            }
+            mSession?.let { validateNotification(it) }
         }
     }
 

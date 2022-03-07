@@ -4,17 +4,13 @@ import android.net.Uri
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.MediaItem
 import androidx.media3.session.MediaController
 import com.kylentt.mediaplayer.data.repository.SongRepositoryImpl
-import com.kylentt.mediaplayer.domain.model.Song
 import com.kylentt.mediaplayer.domain.model.toMediaItems
 import com.kylentt.mediaplayer.domain.presenter.util.State
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import timber.log.Timber
 import javax.inject.Inject
@@ -24,9 +20,6 @@ class ControllerViewModel @Inject constructor(
     private val connector: ServiceConnectorImpl,
     private val repository: SongRepositoryImpl
 ) : ViewModel() {
-
-    // This VM is responsible for Managing Service State and Scoped to Activity
-    // Composable will have their own scoped VM
 
     /** Connector State */
     val serviceState = connector.serviceState

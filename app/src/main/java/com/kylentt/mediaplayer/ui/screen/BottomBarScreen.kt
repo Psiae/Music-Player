@@ -1,10 +1,9 @@
-package com.kylentt.mediaplayer.ui.screen.main
+package com.kylentt.mediaplayer.ui.screen
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.ui.graphics.vector.ImageVector
-import com.kylentt.mediaplayer.ui.screen.Screen
 
 sealed class BottomBarScreen(
     val route: String,

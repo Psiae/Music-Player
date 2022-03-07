@@ -6,21 +6,11 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
-import androidx.navigation.NavController
-import androidx.navigation.NavGraphBuilder
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navigation
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.kylentt.mediaplayer.core.util.Constants.PROVIDER_ANDROID
 import com.kylentt.mediaplayer.core.util.Constants.PROVIDER_COLOROS_FM
@@ -28,9 +18,6 @@ import com.kylentt.mediaplayer.core.util.Constants.PROVIDER_DRIVE_LEGACY
 import com.kylentt.mediaplayer.core.util.Constants.PROVIDER_EXTERNAL_STORAGE
 import com.kylentt.mediaplayer.domain.presenter.ControllerViewModel
 import com.kylentt.mediaplayer.domain.presenter.util.State.ServiceState
-import com.kylentt.mediaplayer.ui.screen.*
-import com.kylentt.mediaplayer.ui.screen.landing.PermissionScreen
-import com.kylentt.mediaplayer.ui.screen.main.MainScreen
 import com.kylentt.mediaplayer.ui.theme.md3.MaterialTheme3
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -46,7 +33,6 @@ class MainActivity : ComponentActivity() {
     }
 
     private val controllerVM: ControllerViewModel by viewModels()
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -67,71 +53,13 @@ class MainActivity : ComponentActivity() {
                         else -> false
                     }
                 }
-
-                /* TODO: setOnExitAnimationListener { } */
+                // TODO: setOnExitAnimationListener { }
             }
 
         setContent {
+            Timber.d("ComposeDebug setContent")
             MaterialTheme3 {
                 Root()
-            }
-        }
-    }
-
-    @Composable
-    fun Root() {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background
-        ) {
-            RootNavigation()
-        }
-    }
-
-    @Composable
-    fun RootNavigation() {
-        val rootNavController = rememberNavController()
-
-        NavHost(
-            navController = rootNavController,
-            startDestination = Main_route,
-            route = Root_route
-        ) {
-            // TODO : landingNavGraph
-            mainNavGraph(navController = rootNavController)
-            extraNavGraph(navController = rootNavController)
-        }
-    }
-
-    // Navigation that have the Bottom Navigation Bar.
-    // basically the NavGraph that have the Screen in which it display the Main Functionality of this App
-    fun NavGraphBuilder.mainNavGraph(
-        navController: NavHostController
-    ) {
-        navigation(
-            startDestination = Screen.MainScreen.route,
-            route = Main_route
-        ) {
-            composable(Screen.MainScreen.route) {
-                MainScreen(rootController = navController)
-            }
-        }
-    }
-
-    // extra's composable which is basically the old `Permission_Activity` or `Settings_Activity`
-    // or them as Fragment in which is navigate-able globally
-    fun NavGraphBuilder.extraNavGraph(
-        navController: NavController
-    ) {
-        navigation(
-            startDestination = Screen.PermissionScreen.route,
-            route = Extra_route
-        ) {
-            composable(Screen.PermissionScreen.route) {
-                PermissionScreen(navController)
-            }
-            composable(Screen.SettingsScreen.route) {
-                // TODO: Settings Screen
             }
         }
     }
@@ -148,8 +76,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // check the requested action of the Intent
-    // maybe make class for Intent request
     private fun handleIntent(intent: Intent) {
         controllerVM.connectService(
             onConnected = {
@@ -160,7 +86,6 @@ class MainActivity : ComponentActivity() {
         )
     }
 
-    // check for Data Availability then forward it to ControllerVM
     private fun handleIntentActionView(intent: Intent) {
         Timber.d("IntentHandler MainActivity IntentActionView")
 

@@ -11,6 +11,7 @@ import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.widget.Toast
+import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import coil.ImageLoader
@@ -19,7 +20,7 @@ import coil.request.ImageRequest
 import coil.size.Scale
 import com.kylentt.mediaplayer.core.util.Constants.ALBUM_ART_PATH
 import com.kylentt.mediaplayer.core.util.VersionHelper
-import com.kylentt.mediaplayer.core.util.removeSuffix
+import com.kylentt.mediaplayer.core.util.getEmbed
 import com.kylentt.mediaplayer.domain.model.Song
 import com.kylentt.mediaplayer.domain.model.getDisplayTitle
 import jp.wasabeef.transformers.coil.CropSquareTransformation
@@ -27,13 +28,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
-import org.jetbrains.annotations.Contract
 import timber.log.Timber
 import java.io.ByteArrayOutputStream
 
 class LocalSourceImpl(
     private val context: Context,
-    private val coil: ImageLoader
+    private val coil: ImageLoader,
 ) : LocalSource {
 
     // simply query Audio Files from MediaStore
@@ -112,7 +112,7 @@ class LocalSourceImpl(
         }
     } }
 
-    private suspend fun Bitmap.squareWithCoil(): Bitmap? {
+    suspend fun Bitmap.squareWithCoil(): Bitmap? {
         val req = ImageRequest.Builder(context.applicationContext)
             .diskCachePolicy(CachePolicy.DISABLED)
             .transformations(CropSquareTransformation())
@@ -217,7 +217,7 @@ class LocalSourceImpl(
                         fileName = fileName,
                         fileParent = path,
                         fileParentId = pathId.toLong(),
-                        imageUri = imageUri,
+                        albumImage = imageUri,
                         lastModified = dateModified,
                         mediaId = songId.toString(),
                         mediaUri = songUri,

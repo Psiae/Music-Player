@@ -1,7 +1,6 @@
 package com.kylentt.mediaplayer.ui
 
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.BottomNavigation
 import androidx.compose.material.BottomNavigationItem
 import androidx.compose.material.Icon
@@ -10,12 +9,16 @@ import androidx.compose.material.ripple.LocalRippleTheme
 import androidx.compose.material.ripple.RippleAlpha
 import androidx.compose.material.ripple.RippleTheme
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.State
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -49,8 +52,8 @@ fun RootScreen() {
             if (shouldShowBottomBar(state.value)) {
                 RootBottomBar(state = state) {
                     navController.navigate(it) {
-                        launchSingleTop = true
                         restoreState = true
+                        launchSingleTop = true
                         popUpTo(navController.graph.findStartDestination().id) {
                             saveState = true
                         }
@@ -59,7 +62,7 @@ fun RootScreen() {
             }
         }
     ) {
-        RootNavigation(rootController = navController)
+        RootNavHost(rootController = navController)
     }
 }
 
@@ -71,9 +74,8 @@ fun RootScaffold(
 ) {
     Timber.d("ComposeDebug RootScaffold")
     Scaffold(
-        modifier = Modifier
-            .navigationBarsPadding(),
-        containerColor = DefaultColor.getDNBackground(),
+        modifier = Modifier,
+        containerColor = MaterialTheme.colorScheme.background,
         bottomBar = bottomBar
     ) {
         content()
@@ -93,45 +95,59 @@ fun RootBottomBar(
 ) {
     Timber.d("ComposeDebug RootBottomBar")
     val screens = BottomNavigationRoute.routeList
-    CompositionLocalProvider(
-        LocalRippleTheme provides object : RippleTheme {
-            @Composable
-            override fun defaultColor(): Color = Color.Transparent
-            @Composable
-            override fun rippleAlpha(): RippleAlpha = RippleAlpha(0f,0f,0f,0f)
-        }
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 2.dp
     ) {
-        Timber.d("ComposeDebug RootBottomBar Disable Ripple")
-        BottomNavigation(
-            modifier = Modifier.height(50.dp),
-            backgroundColor = DefaultColor.getDNBnvColor(),
-            elevation = 0.dp
-        ) {
-            Timber.d("ComposeDebug RootBottomNavigation")
-            val selected = state.value?.destination?.route
-            val textColor = DefaultColor.getDNTextColor()
-            screens.forEach { screen ->
-                BottomNavigationItem(
-                    selected = screen.route == selected,
-                    selectedContentColor = textColor,
-                    unselectedContentColor = textColor.copy(alpha = 0.5f),
-                    onClick = {
-                        if (screen.route != selected) navigateTo(screen.route)
-                    },
-                    label = {
-                        Text(text = screen.title, color = textColor)
-                    },
-                    icon = {
-                        Icon(imageVector = screen.icon, contentDescription = screen.title)
-                    }
+        CompositionLocalProvider(
+            LocalRippleTheme provides object : RippleTheme {
+                @Composable
+                override fun defaultColor(): Color = Color.Transparent
+                @Composable
+                override fun rippleAlpha(): RippleAlpha = RippleAlpha(
+                    0f, 0f, 0f, 0f
                 )
+            }
+        ) {
+            Column(
+                verticalArrangement = Arrangement.Bottom,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                val navBar = with(LocalDensity.current) { WindowInsets.navigationBars.getBottom(this).toDp() }
+                BottomNavigation(
+                    modifier = Modifier
+                        .height(56.dp + navBar),
+                    backgroundColor = Color.Transparent,
+                    elevation = 0.dp
+                ) {
+                    Timber.d("ComposeDebug RootBottomNavigation")
+                    val selected = state.value?.destination?.route
+                    val textColor = DefaultColor.getDNTextColor()
+                    screens.forEach { screen ->
+                        BottomNavigationItem(
+                            modifier = Modifier.navigationBarsPadding(),
+                            selected = screen.route == selected,
+                            selectedContentColor = MaterialTheme.colorScheme.onSurface,
+                            unselectedContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f),
+                            onClick = {
+                                if (screen.route != selected) navigateTo(screen.route)
+                            },
+                            label = {
+                                Text(text = screen.title, color = textColor)
+                            },
+                            icon = {
+                                Icon(imageVector = screen.icon, contentDescription = screen.title)
+                            }
+                        )
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-fun RootNavigation(
+fun RootNavHost(
     rootController: NavHostController
 ) {
     Timber.d("ComposeDebug RootNavigation")

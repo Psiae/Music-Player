@@ -8,7 +8,7 @@ object DefaultColor {
     val black = Color(0xFF000000)
     val white = Color(0xFFFFFFFF)
 
-    val lightText = Color(0xFFF0F0F0)
+    val lightText = Color(0xFFFFFFFF)
     val darkText = Color(0xFF0A0A0A)
 
     val darkThemeBackground = Color(0xFF0F0F0F)
@@ -22,7 +22,7 @@ object DefaultColor {
     @Composable
     fun getDNTextColor(): Color = if (isSystemInDarkTheme()) lightText else darkText
     @Composable
-    fun getDNBnvColor(): Color = if (isSystemInDarkTheme()) black.copy(alpha = 0.1f) else lightThemeBackground
+    fun getDNBnvColor(): Color = if (isSystemInDarkTheme()) black.copy(alpha = 0.05f) else lightThemeBackground
 
 }
 

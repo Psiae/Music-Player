@@ -90,6 +90,8 @@ fun MaterialTheme3(
 	}
 
 	systemUiController.setStatusBarColor(Color.Transparent)
+	systemUiController.setNavigationBarColor(Color.Transparent)
+	systemUiController.isNavigationBarContrastEnforced = false
 	systemUiController.statusBarDarkContentEnabled = !darkTheme
 	systemUiController.navigationBarDarkContentEnabled = !darkTheme
 

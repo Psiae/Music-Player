@@ -10,6 +10,7 @@ import android.content.IntentFilter
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.drawable.BitmapDrawable
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Looper
 import androidx.annotation.MainThread
@@ -49,6 +50,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import jp.wasabeef.transformers.coil.CropSquareTransformation
 import kotlinx.coroutines.*
 import timber.log.Timber
+import java.io.ByteArrayOutputStream
 import javax.inject.Inject
 import kotlin.system.exitProcess
 
@@ -71,6 +73,8 @@ class MusicService : MediaLibraryService() {
     lateinit var repositoryImpl: SongRepositoryImpl
     @Inject
     lateinit var serviceConnectorImpl: ServiceConnectorImpl
+
+    val mtr = MediaMetadataRetriever()
 
     private val serviceScope = (CoroutineScope(Dispatchers.Main + SupervisorJob()))
 
@@ -161,7 +165,7 @@ class MusicService : MediaLibraryService() {
         mSession = session
 
         serviceScope.launch {
-            val pict = session.player.currentMediaItem?.mediaMetadata?.artworkData
+            val pict = session.player.currentMediaItem?.mediaMetadata?.artworkData ?: session.player.currentMediaItem?.mediaMetadata?.mediaUri?.let { getEmbeds(it) }
             val uri = session.player.currentMediaItem?.artUri
             val bm = pict?.let { mapBM( BitmapFactory.decodeByteArray(it, 0, it.size)) } ?: makeBm(uri)
             mNotif = notification.makeNotif(NOTIFICATION_ID, session, bm)
@@ -174,6 +178,10 @@ class MusicService : MediaLibraryService() {
         return null
     }
 
+    suspend fun getEmbeds(uri: Uri) = withContext(Dispatchers.IO) {
+        mtr.setDataSource(this@MusicService, uri)
+        mtr.embeddedPicture
+    }
     private suspend fun mapBM(bm: Bitmap?) = withContext(Dispatchers.IO) {
         val req = ImageRequest.Builder(this@MusicService)
             .memoryCachePolicy(CachePolicy.ENABLED)
@@ -215,7 +223,6 @@ class MusicService : MediaLibraryService() {
                     }
                     Player.STATE_READY -> {
                         Timber.d("Event PlaybackState STATE_READY")
-                        mSession?.let { validateNotification(it) }
                         exoReady()
                         // TODO Another thing to do when Ready
                     }
@@ -280,6 +287,7 @@ class MusicService : MediaLibraryService() {
     }
 
     private fun toggleExo() = controller {
+        if (it.playbackState == Player.STATE_IDLE) it.prepare()
         if (it.playbackState == Player.STATE_ENDED && !it.hasNextMediaItem()) it.seekTo(0)
         if (it.playbackState == Player.STATE_ENDED && it.hasNextMediaItem()) it.seekToNextMediaItem()
         it.playWhenReady = !it.playWhenReady
@@ -340,7 +348,10 @@ class MusicService : MediaLibraryService() {
                 } }
             }
 
-            mSession?.let { validateNotification(it) }
+            mSession?.let {
+                onUpdateNotification(it)
+                validateNotification(it)
+            }
         }
     }
 

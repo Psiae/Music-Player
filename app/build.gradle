@@ -52,6 +52,7 @@ dependencies {
     // alpha03 throwing Lifecycle Error
     def composeNavigation = "2.5.0-alpha01"
 
+    // Default
     implementation "androidx.core:core-ktx:1.7.0"
     implementation "androidx.compose.ui:ui:1.1.1"
     implementation "androidx.compose.material:material:1.1.1"

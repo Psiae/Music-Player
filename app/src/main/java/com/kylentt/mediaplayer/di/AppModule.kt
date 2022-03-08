@@ -1,6 +1,7 @@
 package com.kylentt.mediaplayer.di
 
 import android.content.Context
+import android.media.MediaMetadataRetriever
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C.*
 import androidx.media3.common.MediaItem
@@ -9,6 +10,7 @@ import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.MediaSourceFactory
 import coil.Coil
 import coil.ImageLoader
+import com.kylentt.mediaplayer.core.util.MediaItemHandler
 import com.kylentt.mediaplayer.data.repository.SongRepositoryImpl
 import com.kylentt.mediaplayer.data.source.local.LocalSourceImpl
 import com.kylentt.mediaplayer.domain.presenter.ServiceConnectorImpl
@@ -52,6 +54,17 @@ object AppModule {
     fun provideCoil(
         @ApplicationContext context: Context
     ) = Coil.imageLoader(context = context)
+
+    @Singleton
+    @Provides
+    fun provideMTR() = MediaMetadataRetriever()
+
+    @Singleton
+    @Provides
+    fun provideItemHandler(
+        @ApplicationContext context: Context,
+        coil: ImageLoader
+    ) = MediaItemHandler(context, coil)
 
 }
 

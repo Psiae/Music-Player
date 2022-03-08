@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.session.MediaController
+import com.kylentt.mediaplayer.core.util.MediaItemHandler
 import com.kylentt.mediaplayer.data.repository.SongRepositoryImpl
 import com.kylentt.mediaplayer.domain.model.toMediaItems
 import com.kylentt.mediaplayer.domain.presenter.util.State
@@ -18,7 +19,8 @@ import javax.inject.Inject
 @HiltViewModel
 class ControllerViewModel @Inject constructor(
     private val connector: ServiceConnectorImpl,
-    private val repository: SongRepositoryImpl
+    private val repository: SongRepositoryImpl,
+    private val itemHandler: MediaItemHandler
 ) : ViewModel() {
 
     /** Connector State */
@@ -90,11 +92,14 @@ class ControllerViewModel @Inject constructor(
         Timber.d("IntentHandler ViewModel DocsIntent")
         repository.fetchSongsFromDocs(uri).collect {
             Timber.d("IntentHandler ViewModel DocsIntent ${it?.first} ${it?.second?.size}")
-            it?.let { connector.readyWithFade { controller ->
-                controller.setMediaItems(it.second.toMediaItems(), it.second.indexOf(it.first), 0)
-                controller.prepare()
-                controller.playWhenReady = true
-            } } ?: handleItemIntent(uri)
+            it?.let {
+                connector.readyWithFade { controller ->
+                    controller.stop()
+                    controller.setMediaItems(it.second.toMediaItems(), it.second.indexOf(it.first), 0)
+                    controller.prepare()
+                    controller.playWhenReady = true
+                }
+            } ?: handleItemIntent(uri)
         }
     }
 

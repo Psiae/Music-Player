@@ -4,12 +4,6 @@ import android.net.Uri
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
-import com.kylentt.mediaplayer.core.util.Constants.SONG_BYTE
-import com.kylentt.mediaplayer.core.util.Constants.SONG_DATA
-import com.kylentt.mediaplayer.core.util.Constants.SONG_FILE_NAME
-import com.kylentt.mediaplayer.core.util.Constants.SONG_FILE_PARENT
-import com.kylentt.mediaplayer.core.util.Constants.SONG_FILE_PARENT_ID
-import com.kylentt.mediaplayer.core.util.Constants.SONG_LAST_MODIFIED
 import timber.log.Timber
 
 /** DON'T forget to change the Constant */
@@ -24,7 +18,7 @@ data class Song(
     val fileName: String = "", // Name of the file
     val fileParent: String = "", // Name of folder of the file
     val fileParentId: Long = 0L, // Id of folder of the file
-    val imageUri: String = "", // Album Image, will make embeds option for user
+    val albumImage: String = "", // Album Image, will make embeds option for user
     val lastModified: Long = 0L, // LastModified given to compare to Document Provided lastModified
     val mediaId: String = "", // ID from Audio Columns
     val mediaUri: String = "", // Appended EXTERNAL_CONTENT_URI with its ID above
@@ -47,7 +41,7 @@ fun Song.toMediaItem(): MediaItem {
                 .setArtist(artist)
                 .setAlbumArtist(artist)
                 .setAlbumTitle(album)
-                .setArtworkUri(("ART$imageUri").toUri())
+                .setArtworkUri(("ART$albumImage").toUri())
                 .setDisplayTitle(title)
                 .setDescription(fileName)
                 .setMediaUri(mediaUri.toUri())

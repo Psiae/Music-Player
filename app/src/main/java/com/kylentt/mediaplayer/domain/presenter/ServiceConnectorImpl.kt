@@ -98,7 +98,7 @@ class ServiceConnectorImpl(
     }
 
     // for VM and Service to Toast
-    fun connectorToast(msg: String) = Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+    fun connectorToast(msg: String, long: Boolean) = Toast.makeText(context, msg, if (long)Toast.LENGTH_LONG else Toast.LENGTH_SHORT).show()
 
     private var fading = false
     suspend fun readyWithFade(listener: (MediaController) -> Unit) = withContext(Dispatchers.Main) {
@@ -115,13 +115,15 @@ class ServiceConnectorImpl(
             delay(100)
         }
 
-        listener(mediaController)
-        controller(
-            onReady = {
-                fading = false
-                it.volume = 1f
-            }
-        )
+        synchronized(fading) {
+            listener(mediaController)
+            controller(
+                onReady = {
+                    fading = false
+                    it.volume = 1f
+                }
+            )
+        }
 
         Timber.d("ServiceConnector Event AudioFaded ${mediaController.volume}")
     }
@@ -156,21 +158,16 @@ class ServiceConnectorImpl(
 
     @MainThread
     fun controller(
-        onBuffer: (MediaController) -> Unit = {},
-        onEnded: (MediaController) -> Unit = {},
-        onIdle: (MediaController) -> Unit = {},
-        onReady: (MediaController) -> Unit = {}
+        onBuffer: ((MediaController) -> Unit)? = null,
+        onEnded: ((MediaController) -> Unit)? = null,
+        onIdle: ((MediaController) -> Unit)? = null,
+        onReady: ((MediaController) -> Unit)? = null,
     ) {
-        whenIdle(onIdle)
-        whenBuffer(onBuffer)
-        whenReady(onReady)
-        whenEnded(onEnded)
+        onIdle?.let { whenIdle(it) }
+        onBuffer?.let { whenBuffer(it) }
+        onReady?.let { whenReady(it) }
+        onEnded?.let { whenEnded(it) }
     }
-
-    private fun isPlayerIdling() = mediaController.playbackState == Player.STATE_IDLE
-    private fun isPlayerBuffering() = mediaController.playbackState == Player.STATE_BUFFERING
-    private fun isPlayerReady() = mediaController.playbackState == Player.STATE_READY
-    private fun isPlayerEnded() = mediaController.playbackState == Player.STATE_ENDED
 
     private fun setupController(controller: MediaController) {
         with(controller) {
@@ -248,35 +245,32 @@ class ServiceConnectorImpl(
         controlIdleListener.clear()
     }
 
+    private fun isPlayerIdling() = mediaController.playbackState == Player.STATE_IDLE
+    private fun isPlayerBuffering() = mediaController.playbackState == Player.STATE_BUFFERING
+    private fun isPlayerReady() = mediaController.playbackState == Player.STATE_READY
+    private fun isPlayerEnded() = mediaController.playbackState == Player.STATE_ENDED
+
     @MainThread
     private fun whenReady( command: (MediaController) -> Unit ) {
-        if (this.controlReadyListener.size > 10) this.controlReadyListener.removeAt(0)
-        if (mediaController.playbackState == Player.STATE_READY) {
-            command(mediaController)
-        } else { this.controlReadyListener.add(command) }
+        if (isPlayerReady())
+            command(mediaController) else { this.controlReadyListener.add(command) }
     }
 
     @MainThread
     private fun whenBuffer( command: ( MediaController) -> Unit  ) {
-        if (controlBufferListener.size > 10) controlBufferListener.removeAt(0)
-        if (mediaController.playbackState == Player.STATE_BUFFERING) {
-            command(mediaController)
-        } else controlBufferListener.add(command)
+        if (isPlayerBuffering())
+            command(mediaController) else controlBufferListener.add(command)
     }
 
     @MainThread
     private fun whenEnded(command: ( (MediaController) -> Unit ) ) {
-        if (controlEndedListener.size > 10) controlEndedListener.removeAt(0)
-        if (mediaController.playbackState == Player.STATE_ENDED) {
-            command(mediaController)
-        } else controlEndedListener.add(command)
+        if (isPlayerEnded())
+            command(mediaController) else controlEndedListener.add(command)
     }
 
     @MainThread
     private fun whenIdle( command: ( (MediaController) -> Unit ) ) {
-        if (controlIdleListener.size > 10) controlIdleListener.removeAt(0)
-        if (mediaController.playbackState == Player.STATE_IDLE) {
-            command(mediaController)
-        } else this.controlReadyListener.add(command)
+        if (isPlayerIdling())
+            command(mediaController) else controlReadyListener.add(command)
     }
 }

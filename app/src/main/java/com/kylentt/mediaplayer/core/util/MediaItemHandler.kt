@@ -35,20 +35,17 @@ class MediaItemHandler(
     }
 
     fun getEmbeds(uri: Uri): ByteArray? {
-        mtr.setDataSource(context, uri)
-        return mtr.embeddedPicture
+        return try {
+            mtr.setDataSource(context, uri)
+            mtr.embeddedPicture
+        } catch (e: Exception) {
+            if (e !is IllegalArgumentException) throw e else Timber.e(e)
+            null
+        }
     }
 
-    suspend fun sRebuildMediaItem(list: List<MediaItem>) = withContext(Dispatchers.Default) {
-        val toReturn = mutableListOf<MediaItem>()
-        list.forEach {
-            MediaItem.Builder()
-                .setUri(it.getUri)
-                .setMediaId(it.mediaId)
-                .setMediaMetadata(it.mediaMetadata)
-                .build()
-        }
-        toReturn
+    suspend fun sRebuildMediaItem(list: List<MediaItem>) = withContext(Dispatchers.IO) {
+        list.map { rebuildMediaItem(it) }
     }
 
     fun rebuildMediaItems(list: List<MediaItem>): List<MediaItem> {

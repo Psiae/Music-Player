@@ -38,9 +38,11 @@ import com.kylentt.mediaplayer.core.util.getDisplayTitle
 import com.kylentt.mediaplayer.core.util.getSubtitle
 
 class PlayerNotificationImpl(
-    private val service: MusicService,
-    private val context: Context,
+    private val service: MusicService
 ) {
+
+    val context: Context = this.service
+
     private val manager = context.getSystemService(
         Context.NOTIFICATION_SERVICE
     ) as NotificationManager

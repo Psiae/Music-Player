@@ -26,7 +26,7 @@ class ControllerViewModel @Inject constructor(
     /** Connector State */
     val serviceState = connector.serviceState
     fun checkServiceState() = connector.checkServiceState()
-    fun connectService(onConnected: (MediaController) -> Unit = {} ) {
+    fun connectService(onConnected: (MediaController) -> Unit) {
         connector.connectService(onConnected = onConnected)
     }
 

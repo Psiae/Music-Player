@@ -40,12 +40,12 @@ class SongRepositoryImpl(
         }
     }
 
-    suspend fun fetchMetaFromUri(uri: Uri) = withContext(Dispatchers.Default) { flow {
+    suspend fun fetchMetaFromUri(uri: Uri) = withContext(Dispatchers.IO) { flow {
         localSource.fetchMetadataFromUri(uri).collect { emit(it) }
     } }
 
     // Get Data from this uri Column, for now its Display_Name, ByteSize & ( _data or lastModified )
-    suspend fun fetchSongsFromDocs(uri : Uri) = withContext(Dispatchers.Default) {
+    suspend fun fetchSongsFromDocs(uri : Uri) = withContext(Dispatchers.IO) {
         var list = listOf<Song>()
         localSource.fetchSong().collect { list = it }
 

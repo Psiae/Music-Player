@@ -21,12 +21,23 @@ import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.ByteArrayOutputStream
 import java.io.OutputStream
+import javax.inject.Singleton
 
+@Singleton
 class MediaItemHandler(
-    private val context: Context,
-    private val coil: ImageLoader
+    private val context: Context
 ) {
-    val mtr = MediaMetadataRetriever()
+    private val mtr = MediaMetadataRetriever()
+
+    fun getEmbeds(item: MediaItem): ByteArray? {
+        mtr.setDataSource(context, item.getUri)
+        return mtr.embeddedPicture
+    }
+
+    fun getEmbeds(uri: Uri): ByteArray? {
+        mtr.setDataSource(context, uri)
+        return mtr.embeddedPicture
+    }
 
     suspend fun sRebuildMediaItem(list: List<MediaItem>) = withContext(Dispatchers.Default) {
         val toReturn = mutableListOf<MediaItem>()
@@ -40,69 +51,26 @@ class MediaItemHandler(
         toReturn
     }
 
-    suspend fun songsToItemWithEmbed(list: List<Song>): List<MediaItem> {
-        return list.map { it.toMediaItemWithEmbed() }
+    fun rebuildMediaItems(list: List<MediaItem>): List<MediaItem> {
+        return list.map { rebuildMediaItem(it) }
     }
 
+    fun rebuildMediaItem(it: MediaItem) = MediaItem.Builder()
+        .setUri(it.getUri)
+        .setMediaId(it.mediaId)
+        .setMediaMetadata(it.mediaMetadata)
+        .build()
 
-
-    suspend fun Song.toMediaItemWithEmbed(): MediaItem {
-        Timber.d("toMediaItem $lastModified")
-        return MediaItem.Builder()
-            .setMediaId(mediaId)
-            .setUri(mediaUri.toUri())
-            .setMediaMetadata(
-                MediaMetadata.Builder()
-                    .setArtist(artist)
-                    .setAlbumArtist(artist)
-                    .setAlbumTitle(album)
-                    .setArtworkData(getSquaredEmbed(mediaUri.toUri()), PICTURE_TYPE_MEDIA)
-                    .setArtworkUri(("ART$albumImage").toUri())
-                    .setDisplayTitle(title)
-                    .setDescription(fileName)
-                    .setMediaUri(mediaUri.toUri())
-                    .setSubtitle(artist.ifEmpty { album })
-                    .setCompilation(byteSize.toString())
-                    .setConductor(lastModified.toString())
-                    .setIsPlayable(true)
-                    .build())
-            .build()
-    }
-
-    suspend fun getSquaredEmbed(uri: Uri) = withContext(Dispatchers.Default) {
-        mtr.setDataSource(context, uri)
-        mtr.embeddedPicture?.let {
-            BitmapFactory.decodeByteArray(it, 0, it.size).squareWithCoil()?.let {
-                val stream = ByteArrayOutputStream()
-                it.compress(Bitmap.CompressFormat.PNG, 100, stream)
-                stream.toByteArray()
-            }
-        }
-    }
-
-    suspend fun Bitmap.squareWithCoil(): Bitmap? {
-        val req = ImageRequest.Builder(context.applicationContext)
-            .transformations(CropSquareTransformation())
-            .size(512)
-            .scale(Scale.FILL)
-            .data(this)
-            .build()
-        return ((coil.execute(req).drawable) as BitmapDrawable?)?.bitmap
-    }
-
-
-
-    fun rebuildMediaItem(list: List<MediaItem>): List<MediaItem> {
-        val toReturn = mutableListOf<MediaItem>()
-        list.forEach {
-            MediaItem.Builder()
-                .setUri(it.getUri)
-                .setMediaId(it.mediaId)
-                .setMediaMetadata(it.mediaMetadata)
-                .build()
-        }
-        return toReturn
-    }
 }
+
+inline val MediaItem.getArtUri: Uri
+    get() = mediaMetadata.artworkUri.toString().removePrefix("ART").toUri()
+
+inline val MediaItem.getDisplayTitle: CharSequence?
+    get() = mediaMetadata.displayTitle
+
+inline val MediaItem.getSubtitle: CharSequence?
+    get() = mediaMetadata.subtitle
+
 inline val MediaItem.getUri
     get() = this.mediaMetadata.mediaUri

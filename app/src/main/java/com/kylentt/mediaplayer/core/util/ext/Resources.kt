@@ -1,4 +1,4 @@
-package com.kylentt.mediaplayer.core.util
+package com.kylentt.mediaplayer.core.util.ext
 
 // Resource class for remote source handling with Event Wrapper later
 sealed class Resource<T>(val data: T? = null, val message: String? = null) {

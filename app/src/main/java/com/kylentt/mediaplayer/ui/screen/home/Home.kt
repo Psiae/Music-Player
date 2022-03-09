@@ -2,7 +2,6 @@ package com.kylentt.mediaplayer.ui.screen.home
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.Text
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -12,7 +11,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.kylentt.mediaplayer.domain.model.getDisplayTitle
+import com.kylentt.mediaplayer.core.util.getDisplayTitle
 import com.kylentt.mediaplayer.domain.presenter.ControllerViewModel
 import com.kylentt.mediaplayer.ui.theme.md3.DefaultColor
 import timber.log.Timber

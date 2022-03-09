@@ -34,8 +34,8 @@ import com.kylentt.mediaplayer.core.util.Constants.NOTIFICATION_CHANNEL_ID
 import com.kylentt.mediaplayer.core.util.Constants.NOTIFICATION_NAME
 import com.kylentt.mediaplayer.core.util.Constants.PLAYBACK_INTENT
 import com.kylentt.mediaplayer.core.util.VersionHelper
-import com.kylentt.mediaplayer.domain.model.getDisplayTitle
-import com.kylentt.mediaplayer.domain.model.getSubtitle
+import com.kylentt.mediaplayer.core.util.getDisplayTitle
+import com.kylentt.mediaplayer.core.util.getSubtitle
 
 class PlayerNotificationImpl(
     private val service: MusicService,
@@ -58,14 +58,14 @@ class PlayerNotificationImpl(
     var havePrevButton = false
     var haveNextButton = false
 
-    val actionPlay = makeActionPlay()
-    val actionPause = makeActionPause()
-    val actionPrev = makeActionPrev()
-    val actionNext = makeActionNext()
-    val actionCancel = makeActionCancel()
-    val actionRepeatOff = makeActionRepeatOffToOne()
-    val actionRepeatOne = makeActionRepeatOneToAll()
-    val actionRepeatAll = makeActionRepeatAllToOff()
+    private val actionPlay = makeActionPlay()
+    private val actionPause = makeActionPause()
+    private val actionPrev = makeActionPrev()
+    private val actionNext = makeActionNext()
+    private val actionCancel = makeActionCancel()
+    private val actionRepeatOff = makeActionRepeatOffToOne()
+    private val actionRepeatOne = makeActionRepeatOneToAll()
+    private val actionRepeatAll = makeActionRepeatAllToOff()
 
     val activityIntent = context.packageManager?.getLaunchIntentForPackage(context.packageName)?.let {
         PendingIntent.getActivity(context, 445,
@@ -90,9 +90,9 @@ class PlayerNotificationImpl(
         })
 
         val title = mi?.getDisplayTitle
-        if (!title.isNullOrBlank()) setContentTitle(title)
+        setContentTitle(title)
         val subtitle = mi?.getSubtitle
-        if (!subtitle.isNullOrBlank()) setContentText(subtitle)
+        setContentText(subtitle)
 
         setSmallIcon(R.drawable.play_icon_theme3)
         setChannelId(NOTIFICATION_CHANNEL_ID)
@@ -109,7 +109,7 @@ class PlayerNotificationImpl(
             true
         } else false
 
-        if (p.playWhenReady) { addAction(actionPause) } else addAction(actionPlay)
+        if (p.playWhenReady || p.isPlaying) { addAction(actionPause) } else addAction(actionPlay)
 
         haveNextButton = if (p.hasNextMediaItem()) {
             addAction(actionNext)

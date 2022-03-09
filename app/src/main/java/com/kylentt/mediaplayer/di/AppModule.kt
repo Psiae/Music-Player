@@ -10,6 +10,7 @@ import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.MediaSourceFactory
 import coil.Coil
 import coil.ImageLoader
+import com.kylentt.mediaplayer.core.util.CoilHandler
 import com.kylentt.mediaplayer.core.util.MediaItemHandler
 import com.kylentt.mediaplayer.data.repository.SongRepositoryImpl
 import com.kylentt.mediaplayer.data.source.local.LocalSourceImpl
@@ -61,10 +62,16 @@ object AppModule {
 
     @Singleton
     @Provides
-    fun provideItemHandler(
+    fun provideMediaItemHandler(
+        @ApplicationContext context: Context,
+    ) = MediaItemHandler(context)
+
+    @Singleton
+    @Provides
+    fun provideCoilHandler(
         @ApplicationContext context: Context,
         coil: ImageLoader
-    ) = MediaItemHandler(context, coil)
+    ) = CoilHandler(context, coil)
 
 }
 

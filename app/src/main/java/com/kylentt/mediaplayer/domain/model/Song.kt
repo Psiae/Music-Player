@@ -74,12 +74,3 @@ inline val MediaItem.byteSize: Long?
 
 inline val MediaItem.getArtist: CharSequence?
     get() = mediaMetadata.artist
-
-inline val MediaItem.getSubtitle: CharSequence?
-    get() = mediaMetadata.subtitle
-
-inline val MediaItem.getDisplayTitle: CharSequence?
-    get() = mediaMetadata.displayTitle
-
-inline val MediaItem.artUri: Uri
-    get() = mediaMetadata.artworkUri.toString().removePrefix("ART").toUri()

@@ -9,23 +9,15 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.drawable.BitmapDrawable
-import android.media.MediaMetadataRetriever
-import android.net.Uri
 import android.os.Looper
 import androidx.annotation.MainThread
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
-import coil.ImageLoader
-import coil.request.CachePolicy
-import coil.request.ImageRequest
-import coil.size.Scale
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.kylentt.mediaplayer.core.util.CoilHandler
 import com.kylentt.mediaplayer.core.util.Constants.ACTION
 import com.kylentt.mediaplayer.core.util.Constants.ACTION_CANCEL
 import com.kylentt.mediaplayer.core.util.Constants.ACTION_FADE
@@ -41,40 +33,37 @@ import com.kylentt.mediaplayer.core.util.Constants.ACTION_UNIT
 import com.kylentt.mediaplayer.core.util.Constants.MEDIA_SESSION_ID
 import com.kylentt.mediaplayer.core.util.Constants.NOTIFICATION_ID
 import com.kylentt.mediaplayer.core.util.Constants.PLAYBACK_INTENT
+import com.kylentt.mediaplayer.core.util.MediaItemHandler
+import com.kylentt.mediaplayer.core.util.getArtUri
 import com.kylentt.mediaplayer.data.repository.SongRepositoryImpl
-import com.kylentt.mediaplayer.domain.model.artUri
-import com.kylentt.mediaplayer.domain.model.rebuild
 import com.kylentt.mediaplayer.domain.presenter.ServiceConnectorImpl
 import com.kylentt.mediaplayer.ui.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
-import jp.wasabeef.transformers.coil.CropSquareTransformation
 import kotlinx.coroutines.*
 import timber.log.Timber
-import java.io.ByteArrayOutputStream
 import javax.inject.Inject
 import kotlin.system.exitProcess
 
 // Service for UI to interact With ViewModel Controller through Music Service Connector
 
-@OptIn(ExperimentalPermissionsApi::class)
 @AndroidEntryPoint
 class MusicService : MediaLibraryService() {
 
     companion object {
-        val TAG = "MusicService"
-        var isActive = false
+        val TAG: String = MusicService::class.simpleName ?: "Music Service"
+        var isActive: Boolean? = null
     }
 
     @Inject
-    lateinit var coil: ImageLoader
-    @Inject
     lateinit var exo: ExoPlayer
+    @Inject
+    lateinit var coilHandler: CoilHandler
+    @Inject
+    lateinit var mediaItemHandler: MediaItemHandler
     @Inject
     lateinit var repositoryImpl: SongRepositoryImpl
     @Inject
     lateinit var serviceConnectorImpl: ServiceConnectorImpl
-
-    val mtr = MediaMetadataRetriever()
 
     private val serviceScope = (CoroutineScope(Dispatchers.Main + SupervisorJob()))
 
@@ -160,14 +149,38 @@ class MusicService : MediaLibraryService() {
 
     // Notification update should call here
     // Return MediaNotification to have it handled by Media3 else null
+    var lastItem: String? = null
+    var lastBitmap: Bitmap? = null
     override fun onUpdateNotification(session: MediaSession): MediaNotification? {
         Timber.d("$TAG OnUpdateNotification")
         mSession = session
+        val item = session.player.currentMediaItem
+
+        if (lastItem == item?.mediaId) {
+            mNotif = notification.makeNotif(NOTIFICATION_ID, session, lastBitmap)
+            manager.notify(NOTIFICATION_ID, mNotif)
+            return null
+            // Since getting the embedded picture and adjusting aspect ratio is too expensive
+            // (10mb of memory every interaction (yes because it called 3 times each)) and not GC'd after minutes so just do a simple caching
+        }
+
+        lastItem = item?.mediaId
 
         serviceScope.launch {
-            val pict = session.player.currentMediaItem?.mediaMetadata?.artworkData ?: session.player.currentMediaItem?.mediaMetadata?.mediaUri?.let { getEmbeds(it) }
-            val uri = session.player.currentMediaItem?.artUri
-            val bm = pict?.let { mapBM( BitmapFactory.decodeByteArray(it, 0, it.size)) } ?: makeBm(uri)
+            val pict =
+                item?.mediaMetadata?.artworkData
+                    ?: item?.mediaMetadata?.mediaUri?.let { mediaItemHandler.getEmbeds(it) }
+
+            val uri =
+                session.player.currentMediaItem?.getArtUri
+
+            val bm = withContext(Dispatchers.IO) {
+                with(coilHandler) {
+                    pict?.let { squareWithCoil(BitmapFactory.decodeByteArray(it, 0, it.size)) } ?: uri?.let { makeSquaredBitmap(it) }
+                }
+            }
+
+            lastBitmap = bm
             mNotif = notification.makeNotif(NOTIFICATION_ID, session, bm)
             if (!isForeground) {
                 startForeground(NOTIFICATION_ID, mNotif)
@@ -176,32 +189,6 @@ class MusicService : MediaLibraryService() {
             manager.notify(NOTIFICATION_ID, mNotif)
         }
         return null
-    }
-
-    suspend fun getEmbeds(uri: Uri) = withContext(Dispatchers.IO) {
-        mtr.setDataSource(this@MusicService, uri)
-        mtr.embeddedPicture
-    }
-    private suspend fun mapBM(bm: Bitmap?) = withContext(Dispatchers.IO) {
-        val req = ImageRequest.Builder(this@MusicService)
-            .memoryCachePolicy(CachePolicy.ENABLED)
-            .transformations(CropSquareTransformation())
-            .size(512)
-            .scale(Scale.FILL)
-            .data(bm)
-            .build()
-        ((coil.execute(req).drawable) as BitmapDrawable?)?.bitmap
-    }
-
-    private suspend fun makeBm(uri: Uri?) = withContext(Dispatchers.IO) {
-        val req = ImageRequest.Builder(this@MusicService)
-            .memoryCachePolicy(CachePolicy.ENABLED)
-            .transformations(CropSquareTransformation())
-            .size(512)
-            .scale(Scale.FILL)
-            .data(uri)
-            .build()
-        ((coil.execute(req).drawable) as BitmapDrawable?)?.bitmap
     }
 
     private fun initializeSession() {
@@ -233,6 +220,22 @@ class MusicService : MediaLibraryService() {
                         // TODO Another thing to do when ENDED
                     }
                 }
+                /*mSession?.let { onUpdateNotification(it) }*/
+            }
+
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                super.onIsPlayingChanged(isPlaying)
+                mSession?.let { onUpdateNotification(it) }
+            }
+
+            override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+                super.onPlayWhenReadyChanged(playWhenReady, reason)
+                /*mSession?.let { onUpdateNotification(it) }*/
+            }
+
+            override fun onRepeatModeChanged(repeatMode: Int) {
+                super.onRepeatModeChanged(repeatMode)
+                mSession?.let { onUpdateNotification(it) }
             }
 
             var retry = true
@@ -287,14 +290,11 @@ class MusicService : MediaLibraryService() {
     }
 
     private fun toggleExo() = controller {
-        if (it.playbackState == Player.STATE_IDLE) it.prepare()
         if (it.playbackState == Player.STATE_ENDED && !it.hasNextMediaItem()) it.seekTo(0)
         if (it.playbackState == Player.STATE_ENDED && it.hasNextMediaItem()) it.seekToNextMediaItem()
+        if (it.playbackState == Player.STATE_IDLE) it.prepare()
         it.playWhenReady = !it.playWhenReady
     }
-
-    fun play() = controller { it.play() }
-    fun pause() = controller { it.pause() }
 
     var fading = false
     private fun exoFade(listener: ( (ExoPlayer) -> Unit )) {
@@ -324,7 +324,6 @@ class MusicService : MediaLibraryService() {
         }
     }
 
-
     inner class PlaybackReceiver: BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.getStringExtra(ACTION)) {
@@ -347,11 +346,7 @@ class MusicService : MediaLibraryService() {
                     return
                 } }
             }
-
-            mSession?.let {
-                onUpdateNotification(it)
-                validateNotification(it)
-            }
+            mSession?.let { validateNotification(it) }
         }
     }
 
@@ -383,7 +378,7 @@ class MusicService : MediaLibraryService() {
             session: MediaSession,
             controller: MediaSession.ControllerInfo,
             mediaItem: MediaItem,
-        ) = mediaItem.rebuild()
+        ) = mediaItemHandler.rebuildMediaItem(mediaItem)
     }
 
     private fun stopService(session: MediaLibrarySession) {

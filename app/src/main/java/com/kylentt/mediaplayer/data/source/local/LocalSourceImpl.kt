@@ -11,7 +11,6 @@ import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.widget.Toast
-import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import coil.ImageLoader
@@ -20,9 +19,8 @@ import coil.request.ImageRequest
 import coil.size.Scale
 import com.kylentt.mediaplayer.core.util.Constants.ALBUM_ART_PATH
 import com.kylentt.mediaplayer.core.util.VersionHelper
-import com.kylentt.mediaplayer.core.util.getEmbed
+import com.kylentt.mediaplayer.core.util.getDisplayTitle
 import com.kylentt.mediaplayer.domain.model.Song
-import com.kylentt.mediaplayer.domain.model.getDisplayTitle
 import jp.wasabeef.transformers.coil.CropSquareTransformation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow

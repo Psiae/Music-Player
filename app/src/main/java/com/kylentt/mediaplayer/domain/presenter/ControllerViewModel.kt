@@ -89,7 +89,6 @@ class ControllerViewModel @Inject constructor(
 
     // Intent From Document Provider like FileManager
     suspend fun handleDocsIntent(uri: Uri) = withContext(Dispatchers.Main) {
-        Timber.d("IntentHandler ViewModel DocsIntent")
         repository.fetchSongsFromDocs(uri).collect {
             Timber.d("IntentHandler ViewModel DocsIntent ${it?.first} ${it?.second?.size}")
             it?.let {

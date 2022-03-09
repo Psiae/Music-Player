@@ -74,8 +74,8 @@ class ServiceConnectorImpl(
             onConnected(mediaController)
             return
         }
-
         _serviceState.value = State.ServiceState.Connecting
+
         sessionToken = SessionToken(context, ComponentName(context, MusicService::class.java))
         futureMediaController = MediaController.Builder(context, sessionToken!!).buildAsync()
 
@@ -101,11 +101,11 @@ class ServiceConnectorImpl(
     fun connectorToast(msg: String) = Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
 
     private var fading = false
-    suspend fun readyWithFade(listener: (MediaController) -> Unit) {
-        if (fading || !isServiceConnected()) {
+    suspend fun readyWithFade(listener: (MediaController) -> Unit) = withContext(Dispatchers.Main) {
+        if (fading /*|| !isServiceConnected()*/) {
             Timber.d("ServiceConnector AudioEvent FadingAudio Skipped")
             controller(onReady = listener)
-            return
+            return@withContext
         }
         fading = true
 

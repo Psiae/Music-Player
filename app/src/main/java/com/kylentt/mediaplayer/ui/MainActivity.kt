@@ -23,7 +23,6 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-@ExperimentalPermissionsApi
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
@@ -122,6 +121,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        cacheDir.deleteRecursively()
         isActive = false
         super.onDestroy()
     }

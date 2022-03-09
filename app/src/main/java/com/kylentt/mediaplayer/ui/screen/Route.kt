@@ -1,5 +1,6 @@
 package com.kylentt.mediaplayer.ui.screen
 
+import com.kylentt.mediaplayer.ui.screen.Root.BottomBarScreen
 import com.kylentt.mediaplayer.ui.util.UIConstants
 
 sealed class BottomNavigationRoute(val screen: BottomBarScreen) {

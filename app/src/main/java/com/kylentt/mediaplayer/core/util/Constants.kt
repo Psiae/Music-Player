@@ -22,7 +22,7 @@ object Constants {
     const val MEDIA_SESSION_ID = "Kylentt"
     const val NOTIFICATION_CHANNEL_ID = "Ky_NOTIFICATION_ID"
     const val NOTIFICATION_ID = 301
-    const val NOTIFICATION_NAME = "Ky_NOTIFICATION"
+    const val NOTIFICATION_NAME = "MediaPlayer Notification"
 
     const val ACTION = "ACTION"
     const val ACTION_CANCEL = "ACTION_CANCEL"

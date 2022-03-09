@@ -1,4 +1,4 @@
-package com.kylentt.mediaplayer.core.util
+package com.kylentt.mediaplayer.core.util.ext
 
 // Just a note.kt, Nothing else
 

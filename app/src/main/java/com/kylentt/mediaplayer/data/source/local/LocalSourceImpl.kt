@@ -26,6 +26,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.ByteArrayOutputStream
@@ -36,44 +37,44 @@ class LocalSourceImpl(
 ) : LocalSource {
 
     // simply query Audio Files from MediaStore
-    override suspend fun fetchSong(): Flow<List<Song>> = flow { emit(queryDeviceSong()) }
-
-    suspend fun fetchSongFromDocument(uri: Uri) = withContext(Dispatchers.IO) {
-        flow {
-            var toReturn: Triple<String, Long, String>? = null
-            try {
-                context.applicationContext.contentResolver.query(uri,
-                    null, null, null, null
-                )?.use { cursor ->
-                    // OpenableColumns Should always be provided (so far)
-                    val nameIndex = cursor.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME)
-                    val byteIndex = cursor.getColumnIndexOrThrow(OpenableColumns.SIZE)
-
-                    // Identifier Columns, either the deprecated _data for <=Q or lastModified with above
-                    // fortunately MediaStore still provide _data columns so either is Fine
-                    var identifierIndex = cursor.getColumnIndex(MediaStore.Audio.AudioColumns.DATA)
-                    if (identifierIndex == -1) identifierIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_LAST_MODIFIED)
-
-                    cursor.moveToFirst()
-                    val display_name = cursor.getString(nameIndex)
-                    val byte_size = cursor.getLong(byteIndex)
-                    val identifier = cursor.getString(identifierIndex)
-
-                    Timber.d("IntentHandler LocalSource $display_name $byte_size $identifier")
-
-                    toReturn = Triple(display_name, byte_size, identifier)
-                }
-                if (toReturn == null) Toast.makeText(context, "Unsupported", Toast.LENGTH_LONG).show()
-                emit(toReturn)
-            } catch (e : Exception) {
-                Timber.d("IntentHandler LocalSource Error repo")
-                e.printStackTrace()
-                emit(toReturn)
-            }
-        }
+    override suspend fun fetchSong(): Flow<List<Song>> = flow {
+        emit(queryDeviceSong())
     }
 
-    suspend fun fetchMetadataFromUri(uri: Uri) = withContext(Dispatchers.IO) { flow {
+    suspend fun fetchSongFromDocument(uri: Uri) = flow {
+        var toReturn: Triple<String, Long, String>? = null
+        try {
+            context.contentResolver.query(uri,
+                null, null, null, null
+            )?.use { cursor ->
+                // OpenableColumns Should always be provided (so far)
+                val nameIndex = cursor.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME)
+                val byteIndex = cursor.getColumnIndexOrThrow(OpenableColumns.SIZE)
+
+                // Identifier Columns, either the deprecated _data for <=Q or lastModified with above
+                // fortunately MediaStore still provide _data columns so either is Fine
+                var identifierIndex = cursor.getColumnIndex(MediaStore.Audio.AudioColumns.DATA)
+                if (identifierIndex == -1) identifierIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_LAST_MODIFIED)
+
+                cursor.moveToFirst()
+                val display_name = cursor.getString(nameIndex)
+                val byte_size = cursor.getLong(byteIndex)
+                val identifier = cursor.getString(identifierIndex)
+
+                Timber.d("IntentHandler LocalSource $display_name $byte_size $identifier")
+
+                toReturn = Triple(display_name, byte_size, identifier)
+            }
+            if (toReturn == null) Toast.makeText(context, "Unsupported", Toast.LENGTH_LONG).show()
+            emit(toReturn)
+        } catch (e : Exception) {
+            Timber.d("IntentHandler LocalSource Error repo")
+            e.printStackTrace()
+            emit(toReturn)
+        }
+    }.flowOn(Dispatchers.IO)
+
+    suspend fun fetchMetadataFromUri(uri: Uri) = flow {
         try {
             val mtr = MediaMetadataRetriever()
             mtr.setDataSource(context.applicationContext, uri)
@@ -102,14 +103,14 @@ class LocalSourceImpl(
                 ).build()
             Timber.d("SongRepository Handled Uri to MediaItem ${item.getDisplayTitle}")
             emit(item)
-        } catch (e : Exception) {
+        } catch (e: Exception) {
             if (e is IllegalArgumentException) withContext(Dispatchers.Main) {
                 e.printStackTrace()
                 Toast.makeText(context, "Unsupported", Toast.LENGTH_LONG).show()
             }
             emit(null)
         }
-    } }
+    }.flowOn(Dispatchers.IO)
 
     suspend fun Bitmap.squareWithCoil(): Bitmap? {
         val req = ImageRequest.Builder(context.applicationContext)
@@ -123,120 +124,113 @@ class LocalSourceImpl(
     }
 
     private suspend fun queryDeviceSong() = withContext(Dispatchers.IO) {
-        val a = async {
-            val deviceSong = mutableListOf<Song>()
-            try {
-                // Folder Name
-                val songPath =
-                    if (VersionHelper.isQ()) MediaStore.Audio.AudioColumns.BUCKET_DISPLAY_NAME
-                    else MediaStore.Audio.AudioColumns.DATA
-                val songPathId =
-                    if (VersionHelper.isQ()) MediaStore.Audio.AudioColumns.BUCKET_ID
-                    else MediaStore.Audio.AudioColumns.DATA
+        val deviceSong = mutableListOf<Song>()
+        try {
+            // Folder Name
 
-                val projector = arrayOf(
-                    MediaStore.Audio.AudioColumns._ID,
-                    MediaStore.Audio.AudioColumns.ALBUM,
-                    MediaStore.Audio.AudioColumns.ALBUM_ID,
-                    MediaStore.Audio.AudioColumns.ARTIST,
-                    MediaStore.Audio.AudioColumns.ARTIST_ID,
-                    MediaStore.Audio.AudioColumns.DATA,
-                    MediaStore.Audio.AudioColumns.DISPLAY_NAME,
-                    MediaStore.Audio.AudioColumns.DURATION,
-                    MediaStore.Audio.AudioColumns.DATE_MODIFIED,
-                    MediaStore.Audio.AudioColumns.SIZE,
-                    MediaStore.Audio.AudioColumns.TITLE,
-                    songPath,
-                    songPathId
-                )
-                val selector ="${MediaStore.Audio.Media.IS_MUSIC} != 0"
-                val selectOrder =  MediaStore.Audio.Media.DEFAULT_SORT_ORDER
-                val cursor = context.contentResolver.query(
-                    MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-                    projector, selector, null, selectOrder
-                )
+            val songPath =
+                if (VersionHelper.isQ())
+                    MediaStore.Audio.AudioColumns.BUCKET_DISPLAY_NAME else MediaStore.Audio.AudioColumns.DATA
+            val songPathId =
+                if (VersionHelper.isQ())
+                    MediaStore.Audio.AudioColumns.BUCKET_ID else MediaStore.Audio.AudioColumns.DATA
 
-                cursor?.use {
-                    while (cursor.moveToNext()) {
-                        val songId = cursor.getLong(
-                            cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns._ID)
-                        )
-                        val album = cursor.getString(
-                            cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.ALBUM)
-                        )
-                        val albumId = cursor.getLong(
-                            cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.ALBUM_ID)
-                        )
-                        val artist = cursor.getString(
-                            cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.ARTIST)
-                        )
-                        val artistId = cursor.getLong(
-                            cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.ARTIST_ID)
-                        )
-                        val byteSize = cursor.getLong(
-                            cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.SIZE)
-                        )
-                        val d = cursor.getColumnIndex(MediaStore.Audio.AudioColumns.DATA)
-                        val data = if (d > -1) cursor.getString(d) else "DEPRECATED"
+            val projector = arrayOf(
+                MediaStore.Audio.AudioColumns._ID,
+                MediaStore.Audio.AudioColumns.ALBUM,
+                MediaStore.Audio.AudioColumns.ALBUM_ID,
+                MediaStore.Audio.AudioColumns.ARTIST,
+                MediaStore.Audio.AudioColumns.ARTIST_ID,
+                MediaStore.Audio.AudioColumns.DATA,
+                MediaStore.Audio.AudioColumns.DISPLAY_NAME,
+                MediaStore.Audio.AudioColumns.DURATION,
+                MediaStore.Audio.AudioColumns.DATE_MODIFIED,
+                MediaStore.Audio.AudioColumns.SIZE,
+                MediaStore.Audio.AudioColumns.TITLE,
+                songPath,
+                songPathId
+            )
+            val selector ="${MediaStore.Audio.Media.IS_MUSIC} != 0"
+            val selectOrder =  MediaStore.Audio.Media.DEFAULT_SORT_ORDER
+            val cursor = context.contentResolver.query(
+                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                projector, selector, null, selectOrder
+            )
+            cursor?.use {
+                while (cursor.moveToNext()) {
+                    val songId = cursor.getLong(
+                        cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns._ID)
+                    )
+                    val album = cursor.getString(
+                        cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.ALBUM)
+                    )
+                    val albumId = cursor.getLong(
+                        cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.ALBUM_ID)
+                    )
+                    val artist = cursor.getString(
+                        cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.ARTIST)
+                    )
+                    val artistId = cursor.getLong(
+                        cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.ARTIST_ID)
+                    )
+                    val byteSize = cursor.getLong(
+                        cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.SIZE)
+                    )
+                    val d = cursor.getColumnIndex(MediaStore.Audio.AudioColumns.DATA)
+                    val data = if (d > -1) cursor.getString(d) else "DEPRECATED"
 
-                        val dateModified = cursor.getLong(
-                            cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.DATE_MODIFIED)
-                        )
+                    val dateModified = cursor.getLong(
+                        cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.DATE_MODIFIED)
+                    )
 
-                        val duration = cursor.getLong(
-                            cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.DURATION)
-                        )
+                    val duration = cursor.getLong(
+                        cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.DURATION)
+                    )
 
-                        val fileName = cursor.getString(
-                            cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.DISPLAY_NAME)
-                        )
-                        val title = cursor.getString(
-                            cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.TITLE)
-                        )
-                        val path = cursor.getString(
-                            cursor.getColumnIndexOrThrow(songPath)
-                        )
-                        val pathId = cursor.getString(
-                            cursor.getColumnIndexOrThrow(songPathId)
-                        )
-                        val imageUri = ContentUris.withAppendedId(
-                            Uri.parse(ALBUM_ART_PATH), albumId
-                        ).toString()
-                        val songUri = ContentUris.withAppendedId(
-                            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, songId
-                        ).toString()
+                    val fileName = cursor.getString(
+                        cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.DISPLAY_NAME)
+                    )
+                    val title = cursor.getString(
+                        cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.TITLE)
+                    )
+                    val path = cursor.getString(
+                        cursor.getColumnIndexOrThrow(songPath)
+                    )
+                    val pathId = cursor.getString(
+                        cursor.getColumnIndexOrThrow(songPathId)
+                    )
+                    val imageUri = ContentUris.withAppendedId(
+                        Uri.parse(ALBUM_ART_PATH), albumId
+                    ).toString()
+                    val songUri = ContentUris.withAppendedId(
+                        MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, songId
+                    ).toString()
 
-                        Song(
-                            album = album,
-                            albumId = albumId.toString(),
-                            artist = artist,
-                            artistId = artistId.toString(),
-                            byteSize = byteSize,
-                            duration = duration,
-                            data = data,
-                            fileName = fileName,
-                            fileParent = path,
-                            fileParentId = pathId.toLong(),
-                            albumImage = imageUri,
-                            lastModified = dateModified,
-                            mediaId = songId.toString(),
-                            mediaUri = songUri,
-                            title = title
-                        ).also {
-                            if (it.duration != 0L) deviceSong.add(it)
-                            // TODO: handle Corrupt Song
-                        }
+                    Song(
+                        album = album,
+                        albumId = albumId.toString(),
+                        artist = artist,
+                        artistId = artistId.toString(),
+                        byteSize = byteSize,
+                        duration = duration,
+                        data = data,
+                        fileName = fileName,
+                        fileParent = path,
+                        fileParentId = pathId.toLong(),
+                        albumImage = imageUri,
+                        lastModified = dateModified,
+                        mediaId = songId.toString(),
+                        mediaUri = songUri,
+                        title = title
+                    ).also {
+                        if (it.duration != 0L) deviceSong.add(it)
+                    // TODO: handle Corrupt Song
                     }
                 }
-            } catch (e : Exception) {
-                Timber.e(e)
             }
-            deviceSong
+        } catch (e : Exception) {
+            Timber.e(e)
         }
-        val b = a.await()
-        b.forEach {
-            Timber.d("LocalSourceImpl QueryDeviceSong ${it.fileName} ${it.data} ${it.lastModified} \n")
-        }
-        b
+        deviceSong
     }
 }

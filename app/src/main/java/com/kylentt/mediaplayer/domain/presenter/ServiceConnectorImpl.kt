@@ -221,7 +221,6 @@ class ServiceConnectorImpl(
         context.sendBroadcast(intent)
     }
 
-    // Idk if its good approach
     private var controlReadyListener = mutableListOf<( (MediaController) -> Unit )>()
     private var controlBufferListener = mutableListOf<( (MediaController) -> Unit )>()
     private var controlEndedListener = mutableListOf<( (MediaController) -> Unit )>()

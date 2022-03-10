@@ -2,6 +2,7 @@ package com.kylentt.mediaplayer.ui
 
 import android.content.Intent
 import android.os.Bundle
+import android.os.Environment
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -67,8 +68,8 @@ class MainActivity : ComponentActivity() {
     // This Function Only called when MainActivity is not Destroyed
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
-
         Timber.d("IntentHandler MainActivity NewIntent $intent")
+
         intent?.let {
             Timber.d("IntentHandler MainActivity forwarding Intent ${intent.action}")
             handleIntent(intent)
@@ -81,6 +82,7 @@ class MainActivity : ComponentActivity() {
                 when (intent.action) {
                     Intent.ACTION_VIEW -> handleIntentActionView(intent)
                 }
+                intent.action = null
             }
         )
     }
@@ -120,10 +122,14 @@ class MainActivity : ComponentActivity() {
         } ?: Timber.e("IntentHandler ActionView null Data")
     }
 
+    override fun onStop() {
+        super.onStop()
+        this.applicationContext.cacheDir.deleteRecursively()
+    }
+
     override fun onDestroy() {
-        cacheDir.deleteRecursively()
-        isActive = false
         super.onDestroy()
+        isActive = false
     }
 }
 

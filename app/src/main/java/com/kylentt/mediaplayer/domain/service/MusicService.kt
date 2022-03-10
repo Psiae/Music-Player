@@ -261,7 +261,7 @@ class MusicService : MediaLibraryService() {
     }
 
     private suspend fun sServiceToast(msg: String, long: Boolean = true) = withContext(Dispatchers.Main) {
-        serviceConnectorImpl.connectorToast(msg)
+        serviceConnectorImpl.connectorToast(msg, long)
     }
 
     private fun serviceToast(msg: String, long: Boolean = true) = serviceScope.launch { sServiceToast(msg, long) }

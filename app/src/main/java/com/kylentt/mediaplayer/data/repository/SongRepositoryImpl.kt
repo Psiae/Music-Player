@@ -2,7 +2,7 @@ package com.kylentt.mediaplayer.data.repository
 
 import android.content.Context
 import android.net.Uri
-import androidx.media3.common.MediaItem
+import androidx.compose.runtime.collectAsState
 import coil.ImageLoader
 import com.kylentt.mediaplayer.data.source.local.LocalSourceImpl
 import com.kylentt.mediaplayer.domain.model.Song
@@ -10,6 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
@@ -18,8 +19,7 @@ import timber.log.Timber
 
 class SongRepositoryImpl(
     private val localSource: LocalSourceImpl,
-    private val context: Context,
-    private val coil: ImageLoader
+    private val context: Context
 ) : SongRepository {
 
     private var songList = listOf<Song>()
@@ -40,21 +40,21 @@ class SongRepositoryImpl(
         }
     }
 
-    suspend fun fetchMetaFromUri(uri: Uri) = withContext(Dispatchers.IO) { flow {
+    suspend fun fetchMetaFromUri(uri: Uri) =  flow {
         localSource.fetchMetadataFromUri(uri).collect { emit(it) }
-    } }
+    }
 
     // Get Data from this uri Column, for now its Display_Name, ByteSize & ( _data or lastModified )
-    suspend fun fetchSongsFromDocs(uri : Uri) = withContext(Dispatchers.IO) {
-        var list = listOf<Song>()
-        localSource.fetchSong().collect { list = it }
+    suspend fun fetchSongsFromDocs(uri : Uri) = flow {
+        var toReturn: Pair<Song, List<Song>>? = null
 
-        flow { // for now I will just do check then return without brute forcing it
-            var toReturn: Pair<Song, List<Song>>? = null
-            localSource.fetchSongFromDocument(uri).collect { _column ->
-                _column?.let { column ->
+        localSource.fetchSongFromDocument(uri).collect column@ { _column ->
+
+            _column?.let { column ->
+                localSource.fetchSong().collect { list ->
                     val a = column.first
                     val b = column.second
+                    // TODO wrap it
                     val c = column.third
 
                     // check if it has _data
@@ -63,28 +63,22 @@ class SongRepositoryImpl(
                         toReturn = Pair(it, list)
                         return@collect
                     }
-                    if (c.toLongOrNull() != null) list.find { c.contains(it.lastModified.toString()) && b == it.byteSize }?.let {
-                        Timber.d("IntentHandler FetchFromDocs ${it.lastModified} found")
+
+                    if (c.toLongOrNull() != null) list.find { c.contains(it.lastModified.toString()) && b == it.byteSize && a == it.fileName }?.let { Timber.d("IntentHandler FetchFromDocs ${it.lastModified} found")
                         toReturn = Pair(it, list)
                         return@collect
                     }
 
                     // 1 Minute Difference So I guess its fine?
-                    if (c.toLongOrNull() != null) list.find { c.contains(it.lastModified.toString().take(8)) && b == it.byteSize }?.let {
+                    if (c.toLongOrNull() != null) list.find { c.contains(it.lastModified.toString().take(8)) && b == it.byteSize && a == it.fileName}?.let {
                         Timber.d("IntentHandler FetchFromDocs first 8 of ${it.lastModified} found")
                         toReturn = Pair(it, list)
                         return@collect
                     }
-
                     Timber.d("IntentHandler FetchFromDocs nothing found $_column")
                 }
             }
-
-            return@flow emit(toReturn)
         }
-    }
-
-
-
-
+        emit(toReturn)
+    }.flowOn(Dispatchers.IO)
 }

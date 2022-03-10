@@ -30,6 +30,25 @@ object AppModule {
 
     @Singleton
     @Provides
+    fun provideCoil(
+        @ApplicationContext context: Context
+    ) = Coil.imageLoader(context = context)
+
+    @Singleton
+    @Provides
+    fun provideMediaItemHandler(
+        @ApplicationContext context: Context,
+    ) = MediaItemHandler(context)
+
+    @Singleton
+    @Provides
+    fun provideCoilHandler(
+        @ApplicationContext context: Context,
+        coil: ImageLoader
+    ) = CoilHandler(context, coil)
+
+    @Singleton
+    @Provides
     fun provideServiceConnector(
         @ApplicationContext context: Context,
         coil: ImageLoader
@@ -48,30 +67,7 @@ object AppModule {
         source: LocalSourceImpl,
         @ApplicationContext context: Context,
         coil: ImageLoader
-    ) = SongRepositoryImpl(source, context, coil)
-
-    @Singleton
-    @Provides
-    fun provideCoil(
-        @ApplicationContext context: Context
-    ) = Coil.imageLoader(context = context)
-
-    @Singleton
-    @Provides
-    fun provideMTR() = MediaMetadataRetriever()
-
-    @Singleton
-    @Provides
-    fun provideMediaItemHandler(
-        @ApplicationContext context: Context,
-    ) = MediaItemHandler(context)
-
-    @Singleton
-    @Provides
-    fun provideCoilHandler(
-        @ApplicationContext context: Context,
-        coil: ImageLoader
-    ) = CoilHandler(context, coil)
+    ) = SongRepositoryImpl(source, context)
 
 }
 

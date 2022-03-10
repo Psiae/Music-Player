@@ -1,7 +1,7 @@
 package com.kylentt.mediaplayer.ui.screen.home
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.Text
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -44,7 +44,8 @@ fun HomeScreenLayout(
         modifier = Modifier
             .fillMaxSize()
             .statusBarsPadding(),
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
         Spacer(modifier = Modifier.padding(top = 15.dp))
         Column(

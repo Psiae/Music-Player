@@ -23,7 +23,7 @@
         android:theme="@style/Theme.App.SplashScreen">
 
         <service
-            android:name="com.kylentt.mediaplayer.domain.service.MusicService"
+            android:name="com.kylentt.mediaplayer.disposed.domain.service.MusicService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback"

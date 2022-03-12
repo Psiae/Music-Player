@@ -1,4 +1,4 @@
-package com.kylentt.mediaplayer.domain.model
+package com.kylentt.mediaplayer.disposed.domain.model
 
 import android.net.Uri
 import androidx.core.net.toUri

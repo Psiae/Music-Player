@@ -2,23 +2,19 @@ package com.kylentt.mediaplayer.ui
 
 import android.content.Intent
 import android.os.Bundle
-import android.os.Environment
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
-import androidx.navigation.compose.rememberNavController
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.kylentt.mediaplayer.core.util.Constants.PROVIDER_ANDROID
 import com.kylentt.mediaplayer.core.util.Constants.PROVIDER_COLOROS_FM
 import com.kylentt.mediaplayer.core.util.Constants.PROVIDER_DRIVE_LEGACY
 import com.kylentt.mediaplayer.core.util.Constants.PROVIDER_EXTERNAL_STORAGE
-import com.kylentt.mediaplayer.domain.presenter.ControllerViewModel
-import com.kylentt.mediaplayer.domain.presenter.util.State.ServiceState
+import com.kylentt.mediaplayer.disposed.domain.presenter.ControllerViewModel
+import com.kylentt.mediaplayer.disposed.domain.presenter.util.State.ServiceState
 import com.kylentt.mediaplayer.ui.theme.md3.MaterialTheme3
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch

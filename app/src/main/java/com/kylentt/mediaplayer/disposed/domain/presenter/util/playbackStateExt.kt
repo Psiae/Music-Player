@@ -1,4 +1,4 @@
-package com.kylentt.mediaplayer.domain.presenter.util
+package com.kylentt.mediaplayer.disposed.domain.presenter.util
 
 import android.media.session.PlaybackState
 import android.media.session.PlaybackState.STATE_PLAYING

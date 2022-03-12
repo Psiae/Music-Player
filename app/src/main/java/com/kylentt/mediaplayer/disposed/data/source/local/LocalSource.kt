@@ -1,6 +1,6 @@
-package com.kylentt.mediaplayer.data.source.local
+package com.kylentt.mediaplayer.disposed.data.source.local
 
-import com.kylentt.mediaplayer.domain.model.Song
+import com.kylentt.mediaplayer.disposed.domain.model.Song
 import kotlinx.coroutines.flow.Flow
 
 

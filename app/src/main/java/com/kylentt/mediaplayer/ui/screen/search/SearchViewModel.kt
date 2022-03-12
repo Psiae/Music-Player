@@ -2,8 +2,8 @@ package com.kylentt.mediaplayer.ui.screen.search
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.kylentt.mediaplayer.data.repository.SongRepositoryImpl
-import com.kylentt.mediaplayer.domain.model.Song
+import com.kylentt.mediaplayer.disposed.data.repository.SongRepositoryImpl
+import com.kylentt.mediaplayer.disposed.domain.model.Song
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow

@@ -1,20 +1,16 @@
 package com.kylentt.mediaplayer.di
 
 import android.content.Context
-import android.media.MediaMetadataRetriever
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C.*
-import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.MediaSource
-import androidx.media3.exoplayer.source.MediaSourceFactory
 import coil.Coil
 import coil.ImageLoader
+import com.kylentt.mediaplayer.core.exoplayer.MediaItemHandler
 import com.kylentt.mediaplayer.core.util.CoilHandler
-import com.kylentt.mediaplayer.core.util.MediaItemHandler
-import com.kylentt.mediaplayer.data.repository.SongRepositoryImpl
-import com.kylentt.mediaplayer.data.source.local.LocalSourceImpl
-import com.kylentt.mediaplayer.domain.presenter.ServiceConnectorImpl
+import com.kylentt.mediaplayer.disposed.data.repository.SongRepositoryImpl
+import com.kylentt.mediaplayer.disposed.data.source.local.LocalSourceImpl
+import com.kylentt.mediaplayer.disposed.domain.presenter.ServiceConnectorImpl
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -36,16 +32,17 @@ object AppModule {
 
     @Singleton
     @Provides
-    fun provideMediaItemHandler(
-        @ApplicationContext context: Context,
-    ) = MediaItemHandler(context)
-
-    @Singleton
-    @Provides
     fun provideCoilHandler(
         @ApplicationContext context: Context,
         coil: ImageLoader
     ) = CoilHandler(context, coil)
+
+    @Singleton
+    @Provides
+    fun provideMediaItemHandler(
+        @ApplicationContext context: Context,
+    ) = MediaItemHandler(context)
+
 
     @Singleton
     @Provides
@@ -64,9 +61,8 @@ object AppModule {
     @Singleton
     @Provides
     fun provideSongRepository(
-        source: LocalSourceImpl,
         @ApplicationContext context: Context,
-        coil: ImageLoader
+        source: LocalSourceImpl
     ) = SongRepositoryImpl(source, context)
 
 }
@@ -74,8 +70,6 @@ object AppModule {
 @Module
 @InstallIn(ServiceComponent::class)
 object ServiceModule {
-
-    // Won't be Singleton in case it released for some reason
 
     @ServiceScoped
     @Provides

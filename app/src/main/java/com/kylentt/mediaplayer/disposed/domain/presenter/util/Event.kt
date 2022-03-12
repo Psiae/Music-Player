@@ -1,4 +1,4 @@
-package com.kylentt.mediaplayer.domain.presenter.util
+package com.kylentt.mediaplayer.disposed.domain.presenter.util
 
 // TODO: Wrap User Interaction with sealed Event class
 

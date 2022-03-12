@@ -1,4 +1,4 @@
-package com.kylentt.mediaplayer.data.source.local
+package com.kylentt.mediaplayer.disposed.data.source.local
 
 import android.content.ContentUris
 import android.content.Context
@@ -7,23 +7,25 @@ import android.graphics.BitmapFactory
 import android.graphics.drawable.BitmapDrawable
 import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.os.Build
 import android.provider.DocumentsContract
+import android.provider.DocumentsProvider
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.widget.Toast
+import androidx.core.provider.DocumentsContractCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import coil.ImageLoader
 import coil.request.CachePolicy
 import coil.request.ImageRequest
 import coil.size.Scale
+import com.kylentt.mediaplayer.core.exoplayer.getDisplayTitle
 import com.kylentt.mediaplayer.core.util.Constants.ALBUM_ART_PATH
 import com.kylentt.mediaplayer.core.util.VersionHelper
-import com.kylentt.mediaplayer.core.util.getDisplayTitle
-import com.kylentt.mediaplayer.domain.model.Song
+import com.kylentt.mediaplayer.disposed.domain.model.Song
 import jp.wasabeef.transformers.coil.CropSquareTransformation
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
@@ -57,6 +59,12 @@ class LocalSourceImpl(
                 if (identifierIndex == -1) identifierIndex = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_LAST_MODIFIED)
 
                 cursor.moveToFirst()
+                Timber.d("fetSongFromDocument Uri $uri")
+                for (i in 0 until cursor.columnCount) {
+                    Timber.d("fetchSongFromDocument Column ${cursor.getColumnName(i)}")
+                    Timber.d("fetchSongFromDocument Column ${cursor.getString(i)}")
+                }
+
                 val display_name = cursor.getString(nameIndex)
                 val byte_size = cursor.getLong(byteIndex)
                 val identifier = cursor.getString(identifierIndex)
@@ -69,6 +77,7 @@ class LocalSourceImpl(
             emit(toReturn)
         } catch (e : Exception) {
             Timber.d("IntentHandler LocalSource Error repo")
+            Timber.e(e)
             e.printStackTrace()
             emit(toReturn)
         }
@@ -148,7 +157,7 @@ class LocalSourceImpl(
                 MediaStore.Audio.AudioColumns.SIZE,
                 MediaStore.Audio.AudioColumns.TITLE,
                 songPath,
-                songPathId
+                songPathId,
             )
             val selector ="${MediaStore.Audio.Media.IS_MUSIC} != 0"
             val selectOrder =  MediaStore.Audio.Media.DEFAULT_SORT_ORDER
@@ -157,7 +166,9 @@ class LocalSourceImpl(
                 projector, selector, null, selectOrder
             )
             cursor?.use {
+
                 while (cursor.moveToNext()) {
+
                     val songId = cursor.getLong(
                         cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns._ID)
                     )
@@ -231,6 +242,17 @@ class LocalSourceImpl(
         } catch (e : Exception) {
             Timber.e(e)
         }
+        deviceSong.forEach {
+            Timber.d("DeviceSongQueried ${it.fileName} ${it.lastModified} ${it.byteSize} ${it.mediaId} ${it.mediaUri}")
+        }
         deviceSong
+    }
+
+    fun mediaStoreDebugColumn(uri: Uri) {
+        context.contentResolver.query(uri, null, null, null, null, null)?.use { cursor ->
+            for (i in 0 until cursor.columnCount) {
+                Timber.d("fetchSongFromMediaStore Column ${cursor.getColumnName(i)}")
+            }
+        }
     }
 }

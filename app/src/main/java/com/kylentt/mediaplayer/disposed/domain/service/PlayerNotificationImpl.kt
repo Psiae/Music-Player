@@ -1,4 +1,4 @@
-package com.kylentt.mediaplayer.domain.service
+package com.kylentt.mediaplayer.disposed.domain.service
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -13,6 +13,8 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaStyleNotificationHelper
 import com.kylentt.mediaplayer.R
+import com.kylentt.mediaplayer.core.exoplayer.getDisplayTitle
+import com.kylentt.mediaplayer.core.exoplayer.getSubtitle
 import com.kylentt.mediaplayer.core.util.Constants.ACTION
 import com.kylentt.mediaplayer.core.util.Constants.ACTION_CANCEL
 import com.kylentt.mediaplayer.core.util.Constants.ACTION_CANCEL_CODE
@@ -34,8 +36,6 @@ import com.kylentt.mediaplayer.core.util.Constants.NOTIFICATION_CHANNEL_ID
 import com.kylentt.mediaplayer.core.util.Constants.NOTIFICATION_NAME
 import com.kylentt.mediaplayer.core.util.Constants.PLAYBACK_INTENT
 import com.kylentt.mediaplayer.core.util.VersionHelper
-import com.kylentt.mediaplayer.core.util.getDisplayTitle
-import com.kylentt.mediaplayer.core.util.getSubtitle
 
 class PlayerNotificationImpl(
     private val service: MusicService
@@ -81,6 +81,7 @@ class PlayerNotificationImpl(
 
         val p = session.player
         val mi = p.currentMediaItem
+        val pwr = p.playWhenReady
 
         setContentIntent(context.packageManager?.getLaunchIntentForPackage(context.packageName)?.let {
             PendingIntent.getActivity(context, 445,
@@ -111,7 +112,7 @@ class PlayerNotificationImpl(
             true
         } else false
 
-        if (p.playWhenReady || p.isPlaying) { addAction(actionPause) } else addAction(actionPlay)
+        if (pwr) { addAction(actionPause) } else addAction(actionPlay)
 
         haveNextButton = if (p.hasNextMediaItem()) {
             addAction(actionNext)

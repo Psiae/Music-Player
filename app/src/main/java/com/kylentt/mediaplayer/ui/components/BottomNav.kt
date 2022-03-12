@@ -13,7 +13,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavBackStackEntry
 import com.kylentt.mediaplayer.ui.root.BottomNavigationItem
 import com.kylentt.mediaplayer.ui.root.BottomNavigationRoute
 import com.kylentt.mediaplayer.ui.theme.md3.AppTypography
@@ -26,7 +25,7 @@ fun RootBottomNav(
     navigateTo: (String) -> Unit,
 ) {
     val screens = BottomNavigationRoute.routeList
-    val alpha = ((4.5f * ln((1.75).dp.value /* Tonal Elevation */ + 1)) + 2f) / 100f
+    val alpha = ((4.5f * ln((2).dp.value /* Tonal Elevation */ + 1)) + 2f) / 100f
     val surface = MaterialTheme.colorScheme.surface
     val primary = MaterialTheme.colorScheme.primary
     Surface(
@@ -40,8 +39,8 @@ fun RootBottomNav(
         ) {
             Row(
                 modifier = Modifier
-                    .padding(top = 10.dp, bottom = 10.dp)
-                    .fillMaxWidth(),
+                    .fillMaxWidth()
+                    .padding(top = 10.dp, bottom = 10.dp),
                 horizontalArrangement = Arrangement.SpaceAround,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -61,6 +60,7 @@ fun RootBottomNav(
     }
 }
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RootBottomNavItem(
@@ -73,7 +73,7 @@ fun RootBottomNavItem(
     val icon = if (isSelected)
         item.icon ?: item.imageVector()!! else item.outlinedIcon ?: item.imageVector()!!
     val iconTint = if (isSelected)
-        MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f)
+        MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.9f)
     val textColor = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
 
     val route = item.route

@@ -1,7 +1,7 @@
 package com.kylentt.mediaplayer.ui.screen.home
 
 import androidx.lifecycle.ViewModel
-import com.kylentt.mediaplayer.data.repository.SongRepositoryImpl
+import com.kylentt.mediaplayer.disposed.data.repository.SongRepositoryImpl
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 

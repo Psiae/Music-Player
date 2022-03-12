@@ -21,8 +21,6 @@ object DefaultColor {
     fun getDNBackground(): Color = if (isSystemInDarkTheme()) darkThemeBackground else lightThemeBackground
     @Composable
     fun getDNTextColor(): Color = if (isSystemInDarkTheme()) lightText else darkText
-    @Composable
-    fun getDNBnvColor(): Color = if (isSystemInDarkTheme()) black.copy(alpha = 0.05f) else lightThemeBackground
 
 }
 

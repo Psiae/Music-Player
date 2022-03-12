@@ -1,4 +1,4 @@
-package com.kylentt.mediaplayer.domain.presenter
+package com.kylentt.mediaplayer.disposed.domain.presenter
 
 import android.content.ComponentName
 import android.content.Context
@@ -13,8 +13,8 @@ import androidx.media3.session.SessionToken
 import coil.ImageLoader
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
-import com.kylentt.mediaplayer.domain.presenter.util.State
-import com.kylentt.mediaplayer.domain.service.MusicService
+import com.kylentt.mediaplayer.disposed.domain.presenter.util.State
+import com.kylentt.mediaplayer.disposed.domain.service.MusicService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow

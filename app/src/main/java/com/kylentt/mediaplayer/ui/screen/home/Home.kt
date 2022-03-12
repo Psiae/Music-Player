@@ -1,6 +1,11 @@
 package com.kylentt.mediaplayer.ui.screen.home
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -8,21 +13,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.kylentt.mediaplayer.core.util.getDisplayTitle
-import com.kylentt.mediaplayer.domain.presenter.ControllerViewModel
+import com.kylentt.mediaplayer.core.exoplayer.getDisplayTitle
+import com.kylentt.mediaplayer.disposed.domain.presenter.ControllerViewModel
 import com.kylentt.mediaplayer.ui.theme.md3.DefaultColor
-import timber.log.Timber
 
 @Composable
-@Preview
 fun HomeScreen(
     controller: ControllerViewModel = hiltViewModel(),
     vm: HomeViewModel = hiltViewModel(),
 ) {
-    Timber.d("ComposeDebug HomeScreen")
     val currentlyPlaying by remember { controller.playerCurrentMediaItem }
     val currentPlayState by remember { controller.playerCurrentPlaystate }
     val textColor = DefaultColor.getDNTextColor()
@@ -38,16 +38,17 @@ fun HomeScreen(
 fun HomeScreenLayout(
     textColor: Color,
     currentlyPlaying: CharSequence?,
-    currentlyPlayingState: String
+    currentlyPlayingState: String,
 ) {
+    val scroll = rememberScrollState()
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .statusBarsPadding(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            .statusBarsPadding()
+            .verticalScroll(state = scroll),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.padding(top = 15.dp))
         Column(
             modifier = Modifier,
             verticalArrangement = Arrangement.Center,

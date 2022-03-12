@@ -4,10 +4,6 @@ import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 
-sealed class STATE() {
-    class STATE_CHECKING() : STATE()
-}
-
 fun Uri.getEmbed(context: Context): ByteArray? {
     val mtr = MediaMetadataRetriever()
     mtr.setDataSource(context.applicationContext, this)

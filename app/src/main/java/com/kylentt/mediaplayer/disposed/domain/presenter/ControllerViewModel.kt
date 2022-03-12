@@ -1,4 +1,4 @@
-package com.kylentt.mediaplayer.domain.presenter
+package com.kylentt.mediaplayer.disposed.domain.presenter
 
 import android.net.Uri
 import androidx.compose.runtime.mutableStateOf
@@ -6,10 +6,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.session.MediaController
-import com.kylentt.mediaplayer.core.util.MediaItemHandler
-import com.kylentt.mediaplayer.data.repository.SongRepositoryImpl
-import com.kylentt.mediaplayer.domain.model.toMediaItems
-import com.kylentt.mediaplayer.domain.presenter.util.State
+import com.kylentt.mediaplayer.core.exoplayer.MediaItemHandler
+import com.kylentt.mediaplayer.disposed.data.repository.SongRepositoryImpl
+import com.kylentt.mediaplayer.disposed.domain.model.toMediaItems
+import com.kylentt.mediaplayer.disposed.domain.presenter.util.State
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collect

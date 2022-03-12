@@ -1,6 +1,6 @@
-package com.kylentt.mediaplayer.data.repository
+package com.kylentt.mediaplayer.disposed.data.repository
 
-import com.kylentt.mediaplayer.domain.model.Song
+import com.kylentt.mediaplayer.disposed.domain.model.Song
 import kotlinx.coroutines.flow.Flow
 
 // Repository that store Songs to be shared with ViewModel & Service

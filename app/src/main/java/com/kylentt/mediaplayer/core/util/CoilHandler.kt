@@ -24,20 +24,20 @@ class CoilHandler(
         sizeForNotif = if (VersionHelper.isR()) 256 else 512
     }
 
-    suspend fun squareWithCoil(bitmap: Bitmap, @Px size: Int = sizeForNotif!!, ): Bitmap? {
+    suspend fun squareWithCoil(bitmap: Bitmap, @Px size: Int = sizeForNotif!!, ): Bitmap {
         val req = ImageRequest.Builder(context)
-            .memoryCachePolicy(CachePolicy.DISABLED)
-            .diskCachePolicy(CachePolicy.DISABLED)
+            .diskCachePolicy(CachePolicy.ENABLED)
             .transformations(CropSquareTransformation())
             .size(size)
             .scale(Scale.FILL)
             .data(bitmap)
             .build()
-        return ((coil.execute(req).drawable) as BitmapDrawable?)?.bitmap
+        return ((coil.execute(req).drawable) as BitmapDrawable).bitmap
     }
 
     suspend fun makeSquaredBitmap(uri: Uri, @Px size: Int = sizeForNotif!!, ): Bitmap? {
         val req = ImageRequest.Builder(context)
+            .diskCachePolicy(CachePolicy.ENABLED)
             .transformations(CropSquareTransformation())
             .size(size)
             .scale(Scale.FILL)

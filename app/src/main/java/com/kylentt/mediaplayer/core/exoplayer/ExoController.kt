@@ -69,6 +69,9 @@ class ExoController(
                     exoEnded()
                 }
             }
+
+            if (playbackState != Player.STATE_IDLE && playbackState != Player.STATE_BUFFERING)
+                notificationManager.updateNotification(NotificationUpdate.PlaybackStateChanged)
         }
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             super.onMediaItemTransition(mediaItem, reason)

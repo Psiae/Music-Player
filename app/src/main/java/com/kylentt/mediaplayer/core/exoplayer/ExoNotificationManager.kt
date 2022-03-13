@@ -37,6 +37,7 @@ import timber.log.Timber
 
 sealed class NotificationUpdate() {
     object RepeatModeChanged : NotificationUpdate()
+    object PlaybackStateChanged : NotificationUpdate()
     data class MediaItemTransition(val mediaItem: MediaItem) : NotificationUpdate()
     data class PlayWhenReadyChanged(val play: Boolean) : NotificationUpdate()
 }
@@ -63,7 +64,12 @@ class ExoNotificationManager(
         type: NotificationUpdate
     ) {
         when (type) {
+
             is NotificationUpdate.RepeatModeChanged -> {
+                val notif = exoNotification.makeNotification(NOTIFICATION_CHANNEL_ID, transition = false, bm = lastBitmap)
+                notificationManager.notify(NOTIFICATION_ID, notif)
+            }
+            is NotificationUpdate.PlaybackStateChanged -> {
                 val notif = exoNotification.makeNotification(NOTIFICATION_CHANNEL_ID, transition = false, bm = lastBitmap)
                 notificationManager.notify(NOTIFICATION_ID, notif)
             }

@@ -159,8 +159,14 @@ class MusicService : MediaLibraryService() {
     inner class PlaybackReceiver: BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.getStringExtra(ACTION)) {
-                ACTION_NEXT -> { exoFade() { it.seekToNext() } }
-                ACTION_PREV -> { exoFade() { it.seekToPreviousMediaItem() } }
+                ACTION_NEXT -> { exoFade {
+                    it.prepare()
+                    it.seekToNext()
+                } }
+                ACTION_PREV -> { exoFade {
+                    it.prepare()
+                    it.seekToPreviousMediaItem()
+                } }
 
                 ACTION_PLAY -> toggleExo()
                 ACTION_PAUSE -> toggleExo()

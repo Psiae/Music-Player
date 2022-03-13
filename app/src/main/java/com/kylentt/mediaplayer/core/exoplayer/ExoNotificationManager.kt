@@ -7,11 +7,10 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.os.Build
-import android.os.Bundle
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationCompat.PRIORITY_LOW
 import androidx.media3.common.Player
 import androidx.media3.session.*
 import com.kylentt.mediaplayer.R
@@ -24,7 +23,9 @@ import com.kylentt.mediaplayer.core.util.Constants.NOTIFICATION_ID
 import com.kylentt.mediaplayer.core.util.Constants.NOTIFICATION_NAME
 import com.kylentt.mediaplayer.core.util.VersionHelper
 import com.kylentt.mediaplayer.disposed.domain.service.MusicService
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 /** Just Playing Around, seems need to wait until next updates */
 
@@ -32,7 +33,236 @@ import kotlinx.coroutines.launch
 
 class ExoNotificationManager(
     private val service: MusicService,
-) {}
+) {
+
+    private val notificationManager = service
+        .getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    private val exoNotification = ExoNotification(service, NOTIFICATION_CHANNEL_ID)
+
+    init {
+        if (VersionHelper.isOreo()) createNotificationChannel()
+    }
+
+    private var isForeground = false
+
+    fun updateNotification(
+        caller: String,
+        transition: Boolean = false,
+        shouldChangeBitmap: Boolean = false,
+        pp: Boolean? = null
+    ) {
+        synchronized(this) {
+            Timber.d("updateNotification. caller $caller, \n transition = $transition, changeBitmap = $shouldChangeBitmap, pp = $pp")
+
+            service.serviceScope.launch {
+                val notif = exoNotification.makeNotification(
+                    CHANNEL_ID = NOTIFICATION_CHANNEL_ID,
+                    pp = pp,
+                    session = service.sessions.first(),
+                    shouldChangeBitmap = shouldChangeBitmap,
+                    transition = transition
+                )
+                if (!isForeground) {
+                    service.startForeground(NOTIFICATION_ID, notif)
+                    isForeground = true
+                }
+                notificationManager.notify(NOTIFICATION_ID, notif)
+
+                pp?.let { play ->
+                    if (notificationManager.activeNotifications.isEmpty()) return@launch
+                    val p = notificationManager.activeNotifications.last().notification.actions.find {
+                        it.title == if (play) "PAUSE" else "PLAY"
+                    }
+                    if (p == null) {
+                        val iden = service.exo.currentMediaItem?.mediaId
+                        delay(250)
+                        if (service.exo.isPlaying == play && service.exo.currentMediaItem?.mediaId == iden) notificationManager.notify(NOTIFICATION_ID, notif)
+                    }
+                }
+            }
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun createNotificationChannel() {
+        notificationManager.createNotificationChannel(
+            NotificationChannel(NOTIFICATION_CHANNEL_ID, NOTIFICATION_NAME, NotificationManager.IMPORTANCE_LOW)
+        )
+    }
+
+
+    inner class ExoNotification(
+        private val service: MusicService,
+        private val channelId: String
+    ) {
+
+        private val context = service
+
+        private val actionCancel = makeActionCancel()
+        private val actionPlay = makeActionPlay()
+        private val actionPause = makeActionPause()
+        private val actionPrev = makeActionPrev()
+        private val actionNext = makeActionNext()
+        private val actionRepeatOff = makeActionRepeatOffToOne()
+        private val actionRepeatOne = makeActionRepeatOneToAll()
+        private val actionRepeatAll = makeActionRepeatAllToOff()
+
+        var lastBitmap: Bitmap? = null
+        suspend fun makeNotification(
+            CHANNEL_ID: String = channelId,
+            pp: Boolean? = null,
+            session: MediaSession,
+            shouldChangeBitmap: Boolean,
+            transition: Boolean
+        ): Notification {
+
+            val p = session.player
+            val isp = pp ?: p.isPlaying
+            val pwr = p.playWhenReady
+            val mi = p.currentMediaItem
+            val ct = mi?.getDisplayTitle
+            val st = mi?.getSubtitle
+
+            val pict = mi?.let { service.mediaItemHandler.getEmbeds(it) }
+
+            val bm = if (shouldChangeBitmap) {
+                with(service.coilHandler) {
+                    pict?.let { barr -> this.squareWithCoil(BitmapFactory.decodeByteArray(barr, 0, barr.size)) }
+                        ?: mi?.getArtUri?.let { uri -> makeSquaredBitmap(uri) }
+                }
+            } else lastBitmap
+
+            lastBitmap = bm
+
+            return NotificationCompat.Builder(context, channelId).apply {
+
+                setContentIntent(context.packageManager?.getLaunchIntentForPackage(
+                    context.packageName
+                )?.let {
+                    PendingIntent.getActivity(context, 445,
+                        it.apply {
+                            this.putExtra("NOTIFICATION_CONTENT", mi?.mediaMetadata?.mediaUri)
+                            this.putExtra("NOTIFICATION_CONTENT_ID", mi?.mediaId)
+                        }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    )
+                })
+
+                setContentTitle(ct)
+                setContentText(st)
+                setSmallIcon(R.drawable.play_icon_theme3)
+                setChannelId(CHANNEL_ID)
+                setColorized(true)
+                setOngoing(true)
+
+                when (p.repeatMode) {
+                    Player.REPEAT_MODE_OFF -> addAction(actionRepeatOff)
+                    Player.REPEAT_MODE_ONE -> addAction(actionRepeatOne)
+                    Player.REPEAT_MODE_ALL -> addAction(actionRepeatAll)
+                }
+
+                val havePrevButton = if (p.hasPreviousMediaItem()) {
+                    addAction(actionPrev)
+                    true
+                } else false
+
+                if (isp || (transition && pwr)) { addAction(actionPause) } else addAction(actionPlay)
+
+                val haveNextButton = if (p.hasNextMediaItem()) {
+                    addAction(actionNext)
+                    true
+                } else false
+
+                addAction(actionCancel)
+
+                val media = MediaStyleNotificationHelper.MediaStyle(session)
+
+                when {
+                    haveNextButton && havePrevButton -> media.setShowActionsInCompactView(1,2,3)
+                    havePrevButton && !haveNextButton -> media.setShowActionsInCompactView(1,2)
+                    haveNextButton && !havePrevButton -> media.setShowActionsInCompactView(1,2)
+                    else -> media.setShowActionsInCompactView(1)
+                }
+
+                setLargeIcon( bm )
+                setStyle( media )
+            }.build()
+        }
+
+        private fun makeActionCancel() = NotificationCompat.Action.Builder(
+            R.drawable.ic_notif_close, "ACTION_CANCEL", PendingIntent.getBroadcast(
+                service, Constants.ACTION_CANCEL_CODE, Intent(Constants.PLAYBACK_INTENT).apply {
+                    putExtra(Constants.ACTION, Constants.ACTION_CANCEL)
+                    setPackage(context.packageName)
+                },PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        ).build()
+
+        private fun makeActionRepeatOffToOne() = NotificationCompat.Action.Builder(
+            R.drawable.ic_notif_repeat_off, "REPEAT_OFF", PendingIntent.getBroadcast(
+                service, Constants.ACTION_REPEAT_OFF_TO_ONE_CODE, Intent(Constants.PLAYBACK_INTENT).apply {
+                    putExtra(Constants.ACTION, ACTION_REPEAT_OFF_TO_ONE)
+                    setPackage(context.packageName)
+                }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        ).build()
+
+        private fun makeActionRepeatOneToAll() = NotificationCompat.Action.Builder(
+            R.drawable.ic_notif_repeat_one, "REPEAT_ONE", PendingIntent.getBroadcast(
+                service, Constants.ACTION_REPEAT_ONE_TO_ALL_CODE, Intent(Constants.PLAYBACK_INTENT).apply {
+                    putExtra(Constants.ACTION, ACTION_REPEAT_ONE_TO_ALL)
+                    setPackage(context.packageName)
+                }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        ).build()
+
+        private fun makeActionRepeatAllToOff() = NotificationCompat.Action.Builder(
+            R.drawable.ic_notif_repeat_all, "REPEAT_ALL", PendingIntent.getBroadcast(
+                service, Constants.ACTION_REPEAT_ALL_TO_OFF_CODE, Intent(Constants.PLAYBACK_INTENT).apply {
+                    putExtra(Constants.ACTION, ACTION_REPEAT_ALL_TO_OFF)
+                    setPackage(context.packageName)
+                }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        ).build()
+
+        private fun makeActionPlay() = NotificationCompat.Action.Builder(
+            R.drawable.ic_notif_play, "PLAY", PendingIntent.getBroadcast(
+                service, Constants.ACTION_PLAY_CODE, Intent(Constants.PLAYBACK_INTENT).apply {
+                    putExtra(Constants.ACTION, Constants.ACTION_PLAY)
+                    setPackage(context.packageName)
+                }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        ).build()
+
+        private fun makeActionPause() = NotificationCompat.Action.Builder(
+            R.drawable.ic_notif_pause, "PAUSE", PendingIntent.getBroadcast(
+                service, Constants.ACTION_PAUSE_CODE, Intent(Constants.PLAYBACK_INTENT).apply {
+                    putExtra(Constants.ACTION, Constants.ACTION_PAUSE)
+                    setPackage(context.packageName)
+                }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        ).build()
+
+        private fun makeActionNext() = NotificationCompat.Action.Builder(
+            R.drawable.ic_notif_next, "NEXT", PendingIntent.getBroadcast(
+                service, Constants.ACTION_NEXT_CODE, Intent(Constants.PLAYBACK_INTENT).apply {
+                    putExtra(Constants.ACTION, Constants.ACTION_NEXT)
+                    setPackage(context.packageName)
+                }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        ).build()
+
+        private fun makeActionPrev() = NotificationCompat.Action.Builder(
+            R.drawable.ic_notif_prev, "PREV", PendingIntent.getBroadcast(
+                service, Constants.ACTION_PREV_CODE, Intent(Constants.PLAYBACK_INTENT).apply {
+                    putExtra(Constants.ACTION, Constants.ACTION_PREV)
+                    setPackage(context.packageName)
+                }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        ).build()
+    }
+
+
+}
 
 /*class ExoNotificationManager(
     private val service: MusicService,

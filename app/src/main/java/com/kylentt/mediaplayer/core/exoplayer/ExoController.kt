@@ -2,6 +2,7 @@ package com.kylentt.mediaplayer.core.exoplayer
 
 import androidx.annotation.FloatRange
 import androidx.annotation.MainThread
+import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
@@ -9,7 +10,9 @@ import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import com.kylentt.mediaplayer.disposed.domain.service.MusicService
 import kotlinx.coroutines.delay
+import timber.log.Timber
 
+@MainThread
 class ExoController(
     private val mediaSession: MediaSession,
     private val service: MediaLibraryService
@@ -69,29 +72,85 @@ class ExoController(
                 Player.STATE_IDLE -> exoIdle()
                 Player.STATE_BUFFERING -> exoBuffer()
                 Player.STATE_READY -> exoReady()
-                Player.STATE_ENDED -> exoEnded()
+                Player.STATE_ENDED -> {
+                    exo.pause()
+                    exoEnded()
+                }
             }
-            service.onUpdateNotification(mediaSession)
+            if (playbackState != Player.STATE_IDLE && playbackState != Player.STATE_BUFFERING) {
+                notificationManager.updateNotification("playbackStateChanged !Idle !Buffer",false)
+            }
         }
     }
 
-    private var isPlayingChangeListener = object : Player.Listener {
-        override fun onIsPlayingChanged(isPlaying: Boolean) {
-            super.onIsPlayingChanged(isPlaying)
-            service.onUpdateNotification(mediaSession)
+    private var onMediaItemTransition = object : Player.Listener {
+        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            super.onMediaItemTransition(mediaItem, reason)
+            when (reason) {
+                Player.MEDIA_ITEM_TRANSITION_REASON_AUTO -> {
+                    notificationManager.updateNotification("MediaItemTransition Auto",true, shouldChangeBitmap = true)
+                }
+                Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED -> {
+                    notificationManager.updateNotification("MediaItemTransition PlaylistChanged",true, shouldChangeBitmap = true)
+                }
+                Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT -> {
+                    notificationManager.updateNotification("MediaItemTransition Repeat",true, shouldChangeBitmap = false)
+                }
+                Player.MEDIA_ITEM_TRANSITION_REASON_SEEK -> {
+                    notificationManager.updateNotification("MediaItemTransition SeekTo",true, shouldChangeBitmap = true)
+                }
+            }
+        }
+    }
+
+    private var playWhenReadyChanged = object : Player.Listener {
+        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+            super.onPlayWhenReadyChanged(playWhenReady, reason)
+
+            when (reason) {
+
+                Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST -> {
+                    notificationManager.updateNotification( caller = "playWhenReadyChanged User Request to $playWhenReady",pp = playWhenReady )
+                }
+                Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM -> {
+                // TODO()
+                }
+                Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_BECOMING_NOISY -> {
+                    notificationManager.updateNotification( caller = "playWhenReadyChanged AudioBecomingNoisy $playWhenReady",pp = playWhenReady )
+                }
+                Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_FOCUS_LOSS -> {
+                    notificationManager.updateNotification( caller = "playWhenReadyChanged AudioFocusLoss $playWhenReady",pp = playWhenReady )
+                }
+                Player.PLAY_WHEN_READY_CHANGE_REASON_REMOTE -> {
+                // TODO()
+                }
+            }
         }
     }
 
     private var repeatModeChangeListener = object : Player.Listener {
         override fun onRepeatModeChanged(repeatMode: Int) {
             super.onRepeatModeChanged(repeatMode)
-            service.onUpdateNotification(mediaSession)
+            val repeat = when (repeatMode) {
+                Player.REPEAT_MODE_ALL -> {
+                    "Repeat_Mode_All"
+                }
+                Player.REPEAT_MODE_OFF -> {
+                    "Repeat_Mode_Off"
+                }
+                Player.REPEAT_MODE_ONE -> {
+                    "Repeat_Mode_One"
+                }
+                else -> "Repeat_Mode_Unknown"
+            }
+            notificationManager.updateNotification("onRepeatModeChanged $repeat")
         }
     }
 
     private var playerErrorListener = object : Player.Listener {
         override fun onPlayerError(error: PlaybackException) {
             super.onPlayerError(error)
+            Timber.e(error)
             when(error.errorCodeName) {
                 "ERROR_CODE_DECODING_FAILED" -> {
                     controller {
@@ -110,7 +169,6 @@ class ExoController(
         }
     }
 
-    @MainThread
     fun controller(
         whenReady: ( (ExoPlayer) -> Unit)? = null,
         command: ( (ExoPlayer) -> Unit) = {}
@@ -121,6 +179,7 @@ class ExoController(
 
     private var fading = false
     private var fadeListener = mutableListOf< (ExoPlayer) -> Unit >()
+
     suspend fun exoFade(
         @FloatRange(from = 0.0,to = 1.0) to: Float,
         clear: Boolean,
@@ -166,9 +225,10 @@ class ExoController(
 
     init {
         exo.addListener(playbackChangeListener)
-        exo.addListener(isPlayingChangeListener)
+        exo.addListener(playWhenReadyChanged)
         exo.addListener(repeatModeChangeListener)
         exo.addListener(playerErrorListener)
+        exo.addListener(onMediaItemTransition)
     }
 
     companion object {

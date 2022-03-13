@@ -14,20 +14,29 @@ import javax.inject.Singleton
 class MediaItemHandler(
     private val context: Context
 ) {
-    private val mtr = MediaMetadataRetriever()
+    private var mtr = MediaMetadataRetriever()
 
     fun getEmbeds(item: MediaItem): ByteArray? {
-        mtr.setDataSource(context, item.getUri)
-        return mtr.embeddedPicture
+        synchronized(this) {
+            return try {
+                mtr.setDataSource(context, item.getUri)
+                mtr.embeddedPicture
+            } catch (e: Exception) {
+                if (e !is IllegalArgumentException) throw e else Timber.e(e)
+                null
+            }
+        }
     }
 
     fun getEmbeds(uri: Uri): ByteArray? {
-        return try {
-            mtr.setDataSource(context, uri)
-            mtr.embeddedPicture
-        } catch (e: Exception) {
-            if (e !is IllegalArgumentException) throw e else Timber.e(e)
-            null
+        synchronized(this) {
+            return try {
+                mtr.setDataSource(context, uri)
+                mtr.embeddedPicture
+            } catch (e: Exception) {
+                if (e !is IllegalArgumentException) throw e else Timber.e(e)
+                null
+            }
         }
     }
 

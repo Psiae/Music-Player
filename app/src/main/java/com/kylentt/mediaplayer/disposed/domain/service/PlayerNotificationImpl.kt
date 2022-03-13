@@ -40,7 +40,6 @@ import com.kylentt.mediaplayer.core.util.VersionHelper
 class PlayerNotificationImpl(
     private val service: MusicService
 ) {
-
     val context: Context = this.service
 
     private val manager = context.getSystemService(

@@ -6,22 +6,14 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.session.MediaLibraryService
-import androidx.media3.session.MediaSession
-import com.kylentt.mediaplayer.disposed.domain.service.MusicService
 import kotlinx.coroutines.delay
 import timber.log.Timber
 
 @MainThread
 class ExoController(
-    private val mediaSession: MediaSession,
-    private val service: MediaLibraryService
+    var exo: ExoPlayer,
+    var notificationManager: ExoNotificationManager
 ) {
-
-    // TODO move Notification Manager here
-
-    private val notificationManager: ExoNotificationManager = ExoNotificationManager(service as MusicService)
-    private val exo = mediaSession.player as ExoPlayer
 
     private val exoIdleListener = mutableListOf<( (ExoPlayer) -> Unit)>()
     private val exoBufferListener = mutableListOf<( (ExoPlayer) -> Unit )>()
@@ -65,7 +57,7 @@ class ExoController(
             command(exo) else exoReadyListener.add(command)
     }
 
-    private var playbackChangeListener = object : Player.Listener {
+    private var defaultListener = object  : Player.Listener {
         override fun onPlaybackStateChanged(playbackState: Int) {
             super.onPlaybackStateChanged(playbackState)
             when(playbackState) {
@@ -77,58 +69,48 @@ class ExoController(
                     exoEnded()
                 }
             }
-            if (playbackState != Player.STATE_IDLE && playbackState != Player.STATE_BUFFERING) {
-                notificationManager.updateNotification("playbackStateChanged !Idle !Buffer",false)
-            }
         }
-    }
-
-    private var onMediaItemTransition = object : Player.Listener {
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             super.onMediaItemTransition(mediaItem, reason)
-            when (reason) {
-                Player.MEDIA_ITEM_TRANSITION_REASON_AUTO -> {
-                    notificationManager.updateNotification("MediaItemTransition Auto",true, shouldChangeBitmap = true)
-                }
-                Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED -> {
-                    notificationManager.updateNotification("MediaItemTransition PlaylistChanged",true, shouldChangeBitmap = true)
-                }
-                Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT -> {
-                    notificationManager.updateNotification("MediaItemTransition Repeat",true, shouldChangeBitmap = false)
-                }
-                Player.MEDIA_ITEM_TRANSITION_REASON_SEEK -> {
-                    notificationManager.updateNotification("MediaItemTransition SeekTo",true, shouldChangeBitmap = true)
+            mediaItem?.let {
+                when (reason) {
+                    Player.MEDIA_ITEM_TRANSITION_REASON_AUTO -> {
+                        notificationManager.updateNotification(NotificationUpdate.MediaItemTransition(it))
+                    }
+                    Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED -> {
+                        notificationManager.updateNotification(NotificationUpdate.MediaItemTransition(it))
+                    }
+                    Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT -> {
+                        notificationManager.updateNotification(NotificationUpdate.MediaItemTransition(it))
+                    }
+                    Player.MEDIA_ITEM_TRANSITION_REASON_SEEK -> {
+                        notificationManager.updateNotification(NotificationUpdate.MediaItemTransition(it))
+                    }
                 }
             }
         }
-    }
-
-    private var playWhenReadyChanged = object : Player.Listener {
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
             super.onPlayWhenReadyChanged(playWhenReady, reason)
 
             when (reason) {
 
                 Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST -> {
-                    notificationManager.updateNotification( caller = "playWhenReadyChanged User Request to $playWhenReady",pp = playWhenReady )
+                    notificationManager.updateNotification(NotificationUpdate.PlayWhenReadyChanged(playWhenReady))
                 }
                 Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM -> {
-                // TODO()
+                    // TODO()
                 }
                 Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_BECOMING_NOISY -> {
-                    notificationManager.updateNotification( caller = "playWhenReadyChanged AudioBecomingNoisy $playWhenReady",pp = playWhenReady )
+                    notificationManager.updateNotification(NotificationUpdate.PlayWhenReadyChanged(playWhenReady))
                 }
                 Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_FOCUS_LOSS -> {
-                    notificationManager.updateNotification( caller = "playWhenReadyChanged AudioFocusLoss $playWhenReady",pp = playWhenReady )
+                    notificationManager.updateNotification(NotificationUpdate.PlayWhenReadyChanged(playWhenReady))
                 }
                 Player.PLAY_WHEN_READY_CHANGE_REASON_REMOTE -> {
-                // TODO()
+                    // TODO()
                 }
             }
         }
-    }
-
-    private var repeatModeChangeListener = object : Player.Listener {
         override fun onRepeatModeChanged(repeatMode: Int) {
             super.onRepeatModeChanged(repeatMode)
             val repeat = when (repeatMode) {
@@ -143,11 +125,8 @@ class ExoController(
                 }
                 else -> "Repeat_Mode_Unknown"
             }
-            notificationManager.updateNotification("onRepeatModeChanged $repeat")
+            notificationManager.updateNotification(NotificationUpdate.RepeatModeChanged)
         }
-    }
-
-    private var playerErrorListener = object : Player.Listener {
         override fun onPlayerError(error: PlaybackException) {
             super.onPlayerError(error)
             Timber.e(error)
@@ -166,8 +145,10 @@ class ExoController(
                     }
                 }
             }
+            Timber.e("onPlayerError ${error.errorCodeName}")
         }
     }
+
 
     fun controller(
         whenReady: ( (ExoPlayer) -> Unit)? = null,
@@ -185,6 +166,7 @@ class ExoController(
         clear: Boolean,
         command: (ExoPlayer) -> Unit
     ) {
+
         if (clear) fadeListener.clear()
         fadeListener.add(command)
 
@@ -224,15 +206,22 @@ class ExoController(
     }
 
     init {
-        exo.addListener(playbackChangeListener)
-        exo.addListener(playWhenReadyChanged)
-        exo.addListener(repeatModeChangeListener)
-        exo.addListener(playerErrorListener)
-        exo.addListener(onMediaItemTransition)
+        Timber.d("ExoController Init")
+        exo.addListener(defaultListener)
     }
 
     companion object {
-        fun getNotificationManager(controller: ExoController) = controller.notificationManager
+
+        private var instance: ExoController? = null
+
+        fun getInstance(exo: ExoPlayer, notificationManager: ExoNotificationManager): ExoController {
+            if (instance == null) {
+                instance = ExoController(exo, notificationManager)
+            } else {
+                instance!!.exo = exo
+            }
+            return instance!!
+        }
     }
 }
 

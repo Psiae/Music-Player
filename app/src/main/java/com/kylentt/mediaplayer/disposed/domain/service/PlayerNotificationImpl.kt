@@ -74,7 +74,7 @@ class PlayerNotificationImpl(
         )
     }
 
-    fun makeNotif(id: Int, session: MediaSession, bm: Bitmap?) = NotificationCompat.Builder(
+    fun makeNotif(session: MediaSession, bm: Bitmap?) = NotificationCompat.Builder(
         context, NOTIFICATION_NAME
     ).apply {
 

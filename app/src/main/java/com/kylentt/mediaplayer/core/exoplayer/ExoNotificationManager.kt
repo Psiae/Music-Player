@@ -1,5 +1,6 @@
 package com.kylentt.mediaplayer.core.exoplayer
 
+import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -7,12 +8,14 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
+import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
-import androidx.media3.session.*
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.session.MediaSession
+import androidx.media3.session.MediaStyleNotificationHelper
 import com.kylentt.mediaplayer.R
 import com.kylentt.mediaplayer.core.util.Constants
 import com.kylentt.mediaplayer.core.util.Constants.ACTION_REPEAT_ALL_TO_OFF
@@ -23,6 +26,7 @@ import com.kylentt.mediaplayer.core.util.Constants.NOTIFICATION_ID
 import com.kylentt.mediaplayer.core.util.Constants.NOTIFICATION_NAME
 import com.kylentt.mediaplayer.core.util.VersionHelper
 import com.kylentt.mediaplayer.disposed.domain.service.MusicService
+import com.kylentt.mediaplayer.disposed.domain.service.PlayerNotificationImpl
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -31,57 +35,97 @@ import timber.log.Timber
 
 // TODO: Use Provided Notification Manager soon as Available
 
+sealed class NotificationUpdate() {
+    object RepeatModeChanged : NotificationUpdate()
+    data class MediaItemTransition(val mediaItem: MediaItem) : NotificationUpdate()
+    data class PlayWhenReadyChanged(val play: Boolean) : NotificationUpdate()
+}
+
 class ExoNotificationManager(
     private val service: MusicService,
+    private val session: MediaSession,
+    private val exo: ExoPlayer
 ) {
 
     private val notificationManager = service
         .getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-    private val exoNotification = ExoNotification(service, NOTIFICATION_CHANNEL_ID)
+    private val exoNotification = ExoNotification(NOTIFICATION_CHANNEL_ID)
+    private val playerNotification = PlayerNotificationImpl(service)
 
     init {
         if (VersionHelper.isOreo()) createNotificationChannel()
     }
 
-    private var isForeground = false
+    var lastBitmap: Bitmap? = null
+        private set
 
     fun updateNotification(
-        caller: String,
-        transition: Boolean = false,
-        shouldChangeBitmap: Boolean = false,
-        pp: Boolean? = null
+        type: NotificationUpdate
     ) {
-        synchronized(this) {
-            Timber.d("updateNotification. caller $caller, \n transition = $transition, changeBitmap = $shouldChangeBitmap, pp = $pp")
+        when (type) {
+            is NotificationUpdate.RepeatModeChanged -> {
+                val notif = exoNotification.makeNotification(NOTIFICATION_CHANNEL_ID, transition = false, bm = lastBitmap)
+                notificationManager.notify(NOTIFICATION_ID, notif)
+            }
+            is NotificationUpdate.MediaItemTransition -> {
+                service.serviceScope.launch {
+                    val embed = service.mediaItemHandler.getEmbeds(type.mediaItem) ?: service.mediaItemHandler.getEmbeds(type.mediaItem.getArtUri)
+                    val bm = embed?.let {
+                        service.coilHandler.squareWithCoil(android.graphics.BitmapFactory.decodeByteArray(it, 0, it.size))
+                    }
+                    lastBitmap = bm
 
-            service.serviceScope.launch {
-                val notif = exoNotification.makeNotification(
-                    CHANNEL_ID = NOTIFICATION_CHANNEL_ID,
-                    pp = pp,
-                    session = service.sessions.first(),
-                    shouldChangeBitmap = shouldChangeBitmap,
-                    transition = transition
-                )
-                if (!isForeground) {
-                    service.startForeground(NOTIFICATION_ID, notif)
-                    isForeground = true
+                    val notif = exoNotification.makeNotification(
+                        NOTIFICATION_CHANNEL_ID, transition = true, bm = bm
+                    )
+
+                    notificationManager.notify(NOTIFICATION_ID,
+                        notif
+                    )
+
+                    if (!service.isForegroundService) {
+                        service.startForeground(NOTIFICATION_ID, notif)
+                    }
                 }
+            }
+            is NotificationUpdate.PlayWhenReadyChanged -> {
+                val notif = exoNotification.makeNotification(NOTIFICATION_CHANNEL_ID, transition = false, bm = lastBitmap, pp = type.play)
                 notificationManager.notify(NOTIFICATION_ID, notif)
 
-                pp?.let { play ->
-                    if (notificationManager.activeNotifications.isEmpty()) return@launch
-                    val p = notificationManager.activeNotifications.last().notification.actions.find {
-                        it.title == if (play) "PAUSE" else "PLAY"
-                    }
-                    if (p == null) {
-                        val iden = service.exo.currentMediaItem?.mediaId
-                        delay(250)
-                        if (service.exo.isPlaying == play && service.exo.currentMediaItem?.mediaId == iden) notificationManager.notify(NOTIFICATION_ID, notif)
-                    }
+                service.serviceScope.launch {
+                    validatePP(notif, type.play)
                 }
             }
         }
     }
+
+    private suspend fun validatePP(notif: Notification, pp: Boolean) {
+        pp.let { play ->
+            if (notificationManager.activeNotifications.isEmpty()) return
+            val p = notificationManager.activeNotifications.last().notification.actions.find {
+                it.title == if (play) "PAUSE" else "PLAY"
+            }
+            if (p == null) {
+                val iden = service.exo.currentMediaItem?.mediaId
+                delay(250)
+                if (service.exo.isPlaying == play && service.exo.currentMediaItem?.mediaId == iden) notificationManager.notify(
+                    NOTIFICATION_ID,
+                    notif)
+            }
+        }
+    }
+
+    /*pp?.let { play ->
+        if (notificationManager.activeNotifications.isEmpty()) return@launch
+        val p = notificationManager.activeNotifications.last().notification.actions.find {
+            it.title == if (play) "PAUSE" else "PLAY"
+        }
+        if (p == null) {
+            val iden = service.exo.currentMediaItem?.mediaId
+            delay(250)
+            if (service.exo.isPlaying == play && service.exo.currentMediaItem?.mediaId == iden) notificationManager.notify(NOTIFICATION_ID, notif)
+        }
+    }*/
 
     @RequiresApi(Build.VERSION_CODES.O)
     private fun createNotificationChannel() {
@@ -92,7 +136,6 @@ class ExoNotificationManager(
 
 
     inner class ExoNotification(
-        private val service: MusicService,
         private val channelId: String
     ) {
 
@@ -107,12 +150,11 @@ class ExoNotificationManager(
         private val actionRepeatOne = makeActionRepeatOneToAll()
         private val actionRepeatAll = makeActionRepeatAllToOff()
 
-        var lastBitmap: Bitmap? = null
-        suspend fun makeNotification(
+        @SuppressLint("RestrictedApi")
+        fun makeNotification(
             CHANNEL_ID: String = channelId,
             pp: Boolean? = null,
-            session: MediaSession,
-            shouldChangeBitmap: Boolean,
+            bm: Bitmap?,
             transition: Boolean
         ): Notification {
 
@@ -123,18 +165,8 @@ class ExoNotificationManager(
             val ct = mi?.getDisplayTitle
             val st = mi?.getSubtitle
 
-            val pict = mi?.let { service.mediaItemHandler.getEmbeds(it) }
 
-            val bm = if (shouldChangeBitmap) {
-                with(service.coilHandler) {
-                    pict?.let { barr -> this.squareWithCoil(BitmapFactory.decodeByteArray(barr, 0, barr.size)) }
-                        ?: mi?.getArtUri?.let { uri -> makeSquaredBitmap(uri) }
-                }
-            } else lastBitmap
-
-            lastBitmap = bm
-
-            return NotificationCompat.Builder(context, channelId).apply {
+            return NotificationCompat.Builder(context, NOTIFICATION_NAME).apply {
 
                 setContentIntent(context.packageManager?.getLaunchIntentForPackage(
                     context.packageName
@@ -172,12 +204,12 @@ class ExoNotificationManager(
                     true
                 } else false
 
-                addAction(actionCancel)
-
                 val media = MediaStyleNotificationHelper.MediaStyle(session)
 
+                addAction(actionCancel)
+
                 when {
-                    haveNextButton && havePrevButton -> media.setShowActionsInCompactView(1,2,3)
+                    haveNextButton && havePrevButton  -> media.setShowActionsInCompactView(1,2,3)
                     havePrevButton && !haveNextButton -> media.setShowActionsInCompactView(1,2)
                     haveNextButton && !havePrevButton -> media.setShowActionsInCompactView(1,2)
                     else -> media.setShowActionsInCompactView(1)
@@ -185,6 +217,7 @@ class ExoNotificationManager(
 
                 setLargeIcon( bm )
                 setStyle( media )
+
             }.build()
         }
 

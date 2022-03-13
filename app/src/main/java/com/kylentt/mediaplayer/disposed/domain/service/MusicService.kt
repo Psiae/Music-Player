@@ -1,10 +1,12 @@
 package com.kylentt.mediaplayer.disposed.domain.service
 
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.graphics.Bitmap
 import androidx.annotation.MainThread
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
@@ -12,6 +14,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import com.kylentt.mediaplayer.core.exoplayer.ExoController
+import com.kylentt.mediaplayer.core.exoplayer.ExoNotificationManager
 import com.kylentt.mediaplayer.core.exoplayer.MediaItemHandler
 import com.kylentt.mediaplayer.core.util.CoilHandler
 import com.kylentt.mediaplayer.core.util.Constants.ACTION
@@ -57,6 +60,12 @@ class MusicService : MediaLibraryService() {
 
     private lateinit var exoController: ExoController
 
+    private var session: MediaLibrarySession? = null
+
+    private val playbackReceiver = PlaybackReceiver()
+
+    var isForegroundService = false
+
     val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     override fun onCreate() {
@@ -68,23 +77,26 @@ class MusicService : MediaLibraryService() {
     }
 
     private fun initializeSession() {
-        makeActivityIntent()
-        session = makeLibrarySession(activityIntent!!)
+        session = makeLibrarySession(makeActivityIntent()!!)
+        manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        mNotification = PlayerNotificationImpl(this)
         isActive = true
     }
 
-    private val playbackReceiver = PlaybackReceiver()
+    private fun makeActivityIntent() = packageManager?.getLaunchIntentForPackage(packageName)?.let {
+        PendingIntent.getActivity(this, 444, it, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+    }
+
     private fun registerReceiver() =
         registerReceiver(playbackReceiver, IntentFilter(PLAYBACK_INTENT))
 
-
-
-    private var session: MediaLibrarySession? = null
-    private var activityIntent: PendingIntent? = null
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? {
-        Timber.d("$TAG onGetSession")
-        return session!!
-    }
+    private fun makeLibrarySession(
+        intent: PendingIntent
+    ) = MediaLibrarySession.Builder(this, exo, SessionCallback())
+        .setId(MEDIA_SESSION_ID)
+        .setSessionActivity(intent)
+        .setMediaItemFiller(RepoItemFiller())
+        .build()
 
     // Just forward any possible command here for now
     @MainThread
@@ -99,33 +111,45 @@ class MusicService : MediaLibraryService() {
         }
     }
 
+    var lastServiceItem: String? = null
+    var lastServiceBitmap: Bitmap? = null
+    private lateinit var manager: NotificationManager
+    private lateinit var mNotification: PlayerNotificationImpl
+
     /** MediaSession */
-    private var mSession: MediaSession? = null
+    override fun onUpdateNotification(session: MediaSession): MediaNotification? {
+        return null
+    }
 
-    override fun onUpdateNotification(session: MediaSession): MediaNotification? = null
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? {
+        Timber.d("$TAG onGetSession")
+        return session!!
+    }
 
-    private fun makeLibrarySession(
-        intent: PendingIntent
-    ) = MediaLibrarySession.Builder(this, exo, SessionCallback())
-            .setId(MEDIA_SESSION_ID)
-            .setSessionActivity(intent)
-            .setMediaItemFiller(RepoItemFiller())
-            .build()
-
-    private fun makeActivityIntent() {
-        activityIntent = packageManager?.getLaunchIntentForPackage(packageName)?.let {
-            PendingIntent.getActivity(this, 444, it,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
+    inner class SessionCallback : MediaLibrarySession.MediaLibrarySessionCallback {
+        override fun onConnect(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+        ): MediaSession.ConnectionResult {
+            Timber.d("onConnect")
+            exoController = ExoController.getInstance(exo , ExoNotificationManager(this@MusicService, session, exo))
+            return super.onConnect(session, controller)
         }
     }
 
+    inner class RepoItemFiller : MediaSession.MediaItemFiller {
+        override fun fillInLocalConfiguration(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            mediaItem: MediaItem,
+        ) = mediaItemHandler.rebuildMediaItem(mediaItem)
+    }
 
     private fun toggleExo() = controller {
+        it.playWhenReady = !it.playWhenReady
         if (it.playbackState == Player.STATE_ENDED && !it.hasNextMediaItem()) it.seekTo(0)
         if (it.playbackState == Player.STATE_ENDED && it.hasNextMediaItem()) it.seekToNextMediaItem()
         if (it.playbackState == Player.STATE_IDLE) it.prepare()
-        it.playWhenReady = !it.playWhenReady
     }
 
     private fun exoFade(clear: Boolean = false, listener: ( (ExoPlayer) -> Unit )) {
@@ -142,7 +166,7 @@ class MusicService : MediaLibraryService() {
                 ACTION_PAUSE -> toggleExo()
 
                 ACTION_UNIT -> Unit
-                ACTION_FADE -> exoFade { /* TODO: Something todo while its fading? */ }
+                ACTION_FADE -> exoFade { /* TODO() */ }
                 ACTION_FADE_PAUSE -> exoFade { it.pause() }
 
                 ACTION_REPEAT_OFF_TO_ONE -> exo.repeatMode = Player.REPEAT_MODE_ONE
@@ -150,30 +174,12 @@ class MusicService : MediaLibraryService() {
                 ACTION_REPEAT_ALL_TO_OFF -> exo.repeatMode = Player.REPEAT_MODE_OFF
 
                 ACTION_CANCEL -> { session?.let { session ->
+                    Timber.d("MusicService onReceiver Action Cancel")
                     exoFade(true) { stopService(session) }
                     return
                 } }
             }
         }
-    }
-
-    inner class SessionCallback : MediaLibrarySession.MediaLibrarySessionCallback {
-        override fun onConnect(
-            session: MediaSession,
-            controller: MediaSession.ControllerInfo,
-        ): MediaSession.ConnectionResult {
-            mSession = session
-            exoController = ExoController(mSession!!, this@MusicService)
-            return super.onConnect(session, controller)
-        }
-    }
-
-    inner class RepoItemFiller : MediaSession.MediaItemFiller {
-        override fun fillInLocalConfiguration(
-            session: MediaSession,
-            controller: MediaSession.ControllerInfo,
-            mediaItem: MediaItem,
-        ) = mediaItemHandler.rebuildMediaItem(mediaItem)
     }
 
     private fun stopService(session: MediaLibrarySession) {
@@ -192,8 +198,8 @@ class MusicService : MediaLibraryService() {
     }
 
     override fun onDestroy() {
-        Timber.d("$TAG onDestroy")
         super.onDestroy()
+        Timber.d("$TAG onDestroy")
         isActive = false
         if (!MainActivity.isActive) exitProcess(0)
     }

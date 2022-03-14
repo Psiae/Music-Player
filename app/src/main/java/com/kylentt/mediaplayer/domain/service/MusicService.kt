@@ -1,24 +1,24 @@
-package com.kylentt.mediaplayer.disposed.domain.service
+package com.kylentt.mediaplayer.domain.service
 
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.graphics.Bitmap
-import androidx.annotation.MainThread
+import android.os.Bundle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionResult
+import com.google.common.util.concurrent.ListenableFuture
+import com.kylentt.mediaplayer.BuildConfig
 import com.kylentt.mediaplayer.core.exoplayer.ControllerCommand
 import com.kylentt.mediaplayer.core.exoplayer.ExoController
-import com.kylentt.mediaplayer.core.exoplayer.ExoControllers
 import com.kylentt.mediaplayer.core.exoplayer.MediaItemHandler
 import com.kylentt.mediaplayer.core.util.CoilHandler
-import com.kylentt.mediaplayer.core.util.Constants.ACTION
 import com.kylentt.mediaplayer.core.util.Constants.ACTION_CANCEL
 import com.kylentt.mediaplayer.core.util.Constants.ACTION_NEXT
 import com.kylentt.mediaplayer.core.util.Constants.ACTION_PAUSE
@@ -28,15 +28,21 @@ import com.kylentt.mediaplayer.core.util.Constants.ACTION_REPEAT_ALL_TO_OFF
 import com.kylentt.mediaplayer.core.util.Constants.ACTION_REPEAT_OFF_TO_ONE
 import com.kylentt.mediaplayer.core.util.Constants.ACTION_REPEAT_ONE_TO_ALL
 import com.kylentt.mediaplayer.core.util.Constants.MEDIA_SESSION_ID
-import com.kylentt.mediaplayer.core.util.Constants.PLAYBACK_INTENT
+import com.kylentt.mediaplayer.core.util.Constants.NOTIFICATION_ID
+import com.kylentt.mediaplayer.core.util.ExoUtil
 import com.kylentt.mediaplayer.disposed.domain.presenter.ServiceConnectorImpl
 import com.kylentt.mediaplayer.disposed.domain.presenter.util.State
+import com.kylentt.mediaplayer.domain.service.ServiceConstants.NEW_SESSION_PLAYER
+import com.kylentt.mediaplayer.domain.service.ServiceConstants.NEW_SESSION_PLAYER_RECOVER
+import com.kylentt.mediaplayer.domain.service.ServiceConstants.PLAYBACK_INTENT
 import com.kylentt.mediaplayer.ui.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import timber.log.Timber
 import javax.inject.Inject
-import kotlin.system.exitProcess
 
 @AndroidEntryPoint
 class MusicService : MediaLibraryService() {
@@ -57,11 +63,9 @@ class MusicService : MediaLibraryService() {
     @Inject
     lateinit var serviceConnectorImpl: ServiceConnectorImpl
 
-    private lateinit var exoControllers: ExoControllers
-
     private lateinit var exoController: ExoController
 
-    private var session: MediaLibrarySession? = null
+    private var libSession: MediaLibrarySession? = null
 
     private val playbackReceiver = PlaybackReceiver()
 
@@ -77,9 +81,7 @@ class MusicService : MediaLibraryService() {
     }
 
     private fun initializeSession() {
-        session = makeLibrarySession(makeActivityIntent()!!)
-        manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        mNotification = PlayerNotificationImpl(this)
+        libSession = makeLibrarySession(makeActivityIntent()!!)
         isActive = true
     }
 
@@ -98,32 +100,9 @@ class MusicService : MediaLibraryService() {
         .setMediaItemFiller(RepoItemFiller())
         .build()
 
-    // Just forward any possible command here for now
-    @MainThread
-    fun controller(
-        whenReady: ( (ExoPlayer) -> Unit)? = null,
-        command: ( (ExoPlayer) -> Unit) = {}
-    ) {
-        exoController.controller(
-            whenReady = whenReady
-        ) {
-            command(it)
-        }
-    }
-
-    var lastServiceItem: String? = null
-    var lastServiceBitmap: Bitmap? = null
-    private lateinit var manager: NotificationManager
-    private lateinit var mNotification: PlayerNotificationImpl
-
-    /** MediaSession */
-    override fun onUpdateNotification(session: MediaSession): MediaNotification? {
-        return null
-    }
-
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? {
         Timber.d("$TAG onGetSession")
-        return session!!
+        return libSession!!
     }
 
     inner class SessionCallback : MediaLibrarySession.MediaLibrarySessionCallback {
@@ -133,7 +112,7 @@ class MusicService : MediaLibraryService() {
         ): MediaSession.ConnectionResult {
             Timber.d("MusicService onConnect")
             // any exception here just Log.w()'d
-            exoControllers = ExoControllers.getInstance(this@MusicService, session)
+            exoController = ExoController.getInstance(this@MusicService, session)
             return super.onConnect(session, controller)
         }
 
@@ -151,6 +130,23 @@ class MusicService : MediaLibraryService() {
             ServiceConnectorImpl.setServiceState(serviceConnectorImpl, State.ServiceState.Disconnected)
             super.onDisconnected(session, controller)
         }
+
+        override fun onCustomCommand(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            customCommand: SessionCommand,
+            args: Bundle,
+        ): ListenableFuture<SessionResult> {
+            Timber.d("ExoController ${customCommand.customAction} onCustomCommand")
+            return super.onCustomCommand(session, controller, customCommand, args)
+        }
+    }
+
+    override fun onUpdateNotification(session: MediaSession): MediaNotification? {
+        if (BuildConfig.DEBUG) return null
+        return exoController.getNotification(session)?.let {
+            MediaNotification(NOTIFICATION_ID, it)
+        }
     }
 
     inner class RepoItemFiller : MediaSession.MediaItemFiller {
@@ -163,42 +159,87 @@ class MusicService : MediaLibraryService() {
 
     inner class PlaybackReceiver: BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            when (intent?.getStringExtra(ACTION)) {
-                ACTION_NEXT -> exoControllers.commandController(
+            when (intent?.getStringExtra("ACTION")) {
+                ACTION_NEXT -> exoController.commandController(
                     ControllerCommand.CommandWithFade(ControllerCommand.SkipToNext, false)
                 )
-                ACTION_PREV -> exoControllers.commandController(
-                    ControllerCommand.CommandWithFade(ControllerCommand.SkipToPrev, false)
+                ACTION_PREV -> exoController.commandController(
+                    ControllerCommand.CommandWithFade(ControllerCommand.SkipToPrevMedia, false)
+                )
+                ACTION_PLAY -> exoController.commandController(
+                    ControllerCommand.SetPlayWhenReady(true)
+                )
+                ACTION_PAUSE -> exoController.commandController(
+                    ControllerCommand.SetPlayWhenReady(false)
+                )
+                ACTION_REPEAT_OFF_TO_ONE -> exoController.commandController(
+                    ControllerCommand.SetRepeatMode(Player.REPEAT_MODE_ONE)
+                )
+                ACTION_REPEAT_ONE_TO_ALL -> exoController.commandController(
+                    ControllerCommand.SetRepeatMode(Player.REPEAT_MODE_ALL)
+                )
+                ACTION_REPEAT_ALL_TO_OFF -> exoController.commandController(
+                    ControllerCommand.SetRepeatMode(Player.REPEAT_MODE_OFF)
                 )
 
-                ACTION_PLAY -> exoControllers.commandController(ControllerCommand.SetPlayWhenReady(true))
-                ACTION_PAUSE -> exoControllers.commandController(ControllerCommand.SetPlayWhenReady(false))
-
-                ACTION_REPEAT_OFF_TO_ONE -> exoControllers.commandController(ControllerCommand.SetRepeatMode(Player.REPEAT_MODE_ONE))
-                ACTION_REPEAT_ONE_TO_ALL -> exoControllers.commandController(ControllerCommand.SetRepeatMode(Player.REPEAT_MODE_ALL))
-                ACTION_REPEAT_ALL_TO_OFF -> exoControllers.commandController(ControllerCommand.SetRepeatMode(Player.REPEAT_MODE_OFF))
-
                 ACTION_CANCEL -> {
-                    exoControllers.commandController(
-                        ControllerCommand.CommandWithFade(ControllerCommand.StopCancel, true)
+                    exoController.commandController(
+                        ControllerCommand.CommandWithFade(ControllerCommand.StopCancel {
+                            libSession?.let {
+                                stopService(it)
+                            }
+                        }, flush = true)
                     )
-                    session?.let {
-                        stopService(it)
+                }
+            }
+            when (intent?.getStringExtra("SESSION")) {
+                NEW_SESSION_PLAYER -> {
+                    libSession?.let {
+                        newSessionPlayer(it, false)
+                    }
+                }
+                NEW_SESSION_PLAYER_RECOVER -> {
+                    libSession?.let {
+                        newSessionPlayer(it, true)
                     }
                 }
             }
         }
     }
 
+    private fun newSessionPlayer(session: MediaSession, recover: Boolean = true) {
+        val context = this
+        with(ExoUtil) {
+            val p = session.player
+            val new = newExo(context)
+            if (recover) {
+                new.setMediaItems((p as ExoPlayer).getMediaItems())
+                new.seekTo(p.currentMediaItemIndex, p.currentPosition)
+                new.playWhenReady = p.playWhenReady
+            }
+            session.player = new
+            ExoController.updateSession(session)
+        }
+    }
+
+
+    // there's no need to release, just playing around
     private fun stopService(session: MediaLibrarySession) {
         stopSelf()
-        if (!MainActivity.isActive) releaseSession(session)
+        if (!MainActivity.isActive) {
+            releaseSession(session)
+        } else {
+            sendBroadcast(
+                Intent(PLAYBACK_INTENT).setPackage(this.packageName).putExtra("SESSION", NEW_SESSION_PLAYER_RECOVER)
+            )
+        }
     }
 
     private fun releaseSession(session: MediaLibrarySession) {
-        exo.release()
-        unregisterReceiver(playbackReceiver)
+        ExoController.releaseInstance(exoController)
+        session.player.release()
         serviceScope.cancel()
+        unregisterReceiver(playbackReceiver)
         serviceConnectorImpl.releaseSession()
         session.release()
     }
@@ -206,8 +247,6 @@ class MusicService : MediaLibraryService() {
     override fun onDestroy() {
         super.onDestroy()
         Timber.d("$TAG onDestroy")
-
         isActive = false
-        if (!MainActivity.isActive) exitProcess(0)
     }
 }

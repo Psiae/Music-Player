@@ -22,94 +22,17 @@ import com.kylentt.mediaplayer.core.util.Constants
 import com.kylentt.mediaplayer.core.util.Constants.NOTIFICATION_CHANNEL_ID
 import com.kylentt.mediaplayer.core.util.Constants.NOTIFICATION_ID
 import com.kylentt.mediaplayer.core.util.VersionHelper
-import com.kylentt.mediaplayer.disposed.domain.service.MusicService
+import com.kylentt.mediaplayer.core.util.toStrRepeat
+import com.kylentt.mediaplayer.core.util.toStrState
+import com.kylentt.mediaplayer.domain.service.MusicService
+import com.kylentt.mediaplayer.domain.service.ServiceConstants.PLAYBACK_INTENT
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
-
-sealed class NotificationUpdates {
-
-    data class MediaItemTransition(val mediaItem: MediaItem) : NotificationUpdates() {
-        override fun toString(): String {
-            val m = "MediaItemTransition"
-            return "$m, title: ${mediaItem.getDisplayTitle} id: ${mediaItem.mediaId}. ${mediaItem.hashCode()}"
-        }
-    }
-
-    data class PlaybackStateChanged(@Player.State val state: Int) : NotificationUpdates() {
-        override fun toString(): String {
-            val m = "PlaybackStateChanged"
-            return when (state) {
-                Player.STATE_IDLE -> "$m, PLAYER_STATE_IDLE"
-                Player.STATE_BUFFERING -> "$m, PLAYER_STATE_BUFFERING"
-                Player.STATE_READY -> "$m, PLAYER_STATE_READY"
-                Player.STATE_ENDED -> "$m, PLAYER_STATE_ENDED"
-                else -> "$m, NOTHING"
-            }
-        }
-    }
-    data class PlayWhenReadyChanged(val play: Boolean) : NotificationUpdates() {
-        override fun toString(): String {
-            val m = "PlayWhenReadyChanged"
-            return "$m, $play"
-        }
-    }
-    data class RepeatModeChanged(@Player.RepeatMode val repeat: Int) : NotificationUpdates() {
-        override fun toString(): String {
-            val m = "RepeatModeChanged"
-            return when (repeat) {
-                Player.REPEAT_MODE_OFF-> "$m, PLAYER_REPEAT_MODE_OFF"
-                Player.REPEAT_MODE_ONE -> "$m, PLAYER_REPEAT_MODE_ONE"
-                Player.REPEAT_MODE_ALL -> "$m, PLAYER_REPEAT_MODE_ALL"
-                else -> "$m, NOTHING"
-            }
-        }
-    }
-}
-
-sealed class ControllerCommand {
-    data class CommandWithFade(val command: ControllerCommand, val flush: Boolean) : ControllerCommand() {
-        override fun toString(): String {
-            val m = "CommandWithFade"
-            return "$m, $command"
-        }
-    }
-    data class SetPlayWhenReady(val play: Boolean) : ControllerCommand() {
-        override fun toString(): String {
-            val m = "SetPlayWhenReady"
-            return "$m, $play"
-        }
-    }
-    data class SetRepeatMode(@Player.RepeatMode val repeat: Int) : ControllerCommand() {
-        override fun toString(): String {
-            val m = "SetRepeatMode"
-            return when (repeat) {
-                Player.REPEAT_MODE_OFF-> "$m, PLAYER_REPEAT_MODE_OFF"
-                Player.REPEAT_MODE_ONE -> "$m, PLAYER_REPEAT_MODE_ONE"
-                Player.REPEAT_MODE_ALL -> "$m, PLAYER_REPEAT_MODE_ALL"
-                else -> "$m, NOTHING"
-            }
-        }
-    }
-    object SkipToNext : ControllerCommand() {
-        override fun toString(): String {
-            return "SkipToNext"
-        }
-    }
-    object SkipToPrev : ControllerCommand() {
-        override fun toString(): String {
-            return "SkipToPrev"
-        }
-    }
-    object StopCancel : ControllerCommand() {
-        override fun toString(): String {
-            return "StopCancel"
-        }
-    }
-}
+import java.lang.IllegalStateException
 
 @MainThread
-class ExoControllers(
+class ExoController(
     private var service: MusicService,
     session: MediaSession
 ) {
@@ -119,66 +42,110 @@ class ExoControllers(
 
     private var session: MediaSession? = session
         set(value) {
-            if (value?.player !== field?.player) {
-                playerController?.playerListener = null
-                field?.player?.release()
+            synchronized(this) {
+                if (value?.player !== field?.player) {
+                    playerController?.playerListener = null
+                    field?.player?.release()
+
+                    Timber.d("ExoController oldPlayerReleased, old $field new $value")
+                }
+                value?.let {
+                    playerController = PlayerController(it)
+                    notificationManager = ExoNotificationManagers(service, it)
+                }
+                field = value
             }
-            value?.let {
-                playerController = PlayerController(it)
-                notificationManager = ExoNotificationManagers(service, it)
-            }
-            field = value
         }
 
-    fun updateNotification(
-        type: NotificationUpdates
-    ) {
-
-        Timber.d("ExoController UpdateNotification $type")
-
-        when (type) {
-            is NotificationUpdates.MediaItemTransition -> {
-                handleMediaItemTransition(type.mediaItem)
-            }
-            is NotificationUpdates.PlayWhenReadyChanged -> {
-                handlePlayWhenReadyChanged(type.play)
-            }
-            is NotificationUpdates.PlaybackStateChanged -> {
-                handlePlaybackStateChanged(type.state)
-            }
-            is NotificationUpdates.RepeatModeChanged -> {
-                handleRepeatModeChanged(type.repeat)
-            }
-        }
+    fun release() {
+        notificationManager = null
+        session = null
+        playerController = null
+        lastBitmap = null
     }
 
+    fun getNotification(session: MediaSession): Notification? {
+        Timber.d("ExoController getNotification ${session === this.session}")
+        return notificationManager?.makeNotification(
+            lastBitmap?.first,
+            NOTIFICATION_CHANNEL_ID,
+            session.player.currentMediaItemIndex,
+            session.player.currentMediaItem,
+            session.player.repeatMode,
+            session.player.hasPreviousMediaItem(),
+            session.player.hasNextMediaItem(),
+            session.player.playWhenReady,
+            session.player.currentMediaItem?.getSubtitle.toString(),
+            session.player.currentMediaItem?.getDisplayTitle.toString()
+        )
+    }
+
+    private val commandLock = Any()
     fun commandController(
         type: ControllerCommand
     ) {
 
-        Timber.d("ExoController CommandController $type")
+        synchronized(commandLock) {
 
-        when (type) {
-            is ControllerCommand.CommandWithFade -> {
-                service.serviceScope.launch {
-                    handleCommandWithFade(0f, type.flush, type)
+            Timber.d("ExoController CommandController $type")
+
+            when (type) {
+                is ControllerCommand.CommandWithFade -> {
+                    service.serviceScope.launch {
+                        handleCommandWithFade(0f, type.flush, type)
+                    }
+                }
+                is ControllerCommand.SetPlayWhenReady -> {
+                    handleChangePlayWhenReady(type.play)
+                }
+                is ControllerCommand.SetRepeatMode -> {
+                    handleChangeRepeat(type.repeat)
+                }
+                is ControllerCommand.StopCancel -> {
+                    session?.player?.stop()
+                    service.stopForeground(true)
+                    type.callback.invoke()
+                }
+                ControllerCommand.SkipToNext -> {
+                    handleSeekToNext()
+                }
+                ControllerCommand.SkipToPrev -> {
+                    handleSeekToPrev()
+                }
+                ControllerCommand.TogglePlayWhenReady -> {
+                    // TODO()
+                }
+                ControllerCommand.SkipToPrevMedia -> {
+                    handleSeekToPrevMedia()
                 }
             }
-            is ControllerCommand.SetPlayWhenReady -> {
-                handleChangePlayWhenReady(type.play)
-            }
-            is ControllerCommand.SetRepeatMode -> {
-                handleChangeRepeat(type.repeat)
-            }
-            ControllerCommand.SkipToNext -> {
-                handleSeekToNext()
-            }
-            ControllerCommand.SkipToPrev -> {
-                handleSeekToPrev()
-            }
-            ControllerCommand.StopCancel -> {
-                session?.player?.stop()
-                service.stopForeground(true)
+        }
+    }
+
+    private val updateLock = Any()
+    fun updateNotification(
+        type: NotificationUpdate
+    ) {
+        synchronized(updateLock) {
+
+            Timber.d("ExoController UpdateNotification $type")
+
+            when (type) {
+                is NotificationUpdate.MediaItemTransition -> {
+                    handleNotifMediaItemTransition(type.mediaItem)
+                }
+                is NotificationUpdate.PlayWhenReadyChanged -> {
+                    handleNotifPlayWhenReadyChanged(type.play)
+                }
+                is NotificationUpdate.PlaybackStateChanged -> {
+                    handleNotifPlaybackStateChanged(type.state)
+                }
+                is NotificationUpdate.RepeatModeChanged -> {
+                    handleNotifRepeatModeChanged(type.repeat)
+                }
+                NotificationUpdate.InvalidateMediaItem -> {
+                    handleNotifMediaItemTransition(null)
+                }
             }
         }
     }
@@ -194,16 +161,35 @@ class ExoControllers(
 
     private var lastBitmap: Pair<Bitmap?, String>? = null
 
-    private fun handleMediaItemTransition(item: MediaItem) {
-        if (item.mediaId == lastBitmap?.second) {
-            notificationManager?.makeNotification(
-                bm = lastBitmap?.first,
-                mi = item,
-                isPlaying = session?.player?.playWhenReady == true
-            )
-        } else {
-            service.serviceScope.launch {
-                val bm = item.getUri?.let { getDisplayEmbed(it) }
+    private fun handleNotifMediaItemTransition(item: MediaItem?) {
+        item?.let { _ ->
+            if (item.mediaId == lastBitmap?.second) {
+                notificationManager?.makeNotification(
+                    bm = lastBitmap?.first,
+                    mi = item,
+                    isPlaying = session?.player?.playWhenReady == true
+                )
+            } else {
+                service.serviceScope.launch {
+                    val bm = item.getUri?.let { getDisplayEmbed(it) }
+                    lastBitmap = Pair(bm, item.mediaId)
+                    notificationManager?.makeNotification(
+                        bm = bm,
+                        mi = item,
+                        isPlaying = session?.player?.playWhenReady == true
+                    )
+                }
+            }
+        } ?: service.serviceScope.launch {
+            val n = session?.player?.currentMediaItem
+            n?.let { item ->
+                val bm = if (lastBitmap?.second != n.mediaId) {
+                    Timber.d("ExoController UpdateNotification MediaItemTransition Invalidating with new Bitmap")
+                    item.getUri?.let { getDisplayEmbed(it) }
+                } else {
+                    Timber.d("ExoController UpdateNotification MediaItemTransition Invalidating with old Bitmap ${lastBitmap?.second}")
+                    lastBitmap?.first
+                }
                 lastBitmap = Pair(bm, item.mediaId)
                 notificationManager?.makeNotification(
                     bm = bm,
@@ -211,22 +197,30 @@ class ExoControllers(
                     isPlaying = session?.player?.playWhenReady == true
                 )
             }
+            Timber.d("ExoController UpdateNotification MediaItemTransition Invalidated ${n?.getDisplayTitle} ${n?.mediaId}")
         }
     }
 
     private fun handleChangePlayWhenReady(play: Boolean) {
         val p = session?.player
         p?.let {
+            if (it.playbackState == Player.STATE_ENDED) {
+                it.seekTo(0)
+            }
             if (it.playbackState == Player.STATE_IDLE) it.prepare()
+            if (it.playWhenReady == play) {
+                Timber.d("ExoController ChangePlayWhenReady playWhenReady == play, updating Notification... ")
+                updateNotification(NotificationUpdate.PlayWhenReadyChanged(play))
+            }
             it.playWhenReady = play
-            Timber.d("ExoController handled ChangePlayWhenReady")
+            Timber.d("ExoController handled ChangePlayWhenReady $play")
         }
     }
 
     private fun handleChangeRepeat(@Player.RepeatMode mode: Int) {
         session?.player?.let {
             it.repeatMode = mode
-            Timber.d("ExoController handled ChangeRepeat $mode")
+            Timber.d("ExoController handled ChangeRepeat ${mode.toStrState()}")
         }
     }
 
@@ -246,7 +240,21 @@ class ExoControllers(
         }
     }
 
-    private fun handlePlayWhenReadyChanged(play: Boolean) {
+    private fun handleSeekToPrevMedia() {
+        session?.player?.let {
+            Timber.d("ExoController handled SeekToPrev()")
+            if (it.playbackState == Player.STATE_IDLE) it.prepare()
+            it.seekToPreviousMediaItem()
+        }
+    }
+
+    private fun handleTogglePWR() {
+        session?.player?.let {
+            it.playWhenReady = !it.playWhenReady
+        }
+    }
+
+    private fun handleNotifPlayWhenReadyChanged(play: Boolean) {
         Timber.d("ExoController handled pwr Changed $play")
         notificationManager?.makeNotification(
             bm = lastBitmap?.first,
@@ -254,37 +262,39 @@ class ExoControllers(
         )
     }
 
-    private fun handlePlaybackStateChanged(@Player.State state: Int) {
-        if (state != Player.STATE_IDLE
-            && state != Player.STATE_BUFFERING
-        ) {
-            session?.player?.playWhenReady?.let {
-                Timber.d("ExoController handled pbs Changed $state")
-                notificationManager?.makeNotification(
-                    bm = lastBitmap?.first,
-                    isPlaying = it
-                )
+    private fun handleNotifPlaybackStateChanged(@Player.State state: Int) {
+
+        when (state) {
+            Player.STATE_READY -> {
+                session?.player?.let {
+                    val item = it.currentMediaItem
+                    if (lastBitmap?.second != item?.mediaId) {
+                        item?.let {
+                            Timber.d("ExoController pbs forwarded to TransitionHandler ${state.toStrState()}")
+                            updateNotification(NotificationUpdate.InvalidateMediaItem)
+                        }
+                    } else {
+                        Timber.d("ExoController handled pbs Changed ${state.toStrState()}")
+                        updateNotification(NotificationUpdate.InvalidateMediaItem)
+                    }
+                }
             }
         }
     }
 
-    private fun handleRepeatModeChanged(@Player.RepeatMode mode: Int) {
-        Timber.d("ExoController handled repeatMode Changed $mode")
+    private fun handleNotifRepeatModeChanged(@Player.RepeatMode mode: Int) {
+        Timber.d("ExoController handled repeatMode Changed ${mode.toStrRepeat()}")
         notificationManager?.makeNotification(
             bm = lastBitmap?.first,
             repeatMode = mode
         )
     }
 
-
-
     private suspend fun getDisplayEmbed(uri: Uri): Bitmap? {
         return service.mediaItemHandler.getEmbeds(uri)?.let {
             service.coilHandler.squareWithCoil(BitmapFactory.decodeByteArray(it, 0, it.size))
         }
     }
-
-    
 
     inner class PlayerController(
         session: MediaSession
@@ -294,22 +304,24 @@ class ExoControllers(
 
         var playerListener: Player.Listener? = null
             set(value) {
-                if (field == null) {
-                    if (value != null) {
-                        player.addListener(value)
+                synchronized(this) {
+                    if (field == null) {
+                        if (value != null) {
+                            player.addListener(value)
+                        }
+                        field = value
+                        return
                     }
-                    field = value
-                    return
-                }
-                if (field != null) {
-                    if (value != null) {
-                        player.removeListener(field!!)
-                        player.addListener(value)
-                    } else {
-                        player.removeListener(field!!)
+                    if (field != null) {
+                        if (value != null) {
+                            player.removeListener(field!!)
+                            player.addListener(value)
+                        } else {
+                            player.removeListener(field!!)
+                        }
+                        field = value
+                        return
                     }
-                    field = value
-                    return
                 }
             }
 
@@ -339,7 +351,7 @@ class ExoControllers(
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 super.onMediaItemTransition(mediaItem, reason)
                 mediaItem?.let {
-                    updateNotification(NotificationUpdates.MediaItemTransition(mediaItem))
+                    updateNotification(NotificationUpdate.MediaItemTransition(mediaItem))
                 }
             }
 
@@ -352,17 +364,36 @@ class ExoControllers(
                     Player.STATE_READY -> { exoReady() }
                 }
 
-                updateNotification(NotificationUpdates.PlaybackStateChanged(playbackState))
+                updateNotification(NotificationUpdate.PlaybackStateChanged(playbackState))
+            }
+
+            override fun onPlayerError(error: PlaybackException) {
+                super.onPlayerError(error)
+                when (error.errorCodeName) {
+                    "ERROR_CODE_DECODING_FAILED" -> {
+                        controller {
+                            it.stop()
+                            it.prepare()
+                        }
+                    }
+                    "ERROR_CODE_IO_FILE_NOT_FOUND" -> {
+                        controller {
+                            it.removeMediaItem(it.currentMediaItemIndex)
+                            it.prepare()
+                        }
+                    }
+                }
+                Timber.e("onPlayerError ${error.errorCodeName}")
             }
 
             override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
                 super.onPlayWhenReadyChanged(playWhenReady, reason)
-                updateNotification(NotificationUpdates.PlayWhenReadyChanged(playWhenReady))
+                updateNotification(NotificationUpdate.PlayWhenReadyChanged(playWhenReady))
             }
 
             override fun onRepeatModeChanged(repeatMode: Int) {
                 super.onRepeatModeChanged(repeatMode)
-                updateNotification(NotificationUpdates.RepeatModeChanged(repeatMode))
+                updateNotification(NotificationUpdate.RepeatModeChanged(repeatMode))
             }
         }
 
@@ -413,6 +444,8 @@ class ExoControllers(
         }
         init {
             player.addListener(defaultListener)
+
+            Timber.d("ExoController Player Init, listener Added")
         }
     }
 
@@ -502,13 +535,18 @@ class ExoControllers(
 
             }.build().also {
                 manager.notify(NOTIFICATION_ID,it)
-                if (!service.isForegroundService) {
-                    service.startForeground(NOTIFICATION_ID, it)
+                with(service) {
+                    serviceScope.launch {
+                        if (!service.isForegroundService) {
+                            service.startForeground(NOTIFICATION_ID, it)
+                        }
+                        validatePP(it, isPlaying)
+                    }
                 }
-                service.serviceScope.launch { validatePP(it, isPlaying) } 
             }
         }
 
+        // sometimes the NotificationManager kind of debounce the updates
         private suspend fun validatePP(notif: Notification, pp: Boolean) {
             pp.let { play ->
                 if (manager.activeNotifications.isEmpty()) return
@@ -519,7 +557,7 @@ class ExoControllers(
                     val iden = service.exo.currentMediaItem?.mediaId
                     delay(250)
                     if (service.exo.isPlaying == play && service.exo.currentMediaItem?.mediaId == iden) manager.notify(
-                        Constants.NOTIFICATION_ID,
+                        NOTIFICATION_ID,
                         notif
                     )
                 }
@@ -528,7 +566,7 @@ class ExoControllers(
 
         private fun makeActionCancel() = NotificationCompat.Action.Builder(
             R.drawable.ic_notif_close, "ACTION_CANCEL", PendingIntent.getBroadcast(
-                service, Constants.ACTION_CANCEL_CODE, Intent(Constants.PLAYBACK_INTENT).apply {
+                service, Constants.ACTION_CANCEL_CODE, Intent(PLAYBACK_INTENT).apply {
                     putExtra(Constants.ACTION, Constants.ACTION_CANCEL)
                     setPackage(context.packageName)
                 }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -537,7 +575,7 @@ class ExoControllers(
 
         private fun makeActionRepeatOffToOne() = NotificationCompat.Action.Builder(
             R.drawable.ic_notif_repeat_off, "REPEAT_OFF", PendingIntent.getBroadcast(
-                service, Constants.ACTION_REPEAT_OFF_TO_ONE_CODE, Intent(Constants.PLAYBACK_INTENT).apply {
+                service, Constants.ACTION_REPEAT_OFF_TO_ONE_CODE, Intent(PLAYBACK_INTENT).apply {
                     putExtra(Constants.ACTION, Constants.ACTION_REPEAT_OFF_TO_ONE)
                     setPackage(context.packageName)
                 }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -546,7 +584,7 @@ class ExoControllers(
 
         private fun makeActionRepeatOneToAll() = NotificationCompat.Action.Builder(
             R.drawable.ic_notif_repeat_one, "REPEAT_ONE", PendingIntent.getBroadcast(
-                service, Constants.ACTION_REPEAT_ONE_TO_ALL_CODE, Intent(Constants.PLAYBACK_INTENT).apply {
+                service, Constants.ACTION_REPEAT_ONE_TO_ALL_CODE, Intent(PLAYBACK_INTENT).apply {
                     putExtra(Constants.ACTION, Constants.ACTION_REPEAT_ONE_TO_ALL)
                     setPackage(context.packageName)
                 }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -555,7 +593,7 @@ class ExoControllers(
 
         private fun makeActionRepeatAllToOff() = NotificationCompat.Action.Builder(
             R.drawable.ic_notif_repeat_all, "REPEAT_ALL", PendingIntent.getBroadcast(
-                service, Constants.ACTION_REPEAT_ALL_TO_OFF_CODE, Intent(Constants.PLAYBACK_INTENT).apply {
+                service, Constants.ACTION_REPEAT_ALL_TO_OFF_CODE, Intent(PLAYBACK_INTENT).apply {
                     putExtra(Constants.ACTION, Constants.ACTION_REPEAT_ALL_TO_OFF)
                     setPackage(context.packageName)
                 }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -564,7 +602,7 @@ class ExoControllers(
 
         private fun makeActionPlay() = NotificationCompat.Action.Builder(
             R.drawable.ic_notif_play, "PLAY", PendingIntent.getBroadcast(
-                service, Constants.ACTION_PLAY_CODE, Intent(Constants.PLAYBACK_INTENT).apply {
+                service, Constants.ACTION_PLAY_CODE, Intent(PLAYBACK_INTENT).apply {
                     putExtra(Constants.ACTION, Constants.ACTION_PLAY)
                     setPackage(context.packageName)
                 }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -573,7 +611,7 @@ class ExoControllers(
 
         private fun makeActionPause() = NotificationCompat.Action.Builder(
             R.drawable.ic_notif_pause, "PAUSE", PendingIntent.getBroadcast(
-                service, Constants.ACTION_PAUSE_CODE, Intent(Constants.PLAYBACK_INTENT).apply {
+                service, Constants.ACTION_PAUSE_CODE, Intent(PLAYBACK_INTENT).apply {
                     putExtra(Constants.ACTION, Constants.ACTION_PAUSE)
                     setPackage(context.packageName)
                 }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -582,7 +620,7 @@ class ExoControllers(
 
         private fun makeActionNext() = NotificationCompat.Action.Builder(
             R.drawable.ic_notif_next, "NEXT", PendingIntent.getBroadcast(
-                service, Constants.ACTION_NEXT_CODE, Intent(Constants.PLAYBACK_INTENT).apply {
+                service, Constants.ACTION_NEXT_CODE, Intent(PLAYBACK_INTENT).apply {
                     putExtra(Constants.ACTION, Constants.ACTION_NEXT)
                     setPackage(context.packageName)
                 }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -591,7 +629,7 @@ class ExoControllers(
 
         private fun makeActionNextDisabled() = NotificationCompat.Action.Builder(
             R.drawable.ic_notif_next_disabled, "NEXT_DISABLED", PendingIntent.getBroadcast(
-                service, 900, Intent(Constants.PLAYBACK_INTENT).apply {
+                service, 900, Intent(PLAYBACK_INTENT).apply {
                     putExtra(Constants.ACTION, Constants.ACTION_NEXT_DISABLED)
                     setPackage(context.packageName)
                 }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -600,7 +638,7 @@ class ExoControllers(
 
         private fun makeActionPrev() = NotificationCompat.Action.Builder(
             R.drawable.ic_notif_prev, "PREV", PendingIntent.getBroadcast(
-                service, Constants.ACTION_PREV_CODE, Intent(Constants.PLAYBACK_INTENT).apply {
+                service, Constants.ACTION_PREV_CODE, Intent(PLAYBACK_INTENT).apply {
                     putExtra(Constants.ACTION, Constants.ACTION_PREV)
                     setPackage(context.packageName)
                 }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -609,7 +647,7 @@ class ExoControllers(
 
         private fun makeActionPrevDisabled() = NotificationCompat.Action.Builder(
             R.drawable.ic_notif_prev_disabled, "PREV_DISABLED", PendingIntent.getBroadcast(
-                service, 901, Intent(Constants.PLAYBACK_INTENT).apply {
+                service, 901, Intent(PLAYBACK_INTENT).apply {
                     putExtra(Constants.ACTION, Constants.ACTION_PREV_DISABLED)
                     setPackage(context.packageName)
                 }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -619,12 +657,13 @@ class ExoControllers(
     }
 
     companion object {
-        var instance: ExoControllers? = null
 
-        fun getInstance(service: MusicService, session: MediaSession): ExoControllers {
+        var instance: ExoController? = null
+
+        fun getInstance(service: MusicService, session: MediaSession): ExoController {
             if (instance == null) {
-                Timber.d("ExoController getInstance $instance == null")
-                instance = ExoControllers(service, session)
+                Timber.d("ExoController getInstance $instance == 'null'")
+                instance = ExoController(service, session)
             }
             if (instance?.service != service) {
                 Timber.d("ExoController getInstance ${instance?.service} != $service")
@@ -636,319 +675,103 @@ class ExoControllers(
             }
             return instance!!
         }
-    }
-}
 
-
-
-@MainThread
-class ExoController(
-    exo: ExoPlayer,
-    notificationManager: ExoNotificationManager,
-    listener: Player.Listener?
-) {
-
-    // maybe extension function
-
-    private var activePlayer: ExoPlayer? = null
-        set(value) {
-
-            if (field != null) {
-                if (activeListener != null) activeListener = null
-                field?.release()
-                field = value
-            } else if (field == null) {
-                when (value) {
-                    is ExoPlayer -> {
-                        // assign
-                        if (activeListener != null) {
-                            throw RuntimeException(IllegalArgumentException("Invalid Argument Listener hasn't been cleared $activeListener $activePlayer"))
-                        }
-                        field = value
-                    }
-                    null ->  field = value
-                }
-            }
-        }
-
-    private var activeListener: Player.Listener? = null
-        set(value) {
-            Timber.d("ExoController activeListener set to $value")
-            if (activePlayer != null) {
-
-                when {
-                    value != null && field != null -> {
-                        activePlayer!!.removeListener(field!!)
-                        activePlayer!!.addListener(value)
-                        field = value
-                    }
-
-                    value != null && field == null -> {
-                        activePlayer!!.addListener(value)
-                        field = value
-                    }
-
-                    value == null && field != null -> {
-                        activePlayer!!.removeListener(field!!)
-                        field = value
-                    }
-                }
-
-            } else if (activePlayer == null) {
-                if (value == null) field = null
-                else throw RuntimeException(
-                    "Stub!",
-                    IllegalStateException("Invalid Argument player hasn't been set, listener: $activeListener, player: $activePlayer")
-                )
-            }
-        }
-
-    private var activeManager: ExoNotificationManager? = notificationManager
-        set(value) {
-            Timber.d("activeManager set to $value")
-            value?.let { notif ->
-                activePlayer?.currentMediaItem?.let {
-                    notif.updateNotification(NotificationUpdate.MediaItemTransition(it))
-                }
-            }
-            field = value
-        }
-
-    private val exoIdleListener = mutableListOf<( (ExoPlayer) -> Unit)>()
-    private val exoBufferListener = mutableListOf<( (ExoPlayer) -> Unit )>()
-    private val exoReadyListener = mutableListOf<( (ExoPlayer) -> Unit )>()
-    private val exoEndedListener = mutableListOf<( (ExoPlayer) -> Unit )>()
-
-    private fun exoReady() = synchronized(exoReadyListener) {
-        exoReadyListener.forEach { it(activePlayer!!) }
-        exoReadyListener.clear()
-    }
-    private fun exoBuffer() = synchronized(exoBufferListener) {
-        exoBufferListener.forEach { it(activePlayer!!) }
-        exoBufferListener.clear()
-    }
-    private fun exoEnded() = synchronized(exoEndedListener) {
-        exoEndedListener.forEach { it(activePlayer!!) }
-        exoEndedListener.clear()
-    }
-    private fun exoIdle() = synchronized(exoIdleListener) {
-        exoIdleListener.forEach { it(activePlayer!!) }
-        exoIdleListener.clear()
-    }
-
-    private fun whenExoReady(command: ( (ExoPlayer) -> Unit ) ) {
-        if (activePlayer!!.playbackState == Player.STATE_READY)
-            command(activePlayer!!) else  exoReadyListener.add(command)
-    }
-
-    private fun whenBuffer( command: ( (ExoPlayer) -> Unit ) ) {
-        if (activePlayer!!.playbackState == Player.STATE_BUFFERING)
-            command(activePlayer!!) else exoBufferListener.add(command)
-    }
-
-    private fun whenEnded(command: ( (ExoPlayer) -> Unit ) ) {
-        if (activePlayer!!.playbackState == Player.STATE_ENDED)
-            command(activePlayer!!) else exoEndedListener.add(command)
-    }
-
-    private fun whenIdle( command: ( (ExoPlayer) -> Unit ) ) {
-        if (activePlayer!!.playbackState == Player.STATE_IDLE)
-            command(activePlayer!!) else exoReadyListener.add(command)
-    }
-
-    private var defaultListener = object  : Player.Listener {
-        override fun onPlaybackStateChanged(playbackState: Int) {
-            super.onPlaybackStateChanged(playbackState)
-            when(playbackState) {
-                Player.STATE_IDLE -> exoIdle()
-                Player.STATE_BUFFERING -> exoBuffer()
-                Player.STATE_READY -> exoReady()
-                Player.STATE_ENDED -> {
-                    activePlayer!!.pause()
-                    exoEnded()
-                }
-            }
-
-            if (playbackState != Player.STATE_IDLE && playbackState != Player.STATE_BUFFERING)
-                notificationManager.updateNotification(NotificationUpdate.PlaybackStateChanged)
-        }
-        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-            super.onMediaItemTransition(mediaItem, reason)
-            mediaItem?.let {
-                when (reason) {
-                    Player.MEDIA_ITEM_TRANSITION_REASON_AUTO -> {
-                        notificationManager.updateNotification(NotificationUpdate.MediaItemTransition(it))
-                    }
-                    Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED -> {
-                        notificationManager.updateNotification(NotificationUpdate.MediaItemTransition(it))
-                    }
-                    Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT -> {
-                        notificationManager.updateNotification(NotificationUpdate.MediaItemTransition(it))
-                    }
-                    Player.MEDIA_ITEM_TRANSITION_REASON_SEEK -> {
-                        notificationManager.updateNotification(NotificationUpdate.MediaItemTransition(it))
-                    }
-                }
-            }
-        }
-        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
-            super.onPlayWhenReadyChanged(playWhenReady, reason)
-
-            when (reason) {
-
-                Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST -> {
-                    notificationManager.updateNotification(NotificationUpdate.PlayWhenReadyChanged(playWhenReady))
-                }
-                Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM -> {
-                    // TODO()
-                }
-                Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_BECOMING_NOISY -> {
-                    notificationManager.updateNotification(NotificationUpdate.PlayWhenReadyChanged(playWhenReady))
-                }
-                Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_FOCUS_LOSS -> {
-                    notificationManager.updateNotification(NotificationUpdate.PlayWhenReadyChanged(playWhenReady))
-                }
-                Player.PLAY_WHEN_READY_CHANGE_REASON_REMOTE -> {
-                    // TODO()
-                }
-            }
-        }
-        override fun onRepeatModeChanged(repeatMode: Int) {
-            super.onRepeatModeChanged(repeatMode)
-            val repeat = when (repeatMode) {
-                Player.REPEAT_MODE_ALL -> {
-                    "Repeat_Mode_All"
-                }
-                Player.REPEAT_MODE_OFF -> {
-                    "Repeat_Mode_Off"
-                }
-                Player.REPEAT_MODE_ONE -> {
-                    "Repeat_Mode_One"
-                }
-                else -> "Repeat_Mode_Unknown"
-            }
-            notificationManager.updateNotification(NotificationUpdate.RepeatModeChanged)
-        }
-        override fun onPlayerError(error: PlaybackException) {
-            super.onPlayerError(error)
-            Timber.e(error)
-            when(error.errorCodeName) {
-                "ERROR_CODE_DECODING_FAILED" -> {
-                    controller {
-                        it.stop()
-                        it.prepare()
-                    }
-                }
-                "ERROR_CODE_IO_FILE_NOT_FOUND" -> {
-                    controller {
-                        it.removeMediaItem(it.currentMediaItemIndex)
-                        it.pause()
-                        it.prepare()
-                    }
-                }
-            }
-            Timber.e("onPlayerError ${error.errorCodeName}")
-        }
-    }
-
-
-    fun controller(
-        whenReady: ( (ExoPlayer) -> Unit)? = null,
-        command: ( (ExoPlayer) -> Unit) = {}
-    ) {
-        command(activePlayer!!)
-        whenReady?.let { whenExoReady(it) }
-    }
-
-    private var fading = false
-    private var fadeListener = mutableListOf< (ExoPlayer) -> Unit >()
-    suspend fun exoFade(
-        @FloatRange(from = 0.0,to = 1.0) to: Float,
-        clear: Boolean,
-        command: (ExoPlayer) -> Unit
-    ) {
-
-        if (clear) fadeListener.clear()
-        fadeListener.add(command)
-
-        if (fading) {
-            fading = false
-            controller(
-                whenReady = {
-                    it.volume = 1f
-                }
-            ) { exo ->
-                synchronized(fadeListener) {
-                    fadeListener.forEach { it(exo) }
-                    fadeListener.clear()
-                }
-            }
-        }
-
-        fading = true
-        while (activePlayer!!.volume > to && activePlayer!!.playWhenReady && fading) {
-            activePlayer!!.volume -= 0.1f
-            delay(100)
-        }
-
-        if (fading) {
-            controller(
-                whenReady = {
-                    activePlayer!!.volume = 1f
-                    fading = false
-                }
-            ) { exo ->
-                synchronized(fadeListener) {
-                    fadeListener.forEach { it(exo) }
-                    fadeListener.clear()
-                }
-            }
-        }
-    }
-
-    init {
-        Timber.d("ExoController Init")
-        synchronized(this) {
-            activeManager = notificationManager
-            activePlayer = exo
-            activeListener = listener ?: defaultListener
-        }
-    }
-
-    fun stopExo() {
-        this.activePlayer?.stop()
-    }
-
-    fun reassign(exo: ExoPlayer, manager: ExoNotificationManager, listener: Player.Listener?) {
-
-        Timber.d("ExoController reassign exo, $exo ${this.activePlayer} ${exo === this.activePlayer}")
-        Timber.d("ExoController reassign manager, $manager ${this.activeManager} ${manager === this.activeManager}")
-
-        if (exo !== this.activePlayer) {
-            this.activeListener = null
-            this.activePlayer = null
-            this.activePlayer = exo
-            this.activeListener = listener ?: defaultListener
-        }
-        if (manager !== this.activeManager) {
-            this.activeManager = manager
-        }
-    }
-
-    companion object {
-
-        private var instance: ExoController? = null
-
-        fun getInstance(exo: ExoPlayer, notificationManager: ExoNotificationManager, listener: Player.Listener?): ExoController {
-            if (instance == null) {
-                instance = ExoController(exo, notificationManager, listener)
+        fun releaseInstance(n: ExoController) {
+            if (instance === n) {
+                instance!!.release()
+                instance = null
+                Timber.d("ExoController instance Released")
             } else {
-                instance!!.reassign(exo, notificationManager, listener)
+                Timber.e("ExoController release Instance Ignored, $instance === $n ${instance === n}, == ${instance == n}")
             }
-            return instance!!
+        }
+
+        fun updateSession(session: MediaSession) {
+            Timber.d("ExoController updateSession")
+            if (instance == null) throw IllegalStateException("ExoController hasn't been initialized")
+            instance!!.session = session
         }
     }
 }
 
+sealed class NotificationUpdate {
 
+    data class MediaItemTransition(val mediaItem: MediaItem) : NotificationUpdate() {
+        override fun toString(): String {
+            val m = "MediaItemTransition"
+            return "$m, title: ${mediaItem.getDisplayTitle} id: ${mediaItem.mediaId}. ${mediaItem.hashCode()}"
+        }
+    }
 
+    data class PlaybackStateChanged(@Player.State val state: Int) : NotificationUpdate() {
+        override fun toString(): String {
+            val m = "PlaybackStateChanged"
+            return "$m ${state.toStrState()}"
+        }
+    }
+    data class PlayWhenReadyChanged(val play: Boolean) : NotificationUpdate() {
+        override fun toString(): String {
+            val m = "PlayWhenReadyChanged"
+            return "$m, $play"
+        }
+    }
+    data class RepeatModeChanged(@Player.RepeatMode val repeat: Int) : NotificationUpdate() {
+        override fun toString(): String {
+            val m = "RepeatModeChanged"
+            return "$m, ${repeat.toStrRepeat()}"
+        }
+    }
+    object InvalidateMediaItem : NotificationUpdate() {
+        override fun toString(): String {
+            return "InvalidateMediaItem"
+        }
+    }
+}
+
+sealed class ControllerCommand {
+    data class CommandWithFade(val command: ControllerCommand, val flush: Boolean) : ControllerCommand() {
+        override fun toString(): String {
+            val m = "CommandWithFade"
+            return "$m, $command"
+        }
+    }
+    data class SetPlayWhenReady(val play: Boolean) : ControllerCommand() {
+        override fun toString(): String {
+            val m = "SetPlayWhenReady"
+            return "$m, $play"
+        }
+    }
+    data class SetRepeatMode(@Player.RepeatMode val repeat: Int) : ControllerCommand() {
+        override fun toString(): String {
+            val m = "SetRepeatMode"
+            return "$m, ${repeat.toStrRepeat()}"
+        }
+    }
+    object SkipToNext : ControllerCommand() {
+        override fun toString(): String {
+            return "SkipToNext"
+        }
+    }
+    object SkipToPrev : ControllerCommand() {
+        override fun toString(): String {
+            return "SkipToPrev"
+        }
+    }
+    object SkipToPrevMedia : ControllerCommand() {
+        override fun toString(): String {
+            return "SkipToPrevMedia"
+        }
+    }
+    object TogglePlayWhenReady: ControllerCommand() {
+        override fun toString(): String {
+            return "TogglePWR"
+        }
+    }
+    data class StopCancel(
+        val callback: () -> Unit
+    ) : ControllerCommand() {
+        override fun toString(): String {
+            return "StopCancel"
+        }
+    }
+}

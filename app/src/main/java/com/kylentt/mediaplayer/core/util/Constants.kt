@@ -49,8 +49,6 @@ object Constants {
     const val ACTION_REPEAT_ONE_TO_ALL_CODE = 406
     const val ACTION_REPEAT_ALL_TO_OFF_CODE = 407
 
-    const val PLAYBACK_INTENT = "com.kylennt.mediaplayer.PLAYBACK_INTENT"
-
     // UI
     const val HOME_SCREEN = "HOME_SCREEN"
     const val PERMISSION_SCREEN = "PERMISSION_SCREEN"

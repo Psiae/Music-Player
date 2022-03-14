@@ -1,37 +1,8 @@
-package com.kylentt.mediaplayer.core.exoplayer
+package com.kylentt.mediaplayer.core.exoplayer.disposed
 
-import android.annotation.SuppressLint
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
-import android.content.Context
-import android.content.Intent
-import android.graphics.Bitmap
-import android.os.Build
-import androidx.annotation.RequiresApi
-import androidx.core.app.NotificationCompat
-import androidx.media3.common.MediaItem
-import androidx.media3.common.Player
-import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.session.MediaSession
-import androidx.media3.session.MediaStyleNotificationHelper
-import com.kylentt.mediaplayer.R
-import com.kylentt.mediaplayer.core.util.Constants
-import com.kylentt.mediaplayer.core.util.Constants.ACTION_REPEAT_ALL_TO_OFF
-import com.kylentt.mediaplayer.core.util.Constants.ACTION_REPEAT_OFF_TO_ONE
-import com.kylentt.mediaplayer.core.util.Constants.ACTION_REPEAT_ONE_TO_ALL
-import com.kylentt.mediaplayer.core.util.Constants.NOTIFICATION_CHANNEL_ID
-import com.kylentt.mediaplayer.core.util.Constants.NOTIFICATION_ID
-import com.kylentt.mediaplayer.core.util.Constants.NOTIFICATION_NAME
-import com.kylentt.mediaplayer.core.util.VersionHelper
-import com.kylentt.mediaplayer.disposed.domain.service.MusicService
-import com.kylentt.mediaplayer.disposed.domain.service.PlayerNotificationImpl
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import timber.log.Timber
 
-/** Just Playing Around, seems need to wait until next updates */
+/*
+* Just Playing Around, seems need to wait until next updates
 
 // TODO: Use Provided Notification Manager soon as Available
 
@@ -42,7 +13,7 @@ sealed class NotificationUpdate() {
     data class PlayWhenReadyChanged(val play: Boolean) : NotificationUpdate()
 }
 
-class ExoNotificationManager(
+class ExoNotificationManager_(
     val service: MusicService,
     private val session: MediaSession
 ) {
@@ -211,9 +182,11 @@ class ExoNotificationManager(
 
                 addAction(actionCancel)
 
-                /*val compact1 = this.mActions.indexOf(mActions.find { it.title == "PREV" })
+                */
+/*val compact1 = this.mActions.indexOf(mActions.find { it.title == "PREV" })
                 val compact2 = this.mActions.indexOf(mActions.find { it.title == "PLAY" || it.title == "PAUSE" })
-                val compact3 = this.mActions.indexOf(mActions.find { it.title == "NEXT" })*/
+                val compact3 = this.mActions.indexOf(mActions.find { it.title == "NEXT" })*//*
+
 
                 when {
                     haveNextButton && havePrevButton  -> media.setShowActionsInCompactView(1,2,3)
@@ -300,11 +273,10 @@ class ExoNotificationManager(
             )
         ).build()
     }
+}*/
 
 
-}
-
-/*class ExoNotificationManager(
+/*class ExoNotificationManager_(
     private val service: MusicService,
     private val session: MediaLibraryService.MediaLibrarySession,
     private val controller: ExoController,

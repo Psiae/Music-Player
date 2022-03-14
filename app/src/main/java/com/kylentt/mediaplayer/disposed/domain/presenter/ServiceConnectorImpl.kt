@@ -82,7 +82,9 @@ class ServiceConnectorImpl(
         if (sessionToken != null && futureMediaController != null) {
 
             futureMediaController!!.addListener( {
+
                 mediaController = futureMediaController!!.get()
+
                 setupController(mediaController)
                 onConnected(mediaController)
                 _serviceState.value = State.ServiceState.Connected
@@ -271,5 +273,11 @@ class ServiceConnectorImpl(
     private fun whenIdle( command: ( (MediaController) -> Unit ) ) {
         if (isPlayerIdling())
             command(mediaController) else controlReadyListener.add(command)
+    }
+
+    companion object {
+        fun setServiceState(impl: ServiceConnectorImpl, state: State.ServiceState) {
+            impl._serviceState.value = state
+        }
     }
 }

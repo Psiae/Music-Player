@@ -45,7 +45,7 @@ class MainActivity : ComponentActivity() {
                 setKeepOnScreenCondition {
                     Timber.d("MainActivity KeepOnScreenCondition ${controllerVM.serviceState.value}")
                     when (controllerVM.serviceState.value) {
-                        is ServiceState.Disconnected, is ServiceState.Connecting -> true
+                        is ServiceState.Connecting -> true
                         else -> false
                     }
                 }

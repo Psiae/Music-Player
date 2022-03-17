@@ -86,7 +86,11 @@ class LocalSourceImpl(
     suspend fun fetchMetadataFromUri(uri: Uri) = flow {
         try {
             val mtr = MediaMetadataRetriever()
-            mtr.setDataSource(context.applicationContext, uri)
+            try {
+                mtr.setDataSource(context.applicationContext, uri)
+            } catch (e: Exception) { withContext(Dispatchers.Main) {
+                Toast.makeText(context, "Media Not Playable", Toast.LENGTH_LONG).show()
+            } ; emit(null) ; return@flow }
             val artist = mtr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
             val album = mtr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
             val title = mtr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
@@ -114,9 +118,9 @@ class LocalSourceImpl(
             emit(item)
         } catch (e: Exception) {
             if (e is IllegalArgumentException) withContext(Dispatchers.Main) {
-                e.printStackTrace()
                 Toast.makeText(context, "Unsupported", Toast.LENGTH_LONG).show()
             }
+            Timber.e(e)
             emit(null)
         }
     }.flowOn(Dispatchers.IO)

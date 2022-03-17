@@ -1,4 +1,4 @@
-package com.kylentt.mediaplayer.core.util
+package com.kylentt.mediaplayer.core.exoplayer.util
 
 import android.content.Context
 import androidx.annotation.MainThread
@@ -59,6 +59,16 @@ object ExoUtil {
             toReturn.add(getMediaItemAt(i))
         }
         return toReturn
+    }
+
+    fun ExoPlayer.copyFrom(from: ExoPlayer, seekToi: Boolean, seekToPos: Boolean) {
+        this.setMediaItems(from.getMediaItems())
+        this.playWhenReady = from.playWhenReady
+        when {
+            seekToi && seekToPos -> this.seekTo(from.currentMediaItemIndex, from.currentPosition)
+            seekToi -> this.seekTo(from.currentMediaItemIndex, 0)
+            seekToPos -> this.seekTo(this.currentPosition)
+        }
     }
 
     fun newExo(context: Context, attr: AudioAttributes = defaultAttr()) = ExoPlayer.Builder(context)

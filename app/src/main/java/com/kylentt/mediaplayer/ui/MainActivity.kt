@@ -24,7 +24,7 @@ import timber.log.Timber
 class MainActivity : ComponentActivity() {
 
     companion object {
-        val TAG: String = this::class.java.simpleName
+        val TAG: String = "MainActivity"
         var isActive = false
     }
 
@@ -116,11 +116,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
         } ?: Timber.e("IntentHandler ActionView null Data")
-    }
-
-    override fun onStop() {
-        super.onStop()
-        this.applicationContext.cacheDir.deleteRecursively()
     }
 
     override fun onDestroy() {

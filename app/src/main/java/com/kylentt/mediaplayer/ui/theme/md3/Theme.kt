@@ -4,6 +4,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalContext
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.kylentt.mediaplayer.core.util.VersionHelper
@@ -89,15 +90,16 @@ fun MaterialTheme3(
 		if (darkTheme) { DarkThemeColors } else { LightThemeColors }
 	}
 
-	systemUiController.setStatusBarColor(Color.Transparent)
-	systemUiController.setNavigationBarColor(Color.Transparent)
-	systemUiController.isNavigationBarContrastEnforced = false
-	systemUiController.statusBarDarkContentEnabled = !darkTheme
-	systemUiController.navigationBarDarkContentEnabled = !darkTheme
-
 	MaterialTheme(
 		colorScheme = color,
 		typography = AppTypography,
-		content = content
-	)
+	) {
+		systemUiController.setStatusBarColor(DefaultColor.getTonedSurface().copy(alpha = 0.95f))
+		systemUiController.setNavigationBarColor(Color.Transparent)
+		systemUiController.isNavigationBarContrastEnforced = false
+		systemUiController.statusBarDarkContentEnabled = !darkTheme
+		systemUiController.navigationBarDarkContentEnabled = !darkTheme
+
+		content()
+	}
 }

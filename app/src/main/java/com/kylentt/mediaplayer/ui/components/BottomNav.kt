@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import com.kylentt.mediaplayer.ui.root.BottomNavigationItem
 import com.kylentt.mediaplayer.ui.root.BottomNavigationRoute
 import com.kylentt.mediaplayer.ui.theme.md3.AppTypography
+import com.kylentt.mediaplayer.ui.theme.md3.DefaultColor
 import kotlin.math.ln
 
 @Composable
@@ -25,11 +26,8 @@ fun RootBottomNav(
     navigateTo: (String) -> Unit,
 ) {
     val screens = BottomNavigationRoute.routeList
-    val alpha = ((4.5f * ln((2).dp.value /* Tonal Elevation */ + 1)) + 2f) / 100f
-    val surface = MaterialTheme.colorScheme.surface
-    val primary = MaterialTheme.colorScheme.primary
     Surface(
-        color = primary.copy(alpha = alpha).compositeOver(surface)
+        color = DefaultColor.getTonedSurface(2)
     ) {
         Box(
             modifier = Modifier
@@ -46,13 +44,17 @@ fun RootBottomNav(
             ) {
                 screens.forEach { item ->
                     if (ripple) {
-                        RootBottomNavItem(item = item,
+                        RootBottomNavItem(
+                            item = item,
                             isSelected = selectedRoute == item.route,
-                            onClick = navigateTo)
+                            onClick = navigateTo
+                        )
                     } else NoRipple {
-                        RootBottomNavItem(item = item,
+                        RootBottomNavItem(
+                            item = item,
                             isSelected = selectedRoute == item.route,
-                            onClick = navigateTo)
+                            onClick = navigateTo
+                        )
                     }
                 }
             }
@@ -73,7 +75,7 @@ fun RootBottomNavItem(
     val icon = if (isSelected)
         item.icon ?: item.imageVector()!! else item.outlinedIcon ?: item.imageVector()!!
     val iconTint = if (isSelected)
-        MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.9f)
+        MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
     val textColor = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
 
     val route = item.route

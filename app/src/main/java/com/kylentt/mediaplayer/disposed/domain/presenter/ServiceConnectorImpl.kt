@@ -62,10 +62,6 @@ class ServiceConnectorImpl(
     private var futureMediaController: ListenableFuture<MediaController>? = null
     private lateinit var mediaController: MediaController
 
-    // Idk why sometimes it throws NPE when I use lateinit, even tho the listener is supposed to be executed
-    // when the computation is Done, looking at this I'll just make stuff nullable instead of lateinit because why not
-    // and onConnected is one-time Event so I'm not making lambda list for it.
-
     @MainThread
     override fun connectService(
         onConnected: (MediaController) -> Unit

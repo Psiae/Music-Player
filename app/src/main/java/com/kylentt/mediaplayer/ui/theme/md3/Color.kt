@@ -1,7 +1,11 @@
 package com.kylentt.mediaplayer.ui.theme.md3
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.unit.dp
+import kotlin.math.ln
 
 object DefaultColor {
 
@@ -18,9 +22,21 @@ object DefaultColor {
     val Icon2 = Color(0xFFFC5C9C)
 
     @Composable
+    fun getBlack20(): Color = Color.Black.copy(alpha = 0.20f)
+    @Composable
     fun getDNBackground(): Color = if (isSystemInDarkTheme()) darkThemeBackground else lightThemeBackground
     @Composable
     fun getDNTextColor(): Color = if (isSystemInDarkTheme()) lightText else darkText
+    @Composable
+    fun getSurfaceIconTint(): Color = MaterialTheme.colorScheme.onSurfaceVariant
+
+    @Composable
+    fun getTonedSurface(el: Int = 2): Color {
+        val alpha = ((4.5f * ln((el).dp.value + 1)) + 2f) / 100f
+        val surface = MaterialTheme.colorScheme.surface
+        val primary = MaterialTheme.colorScheme.primary
+        return primary.copy(alpha = alpha).compositeOver(surface)
+    }
 
 }
 

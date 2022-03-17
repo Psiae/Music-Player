@@ -1,9 +1,6 @@
 package com.kylentt.mediaplayer.ui.screen.home
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
@@ -13,9 +10,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.kylentt.mediaplayer.core.exoplayer.getDisplayTitle
 import com.kylentt.mediaplayer.disposed.domain.presenter.ControllerViewModel
+import com.kylentt.mediaplayer.ui.components.HomeAppBar
+import com.kylentt.mediaplayer.ui.components.StatusBarSpacer
 import com.kylentt.mediaplayer.ui.theme.md3.DefaultColor
 
 @Composable
@@ -44,11 +44,12 @@ fun HomeScreenLayout(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .statusBarsPadding()
             .verticalScroll(state = scroll),
-        verticalArrangement = Arrangement.Center,
+        verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        StatusBarSpacer()
+        HomeAppBar()
         Column(
             modifier = Modifier,
             verticalArrangement = Arrangement.Center,
@@ -58,5 +59,7 @@ fun HomeScreenLayout(
             Text(text = "Currently Playing: $currentlyPlaying", color = textColor)
             Text(text = "Currently Playing State: $currentlyPlayingState", color = textColor)
         }
+        Spacer(modifier = Modifier.height(1000.dp))
+        Text(text = "END OF COLUMN")
     }
 }

@@ -39,7 +39,6 @@ fun RootScreen() {
     Timber.d("ComposeDebug RootScreen")
     val navController = rememberNavController()
     val state = navController.currentBackStackEntryAsState()
-
     RootScaffold(
         bottomBar = {
             if (shouldShowBottomBar(entry = state.value)) {

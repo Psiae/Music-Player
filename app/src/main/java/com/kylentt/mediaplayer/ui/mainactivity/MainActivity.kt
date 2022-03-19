@@ -39,15 +39,15 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         isActive = true
-
         WindowCompat.setDecorFitsSystemWindows(window, false)
+
         installSplashScreen()
             .apply {
                 setKeepOnScreenCondition {
                     Timber.d("MainActivity KeepOnScreenCondition ${controllerVM.serviceState.value}")
                     when (controllerVM.serviceState.value) {
                         is ServiceState.Disconnected -> {
-                            controllerVM.connectService {}
+                            controllerVM.connectService()
                             true
                         }
                         is ServiceState.Connecting -> true
@@ -70,13 +70,15 @@ class MainActivity : ComponentActivity() {
                             Root()
                         },
                         onDenied = {
+                            Toast.makeText(this, "Permission Needed", Toast.LENGTH_SHORT).show()
+                        },
+                        onPermissionScreenRequest = {
                             val i = rememberLauncherForActivityResult(contract = ActivityResultContracts.StartActivityForResult(),
                                 onResult = {}
                             )
                             SideEffect {
                                 i.launch(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:${packageName}".toUri()))
                             }
-                            onNewIntent(intent)
                         }
                     )
                 )

@@ -18,6 +18,7 @@ import com.kylentt.mediaplayer.ui.mainactivity.compose.components.HomeAppBar
 import com.kylentt.mediaplayer.ui.mainactivity.compose.components.HomeCard
 import com.kylentt.mediaplayer.ui.mainactivity.compose.components.util.StatusBarSpacer
 import com.kylentt.mediaplayer.ui.mainactivity.compose.theme.md3.DefaultColor
+import timber.log.Timber
 
 @Composable
 fun HomeScreen(
@@ -27,6 +28,8 @@ fun HomeScreen(
     val currentlyPlaying by remember { controller.playerCurrentMediaItem }
     val currentPlayState by remember { controller.playerCurrentPlaystate }
     val textColor = DefaultColor.getDNTextColor()
+
+    Timber.d("ComposeDebug HomeScreen")
 
     HomeScreenLayout(
         textColor = textColor,
@@ -41,6 +44,9 @@ fun HomeScreenLayout(
     currentlyPlaying: CharSequence?,
     currentlyPlayingState: String,
 ) {
+
+    Timber.d("ComposeDebug HomeScreenLayout")
+
     val scroll = rememberScrollState()
     Column(
         modifier = Modifier

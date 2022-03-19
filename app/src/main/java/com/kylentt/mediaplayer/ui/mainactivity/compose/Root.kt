@@ -11,6 +11,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -39,8 +41,6 @@ import timber.log.Timber
 @Composable
 fun Root() {
     Timber.d("ComposeDebug Root")
-
-    val context = LocalContext.current
     RootScreen()
 }
 
@@ -103,7 +103,6 @@ fun RootScaffold(
 ) {
     Timber.d("ComposeDebug RootScaffold")
     Scaffold(
-
         modifier = Modifier,
         bottomBar = bottomBar,
         containerColor = containerColor,

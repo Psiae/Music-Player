@@ -15,6 +15,7 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionState
 import com.google.accompanist.permissions.shouldShowRationale
 import com.kylentt.mediaplayer.ui.mainactivity.compose.components.util.ComposePermission
+import com.kylentt.mediaplayer.ui.mainactivity.compose.theme.md3.DefaultColor
 
 @ExperimentalPermissionsApi
 @Composable
@@ -23,16 +24,17 @@ fun PermissionScreen(
     state: PermissionState
 ) {
 
-    var stateOnDeny by remember { mutableStateOf(false) }
+    val trigger = remember { mutableStateOf(false) }
 
-    if (stateOnDeny) {
-        perms.onDenied()
-        stateOnDeny = false
+    if (trigger.value) {
+        perms.onPermissionScreenRequest?.invoke()
+        trigger.value = false
     }
 
     Surface(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxSize(),
+        color = DefaultColor.getTonedSurface(4)
     ) {
         Column(
             modifier = Modifier
@@ -46,11 +48,11 @@ fun PermissionScreen(
                     if (state.status.shouldShowRationale) {
                         state.launchPermissionRequest()
                     } else {
-                        stateOnDeny = true
+                        trigger.value = true
                     }
                 }
             ) {
-                Text(text = "TEST")
+                Text(text = "Grant Permission")
             }
         }
     }

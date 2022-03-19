@@ -5,8 +5,9 @@ import com.google.accompanist.permissions.*
 import com.kylentt.mediaplayer.ui.mainactivity.compose.screen.permission.PermissionScreen
 import timber.log.Timber
 
-data class ComposePermission(
+data class ComposePermission @OptIn(ExperimentalPermissionsApi::class) constructor(
     val permissionStr: String,
+    val onPermissionScreenRequest: @Composable ( () -> Unit )? = null,
     val onDenied: @Composable () -> Unit,
     val onNotDenied: @Composable () -> Unit,
     val onGranted: @Composable () -> Unit
@@ -30,7 +31,7 @@ fun RequirePermission(
         trigger.value = !trigger.value
     }
 
-    Timber.d("ComposeDebug RequirePermission ${permissionState.notDenied()} ${trigger.value}")
+    Timber.d("ComposeDebug RequirePermission ${permissionState.notDenied()} ${permScreen.value}")
 
     when {
         permissionState.granted() -> { Timber.d("ComposeDebug permissionState Granted")
@@ -44,7 +45,10 @@ fun RequirePermission(
         }
         permissionState.denied() || permScreen.value -> {
             Timber.d("ComposeDebug permissionState Denied")
-            PermissionScreen(perms = perms, permissionState)
+            perms.onDenied()
+            perms.onPermissionScreenRequest?.let {
+                PermissionScreen(perms = perms, state = permissionState)
+            }
         }
         trigger.value -> { Unit }
     }

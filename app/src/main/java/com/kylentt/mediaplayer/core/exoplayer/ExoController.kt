@@ -24,31 +24,32 @@ import androidx.media3.session.MediaStyleNotificationHelper
 import com.kylentt.mediaplayer.R
 import com.kylentt.mediaplayer.core.exoplayer.util.toStrRepeat
 import com.kylentt.mediaplayer.core.exoplayer.util.toStrState
-import com.kylentt.mediaplayer.core.util.VersionHelper
-import com.kylentt.mediaplayer.domain.service.MusicService
-import com.kylentt.mediaplayer.domain.service.ServiceConstants.ACTION
-import com.kylentt.mediaplayer.domain.service.ServiceConstants.ACTION_CANCEL
-import com.kylentt.mediaplayer.domain.service.ServiceConstants.ACTION_CANCEL_CODE
-import com.kylentt.mediaplayer.domain.service.ServiceConstants.ACTION_NEXT
-import com.kylentt.mediaplayer.domain.service.ServiceConstants.ACTION_NEXT_CODE
-import com.kylentt.mediaplayer.domain.service.ServiceConstants.ACTION_NEXT_DISABLED
-import com.kylentt.mediaplayer.domain.service.ServiceConstants.ACTION_PAUSE
-import com.kylentt.mediaplayer.domain.service.ServiceConstants.ACTION_PAUSE_CODE
-import com.kylentt.mediaplayer.domain.service.ServiceConstants.ACTION_PLAY
-import com.kylentt.mediaplayer.domain.service.ServiceConstants.ACTION_PLAY_CODE
-import com.kylentt.mediaplayer.domain.service.ServiceConstants.ACTION_PREV
-import com.kylentt.mediaplayer.domain.service.ServiceConstants.ACTION_PREV_CODE
-import com.kylentt.mediaplayer.domain.service.ServiceConstants.ACTION_PREV_DISABLED
-import com.kylentt.mediaplayer.domain.service.ServiceConstants.ACTION_REPEAT_ALL_TO_OFF
-import com.kylentt.mediaplayer.domain.service.ServiceConstants.ACTION_REPEAT_ALL_TO_OFF_CODE
-import com.kylentt.mediaplayer.domain.service.ServiceConstants.ACTION_REPEAT_OFF_TO_ONE
-import com.kylentt.mediaplayer.domain.service.ServiceConstants.ACTION_REPEAT_OFF_TO_ONE_CODE
-import com.kylentt.mediaplayer.domain.service.ServiceConstants.ACTION_REPEAT_ONE_TO_ALL
-import com.kylentt.mediaplayer.domain.service.ServiceConstants.ACTION_REPEAT_ONE_TO_ALL_CODE
-import com.kylentt.mediaplayer.domain.service.ServiceConstants.NOTIFICATION_CHANNEL_ID
-import com.kylentt.mediaplayer.domain.service.ServiceConstants.NOTIFICATION_ID
-import com.kylentt.mediaplayer.domain.service.ServiceConstants.NOTIFICATION_NAME
-import com.kylentt.mediaplayer.domain.service.ServiceConstants.PLAYBACK_INTENT
+import com.kylentt.mediaplayer.core.util.handler.*
+import com.kylentt.mediaplayer.core.util.helper.VersionHelper
+import com.kylentt.mediaplayer.domain.mediaSession.service.MusicService
+import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants.ACTION
+import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants.ACTION_CANCEL
+import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants.ACTION_CANCEL_CODE
+import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants.ACTION_NEXT
+import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants.ACTION_NEXT_CODE
+import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants.ACTION_NEXT_DISABLED
+import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants.ACTION_PAUSE
+import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants.ACTION_PAUSE_CODE
+import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants.ACTION_PLAY
+import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants.ACTION_PLAY_CODE
+import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants.ACTION_PREV
+import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants.ACTION_PREV_CODE
+import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants.ACTION_PREV_DISABLED
+import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants.ACTION_REPEAT_ALL_TO_OFF
+import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants.ACTION_REPEAT_ALL_TO_OFF_CODE
+import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants.ACTION_REPEAT_OFF_TO_ONE
+import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants.ACTION_REPEAT_OFF_TO_ONE_CODE
+import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants.ACTION_REPEAT_ONE_TO_ALL
+import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants.ACTION_REPEAT_ONE_TO_ALL_CODE
+import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants.NOTIFICATION_CHANNEL_ID
+import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants.NOTIFICATION_ID
+import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants.NOTIFICATION_NAME
+import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants.PLAYBACK_INTENT
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -58,6 +59,8 @@ class ExoController(
     private var service: MusicService,
     session: MediaSession
 ) {
+
+    // TODO: Move those Inner class
 
     private var playerController: PlayerController? = PlayerController(session)
         set(value) {
@@ -214,6 +217,8 @@ class ExoController(
                 lastBitmap = Pair(bm, item.mediaId)
                 manager.makeNotification(bm = lastBitmap?.first, mi = item, isPlaying = p.playWhenReady)
             }
+            val i = launch { "IDK" }
+            val e = service.serviceScope.launch { i.join() }
         }
     }
 

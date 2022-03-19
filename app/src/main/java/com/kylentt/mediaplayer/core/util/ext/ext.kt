@@ -1,26 +1,38 @@
 package com.kylentt.mediaplayer.core.util.ext
 
-import android.content.Context
-import android.media.MediaMetadataRetriever
-import android.net.Uri
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.InvocationKind
+import kotlin.contracts.contract
 
-fun Uri.getEmbed(context: Context): ByteArray? {
-    val mtr = MediaMetadataRetriever()
-    mtr.setDataSource(context.applicationContext, this)
-    return mtr.embeddedPicture
+@OptIn(ExperimentalContracts::class)
+object Ext {
+
+    inline fun <T> measureTimeMillisWithResult(block: () -> T): Pair<T, Long> {
+        contract {
+            callsInPlace(block, InvocationKind.EXACTLY_ONCE)
+        }
+        val start = System.currentTimeMillis()
+        val r: T = block()
+        return Pair(r, System.currentTimeMillis() - start )
+    }
+
+    inline fun <T> executeWithTimeMillis(log: (Long) -> Unit, block: () -> T): T {
+        contract {
+            callsInPlace(block, InvocationKind.EXACTLY_ONCE)
+        }
+        val start = System.currentTimeMillis()
+        val r: T = block()
+        log(System.currentTimeMillis() - start)
+        return r
+    }
+
+    inline fun <T> measureTimeMillisWithResult(log: (Long) -> Unit, block: () -> T): T {
+        contract {
+            callsInPlace(block, InvocationKind.EXACTLY_ONCE)
+        }
+        val start = System.currentTimeMillis()
+        val r: T = block()
+        log(System.currentTimeMillis() - start)
+        return r
+    }
 }
-
-fun Any?.isNull() = this == null
-
-fun Int?.orInv() = this ?: -1
-fun Long?.orInv() = this ?: -1L
-
-fun Int?.orZero() = this ?: 0
-fun Long?.orZero() = this ?: 0L
-
-fun Long.removeSuffix(suffix: String): Long {
-    val s = this.toString()
-    return if (s.endsWith(suffix)) s.removeSuffix(suffix).toLong() else this
-}
-
-fun <T> T?.orDefault(default: T) = this ?: default

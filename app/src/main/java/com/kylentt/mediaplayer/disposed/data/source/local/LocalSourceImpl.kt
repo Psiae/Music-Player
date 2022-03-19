@@ -7,22 +7,19 @@ import android.graphics.BitmapFactory
 import android.graphics.drawable.BitmapDrawable
 import android.media.MediaMetadataRetriever
 import android.net.Uri
-import android.os.Build
 import android.provider.DocumentsContract
-import android.provider.DocumentsProvider
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.widget.Toast
-import androidx.core.provider.DocumentsContractCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import coil.ImageLoader
 import coil.request.CachePolicy
 import coil.request.ImageRequest
 import coil.size.Scale
-import com.kylentt.mediaplayer.core.exoplayer.getDisplayTitle
 import com.kylentt.mediaplayer.core.util.Constants.ALBUM_ART_PATH
-import com.kylentt.mediaplayer.core.util.VersionHelper
+import com.kylentt.mediaplayer.core.util.handler.getDisplayTitle
+import com.kylentt.mediaplayer.core.util.helper.VersionHelper
 import com.kylentt.mediaplayer.disposed.domain.model.Song
 import jp.wasabeef.transformers.coil.CropSquareTransformation
 import kotlinx.coroutines.Dispatchers
@@ -164,7 +161,7 @@ class LocalSourceImpl(
                 songPathId,
             )
             val selector ="${MediaStore.Audio.Media.IS_MUSIC} != 0"
-            val selectOrder =  MediaStore.Audio.Media.DEFAULT_SORT_ORDER
+            val selectOrder = MediaStore.Audio.Media.DEFAULT_SORT_ORDER
             val cursor = context.contentResolver.query(
                 MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
                 projector, selector, null, selectOrder

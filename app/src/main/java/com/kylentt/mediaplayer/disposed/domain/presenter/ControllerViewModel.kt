@@ -6,7 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.session.MediaController
-import com.kylentt.mediaplayer.core.exoplayer.MediaItemHandler
+import com.kylentt.mediaplayer.core.util.handler.MediaItemHandler
 import com.kylentt.mediaplayer.disposed.data.repository.SongRepositoryImpl
 import com.kylentt.mediaplayer.disposed.domain.model.toMediaItems
 import com.kylentt.mediaplayer.disposed.domain.presenter.util.State

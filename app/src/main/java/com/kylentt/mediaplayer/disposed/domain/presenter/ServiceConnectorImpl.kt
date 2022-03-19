@@ -14,7 +14,7 @@ import coil.ImageLoader
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import com.kylentt.mediaplayer.disposed.domain.presenter.util.State
-import com.kylentt.mediaplayer.domain.service.MusicService
+import com.kylentt.mediaplayer.domain.mediaSession.service.MusicService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow

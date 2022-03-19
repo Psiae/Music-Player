@@ -53,15 +53,17 @@ object ExoUtil {
     const val invalidNum = -111
     const val invalidStr = "INVALID_STR"
 
-    fun ExoPlayer.getMediaItems(): List<MediaItem> {
-        val toReturn = mutableListOf<MediaItem>()
-        for (i in 0 until mediaItemCount) {
-            toReturn.add(getMediaItemAt(i))
-        }
-        return toReturn
-    }
+    fun newExo(context: Context, attr: AudioAttributes = defaultAttr()) = ExoPlayer.Builder(context)
+        .setAudioAttributes(attr, true)
+        .setHandleAudioBecomingNoisy(true)
+        .build()
 
-    fun ExoPlayer.copyFrom(from: ExoPlayer, seekToi: Boolean, seekToPos: Boolean) {
+    fun defaultAttr() = AudioAttributes.Builder()
+        .setContentType(CONTENT_TYPE_MUSIC)
+        .setUsage(USAGE_MEDIA)
+        .build()
+
+    fun ExoPlayer.copyFrom(from: ExoPlayer, seekToi: Boolean, seekToPos: Boolean){
         this.setMediaItems(from.getMediaItems())
         this.playWhenReady = from.playWhenReady
         when {
@@ -71,13 +73,12 @@ object ExoUtil {
         }
     }
 
-    fun newExo(context: Context, attr: AudioAttributes = defaultAttr()) = ExoPlayer.Builder(context)
-        .setAudioAttributes(attr, true)
-        .setHandleAudioBecomingNoisy(true)
-        .build()
+    fun ExoPlayer.getMediaItems(): List<MediaItem> {
+        val toReturn = mutableListOf<MediaItem>()
+        for (i in 0 until mediaItemCount) {
+            toReturn.add(getMediaItemAt(i))
+        }
+        return toReturn
+    }
 
-    private fun defaultAttr() = AudioAttributes.Builder()
-        .setContentType(CONTENT_TYPE_MUSIC)
-        .setUsage(USAGE_MEDIA)
-        .build()
 }

@@ -9,12 +9,8 @@ import android.os.Bundle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.session.MediaLibraryService
-import androidx.media3.session.MediaSession
-import androidx.media3.session.SessionCommand
-import androidx.media3.session.SessionResult
+import androidx.media3.session.*
 import com.google.common.util.concurrent.ListenableFuture
-import com.kylentt.mediaplayer.BuildConfig
 import com.kylentt.mediaplayer.core.exoplayer.ControllerCommand
 import com.kylentt.mediaplayer.core.exoplayer.ExoController
 import com.kylentt.mediaplayer.core.exoplayer.util.ExoUtil
@@ -43,6 +39,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import timber.log.Timber
 import javax.inject.Inject
+import kotlin.system.exitProcess
 
 @AndroidEntryPoint
 class  MusicService : MediaLibraryService() {
@@ -73,11 +70,16 @@ class  MusicService : MediaLibraryService() {
 
     val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
+    override fun onUpdateNotification(session: MediaSession): MediaNotification? {
+        return null
+    }
+
     override fun onCreate() {
         super.onCreate()
         Timber.d("$TAG onCreate")
         initializeSession()
         registerReceiver()
+
     }
 
     private fun initializeSession() {
@@ -142,13 +144,6 @@ class  MusicService : MediaLibraryService() {
         }
     }
 
-    override fun onUpdateNotification(session: MediaSession): MediaNotification? {
-        if (BuildConfig.DEBUG) return null
-        return exoController.getNotification(session)?.let {
-            MediaNotification(NOTIFICATION_ID, it)
-        }
-    }
-
     inner class RepoItemFiller : MediaSession.MediaItemFiller {
         override fun fillInLocalConfiguration(
             session: MediaSession,
@@ -159,6 +154,11 @@ class  MusicService : MediaLibraryService() {
 
     inner class PlaybackReceiver: BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
+
+            if (!::exoController.isInitialized) {
+                libSession?.let { releaseSession(it) }
+                exitProcess(1)
+            }
 
             when (intent?.getStringExtra("ACTION")) {
                 ACTION_NEXT -> exoController.commandController(
@@ -182,6 +182,8 @@ class  MusicService : MediaLibraryService() {
                 ACTION_REPEAT_ALL_TO_OFF -> exoController.commandController(
                     ControllerCommand.SetRepeatMode(Player.REPEAT_MODE_OFF)
                 )
+
+
 
                 ACTION_CANCEL -> {
                     exoController.commandController(
@@ -229,8 +231,6 @@ class  MusicService : MediaLibraryService() {
     private fun considerReleasing(session: MediaLibrarySession) {
         Timber.d("MusicService considerRelease called")
         if (!MainActivity.isActive) {
-            stopSelf()
-            stopForeground(true).also { isForegroundService = false }
             releaseSession(session)
             Timber.d("MusicService considerRelease released, reason = MainActivity.isActive == ${MainActivity.isActive}")
         } else {
@@ -245,17 +245,22 @@ class  MusicService : MediaLibraryService() {
     }
 
     private fun releaseSession(session: MediaLibrarySession) {
-        ExoController.releaseInstance(exoController)
-        session.player.release()
+        Timber.d("$TAG releaseSession")
         serviceScope.cancel()
+        ExoController.releaseInstance(exoController)
         unregisterReceiver(playbackReceiver)
+        session.player.release()
+        stopSelf()
+        stopForeground(true).also { isForegroundService = false }
         serviceConnectorImpl.releaseSession()
         session.release()
+        libSession = null
     }
 
     override fun onDestroy() {
         super.onDestroy()
         Timber.d("$TAG onDestroy")
+        libSession?.let { releaseSession(it) }
         isActive = false
     }
 }

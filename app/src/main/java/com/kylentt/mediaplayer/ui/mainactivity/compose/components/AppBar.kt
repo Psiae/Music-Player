@@ -19,6 +19,8 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,28 +28,38 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import coil.Coil
 import coil.compose.ImagePainter
 import coil.compose.rememberImagePainter
 import coil.request.ImageRequest
 import coil.size.SizeResolver
+import com.google.accompanist.drawablepainter.DrawablePainter
+import com.google.accompanist.placeholder.PlaceholderDefaults
+import com.google.accompanist.placeholder.PlaceholderHighlight
+import com.google.accompanist.placeholder.placeholder
+import com.google.accompanist.placeholder.shimmer
 import com.kylentt.mediaplayer.ui.mainactivity.compose.theme.md3.DefaultColor
 import com.kylentt.mediaplayer.R
+import timber.log.Timber
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, coil.annotation.ExperimentalCoilApi::class)
 @Composable
 fun HomeAppBar() {
+
+    Timber.d("ComposeDebug HomeAppBar")
+
     val context = LocalContext.current
-    val painter = rememberImagePainter(
-        request = ImageRequest.Builder(context.applicationContext)
-            .data(R.drawable.test_p2)
-            .size(256)
-            .build(),
-        imageLoader = Coil.imageLoader(context.applicationContext)
+    val profilePainter = rememberImagePainter(
+        request = ImageRequest.Builder(context)
+            .data(ContextCompat.getDrawable(context, R.drawable.test_p2)!!)
+            .size(128)
+            .build()
     )
     Row(
         modifier = Modifier
@@ -56,12 +68,14 @@ fun HomeAppBar() {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
+        Timber.d("ComposeDebug HomeAppBar Row")
         Row(
             modifier = Modifier
                 .padding(15.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.Start),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Timber.d("ComposeDebug HomeAppBar NestedRow")
             Surface(
                 modifier = Modifier
                     .size(45.dp)
@@ -72,16 +86,24 @@ fun HomeAppBar() {
                 elevation = 1.dp
 
             ) {
+                Timber.d("ComposeDebug HomeAppBar Surface")
                 IconButton(
                     onClick = {
                         Toast.makeText(context, "Account", Toast.LENGTH_SHORT).show()
                     },
                 ) {
+                    Timber.d("ComposeDebug HomeAppBar IconButton")
                     if (true) {
-                        Image(
-                            modifier = Modifier
-                                .fillMaxSize(),
-                            painter = painter,
+                        Image(modifier = Modifier
+                            .fillMaxSize()
+                            .placeholder(
+                                visible = profilePainter.state is ImagePainter.State.Loading,
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f),
+                                highlight = PlaceholderHighlight.Companion.shimmer(
+                                    highlightColor = MaterialTheme.colorScheme.surface
+                                )
+                            ),
+                            painter = profilePainter,
                             contentDescription = "TestAccount",
                             contentScale = ContentScale.Crop
                         )

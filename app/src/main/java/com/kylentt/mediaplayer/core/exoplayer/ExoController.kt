@@ -133,6 +133,7 @@ class ExoController(
                                 controller.handleStopCancel()
                                 service.stopForeground(true)
                                 service.isForegroundService = false
+                                service.stopSelf()
                                 type.callback()
                             }
                             ControllerCommand.SkipToNext -> {

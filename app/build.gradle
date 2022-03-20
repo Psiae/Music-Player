@@ -66,6 +66,18 @@ dependencies {
         debugImplementation "androidx.compose.ui:ui-tooling:1.1.1"
     }
 
+    // Accompanist
+    dependencies {
+        def accompanistVersion = "0.24.3-alpha"
+        implementation "com.google.accompanist:accompanist-drawablepainter:$accompanistVersion"
+        implementation "com.google.accompanist:accompanist-navigation-animation:$accompanistVersion"
+        implementation "com.google.accompanist:accompanist-navigation-material:$accompanistVersion"
+        implementation "com.google.accompanist:accompanist-pager:$accompanistVersion"
+        implementation "com.google.accompanist:accompanist-permissions:$accompanistVersion"
+        implementation "com.google.accompanist:accompanist-placeholder:$accompanistVersion"
+        implementation "com.google.accompanist:accompanist-systemuicontroller:$accompanistVersion"
+    }
+
     // Core
     dependencies {
         implementation "androidx.core:core-splashscreen:1.0.0-beta01"
@@ -81,13 +93,7 @@ dependencies {
         implementation 'androidx.compose.material3:material3:1.0.0-alpha07'
         implementation "androidx.navigation:navigation-compose:$composeNavigation"
     }
-
-    // Compose Util
-    dependencies {
-        implementation "com.google.accompanist:accompanist-systemuicontroller:0.24.3-alpha"
-        implementation "com.google.accompanist:accompanist-permissions:0.24.3-alpha"
-    }
-
+    
     // Debugging
     dependencies {
         implementation 'com.jakewharton.timber:timber:5.0.1'
@@ -107,7 +113,6 @@ dependencies {
         def media3_version = "1.0.0-alpha01"
         implementation "androidx.media3:media3-exoplayer:$media3_version"
         implementation "androidx.media3:media3-session:$media3_version"
-        implementation "androidx.media3:media3-common:$media3_version"
         implementation "androidx.media3:media3-common:$media3_version"
         implementation 'com.google.android.exoplayer:extension-mediasession:2.17.1'
         implementation "com.github.Kaned1as:jaudiotagger:2.3.15"

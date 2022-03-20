@@ -3,21 +3,26 @@ package com.kylentt.mediaplayer.ui.mainactivity.compose
 import android.Manifest
 import android.app.WallpaperManager
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.SpringSpec
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalAccessibilityManager
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -35,10 +40,7 @@ import androidx.navigation.navigation
 import coil.annotation.ExperimentalCoilApi
 import coil.compose.ImagePainter
 import coil.compose.rememberImagePainter
-import coil.request.CachePolicy
 import coil.request.ImageRequest
-import coil.transition.Transition
-import com.google.accompanist.placeholder.PlaceholderDefaults
 import com.google.accompanist.placeholder.PlaceholderHighlight
 import com.google.accompanist.placeholder.placeholder
 import com.google.accompanist.placeholder.shimmer
@@ -48,8 +50,6 @@ import com.kylentt.mediaplayer.ui.mainactivity.compose.root.BottomNavigationRout
 import com.kylentt.mediaplayer.ui.mainactivity.compose.screen.home.HomeScreen
 import com.kylentt.mediaplayer.ui.mainactivity.compose.screen.library.LibraryScreen
 import com.kylentt.mediaplayer.ui.mainactivity.compose.screen.search.SearchScreen
-import kotlinx.coroutines.delay
-import org.jaudiotagger.audio.asf.data.ContentDescription
 import timber.log.Timber
 
 @Composable
@@ -90,22 +90,50 @@ fun RootScreen() {
         ) {
             Timber.d("ComposeDebug RootScaffold Content")
             val context = LocalContext.current
+            val density = LocalDensity.current
+            val config = LocalConfiguration.current
             val wm = remember { WallpaperManager.getInstance(context) }
+            val drw = wm.drawable.toBitmap()
+            val pageIndex = remember { mutableStateOf(0) }
             val req = remember { ImageRequest.Builder(context)
-                .data(wm.drawable.toBitmap())
+                .data(drw)
                 .crossfade(true)
                 .build()
             }
             val ir = rememberImagePainter(request = req)
+            val current = BottomNavigationRoute.routeList.map { it.route }.indexOf(state.value?.destination?.route)
+            val size = BottomNavigationRoute.routeList.size
+            pageIndex.value = if (current != -1) current else pageIndex.value
+            val scrollState = rememberScrollState()
+            LaunchedEffect(key1 = pageIndex.value) {
+                val pagex = pageIndex.value
+                val value = (if (pagex == 0) 0 else drw.width / (size.toFloat() / pagex.toFloat())).toInt()
+                Timber.d("LaunchedEffect $value")
+                scrollState.animateScrollTo(
+                    value,
+                    animationSpec = SpringSpec(stiffness = Spring.StiffnessLow)
+                )
+            }
             CoilShimmerImage(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth()
+                    .horizontalScroll(scrollState),
                 painter = ir,
                 contentAlignment = Alignment.CenterStart,
-                contentDescription = null
+                contentScale = ContentScale.Crop,
+                contentDescription = null,
             )
         }
         RootNavHost(rootController = navController, modifier = Modifier.padding(it))
     }
+}
+@OptIn(ExperimentalCoilApi::class)
+sealed class CoilShimmerState {
+    object EMPTY : CoilShimmerState()
+    object LOADING : CoilShimmerState()
+    object SUCCESS : CoilShimmerState()
+    object ERROR : CoilShimmerState()
 }
 
 @ExperimentalCoilApi
@@ -115,15 +143,23 @@ fun CoilShimmerImage(
     painter: ImagePainter,
     placeHolderColor: Color = MaterialTheme.colorScheme.surface,
     placeHolderShimmerColor: Color = MaterialTheme.colorScheme.surfaceVariant,
+    shimmerState: CoilShimmerState = CoilShimmerState.LOADING,
     contentDescription: String?,
     contentScale: ContentScale = ContentScale.Crop,
-    contentAlignment: Alignment = Alignment.Center
+    contentAlignment: Alignment = Alignment.Center,
 ) {
+    val holder = when (shimmerState) {
+        CoilShimmerState.EMPTY -> painter.state is ImagePainter.State.Empty
+        CoilShimmerState.ERROR -> painter.state is ImagePainter.State.Error
+        CoilShimmerState.LOADING -> painter.state is ImagePainter.State.Loading
+        CoilShimmerState.SUCCESS -> painter.state is ImagePainter.State.Success
+    }
     Image(modifier = modifier
-        .then(Modifier.placeholder(painter.state is ImagePainter.State.Loading,
+        .then(Modifier
+            .placeholder(holder,
             color = placeHolderColor,
-            highlight = PlaceholderHighlight.shimmer(placeHolderShimmerColor)
-        )),
+            highlight = PlaceholderHighlight.shimmer(placeHolderShimmerColor))
+        ),
         painter = painter,
         contentDescription = contentDescription,
         contentScale = contentScale,

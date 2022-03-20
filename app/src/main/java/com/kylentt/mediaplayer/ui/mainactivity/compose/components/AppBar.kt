@@ -1,5 +1,8 @@
 package com.kylentt.mediaplayer.ui.mainactivity.compose.components
 
+import android.Manifest
+import android.app.WallpaperManager
+import android.content.pm.PackageManager
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -33,7 +36,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.toBitmap
 import coil.Coil
 import coil.compose.ImagePainter
 import coil.compose.rememberImagePainter
@@ -46,6 +51,8 @@ import com.google.accompanist.placeholder.placeholder
 import com.google.accompanist.placeholder.shimmer
 import com.kylentt.mediaplayer.ui.mainactivity.compose.theme.md3.DefaultColor
 import com.kylentt.mediaplayer.R
+import com.kylentt.mediaplayer.ui.mainactivity.compose.CoilShimmerImage
+import com.kylentt.mediaplayer.ui.mainactivity.compose.CoilShimmerState
 import timber.log.Timber
 
 @OptIn(ExperimentalMaterial3Api::class, coil.annotation.ExperimentalCoilApi::class)
@@ -53,13 +60,18 @@ import timber.log.Timber
 fun HomeAppBar() {
 
     Timber.d("ComposeDebug HomeAppBar")
-
     val context = LocalContext.current
-    val profilePainter = rememberImagePainter(
+    val perm = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+
+    val wp = remember { WallpaperManager.getInstance(context) }
+    val data = if (perm) { wp.drawable.toBitmap() } else ContextCompat.getDrawable(context, R.drawable.test_p2)!!.toBitmap()
+
+    val profilePainter =  rememberImagePainter(
         request = ImageRequest.Builder(context)
-            .data(ContextCompat.getDrawable(context, R.drawable.test_p2)!!)
-            .size(128)
+            .data(data)
+            .size(256)
             .build()
+
     )
     Row(
         modifier = Modifier
@@ -93,19 +105,12 @@ fun HomeAppBar() {
                     },
                 ) {
                     Timber.d("ComposeDebug HomeAppBar IconButton")
-                    if (true) {
-                        Image(modifier = Modifier
-                            .fillMaxSize()
-                            .placeholder(
-                                visible = profilePainter.state is ImagePainter.State.Loading,
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f),
-                                highlight = PlaceholderHighlight.Companion.shimmer(
-                                    highlightColor = MaterialTheme.colorScheme.surface
-                                )
-                            ),
+                    if (perm) {
+                        CoilShimmerImage(modifier = Modifier.fillMaxSize(),
                             painter = profilePainter,
-                            contentDescription = "TestAccount",
-                            contentScale = ContentScale.Crop
+                            contentDescription = null,
+                            contentAlignment = Alignment.CenterStart,
+                            shimmerState = CoilShimmerState.LOADING
                         )
                     } else {
                         Icon(

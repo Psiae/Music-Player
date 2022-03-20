@@ -33,6 +33,7 @@ import com.kylentt.mediaplayer.ui.mainactivity.compose.components.util.ComposePe
 import com.kylentt.mediaplayer.ui.mainactivity.compose.components.util.RequirePermission
 import com.kylentt.mediaplayer.ui.mainactivity.compose.theme.md3.MaterialTheme3
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import kotlin.system.exitProcess
@@ -47,20 +48,16 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Timber.d("onCreateCheckSavedInstanceState $savedInstanceState ${this.intent.action}")
+        Timber.d("onCreateCheckSavedInstanceState $savedInstanceState ${this.intent}")
 
-        // Don't want to deal with weird foreground service behavior
+        // Don't want to deal with weird foreground service behavior when process death occur
         if (savedInstanceState != null) {
-            if (intent.action != null) {
-                if (controllerVM.serviceState.value !is ServiceState.Connected) {
-                    newIntentInterceptor = { it ->
-                        newIntentInterceptor = null
-                        startActivity( run {
-                            finish()
-                            if (it !== intent) { it } else { Intent(this, MainActivity::class.java) }
-                        })
-                        exitProcess(0)
-                    }
+            validateInstanceState(savedInstanceState)
+            lifecycleScope.launch {
+                delay(2000)
+                newIntentInterceptor?.let {
+                    Timber.e("NewIntent not Intercepted $newIntentInterceptor")
+                    it(intent)
                 }
             }
         }
@@ -78,7 +75,7 @@ class MainActivity : ComponentActivity() {
                             true
                         }
                         is ServiceState.Connecting -> true
-                        else -> false
+                        else -> newIntentInterceptor != null
                     }
                 }
                 // TODO: setOnExitAnimationListener { }
@@ -87,30 +84,51 @@ class MainActivity : ComponentActivity() {
         setContent {
             Timber.d("ComposeDebug setContent")
             MaterialTheme3 {
-                RequirePermission(perms = ComposePermission(Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                    onGranted = {
-                        Root()
-                        onNewIntent(intent)
-                    },
-                    onNotDenied = {
-                        FakeRoot()
-                    },
-                    onDenied = {
-                        Toast.makeText(this, "Permission Needed", Toast.LENGTH_SHORT).show()
-                    },
-                    onGrantedAfterRequest = {
-                        startActivity( run {
-                            finish()
-                            intent.action?.let { intent } ?: Intent(this, MainActivity::class.java)
-                        })
-                    },
-                    onPermissionScreenRequest = {
-                        val i = rememberLauncherForActivityResult(contract = ActivityResultContracts.StartActivityForResult()) {}
-                        SideEffect {
-                            i.launch(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:${packageName}".toUri()))
+                if (newIntentInterceptor == null) {
+                    RequirePermission(perms = ComposePermission(Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                        onGranted = {
+                            Root()
+                            onNewIntent(intent)
+                        },
+                        onNotDenied = {
+                            FakeRoot()
+                        },
+                        onDenied = {
+                            Toast.makeText(this, "Permission Denied", Toast.LENGTH_SHORT).show()
+                        },
+                        onGrantedAfterRequest = {
+                            startActivity( run {
+                                finish()
+                                intent.action?.let { intent } ?: Intent(this, MainActivity::class.java)
+                            })
+                        },
+                        onPermissionScreenRequest = {
+                            val i = rememberLauncherForActivityResult(contract = ActivityResultContracts.StartActivityForResult()) {}
+                            SideEffect {
+                                i.launch(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:${packageName}".toUri()))
+                            }
                         }
-                    }
-                ))
+                    ))
+                }
+            }
+        }
+    }
+
+    private fun validateInstanceState(savedInstanceState: Bundle) {
+        if (intent.action != null) {
+            // In case of device config changes
+                Timber.d("validateInstanceState $intent ${controllerVM.serviceState.value}")
+            if (controllerVM.serviceState.value !is ServiceState.Connected) {
+                newIntentInterceptor = { it ->
+                    newIntentInterceptor = null
+                    startActivity( run {
+                        finish()
+                        if (it !== intent) { it } else {
+                            Intent(this, MainActivity::class.java)
+                        }
+                    })
+                    exitProcess(0)
+                }
             }
         }
     }
@@ -126,7 +144,7 @@ class MainActivity : ComponentActivity() {
             } else {
                 this.intent = intent
                 if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
-                    handleIntent(intent)
+                    handleIntent(this.intent)
                 } else {
                     Toast.makeText(this, "Permission Needed", Toast.LENGTH_SHORT).show()
                 }

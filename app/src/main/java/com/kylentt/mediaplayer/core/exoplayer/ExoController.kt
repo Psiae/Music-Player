@@ -403,6 +403,13 @@ class ExoController(
                             preparePlayer()
                         }
                     }
+                    "ERROR_CODE_IO_UNSPECIFIED" -> {
+                        controller {
+                            commandController(ControllerCommand.StopCancel() {
+                                session.player.removeMediaItem(it.currentMediaItemIndex)
+                            })
+                        }
+                    }
                 }
                 Timber.e("onPlayerError ${error.errorCodeName}")
             }

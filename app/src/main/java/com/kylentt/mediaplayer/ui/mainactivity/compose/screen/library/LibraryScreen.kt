@@ -13,7 +13,7 @@ import com.kylentt.mediaplayer.ui.mainactivity.compose.theme.md3.DefaultColor
 
 @Composable
 fun LibraryScreen() {
-    Column(
+    /*Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState()),
@@ -24,5 +24,5 @@ fun LibraryScreen() {
         Text(text = "Library Screen", color = DefaultColor.getDNTextColor())
         Spacer(modifier = Modifier.height(1000.dp))
         Text(text = "End Of Column", color = DefaultColor.getDNTextColor())
-    }
+    }*/
 }

@@ -96,9 +96,5 @@ fun FakeHomeScreenLayout() {
 
 @Composable
 fun FakeHomeScreen() {
-    HomeScreenLayout(
-        textColor = DefaultColor.getDNTextColor(),
-        currentlyPlaying = "Nothing",
-        currentlyPlayingState = "Idle"
-    )
+    FakeHomeScreenLayout()
 }

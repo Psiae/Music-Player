@@ -1,5 +1,6 @@
 package com.kylentt.mediaplayer.ui.mainactivity.compose.screen.permission
 
+import android.content.pm.PackageManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -11,10 +12,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionState
+import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.shouldShowRationale
 import com.kylentt.mediaplayer.ui.mainactivity.compose.components.util.ComposePermission
+import com.kylentt.mediaplayer.ui.mainactivity.compose.components.util.granted
 import com.kylentt.mediaplayer.ui.mainactivity.compose.theme.md3.DefaultColor
 
 @ExperimentalPermissionsApi
@@ -24,11 +29,14 @@ fun PermissionScreen(
     state: PermissionState
 ) {
 
-    val trigger = remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val setting = remember {
+        mutableStateOf(false)
+    }
 
-    if (trigger.value) {
+    if (setting.value) {
         perms.onPermissionScreenRequest?.invoke()
-        trigger.value = false
+        setting.value = false
     }
 
     Surface(
@@ -45,10 +53,15 @@ fun PermissionScreen(
         ) {
             Button(
                 onClick = {
-                    if (state.status.shouldShowRationale) {
-                        state.launchPermissionRequest()
-                    } else {
-                        trigger.value = true
+                    when {
+                        state.status.shouldShowRationale && ContextCompat.checkSelfPermission(context,
+                            perms.permissionStr) != PackageManager.PERMISSION_GRANTED -> {
+                            state.launchPermissionRequest()
+                        }
+                        !state.status.shouldShowRationale && ContextCompat.checkSelfPermission(context,
+                            perms.permissionStr) != PackageManager.PERMISSION_GRANTED -> {
+                            setting.value = true
+                        }
                     }
                 }
             ) {

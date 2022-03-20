@@ -79,3 +79,26 @@ fun HomeScreenLayout(
 fun HomeBarCardSpacer() {
     Spacer(modifier = Modifier.height(15.dp))
 }
+@Composable
+fun FakeHomeScreenLayout() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize(),
+        verticalArrangement = Arrangement.Top,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        StatusBarSpacer()
+        HomeAppBar()
+        HomeBarCardSpacer()
+        HomeCard()
+    }
+}
+
+@Composable
+fun FakeHomeScreen() {
+    HomeScreenLayout(
+        textColor = DefaultColor.getDNTextColor(),
+        currentlyPlaying = "Nothing",
+        currentlyPlayingState = "Idle"
+    )
+}

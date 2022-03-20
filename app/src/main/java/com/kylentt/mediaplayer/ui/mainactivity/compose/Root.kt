@@ -3,6 +3,7 @@ package com.kylentt.mediaplayer.ui.mainactivity.compose
 import android.Manifest
 import android.app.WallpaperManager
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -11,10 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -37,6 +35,7 @@ import androidx.navigation.navigation
 import coil.annotation.ExperimentalCoilApi
 import coil.compose.ImagePainter
 import coil.compose.rememberImagePainter
+import coil.request.CachePolicy
 import coil.request.ImageRequest
 import coil.transition.Transition
 import com.google.accompanist.placeholder.PlaceholderDefaults
@@ -90,14 +89,13 @@ fun RootScreen() {
                 Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
         ) {
             Timber.d("ComposeDebug RootScaffold Content")
-
             val context = LocalContext.current
+            val wm = remember { WallpaperManager.getInstance(context) }
             val req = remember { ImageRequest.Builder(context)
-                .data(WallpaperManager.getInstance(context).drawable.toBitmap())
+                .data(wm.drawable.toBitmap())
                 .crossfade(true)
                 .build()
             }
-
             val ir = rememberImagePainter(request = req)
             CoilShimmerImage(
                 modifier = Modifier.fillMaxSize(),

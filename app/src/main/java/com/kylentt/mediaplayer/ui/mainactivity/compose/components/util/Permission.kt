@@ -9,6 +9,7 @@ data class ComposePermission (
     val permissionStr: String,
     val onDenied: @Composable () -> Unit,
     val onPermissionScreenRequest: @Composable ( () -> Unit )? = null,
+    val onGrantedAfterRequest: @Composable ( () -> Unit )? = null,
     val onNotDenied: @Composable () -> Unit,
     val onGranted: @Composable () -> Unit
 )
@@ -40,7 +41,7 @@ fun RequirePermission(
     Timber.d("ComposeDebug RequirePermission ${permissionState.notDenied()} ${permScreen.value}")
 
     when {
-        permissionState.granted() -> { Timber.d("ComposeDebug permissionState Granted")
+        permissionState.granted() && !permScreen.value -> { Timber.d("ComposeDebug permissionState Granted")
             perms.onGranted()
         }
         permissionState.notDenied() && !permScreen.value -> { Timber.d("ComposeDebug permissionState NotDenied")
@@ -48,6 +49,9 @@ fun RequirePermission(
             SideEffect {
                 permissionState.launchPermissionRequest()
             }
+        }
+        permissionState.granted() && permScreen.value -> {Timber.d("ComposeDebug permissionState Granted after Denied")
+            perms.onGrantedAfterRequest?.invoke()
         }
         permissionState.denied() || permScreen.value -> {
             Timber.d("ComposeDebug permissionState Denied")

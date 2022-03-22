@@ -13,11 +13,6 @@ class MediaPlayerApp : Application() {
         super.onCreate()
         initializer.init()
     }
-
-    override fun onTerminate() {
-        super.onTerminate()
-        Timber.d("onTerminate")
-    }
 }
 
 class AppInitializer(private val app: Application) {

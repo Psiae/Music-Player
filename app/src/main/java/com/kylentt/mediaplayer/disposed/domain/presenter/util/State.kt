@@ -3,10 +3,11 @@ package com.kylentt.mediaplayer.disposed.domain.presenter.util
 import androidx.media3.common.MediaItem
 
 // TODO: Separate this
-
+@Deprecated("Disposed")
 sealed class State {
 
     sealed class ServiceState : State() {
+        object Unit : ServiceState()
         object Connecting : ServiceState()
         object Connected : ServiceState()
         object Disconnected : ServiceState()

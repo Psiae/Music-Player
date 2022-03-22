@@ -9,32 +9,32 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
-import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.compose.runtime.SideEffect
-import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.shouldShowRationale
 import com.kylentt.mediaplayer.core.util.Constants.PROVIDER_ANDROID
 import com.kylentt.mediaplayer.core.util.Constants.PROVIDER_COLOROS_FM
 import com.kylentt.mediaplayer.core.util.Constants.PROVIDER_DRIVE_LEGACY
 import com.kylentt.mediaplayer.core.util.Constants.PROVIDER_EXTERNAL_STORAGE
-import com.kylentt.mediaplayer.core.util.ext.Ext
 import com.kylentt.mediaplayer.disposed.domain.presenter.ControllerViewModel
 import com.kylentt.mediaplayer.disposed.domain.presenter.util.State.ServiceState
 import com.kylentt.mediaplayer.domain.mediaSession.MediaViewModel
-import com.kylentt.mediaplayer.ui.mainactivity.compose.FakeRoot
-import com.kylentt.mediaplayer.ui.mainactivity.compose.Root
-import com.kylentt.mediaplayer.ui.mainactivity.compose.components.util.ComposePermission
-import com.kylentt.mediaplayer.ui.mainactivity.compose.components.util.RequirePermission
-import com.kylentt.mediaplayer.ui.mainactivity.compose.theme.md3.MaterialTheme3
+import com.kylentt.mediaplayer.ui.mainactivity.compose.ComposePermission
+import com.kylentt.mediaplayer.ui.mainactivity.compose.PermissionScreen
+import com.kylentt.mediaplayer.ui.mainactivity.compose.RequirePermission
+import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.FakeRoot
+import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.Root
+import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.theme.md3.MaterialTheme3
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import timber.log.Timber
 import kotlin.system.exitProcess
 
@@ -46,21 +46,13 @@ class MainActivity : ComponentActivity() {
 
     private var newIntentInterceptor: ((Intent) -> Unit)? = null
 
+    @OptIn(ExperimentalPermissionsApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Timber.d("onCreateCheckSavedInstanceState $savedInstanceState ${this.intent}")
 
-        // Don't want to deal with weird foreground service behavior when process death occur
-        if (savedInstanceState != null) {
-            validateInstanceState(savedInstanceState)
-            lifecycleScope.launch {
-                delay(2000)
-                newIntentInterceptor?.let {
-                    Timber.e("NewIntent not Intercepted $newIntentInterceptor")
-                    it(intent)
-                }
-            }
-        }
+        // Don't want to deal with weird foreground service behavior
+        validateInstanceState(savedInstanceState)
 
         isActive = true
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -70,22 +62,22 @@ class MainActivity : ComponentActivity() {
                 setKeepOnScreenCondition {
                     Timber.d("MainActivity KeepOnScreenCondition ${controllerVM.serviceState.value}")
                     when (controllerVM.serviceState.value) {
-                        is ServiceState.Disconnected -> {
+                        is ServiceState.Unit -> {
                             controllerVM.connectService()
                             true
                         }
-                        is ServiceState.Connecting -> true
+                        is ServiceState.Connected -> false
                         else -> newIntentInterceptor != null
                     }
                 }
                 // TODO: setOnExitAnimationListener { }
             }
-
         setContent {
             Timber.d("ComposeDebug setContent")
             MaterialTheme3 {
                 if (newIntentInterceptor == null) {
-                    RequirePermission(perms = ComposePermission(Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                    RequirePermission(permission = ComposePermission.SinglePermission(
+                        permissionStr = Manifest.permission.WRITE_EXTERNAL_STORAGE,
                         onGranted = {
                             Root()
                             onNewIntent(intent)
@@ -95,39 +87,56 @@ class MainActivity : ComponentActivity() {
                         },
                         onDenied = {
                             Toast.makeText(this, "Permission Denied", Toast.LENGTH_SHORT).show()
+                            val i =
+                                rememberLauncherForActivityResult(contract = ActivityResultContracts.StartActivityForResult()) {}
+                            PermissionScreen(grantButtonText = "Grant Storage Permission") {
+                                if (it.status.shouldShowRationale) {
+                                    it.launchPermissionRequest()
+                                } else {
+                                    i.launch(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                        "package:${packageName}".toUri()))
+                                }
+                            }
                         },
                         onGrantedAfterRequest = {
-                            startActivity( run {
+                            startActivity(run {
                                 finish()
-                                intent.action?.let { intent } ?: Intent(this, MainActivity::class.java)
+                                intent.action?.let { intent } ?: Intent(this,
+                                    MainActivity::class.java)
                             })
+                            exitProcess(0)
                         },
-                        onPermissionScreenRequest = {
-                            val i = rememberLauncherForActivityResult(contract = ActivityResultContracts.StartActivityForResult()) {}
-                            SideEffect {
-                                i.launch(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:${packageName}".toUri()))
-                            }
-                        }
                     ))
                 }
             }
         }
     }
 
-    private fun validateInstanceState(savedInstanceState: Bundle) {
-        if (intent.action != null) {
-            // In case of device config changes
-                Timber.d("validateInstanceState $intent ${controllerVM.serviceState.value}")
-            if (controllerVM.serviceState.value !is ServiceState.Connected) {
+    private fun validateInstanceState(savedInstanceState: Bundle?) {
+        Timber.d("validateInstanceState Intent $intent ${intent.action} ${controllerVM.serviceState.value}")
+        if (savedInstanceState != null) {
+            Timber.d("savedInstanceState != null")
+            // Activity is Recreated
+            if (controllerVM.serviceState.value is ServiceState.Unit) {
+                Timber.d("savedInstanceState serviceState is unit")
+                // Update Intent Interceptor if Service is Unit
+                // so Config Changes such as Device rotation will not change it
                 newIntentInterceptor = { it ->
-                    newIntentInterceptor = null
-                    startActivity( run {
+                    startActivity(run {
                         finish()
-                        if (it !== intent) { it } else {
-                            Intent(this, MainActivity::class.java)
+                        if (it == this.intent) {
+                            Intent(this@MainActivity, MainActivity::class.java)
+                        } else {
+                            it
                         }
                     })
                     exitProcess(0)
+                }
+                lifecycleScope.launch {
+                    delay(1000)
+                    newIntentInterceptor?.let {
+                        it(Intent(this@MainActivity, MainActivity::class.java))
+                    }
                 }
             }
         }
@@ -159,7 +168,6 @@ class MainActivity : ComponentActivity() {
                     Intent.ACTION_VIEW -> handleIntentActionView(intent)
                 }
                 intent.action = null
-                intent.data = null
             }
         )
     }

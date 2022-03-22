@@ -32,7 +32,7 @@ class ServiceConnectorImpl(
 
     // TODO: Find suitable usage of MediaBrowser
 
-    private val _serviceState = MutableStateFlow<State.ServiceState>(State.ServiceState.Disconnected)
+    private val _serviceState = MutableStateFlow<State.ServiceState>(State.ServiceState.Unit)
     val serviceState = _serviceState.asStateFlow()
 
     private val _playerPlaybackState = MutableStateFlow<State.PlayerState.PlayerPlaybackState>(State.PlayerState.PlayerPlaybackState.Unit)

@@ -80,10 +80,8 @@ class ServiceConnectorImpl(
             futureMediaController!!.addListener( {
 
                 mediaController = futureMediaController!!.get()
-
                 setupController(mediaController)
                 onConnected(mediaController)
-                _serviceState.value = State.ServiceState.Connected
             }, MoreExecutors.directExecutor())
 
         } else _serviceState.value = State.ServiceState.Error(NullPointerException("Couldn't Initialize Session"))

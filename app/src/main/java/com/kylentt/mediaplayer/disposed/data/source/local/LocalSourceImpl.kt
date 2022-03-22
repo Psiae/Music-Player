@@ -161,7 +161,7 @@ class LocalSourceImpl(
                 songPathId,
             )
             val selector ="${MediaStore.Audio.Media.IS_MUSIC} != 0"
-            val selectOrder = MediaStore.Audio.Media.DEFAULT_SORT_ORDER
+            val selectOrder = MediaStore.Audio.Media.TITLE
             val cursor = context.contentResolver.query(
                 MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
                 projector, selector, null, selectOrder

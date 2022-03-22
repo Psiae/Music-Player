@@ -34,11 +34,11 @@ import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.theme.md3.Materi
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import timber.log.Timber
 import kotlin.system.exitProcess
 
 @AndroidEntryPoint
+@OptIn(ExperimentalPermissionsApi::class)
 class MainActivity : ComponentActivity() {
 
     private val controllerVM: ControllerViewModel by viewModels()
@@ -46,49 +46,53 @@ class MainActivity : ComponentActivity() {
 
     private var newIntentInterceptor: ((Intent) -> Unit)? = null
 
-    @OptIn(ExperimentalPermissionsApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Timber.d("onCreateCheckSavedInstanceState $savedInstanceState ${this.intent}")
 
         // Don't want to deal with weird foreground service behavior
-        validateInstanceState(savedInstanceState)
+        Timber.d("onCreateCheckSavedInstanceState $savedInstanceState ${this.intent}")
+        validateCreation(savedInstanceState)
 
         isActive = true
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
-        installSplashScreen()
-            .apply {
-                setKeepOnScreenCondition {
-                    Timber.d("MainActivity KeepOnScreenCondition ${controllerVM.serviceState.value}")
-                    when (controllerVM.serviceState.value) {
-                        is ServiceState.Unit -> {
-                            controllerVM.connectService()
-                            true
-                        }
-                        is ServiceState.Connected -> false
-                        else -> newIntentInterceptor != null
-                    }
+        installSplashScreen().setKeepOnScreenCondition {
+            Timber.d("keepOnScreenCondition ${controllerVM.serviceState.value}")
+            when (controllerVM.serviceState.value) {
+                is ServiceState.Unit -> {
+                    controllerVM.connectService()
+                    true
                 }
-                // TODO: setOnExitAnimationListener { }
+                is ServiceState.Disconnected -> {
+                    Timber.e("KeepOnScreenCondition ServiceDisconnected")
+                    controllerVM.connectService()
+                    true
+                }
+                is ServiceState.Connected -> {
+                    newIntentInterceptor != null
+                }
+                else -> {
+                    true
+                }
             }
+        }
         setContent {
             Timber.d("ComposeDebug setContent")
             MaterialTheme3 {
                 if (newIntentInterceptor == null) {
-                    RequirePermission(permission = ComposePermission.SinglePermission(
-                        permissionStr = Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                    RequirePermission(permission = ComposePermission.SinglePermission(permissionStr = Manifest.permission.WRITE_EXTERNAL_STORAGE,
                         onGranted = {
-                            Root()
                             onNewIntent(intent)
+                            Root()
                         },
                         onNotDenied = {
+                            // For some reason this composable callback not executed more than once
+                            // so permission request is defaulted in RP composable
                             FakeRoot()
                         },
                         onDenied = {
                             Toast.makeText(this, "Permission Denied", Toast.LENGTH_SHORT).show()
-                            val i =
-                                rememberLauncherForActivityResult(contract = ActivityResultContracts.StartActivityForResult()) {}
+                            val i = rememberLauncherForActivityResult(contract = ActivityResultContracts.StartActivityForResult()) {}
                             PermissionScreen(grantButtonText = "Grant Storage Permission") {
                                 if (it.status.shouldShowRationale) {
                                     it.launchPermissionRequest()
@@ -98,11 +102,10 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         },
-                        onGrantedAfterRequest = {
+                        onGrantedAfterDenied = {
                             startActivity(run {
                                 finish()
-                                intent.action?.let { intent } ?: Intent(this,
-                                    MainActivity::class.java)
+                                intent.action?.let { intent } ?: Intent(this, MainActivity::class.java)
                             })
                             exitProcess(0)
                         },
@@ -112,32 +115,10 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun validateInstanceState(savedInstanceState: Bundle?) {
-        Timber.d("validateInstanceState Intent $intent ${intent.action} ${controllerVM.serviceState.value}")
+    private fun validateCreation(savedInstanceState: Bundle?) {
         if (savedInstanceState != null) {
-            Timber.d("savedInstanceState != null")
-            // Activity is Recreated
             if (controllerVM.serviceState.value is ServiceState.Unit) {
-                Timber.d("savedInstanceState serviceState is unit")
-                // Update Intent Interceptor if Service is Unit
-                // so Config Changes such as Device rotation will not change it
-                newIntentInterceptor = { it ->
-                    startActivity(run {
-                        finish()
-                        if (it == this.intent) {
-                            Intent(this@MainActivity, MainActivity::class.java)
-                        } else {
-                            it
-                        }
-                    })
-                    exitProcess(0)
-                }
-                lifecycleScope.launch {
-                    delay(1000)
-                    newIntentInterceptor?.let {
-                        it(Intent(this@MainActivity, MainActivity::class.java))
-                    }
-                }
+                this.intent.action = null
             }
         }
     }
@@ -153,8 +134,10 @@ class MainActivity : ComponentActivity() {
             } else {
                 this.intent = intent
                 if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
+                    Timber.d("IntentHandler MainActivity NewIntent permission granted $intent")
                     handleIntent(this.intent)
                 } else {
+                    Timber.d("IntentHandler MainActivity NewIntent permission not granted $intent")
                     Toast.makeText(this, "Permission Needed", Toast.LENGTH_SHORT).show()
                 }
             }
@@ -162,14 +145,12 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIntent(intent: Intent) {
-        controllerVM.connectService(
-            onConnected = {
-                when (intent.action) {
-                    Intent.ACTION_VIEW -> handleIntentActionView(intent)
-                }
-                intent.action = null
+        controllerVM.connectService {
+            when (intent.action) {
+                Intent.ACTION_VIEW -> handleIntentActionView(intent)
             }
-        )
+            intent.action = null
+        }
     }
 
     private fun handleIntentActionView(intent: Intent) {
@@ -207,10 +188,24 @@ class MainActivity : ComponentActivity() {
         } ?: Timber.e("IntentHandler ActionView null Data")
     }
 
+    private fun waitForNewIntentOrRestart(delay: Long = 1500) = lifecycleScope.launch {
+        newIntentInterceptor = { it ->
+            startActivity(run {
+                finish()
+                it
+            })
+            exitProcess(0)
+        }
+        delay(delay)
+        newIntentInterceptor!!(Intent(this@MainActivity,
+            MainActivity::class.java
+        ))
+    }
+
     override fun onDestroy() {
         super.onDestroy()
-        Timber.d("onDestroy")
         isActive = false
+        Timber.d("onDestroy")
     }
 
     companion object {

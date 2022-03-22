@@ -21,7 +21,7 @@ sealed class ComposePermission {
         val onNotDenied: @Composable () -> Unit,
         val onDenied: @Composable (state: PermissionState) -> Unit,
         val onPermissionScreenRequest: @Composable ( () -> Unit )? = null,
-        val onGrantedAfterRequest: @Composable ( () -> Unit )? = null,
+        val onGrantedAfterDenied: @Composable ( () -> Unit )? = null,
         val onGranted: @Composable () -> Unit
     ) : ComposePermission()
 
@@ -56,18 +56,23 @@ fun RequirePermission(
 
     when {
         permissionState.status.isGranted && !permissionBeenDenied.value -> {
+            Timber.d("permissionState onGranted")
             permission.onGranted()
         }
         permissionState.status.isGranted && permissionBeenDenied.value -> {
-            permission.onGrantedAfterRequest?.invoke() ?: permission.onGranted()
+            Timber.d("permissionState onGranted after Denied")
+            permissionBeenDenied.value = false
+            permission.onGrantedAfterDenied?.invoke() ?: permission.onGranted()
         }
         permissionState.status.shouldShowRationale && !permissionStatus.value -> {
+            Timber.d("permissionState onNotDenied")
             permission.onNotDenied()
             SideEffect {
                 permissionState.launchPermissionRequest()
             }
         }
         !permissionState.status.shouldShowRationale && !permissionStatus.value-> {
+            Timber.d("permissionState onDenied")
             permissionBeenDenied.value = true
             permission.onDenied(permissionState)
         }

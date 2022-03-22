@@ -66,6 +66,9 @@ object ExoUtil {
     fun ExoPlayer.copyFrom(from: ExoPlayer, seekToi: Boolean, seekToPos: Boolean){
         this.setMediaItems(from.getMediaItems())
         this.playWhenReady = from.playWhenReady
+        when(from.playbackState) {
+            Player.STATE_BUFFERING, Player.STATE_READY -> this.prepare()
+        }
         when {
             seekToi && seekToPos -> this.seekTo(from.currentMediaItemIndex, from.currentPosition)
             seekToi -> this.seekTo(from.currentMediaItemIndex, 0)

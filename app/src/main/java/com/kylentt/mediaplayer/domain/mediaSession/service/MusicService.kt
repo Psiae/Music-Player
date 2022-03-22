@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Bundle
+import android.os.IBinder
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
@@ -13,6 +14,7 @@ import androidx.media3.session.*
 import com.google.common.util.concurrent.ListenableFuture
 import com.kylentt.mediaplayer.core.exoplayer.ControllerCommand
 import com.kylentt.mediaplayer.core.exoplayer.ExoController
+import com.kylentt.mediaplayer.core.exoplayer.NotifProvider
 import com.kylentt.mediaplayer.core.exoplayer.util.ExoUtil
 import com.kylentt.mediaplayer.core.util.handler.CoilHandler
 import com.kylentt.mediaplayer.core.util.handler.MediaItemHandler
@@ -42,7 +44,7 @@ import javax.inject.Inject
 import kotlin.system.exitProcess
 
 @AndroidEntryPoint
-class  MusicService : MediaLibraryService() {
+class MusicService : MediaLibraryService() {
 
     companion object {
         val TAG: String = MusicService::class.simpleName ?: "Music Service"
@@ -60,7 +62,7 @@ class  MusicService : MediaLibraryService() {
     @Inject
     lateinit var serviceConnectorImpl: ServiceConnectorImpl
 
-    private lateinit var exoController: ExoController
+   lateinit var exoController: ExoController
 
     private var libSession: MediaLibrarySession? = null
 
@@ -70,16 +72,24 @@ class  MusicService : MediaLibraryService() {
 
     val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
-    override fun onUpdateNotification(session: MediaSession): MediaNotification? {
+    /*override fun onUpdateNotification(session: MediaSession): MediaNotification? {
         return null
-    }
+    }*/
 
     override fun onCreate() {
         super.onCreate()
+        validateCreation()
+
         Timber.d("$TAG onCreate")
         initializeSession()
         registerReceiver()
+        setMediaNotificationProvider(NotifProvider(this))
+    }
 
+    private fun validateCreation() {
+        if (serviceConnectorImpl.serviceState.value is State.ServiceState.Unit) {
+            stopForeground(true)
+        }
     }
 
     private fun initializeSession() {
@@ -155,11 +165,6 @@ class  MusicService : MediaLibraryService() {
     inner class PlaybackReceiver: BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
 
-            if (!::exoController.isInitialized) {
-                libSession?.let { releaseSession(it) }
-                exitProcess(1)
-            }
-
             when (intent?.getStringExtra("ACTION")) {
                 ACTION_NEXT -> exoController.commandController(
                     ControllerCommand.CommandWithFade(ControllerCommand.SkipToNext, false)
@@ -183,16 +188,8 @@ class  MusicService : MediaLibraryService() {
                     ControllerCommand.SetRepeatMode(Player.REPEAT_MODE_OFF)
                 )
 
-
-
                 ACTION_CANCEL -> {
-                    exoController.commandController(
-                        ControllerCommand.CommandWithFade(ControllerCommand.StopCancel {
-                            libSession?.let {
-                                considerReleasing(it)
-                            }
-                        }, flush = true)
-                    )
+                    handleActionCancelDefault()
                 }
             }
             when (intent?.getStringExtra("SESSION")) {
@@ -210,6 +207,16 @@ class  MusicService : MediaLibraryService() {
         }
     }
 
+    fun handleActionCancelDefault() {
+        exoController.commandController(
+            ControllerCommand.CommandWithFade(ControllerCommand.StopCancel {
+                libSession?.let {
+                    considerReleasing(it)
+                }
+            }, flush = true)
+        )
+    }
+
     private fun newSessionPlayer(session: MediaSession, recover: Boolean = true) {
         val context = this
         with(ExoUtil) {
@@ -221,7 +228,6 @@ class  MusicService : MediaLibraryService() {
                 }
                 p.release()
                 session.player = new
-
                 ExoController.updateSession(session)
             }
         }
@@ -246,20 +252,21 @@ class  MusicService : MediaLibraryService() {
 
     private fun releaseSession(session: MediaLibrarySession) {
         Timber.d("$TAG releaseSession")
-        serviceScope.cancel()
-        ExoController.releaseInstance(exoController)
+        if (::exoController.isInitialized) {
+            ExoController.releaseInstance(exoController)
+        }
         unregisterReceiver(playbackReceiver)
         session.player.release()
         stopSelf()
         stopForeground(true).also { isForegroundService = false }
-        serviceConnectorImpl.releaseSession()
-        session.release()
+        libSession?.release()
         libSession = null
     }
 
     override fun onDestroy() {
         super.onDestroy()
         Timber.d("$TAG onDestroy")
+        serviceScope.cancel()
         libSession?.let { releaseSession(it) }
         isActive = false
     }

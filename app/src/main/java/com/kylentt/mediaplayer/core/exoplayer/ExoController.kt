@@ -19,6 +19,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.session.MediaController
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaStyleNotificationHelper
 import com.kylentt.mediaplayer.R
@@ -94,20 +95,27 @@ class ExoController(
         lastBitmap = null
     }
 
-    fun getNotification(session: MediaSession): Notification? {
-        Timber.d("ExoController getNotification ${session === this.session}")
-        return notificationManager?.makeNotification(
-            lastBitmap?.first,
-            NOTIFICATION_CHANNEL_ID,
-            session.player.currentMediaItemIndex,
-            session.player.currentMediaItem,
-            session.player.repeatMode,
-            session.player.hasPreviousMediaItem(),
-            session.player.hasNextMediaItem(),
-            session.player.playWhenReady,
-            session.player.currentMediaItem?.getSubtitle.toString(),
-            session.player.currentMediaItem?.getDisplayTitle.toString()
-        )
+    private var lastNotification: Notification? = null
+
+    fun getNotification(controller: MediaController): Notification {
+        if (lastBitmap?.second != controller.currentMediaItem?.mediaId) {
+            controller.currentMediaItem?.let { updateNotification(NotificationUpdate.MediaItemTransition(it)) }
+                ?: updateNotification(NotificationUpdate.InvalidateMediaItem)
+            Timber.d("getNotification returned with invalidating $lastBitmap")
+            return notificationManager!!.makeNotification(lastBitmap?.first, notify = false, isPlaying = controller.playWhenReady)
+        }
+        if (controller.playbackState == Player.STATE_IDLE) {
+            return notificationManager!!.makeNotification(lastBitmap?.first, notify = false, isPlaying = false)
+        }
+        if (controller.playbackState == Player.STATE_BUFFERING) {
+            return notificationManager!!.makeNotification(lastBitmap?.first, notify = false, isPlaying = controller.playWhenReady)
+        }
+        return run {
+            Timber.d("getNotification returned makeNotification with old $lastBitmap")
+            notificationManager!!.makeNotification(
+                lastBitmap?.first, isPlaying = controller.isPlaying
+            )
+        }
     }
 
     private val commandLock = Any()
@@ -194,6 +202,10 @@ class ExoController(
     }
 
     private var lastBitmap: Pair<Bitmap?, String>? = null
+        private set(value) {
+            Timber.d("lastBitmap set to $value")
+            field = value
+        }
 
     private fun handleNotifMediaItemTransition(pc: PlayerController, manager: ExoNotificationManagers, item: MediaItem?) {
         val p = pc.player
@@ -209,7 +221,9 @@ class ExoController(
         } ?: service.serviceScope.launch {
             p.currentMediaItem?.let { item ->
                 val bm = if (lastBitmap?.second != item.mediaId) {
-                    Timber.e("ExoController UpdateNotification MediaItemTransition Invalidating with new Bitmap ${item.mediaId}, old ${lastBitmap?.second}")
+                    if (lastBitmap != null) {
+                        Timber.e("ExoController UpdateNotification MediaItemTransition Invalidating with new Bitmap ${item.mediaId}, old ${lastBitmap?.second}")
+                    }
                     item.getUri?.let { uri -> getDisplayEmbed(uri) }
                 } else {
                     Timber.d("ExoController UpdateNotification MediaItemTransition Invalidating with old Bitmap ${lastBitmap?.second}")
@@ -218,8 +232,6 @@ class ExoController(
                 lastBitmap = Pair(bm, item.mediaId)
                 manager.makeNotification(bm = lastBitmap?.first, mi = item, isPlaying = p.playWhenReady)
             }
-            val i = launch { "IDK" }
-            val e = service.serviceScope.launch { i.join() }
         }
     }
 
@@ -328,22 +340,22 @@ class ExoController(
 
         fun handleSeekToNext() {
             val p = this.player
-            if (p.playbackState == Player.STATE_IDLE) preparePlayer()
             p.seekToNextMediaItem()
+            if (p.playbackState == Player.STATE_IDLE) preparePlayer()
             Timber.d("ExoController handled command SeekToNext()")
         }
 
         fun handleSeekToPrev() {
             val p = this.player
-            if (p.playbackState == Player.STATE_IDLE) preparePlayer()
             p.seekToPrevious()
+            if (p.playbackState == Player.STATE_IDLE) preparePlayer()
             Timber.d("ExoController handled command SeekToPrev()")
         }
 
         fun handleSeekToPrevMedia() {
             val p = this.player
-            if (p.playbackState == Player.STATE_IDLE) preparePlayer()
             p.seekToPreviousMediaItem()
+            if (p.playbackState == Player.STATE_IDLE) preparePlayer()
             Timber.d("ExoController handled command SeekToPrevMedia()")
         }
 
@@ -372,7 +384,7 @@ class ExoController(
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 super.onMediaItemTransition(mediaItem, reason)
                 mediaItem?.let {
-                    updateNotification(NotificationUpdate.MediaItemTransition(mediaItem))
+                    /*updateNotification(NotificationUpdate.MediaItemTransition(mediaItem))*/
                 }
             }
 
@@ -385,7 +397,7 @@ class ExoController(
                     Player.STATE_READY -> { exoReady() }
                 }
 
-                updateNotification(NotificationUpdate.PlaybackStateChanged(playbackState))
+                /*updateNotification(NotificationUpdate.PlaybackStateChanged(playbackState))*/
             }
 
             override fun onPlayerError(error: PlaybackException) {
@@ -416,7 +428,7 @@ class ExoController(
 
             override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
                 super.onPlayWhenReadyChanged(playWhenReady, reason)
-                updateNotification(NotificationUpdate.PlayWhenReadyChanged(playWhenReady))
+                /*updateNotification(NotificationUpdate.PlayWhenReadyChanged(playWhenReady))*/
             }
 
             override fun onRepeatModeChanged(repeatMode: Int) {
@@ -562,6 +574,7 @@ class ExoController(
                 setStyle( media )
 
             }.build().also {
+                lastNotification = it
                 if (notify) {
                     manager.notify(NOTIFICATION_ID,it)
                     Timber.d("ExoController NotificationUpdated")

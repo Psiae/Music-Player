@@ -46,13 +46,6 @@ import kotlin.system.exitProcess
 @AndroidEntryPoint
 class MusicService : MediaLibraryService() {
 
-    companion object {
-        val TAG: String = MusicService::class.simpleName ?: "Music Service"
-        var isActive: Boolean? = null
-            get() = field ?: false
-            private set
-    }
-
     @Inject
     lateinit var exo: ExoPlayer
     @Inject
@@ -62,7 +55,7 @@ class MusicService : MediaLibraryService() {
     @Inject
     lateinit var serviceConnectorImpl: ServiceConnectorImpl
 
-   lateinit var exoController: ExoController
+    lateinit var exoController: ExoController
 
     private var libSession: MediaLibrarySession? = null
 
@@ -269,5 +262,11 @@ class MusicService : MediaLibraryService() {
         serviceScope.cancel()
         libSession?.let { releaseSession(it) }
         isActive = false
+    }
+
+    companion object {
+        val TAG: String = MusicService::class.simpleName ?: "Music Service"
+        var isActive = false
+            private set
     }
 }

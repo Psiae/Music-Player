@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import timber.log.Timber
+import java.util.concurrent.Executor
 
 // Application Context
 class ServiceConnectorImpl(
@@ -68,6 +69,12 @@ class ServiceConnectorImpl(
     ) {
         if (isServiceConnected()) {
             onConnected(mediaController)
+            return
+        }
+        if (serviceState.value == State.ServiceState.Connecting) {
+            futureMediaController?.addListener( {
+                onConnected(mediaController)
+            }, MoreExecutors.directExecutor())
             return
         }
         _serviceState.value = State.ServiceState.Connecting

@@ -46,6 +46,12 @@ android {
             excludes += '/META-INF/{AL2.0,LGPL2.1}'
         }
     }
+    sourceSets.all {
+        kotlin.srcDir("src/$name/kotlin")
+    }
+    sourceSets{
+        main.java.srcDirs += 'src/main/kotlin'
+    }
 }
 
 dependencies {
@@ -80,7 +86,7 @@ dependencies {
 
     // Core
     dependencies {
-        implementation "androidx.core:core-splashscreen:1.0.0-beta01"
+        implementation "androidx.core:core-splashscreen:1.0.0-beta02"
     }
 
     // Compose
@@ -90,13 +96,14 @@ dependencies {
         implementation "androidx.compose.foundation:foundation:1.1.1"
         implementation "androidx.compose.material:material-icons-core:1.1.1"
         implementation "androidx.compose.material:material-icons-extended:1.1.1"
-        implementation 'androidx.compose.material3:material3:1.0.0-alpha07'
+        implementation "androidx.compose.material3:material3:1.0.0-alpha08"
         implementation "androidx.navigation:navigation-compose:$composeNavigation"
     }
     
     // Debugging
     dependencies {
         implementation 'com.jakewharton.timber:timber:5.0.1'
+        debugImplementation 'com.squareup.leakcanary:leakcanary-android:2.8.1'
     }
 
     // DI
@@ -116,7 +123,8 @@ dependencies {
         implementation "androidx.media3:media3-common:$media3_version"
         implementation "androidx.media3:media3-ui:$media3_version"
         implementation 'com.google.android.exoplayer:extension-mediasession:2.17.1'
-        implementation "com.github.Kaned1as:jaudiotagger:2.3.15"
+        implementation 'com.github.Adonai:jaudiotagger:2.3.15'
+
     }
 
     // Image Loading

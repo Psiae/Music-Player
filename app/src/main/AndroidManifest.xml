@@ -15,7 +15,7 @@
     </queries>
 
     <application
-        android:name=".MediaPlayerApp"
+        android:name="com.kylentt.musicplayer.app.MediaPlayerApp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher_3"
         android:label="@string/app_name"
@@ -34,7 +34,7 @@
         </service>
 
         <activity
-            android:name=".ui.mainactivity.MainActivity"
+            android:name="com.kylentt.musicplayer.ui.musicactivity.MainActivity"
             android:exported="true"
             android:theme="@style/Theme.App.SplashScreen"
             android:launchMode="singleTask">

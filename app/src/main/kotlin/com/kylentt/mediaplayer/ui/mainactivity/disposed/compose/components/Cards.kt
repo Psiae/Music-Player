@@ -1,14 +1,12 @@
 package com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Shuffle
-import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -16,17 +14,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.kylentt.musicplayer.ui.musicactivity.compose.theme.md3.AppTypography
 import com.kylentt.musicplayer.ui.musicactivity.compose.theme.md3.ColorHelper
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+@Preview
 fun HomeCard() {
     Surface(
         modifier = Modifier
-            .fillMaxWidth(0.95f)
+            .fillMaxWidth()
             .height(125.dp)
             .clip(RoundedCornerShape(10))
             .shadow(2.dp, shape = RoundedCornerShape(10)),
@@ -60,15 +61,16 @@ fun HomeCard() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+@Preview
 fun WhateverCard(
-    image: ImageVector,
-    desc: String
+    image: ImageVector = Icons.Default.AccountCircle,
+    desc: String = "Example"
 ) {
     Column(
         modifier = Modifier
             .height(80.dp)
             .width(75.dp)
-        ,
+            .background(Color.Transparent),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceEvenly
     ) {
@@ -80,7 +82,7 @@ fun WhateverCard(
                 .clipToBounds()
                 .clickable { },
             containerColor = MaterialTheme.colorScheme.secondaryContainer,
-            elevation = CardDefaults.elevatedCardElevation()
+            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 3.dp)
         ) {
             Icon(
                 modifier = Modifier

@@ -2,6 +2,7 @@ package com.kylentt.mediaplayer.ui.mainactivity.disposed.compose
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.tooling.preview.Preview
 import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.components.RootBottomNav
 import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.root.BottomNavigationRoute
 import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.screen.home.FakeHomeScreen

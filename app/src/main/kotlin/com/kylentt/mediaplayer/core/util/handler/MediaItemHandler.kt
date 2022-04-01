@@ -22,7 +22,7 @@ class MediaItemHandler(
                 mtr.setDataSource(context, item.getUri)
                 mtr.embeddedPicture
             } catch (e: Exception) {
-                if (e !is IllegalArgumentException) throw e else Timber.e(e)
+                Timber.e(e)
                 null
             }
         }
@@ -33,6 +33,11 @@ class MediaItemHandler(
             mtr.setDataSource(context, uri)
             mtr.embeddedPicture
         } catch (e: Exception) {
+            when (e) {
+                is IllegalArgumentException -> { }
+                is RuntimeException -> { }
+                else -> { }
+            }
             Timber.e(e)
             null
         }

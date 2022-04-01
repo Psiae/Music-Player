@@ -6,10 +6,11 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
 import com.kylentt.mediaplayer.R
 import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.screen.Screen
-import com.kylentt.musicplayer.core.helper.IconHelper
 import com.kylentt.mediaplayer.ui.mainactivity.util.UIConstants
+import com.kylentt.musicplayer.core.helper.UIHelper
 
 sealed class BottomNavigationItem(
     val route: String,
@@ -40,7 +41,7 @@ sealed class BottomNavigationItem(
         title = Screen.LibraryScreen.name,
         icon = null,
         outlinedIcon = null,
-        imageVector = { IconHelper.getVectorImage(R.drawable.ic_bookshelf) }
+        imageVector = { ImageVector.vectorResource(id = R.drawable.ic_bookshelf) }
     )
 
     // TODO : Other Screen

@@ -87,6 +87,7 @@ dependencies {
     // Core
     dependencies {
         implementation "androidx.core:core-splashscreen:1.0.0-beta02"
+        implementation "androidx.startup:startup-runtime:1.1.1"
     }
 
     // Compose

@@ -9,6 +9,7 @@ import com.kylentt.mediaplayer.core.util.handler.MediaItemHandler
 import com.kylentt.mediaplayer.disposed.data.repository.SongRepositoryImpl
 import com.kylentt.mediaplayer.disposed.data.source.local.LocalSourceImpl
 import com.kylentt.mediaplayer.disposed.domain.presenter.ServiceConnectorImpl
+import com.kylentt.musicplayer.data.source.local.MediaStoreSource
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -38,8 +39,9 @@ object AppModule {
     @Provides
     fun provideSongRepository(
         @ApplicationContext context: Context,
+        ms: MediaStoreSource,
         source: LocalSourceImpl
-    ) = SongRepositoryImpl(source, context)
+    ) = SongRepositoryImpl(source, ms, context)
 
 }
 

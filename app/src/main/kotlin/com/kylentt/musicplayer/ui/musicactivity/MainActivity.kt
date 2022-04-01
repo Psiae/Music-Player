@@ -1,6 +1,5 @@
 package com.kylentt.musicplayer.ui.musicactivity
 
-import android.Manifest
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -8,30 +7,23 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.neverEqualPolicy
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.isGranted
-import com.google.accompanist.permissions.rememberPermissionState
-import com.google.accompanist.permissions.shouldShowRationale
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kylentt.mediaplayer.core.util.Constants.PROVIDER_DRIVE_LEGACY
 import com.kylentt.mediaplayer.disposed.domain.presenter.ControllerViewModel
-import com.kylentt.mediaplayer.disposed.domain.presenter.util.State.ServiceState
-import com.kylentt.mediaplayer.domain.mediaSession.MediaViewModel
-import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.FakeRoot
 import com.kylentt.musicplayer.core.helper.PermissionHelper
 import com.kylentt.musicplayer.core.helper.UIHelper.disableFitWindow
-import com.kylentt.musicplayer.ui.musicactivity.compose.MusicCompose
-import com.kylentt.musicplayer.ui.musicactivity.compose.environtment.ComposePermission
+import com.kylentt.musicplayer.domain.MediaViewModel
+import com.kylentt.musicplayer.domain.mediasession.service.MediaServiceState
+import com.kylentt.musicplayer.ui.musicactivity.compose.MusicComposeDefault
 import com.kylentt.musicplayer.ui.musicactivity.compose.theme.md3.MaterialTheme3
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-@OptIn(ExperimentalPermissionsApi::class)
 @AndroidEntryPoint
 internal class MainActivity : ComponentActivity() {
 
@@ -40,78 +32,29 @@ internal class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        savedInstanceState?.let { validateCreation(it) }
 
-        Timber.d("onCreate withIntent, savedInstance $savedInstanceState  ${this.intent}")
-
-        validateCreation(savedInstanceState)
         disableFitWindow()
-        installSplashScreen().setKeepOnScreenCondition {
-            when (controllerVM.serviceState.value) {
-                is ServiceState.Unit -> {
-                    controllerVM.connectService()
-                    true
-                }
-                is ServiceState.Disconnected -> {
-                    Timber.e("KeepOnScreenCondition ServiceDisconnected")
-                    controllerVM.connectService()
-                    true
-                }
-                is ServiceState.Connecting -> {
-                    true
-                }
-                else -> {
-                    false
-                }
-            }
-        }
-
+        installSplashScreen()
+            .setKeepOnScreenCondition { mediaVM.showSplashScreen }
         setContent {
+            MaterialTheme3 { MusicComposeDefault { handleIntent(this.intent) } }
+        }
+    }
 
-            MaterialTheme3 {
-
-                // TODO() redo RequirePermission Composable
-
-                val permissionResult = remember { mutableStateOf(false, policy = neverEqualPolicy()) }
-
-                val permission = rememberPermissionState(permission = Manifest.permission.WRITE_EXTERNAL_STORAGE) { permissionResult.value = it }
-
-                when {
-                    permission.status.isGranted -> {
-                        handleIntent(this.intent)
-                        MusicCompose()
-                    }
-                    !permissionResult.value && permission.status.shouldShowRationale -> {
-                        FakeRoot()
-                        ComposePermission.SinglePermission.PermissionDefaults.OnNotDenied(persistent = true) { permission.launchPermissionRequest() }
-                    }
-                    !permissionResult.value && !permission.status.shouldShowRationale -> {
-                        Toast.makeText(this, "Permission Denied", Toast.LENGTH_SHORT).show()
-                        ComposePermission.SinglePermission.PermissionDefaults.OnDenied(grantButtonText = "Grant Storage Permission")
-                    }
-                    else -> {
-                        Timber.e("permissionState should never reach here! ${permissionResult.value} ${permission.status}")
-                    }
-                }
-            }
+    private fun validateCreation(savedInstanceState: Bundle) {
+        if (mediaVM.serviceState.value is MediaServiceState.UNIT) {
+            this.intent.action = null
         }
     }
 
     override fun onStart() {
         super.onStart()
+        mediaVM.connectService()
         isActive = true
     }
 
-    private fun validateCreation(savedInstanceState: Bundle?) {
-        if (savedInstanceState != null) {
-            if (controllerVM.serviceState.value is ServiceState.Unit) {
-                // Usually Process death and the activity is launched using supposedly handled intent
-                // Consider Restarting JVM if there's impact in domain layer such as late initialization exception
-                // Caused by System Trying to Force re-launch Foreground Service directly
-                Timber.w("Invalid Creation Intent")
-                this.intent.action = null
-            }
-        }
-    }
+
 
     // Change to ?let scope if needed
     // TODO: Move this to Handler class
@@ -129,10 +72,8 @@ internal class MainActivity : ComponentActivity() {
     }
 
     private fun handleIntent(intent: Intent) {
-        controllerVM.connectService {
-            when (intent.action) {
-                Intent.ACTION_VIEW -> handleIntentActionView(intent)
-            }
+        when (intent.action) {
+            Intent.ACTION_VIEW -> handleIntentActionView(intent)
         }
     }
 
@@ -164,7 +105,7 @@ internal class MainActivity : ComponentActivity() {
                     Toast.makeText(this, "unsupported, please inform us \n" + uris.split("/")[2], Toast.LENGTH_LONG).show()
                 }
             }
-        } ?: Timber.e("IntentHandler ActionView null Data")
+        } ?: Timber.w("IntentHandler ActionView null Data")
     }
 
     override fun onDestroy() {
@@ -179,15 +120,16 @@ internal class MainActivity : ComponentActivity() {
 }
 
 // Passing Launcher Intent Around doesn't cause memory leak unless bound to class-in variable
-// however I don't like having it in domain layer
+// however I don't like having it in domain layer, should only be modifiable here
 data class IntentWrapper (
     val action: String?,
-    val data: Uri?
+    val data: Uri?,
+    val scheme: String?,
+    val intent: Intent
 ) {
     companion object {
-        fun fromIntent(intent: Intent) = with(intent) {
-            IntentWrapper(action, data)
-        }
+        fun fromIntent(intent: Intent) = with(intent) { wrapIt() }
+        private fun Intent.wrapIt() = IntentWrapper(action, data, scheme, this.clone() as Intent)
     }
 }
 

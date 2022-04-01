@@ -2,8 +2,11 @@ package com.kylentt.mediaplayer.disposed.data.repository
 
 import android.content.Context
 import android.net.Uri
+import android.provider.MediaStore
 import com.kylentt.mediaplayer.disposed.data.source.local.LocalSourceImpl
 import com.kylentt.mediaplayer.disposed.domain.model.Song
+import com.kylentt.musicplayer.data.source.local.MediaStoreSong
+import com.kylentt.musicplayer.data.source.local.MediaStoreSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
@@ -16,6 +19,7 @@ import timber.log.Timber
 
 class SongRepositoryImpl(
     private val localSource: LocalSourceImpl,
+    private val mediaSource: MediaStoreSource,
     private val context: Context
 ) : SongRepository {
 
@@ -43,14 +47,14 @@ class SongRepositoryImpl(
 
     // Get Data from this uri Column, for now its Display_Name, ByteSize & ( _data or lastModified )
     suspend fun fetchSongsFromDocs(uri : Uri) = flow {
-        var toReturn: Pair<Song, List<Song>>? = null
+        var toReturn: Pair<MediaStoreSong, List<MediaStoreSong>>? = null
 
         localSource.fetchSongFromDocument(uri).collect column@ { _column ->
             Timber.d("IntentHandler fetchSongFromDocument $_column")
 
             _column?.let { column ->
                 Timber.d("IntentHandler fetching Song $column")
-                localSource.fetchSong().collect { list ->
+                mediaSource.getMediaStoreSong().collect { list ->
                     Timber.d("IntentHandler fetchSong Collected")
                     val a = column.first
                     val b = column.second

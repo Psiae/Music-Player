@@ -99,7 +99,7 @@ fun MusicRootScaffold(
         }
     ) {
         if (navWallpaper && PermissionHelper.checkStoragePermission()) {
-            NavWallpaper(current = MusicRootNavigation.routeList.map { it.routeName }.indexOf(entry?.destination?.route), MusicRootNavigation.routeList.size)
+            NavWallpaper(current = MusicRootNavigation.routeList.map { it.routeName }.indexOf(entry?.destination?.route), size = MusicRootNavigation.routeList.size)
         }
         content(it)
     }
@@ -125,7 +125,7 @@ fun MusicRootBottomNav(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 10.dp, bottom = 10.dp),
+                    .padding(top = 10.dp, bottom = 5.dp),
                 horizontalArrangement = Arrangement.SpaceAround,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -181,7 +181,7 @@ fun MusicRootBottomNavItem(
             modifier = Modifier
                 .clipToBounds()
                 .clickable(true, onClick = { onClick(item.routeName) })
-                .padding(start = 10.dp, top = 5.dp, bottom = 5.dp, end = 10.dp),
+                .padding(start = 5.dp, top = (2.5).dp, bottom = (2.5).dp, end = 5.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {

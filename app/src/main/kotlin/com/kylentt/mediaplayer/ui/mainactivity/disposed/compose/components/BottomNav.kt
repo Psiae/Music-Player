@@ -21,6 +21,20 @@ import com.kylentt.musicplayer.ui.musicactivity.compose.theme.md3.AppTypography
 import com.kylentt.musicplayer.ui.musicactivity.compose.theme.md3.ColorHelper
 
 @Composable
+@Preview
+fun RootBottomNavPreview(
+    ripple: Boolean = false,
+    selected: String =  BottomNavigationRoute.routeList.shuffled()[0].route,
+    navigateTo: (String) -> Unit = { },
+) {
+    RootBottomNav(
+        ripple = ripple,
+        selectedRoute = selected,
+        navigateTo = navigateTo
+    )
+}
+
+@Composable
 fun RootBottomNav(
     ripple: Boolean,
     selectedRoute: String,
@@ -129,19 +143,7 @@ fun RootBottomNavItem(
     }
 }
 
-@Composable
-@Preview
-fun RootBottomNavPreview(
-    ripple: Boolean = false,
-    selected: String =  BottomNavigationRoute.routeList.shuffled()[0].route,
-    navigateTo: (String) -> Unit = { },
-) {
-    RootBottomNav(
-        ripple = ripple,
-        selectedRoute = selected,
-        navigateTo = navigateTo
-    )
-}
+
 
 @Composable
 @Preview
@@ -149,8 +151,6 @@ fun RBNItem1() {
     RootBottomNavItem(
         item = BottomNavigationItem.Home,
         isSelected = true,
-        onClick = {
-
-        }
+        onClick = {}
     )
 }

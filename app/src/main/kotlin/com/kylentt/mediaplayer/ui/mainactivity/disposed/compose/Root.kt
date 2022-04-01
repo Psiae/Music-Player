@@ -3,31 +3,29 @@ package com.kylentt.mediaplayer.ui.mainactivity.disposed.compose
 import android.Manifest.permission.READ_EXTERNAL_STORAGE
 import android.Manifest.permission.WRITE_EXTERNAL_STORAGE
 import android.app.WallpaperManager
+import android.content.res.Configuration
 import androidx.annotation.RequiresPermission
-import androidx.compose.animation.core.*
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.SpringSpec
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavGraphBuilder
@@ -40,10 +38,13 @@ import androidx.navigation.navigation
 import coil.annotation.ExperimentalCoilApi
 import coil.compose.ImagePainter
 import coil.compose.rememberImagePainter
+import coil.request.CachePolicy
 import coil.request.ImageRequest
 import com.google.accompanist.placeholder.PlaceholderHighlight
 import com.google.accompanist.placeholder.placeholder
 import com.google.accompanist.placeholder.shimmer
+import com.kylentt.mediaplayer.core.util.handler.MediaItemHandler
+import com.kylentt.mediaplayer.disposed.domain.presenter.ControllerViewModel
 import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.components.RootBottomNav
 import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.root.BottomNavigationItem
 import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.root.BottomNavigationRoute
@@ -94,7 +95,8 @@ fun RootNavigation(
         },
         containerColor = MaterialTheme.colorScheme.surface
     ) { padding ->
-        if (PermissionHelper.checkStoragePermission() && navWallpaper) {
+        val context = LocalContext.current
+        if (PermissionHelper.checkStoragePermission(context) && navWallpaper) {
             Timber.d("ComposeDebug RootScaffold Content")
             val currentIndex = BottomNavigationRoute.routeList.map { it.route }.indexOf(state.value?.destination?.route)
             val wps = remember {
@@ -118,45 +120,61 @@ fun NavWallpaperState(
 
 @Composable
 @RequiresPermission(anyOf = [READ_EXTERNAL_STORAGE, WRITE_EXTERNAL_STORAGE])
-fun NavWallpaper(
+internal fun NavWallpaper(
+    controller: ControllerViewModel = viewModel(),
     current: Int,
     size: Int
 ) {
     Timber.d("ComposeDebug Root NavWallpaper $current")
 
     val context = LocalContext.current
-    val density = LocalDensity.current
-    val config = LocalConfiguration.current
-    val screenWidth = with(density) { config.screenWidthDp.dp.toPx() }
-    val wm = remember { WallpaperManager.getInstance(context).drawable.toBitmap() }
-    val req = remember { ImageRequest.Builder(context)
-        .data(wm)
-        .crossfade(true)
-        .build()
+
+    val itemBitmap by remember { controller.playerCurrentBitmap }
+    val wm = remember(context) { WallpaperManager.getInstance(context).drawable.toBitmap() }
+
+    val data = itemBitmap ?: wm
+    val req = remember(itemBitmap) {
+        Timber.d("NavWallaper New Image Request $data")
+        ImageRequest.Builder(context)
+            .diskCachePolicy(CachePolicy.ENABLED)
+            .data(data)
+            .crossfade(300)
+            .build()
     }
+
+    val painter = rememberImagePainter(req)
     val scrollState = rememberScrollState()
+
+    val scale = with(LocalConfiguration.current) { 
+        if (orientation == Configuration.ORIENTATION_PORTRAIT) {
+            ContentScale.FillHeight
+        } else  {
+            ContentScale.FillWidth
+        }
+    }
+
     CoilShimmerImage(
         modifier = Modifier
             .fillMaxHeight()
-            .fillMaxWidth()
+            .fillMaxSize()
             .horizontalScroll(scrollState),
-        painter = rememberImagePainter(request = req),
+        painter = painter,
         contentAlignment = Alignment.CenterStart,
-        contentScale = ContentScale.Crop,
+        contentScale = scale,
         contentDescription = null,
     )
-    LaunchedEffect(key1 = current) {
-        Timber.d("ComposeDebug NavWallpaper LaunchedEffect $current")
-        scrollState.animateScrollTo(
-            with((current.toFloat() / size) * wm.width) {
-                when {
-                    this < 400 * current -> this / 1.5
-                    else -> this
-                }
-            }.toInt().also { Timber.d("ComposeDebug NavWallpaper Animate to $it from width of ${wm.width}") },
-            animationSpec = SpringSpec(stiffness = Spring.StiffnessLow)
-        )
+
+    LaunchedEffect(current) {
+        val value = (current.toFloat() / (size -1) * (scrollState.maxValue)).toInt()
+        scrollState.animateScrollTo(value, animationSpec = SpringSpec(stiffness = Spring.StiffnessLow))
     }
+
+    LaunchedEffect(scrollState.maxValue) {
+        val value = (current.toFloat() / (size -1) * (scrollState.maxValue)).toInt()
+        scrollState.scrollTo(value)
+    }
+
+
 }
 
 @OptIn(ExperimentalCoilApi::class)
@@ -185,13 +203,15 @@ fun CoilShimmerImage(
         CoilShimmerState.LOADING -> painter.state is ImagePainter.State.Loading
         CoilShimmerState.SUCCESS -> painter.state is ImagePainter.State.Success
     }
-    Image(modifier = modifier
-        .then(Modifier
-            .placeholder(holder,
-                color = placeHolderColor,
-                highlight = PlaceholderHighlight.shimmer(placeHolderShimmerColor)
-            )
-        ),
+    Image(
+        modifier = modifier
+            .then(Modifier
+                .placeholder(false,
+                    color = placeHolderColor,
+                    highlight = PlaceholderHighlight
+                        .shimmer(placeHolderShimmerColor)
+                )
+            ),
         painter = painter,
         contentDescription = contentDescription,
         contentScale = contentScale,

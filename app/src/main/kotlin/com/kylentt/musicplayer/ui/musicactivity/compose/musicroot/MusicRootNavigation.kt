@@ -6,7 +6,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.kylentt.mediaplayer.R
-import com.kylentt.musicplayer.core.helper.IconHelper
+import com.kylentt.musicplayer.core.helper.UIHelper
 import com.kylentt.musicplayer.ui.UIConstants
 
 sealed class MusicRootNavigation {
@@ -43,8 +43,8 @@ sealed class MusicRootBottomItem(
 
     object LibraryScreen : MusicRootBottomItem(
         screen = MusicRootScreen.LibraryScreen,
-        selectedIcon = IconHelper.getVectorImage(R.drawable.ic_bookshelf),
-        notSelectedIcon = IconHelper.getVectorImage(R.drawable.ic_bookshelf)
+        selectedIcon = UIHelper.getVectorImage(R.drawable.ic_bookshelf),
+        notSelectedIcon = UIHelper.getVectorImage(R.drawable.ic_bookshelf)
     )
 
 }

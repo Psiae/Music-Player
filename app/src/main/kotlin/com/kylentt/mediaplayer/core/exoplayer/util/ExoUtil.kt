@@ -34,6 +34,16 @@ fun Int.toStrState(): String {
     }
 }
 
+fun Int.toStrTransitionReason(): String {
+    return when (this) {
+        Player.MEDIA_ITEM_TRANSITION_REASON_AUTO -> "TRANSITION_REASON_AUTO"
+        Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED -> "TRANSITION_PLAYLIST_CHANGED"
+        Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT -> "TRANSITION_REPEAT"
+        Player.MEDIA_ITEM_TRANSITION_REASON_SEEK -> "TRANSITION_REASON_SEEK"
+        else -> ExoUtil.invalidStr
+    }
+}
+
 fun String.getIntRepeat(): Int {
     return when (this) {
         "REPEAT_MODE_OFF" -> Player.REPEAT_MODE_OFF

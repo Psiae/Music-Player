@@ -51,12 +51,14 @@ import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants
 import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants.NOTIFICATION_ID
 import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants.NOTIFICATION_NAME
 import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants.PLAYBACK_INTENT
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 @MainThread
-class ExoController(
+internal class ExoController(
     private var service: MusicService,
     session: MediaSession
 ) {
@@ -261,8 +263,8 @@ class ExoController(
         Timber.d("ExoController UpdateNotification handled repeatMode Changed ${mode.toStrRepeat()}")
     }
 
-    private suspend fun getDisplayEmbed(uri: Uri): Bitmap? {
-        return service.mediaItemHandler.getEmbeds(uri)?.let {
+    private suspend fun getDisplayEmbed(uri: Uri): Bitmap? = withContext(Dispatchers.IO) {
+        service.mediaItemHandler.getEmbeds(uri)?.let {
             service.coilHandler.squareWithCoil(BitmapFactory.decodeByteArray(it, 0, it.size))
         }
     }
@@ -387,6 +389,7 @@ class ExoController(
                 mediaItem?.let {
                     /*updateNotification(NotificationUpdate.MediaItemTransition(mediaItem))*/
                 }
+                Timber.d("onMediaItemTransition player listener $mediaItem ${mediaItem?.getDisplayTitle} ${mediaItem?.localConfiguration}")
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {

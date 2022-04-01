@@ -22,6 +22,18 @@
         android:roundIcon="@mipmap/ic_launcher_3_round"
         android:theme="@style/Theme.App.SplashScreen">
 
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false">
+
+            <meta-data
+                android:name="com.kylentt.musicplayer.app.BaseInitializer"
+                android:value="androidx.startup" >
+            </meta-data>
+
+        </provider>
+
         <service
             android:name="com.kylentt.mediaplayer.domain.mediaSession.service.MusicService"
             android:enabled="true"

@@ -33,6 +33,8 @@ import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants
 import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants.NEW_SESSION_PLAYER_RECOVER
 import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants.NOTIFICATION_ID
 import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants.PLAYBACK_INTENT
+import com.kylentt.musicplayer.domain.mediasession.MediaSessionManager
+import com.kylentt.musicplayer.domain.mediasession.service.MediaServiceState
 import com.kylentt.musicplayer.ui.musicactivity.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -44,7 +46,7 @@ import javax.inject.Inject
 import kotlin.system.exitProcess
 
 @AndroidEntryPoint
-class MusicService : MediaLibraryService() {
+internal class MusicService : MediaLibraryService() {
 
     @Inject
     lateinit var exo: ExoPlayer
@@ -54,6 +56,8 @@ class MusicService : MediaLibraryService() {
     lateinit var mediaItemHandler: MediaItemHandler
     @Inject
     lateinit var serviceConnectorImpl: ServiceConnectorImpl
+    @Inject
+    lateinit var mediaSessionManager: MediaSessionManager
 
     lateinit var exoController: ExoController
 
@@ -80,11 +84,11 @@ class MusicService : MediaLibraryService() {
     }
 
     private fun validateCreation() {
-        if (serviceConnectorImpl.serviceState.value is State.ServiceState.Unit) {
+        if (mediaSessionManager.serviceState.value is MediaServiceState.UNIT) {
             stopForeground(true)
             stopSelf()
             if (!MainActivity.isActive) {
-                exitProcess(-1)
+                exitProcess(0)
             }
         }
     }
@@ -127,7 +131,6 @@ class MusicService : MediaLibraryService() {
 
         override fun onPostConnect(session: MediaSession, controller: MediaSession.ControllerInfo) {
             Timber.d("MusicService onPostConnect")
-            ServiceConnectorImpl.setServiceState(serviceConnectorImpl, State.ServiceState.Connected)
             super.onPostConnect(session, controller)
         }
 
@@ -136,7 +139,6 @@ class MusicService : MediaLibraryService() {
             controller: MediaSession.ControllerInfo,
         ) {
             Timber.d("MusicService onDisconnected")
-            ServiceConnectorImpl.setServiceState(serviceConnectorImpl, State.ServiceState.Disconnected)
             super.onDisconnected(session, controller)
         }
 
@@ -257,7 +259,6 @@ class MusicService : MediaLibraryService() {
         Timber.d("$TAG onDestroy")
         serviceScope.cancel()
         this.sessions.forEach { it.release() }
-        serviceConnectorImpl.releaseSession()
         libSession.player.release()
         libSession.release()
         super.onDestroy()

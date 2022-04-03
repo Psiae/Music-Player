@@ -1,20 +1,21 @@
 package com.kylentt.musicplayer.ui.musicactivity.compose.musicroot
 
-import android.Manifest
-import androidx.annotation.RequiresPermission
+import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavGraphBuilder
@@ -24,17 +25,23 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navigation
+import com.kylentt.mediaplayer.disposed.domain.presenter.ControllerViewModel
 import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.NavWallpaper
 import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.screen.home.HomeScreen
 import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.screen.library.LibraryScreen
 import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.screen.search.SearchScreen
 import com.kylentt.musicplayer.core.helper.PermissionHelper
+import com.kylentt.musicplayer.data.repository.stateDataStore
+import com.kylentt.musicplayer.domain.MediaViewModel
 import com.kylentt.musicplayer.ui.musicactivity.compose.environtment.NoRipple
 import com.kylentt.musicplayer.ui.musicactivity.compose.theme.md3.AppTypography
 import com.kylentt.musicplayer.ui.musicactivity.compose.theme.md3.ColorHelper
+import com.kylentt.musicplayer.ui.preferences.AppState
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 @Composable
-@RequiresPermission(anyOf = [Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE])
 fun MusicRoot(
     navWallpaper: Boolean
 ) {
@@ -49,30 +56,56 @@ fun MusicRootContent(
     MusicRootNavigator(
         hostController = navController,
         shouldShowBottomNav = shouldShowBottomNav(entry = navController.currentBackStackEntry),
-        navWallpaper
+        navWallpaper = navWallpaper
     )
 }
 
 @Composable
-fun MusicRootNavigator(
+internal fun MusicRootNavigator(
+    vm: MediaViewModel = viewModel(),
     hostController: NavHostController,
     shouldShowBottomNav: Boolean,
     navWallpaper: Boolean
 ) {
+    val context = LocalContext.current
+
     val stateHolder = hostController.currentBackStackEntryAsState()
+    val scope = rememberCoroutineScope()
+
+    val navigate: (String) -> Unit = {
+
+    }
+
+    /*LaunchedEffect(key1 = false) {
+        val i = context.stateDataStore.data.first().navigationIndex
+        val str = MusicRootNavigation.routeList[i].routeName
+        navigate(str)
+    }*/
+
 
     MusicRootScaffold(
         entry = stateHolder.value,
-        onNavigate = { hostController.navigate(it) {
-            restoreState = true
-            launchSingleTop = true
-            popUpTo(hostController.graph.findStartDestination().id) {
-                saveState = true
-            } }
-        },
+        onNavigate = {
+            hostController.navigate(it) {
+                restoreState = true
+                launchSingleTop = true
+                popUpTo(hostController.graph.findStartDestination().id) {
+                 saveState = true
+                }
+            }
+            val i = MusicRootNavigation.routeList.map { route -> route.routeName }.indexOf(it)
+            if (i >= 0) {
+                scope.launch { vm.writeAppState { it.copy(navigationIndex = i) } }
+            } },
         navWallpaper = navWallpaper
     ) {
-        MusicRootNavHost(modifier = Modifier.padding(it), rootController = hostController)
+        MusicRootNavHost(modifier = Modifier.padding(it), rootController = hostController, vm.navigationStartIndex)
+    }
+}
+
+suspend fun saveNavIndex(context: Context, i: Int) {
+    context.stateDataStore.updateData {
+        it.copy(navigationIndex = i)
     }
 }
 
@@ -88,7 +121,6 @@ fun MusicRootScaffold(
         bottomBar = {
             if (shouldShowBottomNav(entry = entry)) {
                 MusicRootBottomNav(
-                    ripple = true,
                     itemList = MusicRootNavigation.routeList,
                     selectedItem = MusicRootNavigation.routeList
                         .find { it.routeName == entry?.destination?.route }!!
@@ -99,7 +131,14 @@ fun MusicRootScaffold(
         }
     ) {
         if (navWallpaper && PermissionHelper.checkStoragePermission()) {
-            NavWallpaper(current = MusicRootNavigation.routeList.map { it.routeName }.indexOf(entry?.destination?.route), size = MusicRootNavigation.routeList.size)
+            val wallpaperPadding = if (ColorHelper.getNavBarColor().alpha < 1) PaddingValues(0.dp) else it
+            NavWallpaper(
+                modifier = Modifier.padding(wallpaperPadding),
+                current = MusicRootNavigation.routeList
+                    .map { it.routeName }
+                    .indexOf(entry?.destination?.route),
+                size = MusicRootNavigation.routeList.size
+            )
         }
         content(it)
     }
@@ -108,13 +147,12 @@ fun MusicRootScaffold(
 
 @Composable
 fun MusicRootBottomNav(
-    ripple: Boolean,
     itemList: List<MusicRootBottomItem>,
     selectedItem: MusicRootBottomItem,
     navigateTo: (String) -> Unit
 ) {
     Surface(
-        color = ColorHelper.getTonedSurface()
+        color = ColorHelper.getNavBarColor()
     ) {
         Box(
             modifier = Modifier
@@ -130,20 +168,11 @@ fun MusicRootBottomNav(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 itemList.forEach { item ->
-                    if (ripple) {
-                        MusicRootBottomNavItem(
-                            item = item,
-                            isSelected = item.routeName == selectedItem.routeName,
-                        ) {
-                            navigateTo(it)
-                        }
-                    } else NoRipple {
-                        MusicRootBottomNavItem(
-                            item = item,
-                            isSelected = item.routeName == selectedItem.routeName,
-                        ) {
-                            navigateTo(it)
-                        }
+                    MusicRootBottomNavItem(
+                        item = item,
+                        isSelected = item.routeName == selectedItem.routeName,
+                    ) {
+                        navigateTo(it)
                     }
                 }
             }
@@ -213,19 +242,23 @@ fun MusicRootBottomNavItem(
 fun MusicRootNavHost(
     modifier: Modifier,
     rootController: NavHostController,
+    start: Int = 0
 ) {
     NavHost(
         modifier = modifier,
         navController = rootController,
         startDestination = MusicRootNavigation.routeName,
     ) {
-        bottomNavGraph()
+        bottomNavGraph(MusicRootNavigation.routeList[start].routeName)
     }
 }
 
-fun NavGraphBuilder.bottomNavGraph() {
+fun NavGraphBuilder.bottomNavGraph(
+    start: String = MusicRootNavigation.routeList.first().routeName
+) {
+
     navigation(
-        startDestination = MusicRootBottomItem.HomeItem.routeName,
+        startDestination = start,
         MusicRootNavigation.routeName
     ) {
         composable(MusicRootBottomItem.HomeItem.routeName) {

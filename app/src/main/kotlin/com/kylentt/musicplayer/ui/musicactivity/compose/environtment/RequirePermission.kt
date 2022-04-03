@@ -36,7 +36,7 @@ object PermissionDefaults {
 
 @Composable
 inline fun RequireStoragePermission(
-    whenDenied: PermissionDefaults.DeniedOptions,
+    whenDenied: PermissionDefaults.DeniedOptions = PermissionDefaults.DeniedOptions.PermissionScreen("Grant Storage Permission"),
     whenShowRationale: PermissionDefaults.NotDeniedOptions,
     whenGranted: () -> Unit,
 ) {
@@ -79,7 +79,7 @@ inline fun RequireStoragePermission(
             }
         }
         else -> {
-            Timber.wtf("permissionState should never reach here! ${permissionResult.value} ${permission.status}")
+            Timber.e("permissionState should never reach here! ${permissionResult.value} ${permission.status}")
         }
     }
 }

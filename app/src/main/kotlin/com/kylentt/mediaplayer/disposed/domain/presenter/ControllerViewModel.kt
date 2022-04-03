@@ -1,29 +1,31 @@
 package com.kylentt.mediaplayer.disposed.domain.presenter
 
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.neverEqualPolicy
-import androidx.compose.runtime.structuralEqualityPolicy
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import com.kylentt.mediaplayer.core.util.handler.CoilHandler
 import com.kylentt.mediaplayer.core.util.handler.MediaItemHandler
-import com.kylentt.mediaplayer.core.util.handler.getDisplayTitle
 import com.kylentt.mediaplayer.disposed.data.repository.SongRepositoryImpl
-import com.kylentt.musicplayer.core.helper.MediaItemUtil
-import com.kylentt.musicplayer.data.MediaRepository
+import com.kylentt.musicplayer.data.repository.MediaRepository
+import com.kylentt.musicplayer.data.repository.ProtoRepository
 import com.kylentt.musicplayer.domain.mediasession.MediaSessionManager
 import com.kylentt.musicplayer.domain.mediasession.service.ControllerCommand
-import com.kylentt.musicplayer.domain.mediasession.service.PlaybackState
 import com.kylentt.musicplayer.ui.musicactivity.IntentWrapper
+import com.kylentt.musicplayer.ui.preferences.AppSettings
+import com.kylentt.musicplayer.ui.preferences.AppState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collect
 import timber.log.Timber
 import javax.inject.Inject
-import javax.inject.Singleton
+
+data class ItemBitmap(
+    val item: MediaItem,
+    val bm: Bitmap?,
+    val fade: Boolean
+)
 
 @HiltViewModel
 internal class ControllerViewModel @Inject constructor(
@@ -32,7 +34,8 @@ internal class ControllerViewModel @Inject constructor(
     private val repository: SongRepositoryImpl,
     private val mediaRepo: MediaRepository,
     private val coilHandler: CoilHandler,
-    private val itemHandler: MediaItemHandler
+    private val itemHandler: MediaItemHandler,
+    private val protoRepo: ProtoRepository
 ) : ViewModel() {
 
     /** Connector State */
@@ -43,15 +46,52 @@ internal class ControllerViewModel @Inject constructor(
         onConnected()
     }
 
-    val playerPlaybackState = mutableStateOf<PlaybackState>(PlaybackState.UNIT, policy = neverEqualPolicy())
+    val appSetting = mutableStateOf(AppSettings())
+    val appState = mutableStateOf(AppState())
+
+
+    private fun startCollectSettings() = viewModelScope.launch {
+        protoRepo.collectSettings().collect {
+            appSetting.value = it
+        }
+    }
+
+    private fun startCollectState() = viewModelScope.launch {
+        protoRepo.collectState().collect {
+            appState.value = it
+        }
+    }
+
+
+
+    suspend fun collectAppState() = protoRepo.collectState()
+    suspend fun collectAppSettings() = protoRepo.collectSettings()
+
+    suspend fun writeAppState(data: (current: AppState) -> AppState) = protoRepo.writeToState { data(it) }
+    suspend fun writeAppSettings(data: () -> AppSettings) = protoRepo.writeToSettings { data() }
+
+    var startIndex = 0
+
+    val itemBitmap = mutableStateOf(ItemBitmap(MediaItem.EMPTY, null, true))
+    val playerCurrentMediaItem = manager.itemState
+    val playerBitmap = manager.bitmapState
+
+    val playerPlaybackState = manager.playbackState
     val playerCurrentPlaystate = mutableStateOf("Unit")
-    val playerCurrentMediaItem = mutableStateOf(MediaItem.EMPTY, policy = structuralEqualityPolicy())
-    val playerCurrentBitmap = mutableStateOf<Bitmap?>(null, policy = structuralEqualityPolicy())
+
+    val playerCurrentBitmap = manager.bitmapState
+
+    private suspend fun collectItemBitmap() {
+        playerBitmap.collect { bm ->
+            val item = playerCurrentMediaItem.value
+            itemBitmap.value = ItemBitmap(item, bm, item != itemBitmap.value.item)
+        }
+    }
 
     val position = connector.position
     val duration = connector.duration
 
-    private suspend fun collectPlayerState() {
+    /*private suspend fun collectPlayerState() {
         manager.playbackState.collect { state ->
             when (state) {
                 is PlaybackState.BUFFERING -> { playerPlaybackState.value = state }
@@ -64,33 +104,23 @@ internal class ControllerViewModel @Inject constructor(
                 }
             }
         }
-    }
+    }*/
 
-    private suspend fun collectPlayerItem() {
+    /*private suspend fun collectPlayerItem() {
         manager.itemState.collect {
             playerCurrentMediaItem.value = it
-            updateBitmap(it)
         }
-    }
+    }*/
 
-    private suspend fun updateBitmap(item: MediaItem) = withContext(Dispatchers.IO) {
-        val bm = run {
-            val barr = itemHandler.getEmbeds(item) ?: item.mediaMetadata.artworkUri?.let { itemHandler.getEmbeds(MediaItemUtil.showArtUri(it)) }
-            barr?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
-        }
-        withContext(Dispatchers.Main) {
-            playerCurrentBitmap.value = bm
-        }
-    }
+    /*private suspend fun updateBitmap(item: MediaItem) = withContext(Dispatchers.IO) {
+        manager.bitmapState.collect {  }
+    }*/
 
     init {
         Timber.d("ControllerViewModel initialized ${this.hashCode()}")
-        viewModelScope.launch {
-            collectPlayerItem()
-        }
-        viewModelScope.launch {
-            collectPlayerState()
-        }
+        startCollectSettings()
+        startCollectState()
+        viewModelScope.launch { collectItemBitmap() }
     }
 
     /** Intent Handler */

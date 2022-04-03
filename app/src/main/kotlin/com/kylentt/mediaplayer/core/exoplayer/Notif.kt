@@ -9,7 +9,7 @@ import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants
 import timber.log.Timber
 
 class NotifProvider(
-    private val notif: (MediaController) -> MediaNotification
+    private val notif: ((controller: MediaController, callback: MediaNotification.Provider.Callback) -> MediaNotification)
 ) : MediaNotification.Provider {
 
     // Handle Notification myself
@@ -19,7 +19,7 @@ class NotifProvider(
         onNotificationChangedCallback: MediaNotification.Provider.Callback,
     ): MediaNotification {
         Timber.d("NotificationProvider createNotification")
-        return notif(mediaController)
+        return notif(mediaController, onNotificationChangedCallback)
     }
 
     // This method wasn't called for some reason

@@ -20,6 +20,7 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaController
+import androidx.media3.session.MediaNotification
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaStyleNotificationHelper
 import com.kylentt.mediaplayer.R
@@ -51,13 +52,11 @@ import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants
 import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants.NOTIFICATION_ID
 import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants.NOTIFICATION_NAME
 import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants.PLAYBACK_INTENT
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import timber.log.Timber
 
 @MainThread
+@Deprecated("Remake new Module")
 internal class ExoController(
     private var service: MusicService,
     session: MediaSession
@@ -99,13 +98,28 @@ internal class ExoController(
     }
 
     private var lastNotification: Notification? = null
+    private var getNotifCallback = MediaNotification.Provider.Callback {  }
 
-    fun getNotification(controller: MediaController): Notification {
-        if (lastBitmap?.second != controller.currentMediaItem?.mediaId) {
+    fun getNotification(controller: MediaController, callback: MediaNotification.Provider.Callback): Notification {
+        val current = controller.currentMediaItem
+        getNotifCallback = callback
+        if (lastBitmap?.second != current?.mediaId && controller.mediaItemCount > 0) {
+            Timber.d("getNotification returned with invalidating $lastBitmap")
+
+            val currentIndex = controller.currentMediaItemIndex
+            val next = if (controller.mediaItemCount >= currentIndex) controller.nextMediaItemIndex else currentIndex
+            val prev = if (currentIndex > 0) controller.previousMediaItemIndex else currentIndex
+
+            val nextItem = if (next != -1) controller.getMediaItemAt(next) else controller.getMediaItemAt(currentIndex)
+            val prevItem = if (prev != -1) controller.getMediaItemAt(prev) else controller.getMediaItemAt(currentIndex)
+
+            val bm = when(lastBitmap?.second) {
+                prevItem.mediaId, nextItem.mediaId -> lastBitmap?.first
+                else -> null
+            }
             controller.currentMediaItem?.let { updateNotification(NotificationUpdate.MediaItemTransition(it)) }
                 ?: updateNotification(NotificationUpdate.InvalidateMediaItem)
-            Timber.d("getNotification returned with invalidating $lastBitmap")
-            return notificationManager!!.makeNotification(lastBitmap?.first, notify = false, isPlaying = controller.playWhenReady)
+            return notificationManager!!.makeNotification(bm, notify = false, isPlaying = controller.playWhenReady)
         }
         if (controller.playbackState == Player.STATE_IDLE) {
             return notificationManager!!.makeNotification(lastBitmap?.first, notify = false, isPlaying = false)
@@ -116,7 +130,7 @@ internal class ExoController(
         return run {
             Timber.d("getNotification returned makeNotification with old $lastBitmap")
             notificationManager!!.makeNotification(
-                lastBitmap?.first, isPlaying = controller.playWhenReady
+                lastBitmap?.first, isPlaying = controller.playWhenReady, notify = true, validatePlayPause = true
             )
         }
     }
@@ -210,30 +224,54 @@ internal class ExoController(
             field = value
         }
 
+
+    // Ignore this mess, remake this on new Module
+
+    private val newBitmapRequestException = CancellationException("new updateBitmapRequest")
+    private var mediaItemTransitionJob = Job().job
     private fun handleNotifMediaItemTransition(pc: PlayerController, manager: ExoNotificationManagers, item: MediaItem?) {
         val p = pc.player
         item?.let {
             if (item.mediaId == lastBitmap?.second) {
-                manager.makeNotification(bm = lastBitmap?.first, mi = it, isPlaying = p.playWhenReady)
+                manager.makeNotification(
+                    bm = lastBitmap?.first,
+                    mi = it,
+                    isPlaying = p.playWhenReady
+                )
             } else {
-                service.serviceScope.launch {
-                    lastBitmap = Pair(it.getUri?.let { uri -> getDisplayEmbed(uri) }, it.mediaId)
-                    manager.makeNotification(bm = lastBitmap?.first, mi = item, isPlaying = p.playWhenReady)
+                mediaItemTransitionJob.cancel(newBitmapRequestException)
+                mediaItemTransitionJob = service.serviceScope.launch {
+                    val bmId = Pair(it.getUri?.let { uri -> getDisplayEmbed(uri) }, it.mediaId)
+                    lastBitmap = bmId
+                    ensureActive()
+                    val notif = manager.makeNotification(bm = lastBitmap?.first, notify = false, mi = item, isPlaying = p.playWhenReady)
+                    getNotifCallback.onNotificationChanged(MediaNotification(NOTIFICATION_ID, notif))
                 }
             }
-        } ?: service.serviceScope.launch {
-            p.currentMediaItem?.let { item ->
-                val bm = if (lastBitmap?.second != item.mediaId) {
-                    if (lastBitmap != null) {
-                        Timber.e("ExoController UpdateNotification MediaItemTransition Invalidating with new Bitmap ${item.mediaId}, old ${lastBitmap?.second}")
+        } ?: run {
+            mediaItemTransitionJob.cancel(newBitmapRequestException)
+            mediaItemTransitionJob = service.serviceScope.launch {
+                p.currentMediaItem?.let { item ->
+                    val bm = if (lastBitmap?.second != item.mediaId) {
+                        if (lastBitmap != null) {
+                            Timber.e("ExoController UpdateNotification MediaItemTransition Invalidating with new Bitmap ${item.mediaId}, old ${lastBitmap?.second}")
+                        }
+                        item.getUri?.let { uri -> getDisplayEmbed(uri) }
+                    } else {
+                        Timber.d("ExoController UpdateNotification MediaItemTransition Invalidating with old Bitmap ${lastBitmap?.second}")
+                        lastBitmap?.first
                     }
-                    item.getUri?.let { uri -> getDisplayEmbed(uri) }
-                } else {
-                    Timber.d("ExoController UpdateNotification MediaItemTransition Invalidating with old Bitmap ${lastBitmap?.second}")
-                    lastBitmap?.first
+                    val bmId = Pair(bm, item.mediaId)
+                    lastBitmap = bmId
+                    ensureActive()
+                    val notif = manager.makeNotification(
+                        bm = lastBitmap?.first,
+                        notify = false,
+                        mi = item,
+                        isPlaying = p.playWhenReady
+                    )
+                    getNotifCallback.onNotificationChanged(MediaNotification(NOTIFICATION_ID, notif))
                 }
-                lastBitmap = Pair(bm, item.mediaId)
-                manager.makeNotification(bm = lastBitmap?.first, mi = item, isPlaying = p.playWhenReady)
             }
         }
     }
@@ -541,7 +579,8 @@ internal class ExoController(
             isPlaying: Boolean = session.player.isPlaying,
             subtitle: String = mi?.getSubtitle.toString(),
             title: String = mi?.getDisplayTitle.toString(),
-            notify: Boolean = true
+            notify: Boolean = true,
+            validatePlayPause: Boolean = false
         ): Notification {
             
             return NotificationCompat.Builder(context, NOTIFICATION_NAME).apply {

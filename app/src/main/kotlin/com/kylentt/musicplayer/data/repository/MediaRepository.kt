@@ -1,4 +1,4 @@
-package com.kylentt.musicplayer.data
+package com.kylentt.musicplayer.data.repository
 
 import android.content.Context
 import com.kylentt.musicplayer.data.source.local.MediaStoreSource

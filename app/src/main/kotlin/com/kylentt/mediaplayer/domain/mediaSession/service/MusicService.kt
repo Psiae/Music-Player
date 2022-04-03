@@ -80,13 +80,16 @@ internal class MusicService : MediaLibraryService() {
         Timber.d("$TAG onCreate")
         initializeSession()
         registerReceiver()
-        setMediaNotificationProvider(NotifProvider { MediaNotification(NOTIFICATION_ID,exoController.getNotification(it)) })
+        setMediaNotificationProvider(NotifProvider { controller: MediaController, callback ->
+            MediaNotification(NOTIFICATION_ID,exoController.getNotification(controller, callback))
+        })
     }
 
     private fun validateCreation() {
         if (mediaSessionManager.serviceState.value is MediaServiceState.UNIT) {
             stopForeground(true)
             stopSelf()
+            releaseSession()
             if (!MainActivity.isActive) {
                 exitProcess(0)
             }
@@ -164,6 +167,8 @@ internal class MusicService : MediaLibraryService() {
     inner class PlaybackReceiver: BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
 
+            Timber.d("onReceive BroadcastReceiver")
+
             when (intent?.getStringExtra("ACTION")) {
                 ACTION_NEXT -> exoController.commandController(
                     ControllerCommand.CommandWithFade(ControllerCommand.SkipToNext, false)
@@ -233,7 +238,7 @@ internal class MusicService : MediaLibraryService() {
     private fun considerReleasing(session: MediaLibrarySession) {
         Timber.d("MusicService considerRelease called")
         if (!MainActivity.isActive) {
-            releaseSession(session)
+            releaseSession()
             Timber.d("MusicService considerRelease released, reason = MainActivity.isActive == ${MainActivity.isActive}")
         } else {
             Timber.d("MusicService considerRelease not released, reason = MainActivity.isActive == ${MainActivity.isActive}, resetting Player")
@@ -246,7 +251,7 @@ internal class MusicService : MediaLibraryService() {
         }
     }
 
-    private fun releaseSession(session: MediaLibrarySession) {
+    private fun releaseSession() {
         Timber.d("$TAG releaseSession")
         if (::exoController.isInitialized) ExoController.releaseInstance(exoController)
         unregisterReceiver(playbackReceiver)
@@ -259,8 +264,10 @@ internal class MusicService : MediaLibraryService() {
         Timber.d("$TAG onDestroy")
         serviceScope.cancel()
         this.sessions.forEach { it.release() }
-        libSession.player.release()
-        libSession.release()
+        if (::libSession.isInitialized) {
+            libSession.player.release()
+            libSession.release()
+        }
         super.onDestroy()
 
         // for whatever reason MediaLibrarySessionImpl is leaking this service context?

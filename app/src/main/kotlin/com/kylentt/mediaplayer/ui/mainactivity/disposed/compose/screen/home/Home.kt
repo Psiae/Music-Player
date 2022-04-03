@@ -57,14 +57,6 @@ fun HomeScreenLayout(
         StatusBarSpacer()
         HomeAppBar()
         HomeBarCardSpacer()
-        Box(
-            modifier = Modifier
-                .fillMaxSize(0.95f)
-        ) {
-            HomeCard()
-        }
-
-
         Column(
             modifier = Modifier,
             verticalArrangement = Arrangement.Center,

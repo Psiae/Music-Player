@@ -86,7 +86,7 @@ fun ProfileCardProfile() {
         Image(
             modifier = Modifier.fillMaxSize(),
             painter = painterResource(
-                id = R.drawable.test_p
+                id = R.drawable.test_p2
             ),
             contentDescription = "Profile",
             contentScale = ContentScale.Crop

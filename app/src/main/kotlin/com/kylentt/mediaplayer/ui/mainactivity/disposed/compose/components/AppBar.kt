@@ -2,6 +2,7 @@ package com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.components
 
 import android.Manifest
 import android.app.WallpaperManager
+import android.content.Context
 import android.content.pm.PackageManager
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
@@ -11,13 +12,13 @@ import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.Surface
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,7 +33,10 @@ import coil.request.ImageRequest
 import com.kylentt.mediaplayer.R
 import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.CoilShimmerImage
 import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.CoilShimmerState
+import com.kylentt.musicplayer.data.repository.settingsDataStore
 import com.kylentt.musicplayer.ui.musicactivity.compose.theme.md3.ColorHelper
+import com.kylentt.musicplayer.ui.preferences.WallpaperSettings
+import kotlinx.coroutines.launch
 import timber.log.Timber
 
 @OptIn(ExperimentalMaterial3Api::class, coil.annotation.ExperimentalCoilApi::class)
@@ -97,7 +101,7 @@ fun HomeAppBar() {
                             modifier = Modifier
                                 .fillMaxSize()
                                 .clipToBounds(),
-                            imageVector = Icons.Default.AccountCircle,
+                            imageVector = Icons.Outlined.Settings,
                             contentDescription = "Account",
                             tint = MaterialTheme.colorScheme.surfaceVariant
                         )
@@ -118,7 +122,10 @@ fun HomeAppBar() {
                     tint = ColorHelper.getSurfaceIconTint()
                 )
             }
-            IconButton(onClick = { Toast.makeText(context, "Settings", Toast.LENGTH_SHORT).show() }) {
+
+            val scope = rememberCoroutineScope()
+
+            IconButton(onClick = { scope.launch { toggleWallpaperSource(context) } }) {
                 Icon(
                     modifier = Modifier.size((27.5).dp),
                     imageVector = Icons.Outlined.Settings,
@@ -127,5 +134,18 @@ fun HomeAppBar() {
                 )
             }
         }
+    }
+}
+
+fun WallpaperSettings.Source.getToggled() = when(this) {
+    WallpaperSettings.Source.DEFAULT -> WallpaperSettings.Source.DEVICE_WALLPAPER
+    WallpaperSettings.Source.DEVICE_WALLPAPER -> WallpaperSettings.Source.MEDIA_ITEM
+    WallpaperSettings.Source.MEDIA_ITEM -> WallpaperSettings.Source.DEFAULT
+}
+
+suspend fun toggleWallpaperSource(context: Context) {
+    context.settingsDataStore.updateData {
+        val to = it.wallpaperSettings.source.getToggled()
+        it.copy(wallpaperSettings = it.wallpaperSettings.copy(source = to))
     }
 }

@@ -43,7 +43,6 @@ import coil.request.ImageRequest
 import com.google.accompanist.placeholder.PlaceholderHighlight
 import com.google.accompanist.placeholder.placeholder
 import com.google.accompanist.placeholder.shimmer
-import com.kylentt.mediaplayer.core.util.handler.MediaItemHandler
 import com.kylentt.mediaplayer.disposed.domain.presenter.ControllerViewModel
 import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.components.RootBottomNav
 import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.root.BottomNavigationItem
@@ -52,6 +51,9 @@ import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.screen.home.Home
 import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.screen.library.LibraryScreen
 import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.screen.search.SearchScreen
 import com.kylentt.musicplayer.core.helper.PermissionHelper
+import com.kylentt.musicplayer.core.helper.elseNull
+import com.kylentt.musicplayer.ui.preferences.WallpaperSettings
+import com.kylentt.musicplayer.ui.preferences.WallpaperSettings.Source.*
 import timber.log.Timber
 
 @Composable
@@ -103,7 +105,7 @@ fun RootNavigation(
                 mutableStateOf(0)
             }
             if (currentIndex != -1) wps.value = currentIndex
-            NavWallpaper(current = wps.value, size = BottomNavigationRoute.routeList.size)
+            NavWallpaper(modifier = Modifier, current = wps.value, size = BottomNavigationRoute.routeList.size)
         }
         RootNavHost(rootController = navController, modifier = Modifier.padding(padding))
     }
@@ -121,6 +123,7 @@ fun NavWallpaperState(
 @Composable
 @RequiresPermission(anyOf = [READ_EXTERNAL_STORAGE, WRITE_EXTERNAL_STORAGE])
 internal fun NavWallpaper(
+    modifier: Modifier,
     controller: ControllerViewModel = viewModel(),
     current: Int,
     size: Int
@@ -129,16 +132,31 @@ internal fun NavWallpaper(
 
     val context = LocalContext.current
 
-    val itemBitmap by remember { controller.playerCurrentBitmap }
-    val wm = remember(context) { WallpaperManager.getInstance(context).drawable.toBitmap() }
+    val settings = remember { controller.appSetting }
+    val itemBitmap = remember { controller.itemBitmap }
 
-    val data = itemBitmap ?: wm
-    val req = remember(itemBitmap) {
-        Timber.d("NavWallaper New Image Request $data")
+    val navSettings = settings.value.wallpaperSettings
+
+    val wm = remember(context) { WallpaperManager.getInstance(context)}
+    val wmD = remember(wm.drawable) { wm.drawable.toBitmap() }
+
+    val alt = navSettings.sourceAlternative
+    val data = when(navSettings.source) {
+        DEFAULT -> null
+        DEVICE_WALLPAPER -> wmD
+        MEDIA_ITEM -> itemBitmap.value.bm
+            ?: elseNull(alt == WallpaperSettings.SourceAlternative.DEVICE_WALLPAPER) { wmD }
+    }
+
+    val req = remember(data) {
+        val fade = when {
+            itemBitmap.value.fade || data == wmD -> 300
+            else -> 0
+        }
         ImageRequest.Builder(context)
             .diskCachePolicy(CachePolicy.ENABLED)
             .data(data)
-            .crossfade(300)
+            .crossfade(fade)
             .build()
     }
 
@@ -149,12 +167,12 @@ internal fun NavWallpaper(
         if (orientation == Configuration.ORIENTATION_PORTRAIT) {
             ContentScale.FillHeight
         } else  {
-            ContentScale.FillWidth
+            ContentScale.Crop
         }
     }
 
     CoilShimmerImage(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxHeight()
             .fillMaxSize()
             .horizontalScroll(scrollState),

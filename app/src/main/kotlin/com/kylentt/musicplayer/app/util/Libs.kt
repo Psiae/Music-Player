@@ -1,4 +1,4 @@
-package com.kylentt.musicplayer.core.helper
+package com.kylentt.musicplayer.app.util
 
 // TODO()
 

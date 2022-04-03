@@ -1,24 +1,27 @@
 package com.kylentt.musicplayer.ui.musicactivity.compose
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.kylentt.mediaplayer.disposed.domain.presenter.ControllerViewModel
 import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.FakeRoot
-import com.kylentt.musicplayer.core.helper.PermissionHelper
-import com.kylentt.musicplayer.core.helper.PermissionHelper.checkPermission
+import com.kylentt.musicplayer.domain.MediaViewModel
 import com.kylentt.musicplayer.ui.musicactivity.compose.environtment.PermissionDefaults
 import com.kylentt.musicplayer.ui.musicactivity.compose.environtment.RequireStoragePermission
 import com.kylentt.musicplayer.ui.musicactivity.compose.musicroot.MusicRoot
+import com.kylentt.musicplayer.ui.preferences.AppSettings
+import com.kylentt.musicplayer.ui.preferences.WallpaperSettings
 
 @Composable
-inline fun MusicComposeDefault(
+internal inline fun MusicComposeDefault(
     whenGranted: () -> Unit
 ) {
     RequireStoragePermission(
-        whenDenied = PermissionDefaults.DeniedOptions.PermissionScreen(),
-        whenShowRationale = PermissionDefaults.NotDeniedOptions.RequestPermission {
-            MusicCompose(hasPermission = false)
-        }
+        whenShowRationale = PermissionDefaults.NotDeniedOptions.RequestPermission(
+            backgroundComposable = { MusicCompose(hasPermission = false) }
+        )
     ) {
         whenGranted()
         MusicCompose(hasPermission = true)
@@ -26,11 +29,15 @@ inline fun MusicComposeDefault(
 }
 
 @Composable
-fun MusicCompose(
+internal fun MusicCompose(
+    vm: MediaViewModel = viewModel(),
     hasPermission: Boolean
 ) {
-    if (PermissionHelper.checkStoragePermission(LocalContext.current) && hasPermission) {
-        MusicRoot(navWallpaper = true)
+    val settings = vm.appSettings.collectAsState()
+    val navWallpaper = settings.value.wallpaperSettings.mode == WallpaperSettings.Mode.NAVIGATION
+
+    if (hasPermission) {
+        MusicRoot(navWallpaper)
     } else {
         FakeRoot()
     }

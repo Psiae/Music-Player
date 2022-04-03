@@ -10,11 +10,25 @@ import kotlin.math.ln
 
 object ColorHelper {
 
-    @Composable
-    fun getNavigationBarColor() = Color.Transparent
+    fun getStatusBarEnforced() = false
 
     @Composable
     fun getSurfaceIconTint() = MaterialTheme.colorScheme.onSurface
+
+    @Composable
+    fun getStatusBarColor() = getTonedSurface().copy(alpha = 0.5f)
+
+    @Composable
+    fun getNavBarColor() = getTonedSurface()
+
+    @Composable
+    fun getBottomNavigatorColor() = Color.Transparent
+
+    @Composable
+    fun getDNTextColor() = if (isSystemInDarkTheme()) ColorDefaults.lightText else ColorDefaults.darkText
+
+    @Composable
+    fun getDNBackground() = if (isSystemInDarkTheme()) ColorDefaults.darkThemeBackground else ColorDefaults.lightThemeBackground
 
     @Composable
     fun getTonedSurface(el: Int = 2) = run {
@@ -23,10 +37,4 @@ object ColorHelper {
         val primary = MaterialTheme.colorScheme.primary
         primary.copy(alpha = alpha).compositeOver(surface)
     }
-
-    @Composable
-    fun getDNTextColor() = if (isSystemInDarkTheme()) ColorDefaults.lightText else ColorDefaults.darkText
-
-    @Composable
-    fun getDNBackground() = if (isSystemInDarkTheme()) ColorDefaults.darkThemeBackground else ColorDefaults.lightThemeBackground
 }

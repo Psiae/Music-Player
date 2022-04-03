@@ -7,20 +7,21 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kylentt.mediaplayer.core.util.Constants.PROVIDER_DRIVE_LEGACY
 import com.kylentt.mediaplayer.disposed.domain.presenter.ControllerViewModel
 import com.kylentt.musicplayer.core.helper.PermissionHelper
 import com.kylentt.musicplayer.core.helper.UIHelper.disableFitWindow
+import com.kylentt.musicplayer.core.helper.elseNull
+import com.kylentt.musicplayer.core.helper.orNull
 import com.kylentt.musicplayer.domain.MediaViewModel
 import com.kylentt.musicplayer.domain.mediasession.service.MediaServiceState
 import com.kylentt.musicplayer.ui.musicactivity.compose.MusicComposeDefault
 import com.kylentt.musicplayer.ui.musicactivity.compose.theme.md3.MaterialTheme3
+import com.kylentt.musicplayer.ui.preferences.AppState
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -30,19 +31,38 @@ internal class MainActivity : ComponentActivity() {
     private val controllerVM: ControllerViewModel by viewModels()
     private val mediaVM: MediaViewModel by viewModels()
 
+    private val whenGranted = mutableListOf< () -> Unit >()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         savedInstanceState?.let { validateCreation(it) }
+            ?: run {
+                elseNull(mediaVM.shouldHandleIntent == false) { this.intent.action = null }
+                    ?: whenGranted.add { handleIntent(this.intent) }
+
+                lifecycleScope.launch {
+                    val state = mediaVM.appState.first { it != AppState.Defaults.invalidState }
+                    mediaVM.navigationStartIndex = state.navigationIndex
+                }
+            }
 
         disableFitWindow()
         installSplashScreen()
             .setKeepOnScreenCondition { mediaVM.showSplashScreen }
         setContent {
-            MaterialTheme3 { MusicComposeDefault { handleIntent(this.intent) } }
+            MaterialTheme3 {
+                MusicComposeDefault(
+                    whenGranted = {
+                        whenGranted.forEach { it() }
+                        whenGranted.clear()
+                    }
+                )
+            }
         }
     }
 
     private fun validateCreation(savedInstanceState: Bundle) {
+        Timber.d("savedInstanceState ValidateCreation ${mediaVM.serviceState.value}")
         if (mediaVM.serviceState.value is MediaServiceState.UNIT) {
             this.intent.action = null
         }

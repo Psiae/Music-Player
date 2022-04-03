@@ -25,6 +25,15 @@ class CoilHandler(
 
     var sizeForNotif: Int = if (VersionHelper.isR()) 256 else 512
 
+    suspend fun makeBitmap(
+        uri: Uri
+    ): Bitmap? {
+        val req = ImageRequest.Builder(context)
+            .data(uri)
+            .build()
+        return ((coil.execute(req).drawable) as? BitmapDrawable)?.bitmap
+    }
+
     suspend fun squareWithCoil(
         bitmap: Bitmap,
         @Px size: Int = CoilTarget.notificationlargeIcon,

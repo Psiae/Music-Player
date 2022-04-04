@@ -5,6 +5,7 @@ import android.media.MediaMetadataRetriever
 import android.net.Uri
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
+import com.kylentt.musicplayer.core.helper.MediaItemUtil.rebuild
 import dagger.hilt.android.qualifiers.ApplicationContext
 import timber.log.Timber
 import javax.inject.Inject
@@ -32,6 +33,9 @@ class MediaItemHelper @Inject constructor(
         Timber.e(e)
         null
     }
+
+    fun List<MediaItem>.rebuild() = with(MediaItemUtil) { rebuild() }
+    fun MediaItem.rebuild() = with(MediaItemUtil) { rebuild() }
 
 }
 

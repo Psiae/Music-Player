@@ -4,9 +4,7 @@ import android.app.Application
 import android.content.Context
 import androidx.startup.Initializer
 import com.kylentt.mediaplayer.BuildConfig
-import leakcanary.LeakCanary
 import timber.log.Timber
-import javax.inject.Inject
 
 class BaseInitializer : Initializer<Unit> {
     override fun create(context: Context) {

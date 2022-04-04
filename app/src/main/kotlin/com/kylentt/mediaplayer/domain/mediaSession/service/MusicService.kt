@@ -4,7 +4,6 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
 import android.content.IntentFilter
 import android.os.Bundle
 import androidx.media3.common.MediaItem
@@ -17,9 +16,6 @@ import com.kylentt.mediaplayer.core.exoplayer.ExoController
 import com.kylentt.mediaplayer.core.exoplayer.NotifProvider
 import com.kylentt.mediaplayer.core.exoplayer.util.ExoUtil
 import com.kylentt.mediaplayer.core.util.handler.CoilHandler
-import com.kylentt.mediaplayer.core.util.handler.MediaItemHandler
-import com.kylentt.mediaplayer.disposed.domain.presenter.ServiceConnectorImpl
-import com.kylentt.mediaplayer.disposed.domain.presenter.util.State
 import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants.ACTION_CANCEL
 import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants.ACTION_NEXT
 import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants.ACTION_PAUSE
@@ -33,6 +29,7 @@ import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants
 import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants.NEW_SESSION_PLAYER_RECOVER
 import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants.NOTIFICATION_ID
 import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants.PLAYBACK_INTENT
+import com.kylentt.musicplayer.core.helper.MediaItemHelper
 import com.kylentt.musicplayer.domain.mediasession.MediaSessionManager
 import com.kylentt.musicplayer.domain.mediasession.service.MediaServiceState
 import com.kylentt.musicplayer.ui.musicactivity.MainActivity
@@ -53,9 +50,7 @@ internal class MusicService : MediaLibraryService() {
     @Inject
     lateinit var coilHandler: CoilHandler
     @Inject
-    lateinit var mediaItemHandler: MediaItemHandler
-    @Inject
-    lateinit var serviceConnectorImpl: ServiceConnectorImpl
+    lateinit var mediaItemHandler: MediaItemHelper
     @Inject
     lateinit var mediaSessionManager: MediaSessionManager
 
@@ -161,7 +156,7 @@ internal class MusicService : MediaLibraryService() {
             session: MediaSession,
             controller: MediaSession.ControllerInfo,
             mediaItem: MediaItem,
-        ) = mediaItemHandler.rebuildMediaItem(mediaItem)
+        ): MediaItem = with(mediaItemHandler) { mediaItem.rebuild() }
     }
 
     inner class PlaybackReceiver: BroadcastReceiver() {

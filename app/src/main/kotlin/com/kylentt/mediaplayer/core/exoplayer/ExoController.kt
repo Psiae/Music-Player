@@ -302,7 +302,7 @@ internal class ExoController(
     }
 
     private suspend fun getDisplayEmbed(uri: Uri): Bitmap? = withContext(Dispatchers.IO) {
-        service.mediaItemHandler.getEmbeds(uri)?.let {
+        service.mediaItemHandler.getEmbeddedPicture(uri)?.let {
             service.coilHandler.squareWithCoil(BitmapFactory.decodeByteArray(it, 0, it.size))
         }
     }

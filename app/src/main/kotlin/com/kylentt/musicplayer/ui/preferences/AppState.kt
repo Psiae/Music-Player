@@ -14,7 +14,7 @@ data class AppState(
 
     object Defaults {
         const val invalidNavigationIndex = -11
-        val invalidState = AppState(navigationIndex = invalidNavigationIndex)
+        val INVALID = AppState(navigationIndex = invalidNavigationIndex)
     }
 
 

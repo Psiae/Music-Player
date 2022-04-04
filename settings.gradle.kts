@@ -16,4 +16,3 @@ dependencyResolutionManagement {
 }
 rootProject.name = "MediaPlayer"
 include (":app")
-include(":mylibrary")

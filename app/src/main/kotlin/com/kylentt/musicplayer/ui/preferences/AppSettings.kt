@@ -70,11 +70,15 @@ object AppSettingsSerializer : Serializer<AppSettings> {
 
     @Suppress("BlockingMethodInNonBlockingContext")
     override suspend fun writeTo(t: AppSettings, output: OutputStream) {
-        output.write(
-            Json.encodeToString(
-                serializer = AppSettings.serializer(),
-                value = t
-            ).encodeToByteArray()
-        )
+        try {
+            output.write(
+                Json.encodeToString(
+                    serializer = AppSettings.serializer(),
+                    value = t
+                ).encodeToByteArray()
+            )
+        } catch (e: Exception) {
+            Timber.e(e)
+        }
     }
 }

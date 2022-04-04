@@ -1,6 +1,9 @@
 package com.kylentt.musicplayer.di
 
 import android.content.Context
+import coil.Coil
+import coil.ImageLoader
+import com.kylentt.mediaplayer.core.util.handler.CoilHandler
 import com.kylentt.musicplayer.app.util.AppScope
 import com.kylentt.musicplayer.data.repository.MediaRepository
 import com.kylentt.musicplayer.data.repository.ProtoRepository
@@ -18,6 +21,14 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
+
+    @Singleton
+    @Provides
+    fun provideCoilInstance(@ApplicationContext context: Context) = Coil.imageLoader(context)
+
+    @Singleton
+    @Provides
+    fun provideCoilHandler(@ApplicationContext context: Context, coil: ImageLoader) = CoilHandler(context, coil)
 
     @Singleton
     @Provides

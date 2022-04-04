@@ -7,7 +7,9 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -25,7 +27,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navigation
-import com.kylentt.mediaplayer.disposed.domain.presenter.ControllerViewModel
 import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.NavWallpaper
 import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.screen.home.HomeScreen
 import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.screen.library.LibraryScreen
@@ -33,12 +34,9 @@ import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.screen.search.Se
 import com.kylentt.musicplayer.core.helper.PermissionHelper
 import com.kylentt.musicplayer.data.repository.stateDataStore
 import com.kylentt.musicplayer.domain.MediaViewModel
-import com.kylentt.musicplayer.ui.musicactivity.compose.environtment.NoRipple
 import com.kylentt.musicplayer.ui.musicactivity.compose.theme.md3.AppTypography
 import com.kylentt.musicplayer.ui.musicactivity.compose.theme.md3.ColorHelper
-import com.kylentt.musicplayer.ui.preferences.AppState
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.first
+import com.kylentt.musicplayer.ui.preferences.AppSettings
 import kotlinx.coroutines.launch
 
 @Composable
@@ -72,17 +70,6 @@ internal fun MusicRootNavigator(
     val stateHolder = hostController.currentBackStackEntryAsState()
     val scope = rememberCoroutineScope()
 
-    val navigate: (String) -> Unit = {
-
-    }
-
-    /*LaunchedEffect(key1 = false) {
-        val i = context.stateDataStore.data.first().navigationIndex
-        val str = MusicRootNavigation.routeList[i].routeName
-        navigate(str)
-    }*/
-
-
     MusicRootScaffold(
         entry = stateHolder.value,
         onNavigate = {
@@ -99,7 +86,7 @@ internal fun MusicRootNavigator(
             } },
         navWallpaper = navWallpaper
     ) {
-        MusicRootNavHost(modifier = Modifier.padding(it), rootController = hostController, vm.navigationStartIndex)
+        MusicRootNavHost(modifier = Modifier.padding(it), rootController = hostController, vm.navStartIndex.value)
     }
 }
 
@@ -111,12 +98,16 @@ suspend fun saveNavIndex(context: Context, i: Int) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MusicRootScaffold(
+internal fun MusicRootScaffold(
+    vm: MediaViewModel = viewModel(),
     entry: NavBackStackEntry?,
     navWallpaper: Boolean,
     onNavigate: (String) -> Unit,
     content: @Composable (PaddingValues) -> Unit
 ) {
+
+    val settings = vm.appSettings.collectAsState()
+
     Scaffold(
         bottomBar = {
             if (shouldShowBottomNav(entry = entry)) {
@@ -137,7 +128,8 @@ fun MusicRootScaffold(
                 current = MusicRootNavigation.routeList
                     .map { it.routeName }
                     .indexOf(entry?.destination?.route),
-                size = MusicRootNavigation.routeList.size
+                size = MusicRootNavigation.routeList.size,
+                settings = settings.value
             )
         }
         content(it)

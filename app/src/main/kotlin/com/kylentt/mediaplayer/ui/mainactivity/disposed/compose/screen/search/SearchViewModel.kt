@@ -2,8 +2,8 @@ package com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.screen.search
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.kylentt.mediaplayer.disposed.data.repository.SongRepositoryImpl
-import com.kylentt.mediaplayer.disposed.domain.model.Song
+import com.kylentt.musicplayer.data.entity.Song
+import com.kylentt.musicplayer.data.source.local.MediaStoreSource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -13,7 +13,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SearchViewModel @Inject constructor(
-    val repository: SongRepositoryImpl
+    val mediaStore: MediaStoreSource
 ) : ViewModel() {
 
     private val _songList = MutableStateFlow(listOf<Song>())
@@ -21,7 +21,7 @@ class SearchViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            repository.getLocalSongs().collect {
+            mediaStore.getMediaStoreSong().collect {
                 _songList.value = it
             }
         }

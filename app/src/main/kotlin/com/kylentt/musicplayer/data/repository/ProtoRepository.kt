@@ -23,7 +23,7 @@ class ProtoRepository(
     val scope: AppScope
 ) {
 
-    private val _appState = MutableStateFlow<AppState>(AppState.Defaults.invalidState)
+    private val _appState = MutableStateFlow<AppState>(AppState.Defaults.INVALID)
     private val _appSettings = MutableStateFlow<AppSettings>(AppSettings.Defaults.invalid)
 
     val appState = _appState.asStateFlow()
@@ -35,9 +35,9 @@ class ProtoRepository(
         scope.ioScope.launch { collectSettings().collect { _appSettings.value = it } }
     }
 
-    suspend fun writeToSettings(data: suspend () -> AppSettings) {
+    suspend fun writeToSettings(data: suspend (AppSettings) -> AppSettings) {
         try {
-            context.settingsDataStore.updateData { data() }
+            context.settingsDataStore.updateData { data(it) }
         } catch (e: Exception) {
             Timber.e(e)
         }
@@ -51,11 +51,11 @@ class ProtoRepository(
         }
     }
 
-    suspend fun collectSettings(): Flow<AppSettings> {
+    fun collectSettings(): Flow<AppSettings> {
         return context.settingsDataStore.data
     }
 
-    suspend fun collectState(): Flow<AppState> {
+    fun collectState(): Flow<AppState> {
         return context.stateDataStore.data
     }
 

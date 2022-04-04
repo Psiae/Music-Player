@@ -7,6 +7,14 @@ plugins {
 }
 
 android {
+    signingConfigs {
+        testRelease {
+            storeFile file('C:\\Users\\Kyle\\dev\\Android Studio\\key\\testRelease-key.jks')
+            storePassword '123456'
+            keyAlias 'key0'
+            keyPassword '123456'
+        }
+    }
     compileSdk 32
 
     defaultConfig {
@@ -24,8 +32,12 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.testRelease
+        }
+        debug {
+            signingConfig signingConfigs.testRelease
         }
     }
     compileOptions {

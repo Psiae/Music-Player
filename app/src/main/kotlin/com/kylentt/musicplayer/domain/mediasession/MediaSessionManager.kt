@@ -2,6 +2,7 @@ package com.kylentt.musicplayer.domain.mediasession
 
 import android.app.Application
 import android.content.Context
+import androidx.annotation.MainThread
 import androidx.media3.session.MediaLibraryService
 import com.kylentt.musicplayer.app.util.AppScope
 import com.kylentt.musicplayer.domain.mediasession.service.ControllerCommand
@@ -41,7 +42,10 @@ internal class MediaSessionManager private constructor(
         mediaServiceConnector = MediaServiceConnector(this, base, appScope)
     }
 
+    @MainThread
     fun connectService() { controller.commandController(ControllerCommand.Unit) }
+
+    @MainThread
     fun sendCommand(command: ControllerCommand) { controller.commandController(command) }
 
     companion object {

@@ -58,7 +58,7 @@ data class MediaStoreSong(
 
 class MediaStoreSource (
     private val context: Context
-) {
+): LocalSource {
     suspend fun getMediaStoreSong() = flow { emit(queryAudioColumn()) }
 
     private suspend fun queryAudioColumn(): List<MediaStoreSong> {

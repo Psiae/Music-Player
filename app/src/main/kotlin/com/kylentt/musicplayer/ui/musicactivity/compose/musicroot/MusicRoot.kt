@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -17,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -73,20 +75,20 @@ internal fun MusicRootNavigator(
     MusicRootScaffold(
         entry = stateHolder.value,
         onNavigate = {
+            val i = MusicRootNavigation.routeList.map { route -> route.routeName }.indexOf(it)
             hostController.navigate(it) {
                 restoreState = true
                 launchSingleTop = true
                 popUpTo(hostController.graph.findStartDestination().id) {
-                 saveState = true
+                    saveState = true
                 }
             }
-            val i = MusicRootNavigation.routeList.map { route -> route.routeName }.indexOf(it)
             if (i >= 0) {
                 scope.launch { vm.writeAppState { it.copy(navigationIndex = i) } }
             } },
         navWallpaper = navWallpaper
     ) {
-        MusicRootNavHost(modifier = Modifier.padding(it), rootController = hostController, vm.navStartIndex.value)
+        MusicRootNavHost(modifier = Modifier.padding(it), rootController = hostController)
     }
 }
 
@@ -231,7 +233,8 @@ fun MusicRootBottomNavItem(
 }
 
 @Composable
-fun MusicRootNavHost(
+internal fun MusicRootNavHost(
+    vm: MediaViewModel = viewModel(),
     modifier: Modifier,
     rootController: NavHostController,
     start: Int = 0

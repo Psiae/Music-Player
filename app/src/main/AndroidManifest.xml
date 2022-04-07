@@ -61,7 +61,6 @@
                 <category android:name="android.intent.category.APP_MUSIC"/>
                 <category android:name="android.intent.category.DEFAULT"/>
 
-                <data android:scheme="file"/>
                 <data android:scheme="content"/>
                 <data android:mimeType="audio/*"/>
             </intent-filter>

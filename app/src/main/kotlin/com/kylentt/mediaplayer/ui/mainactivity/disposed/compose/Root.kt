@@ -4,6 +4,9 @@ import android.Manifest.permission.READ_EXTERNAL_STORAGE
 import android.Manifest.permission.WRITE_EXTERNAL_STORAGE
 import android.app.WallpaperManager
 import android.content.res.Configuration
+import android.graphics.Bitmap
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Drawable
 import androidx.annotation.RequiresPermission
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.SpringSpec
@@ -151,19 +154,18 @@ internal fun NavWallpaper(
             ?: elseNull(alt == WallpaperSettings.SourceAlternative.DEVICE_WALLPAPER) { wmD }
     }
 
-    Timber.d("ComposeDebug Root NavWallpaper $current, settings = ${settings}, ibm = ${itemBitmap.value}, $data")
-
+    var toFade = if (itemBitmap.value.fade) 300 else 0
+    remember(navSettings.source) {
+        toFade = 300
+    }
     val req = remember(data) {
-        Timber.d("ComposeDebug Root NavWallpaper $current, settings = ${settings}, ibm = ${itemBitmap.value}, $data")
-        val fade = when {
-            data == null -> 300
-            itemBitmap.value.fade || data == wmD -> 300
-            else -> 0
-        }
+        Timber.d("ComposeDebug Root NavWallpaper $current\n,settings = ${settings}\n,ibm =${itemBitmap.value}\n,data = $data\n,fade = $toFade")
+        val placeHolder = BitmapDrawable(context.resources, data)
         ImageRequest.Builder(context)
             .diskCachePolicy(CachePolicy.ENABLED)
+            .placeholder(placeHolder)
             .data(data)
-            .crossfade(fade)
+            .crossfade(toFade)
             .build()
     }
 
@@ -189,6 +191,7 @@ internal fun NavWallpaper(
             .fillMaxHeight()
             .fillMaxSize()
             .horizontalScroll(scrollState),
+        shimmer = false,
         painter = painter,
         contentAlignment = Alignment.CenterStart,
         contentScale = scale,
@@ -219,6 +222,7 @@ sealed class CoilShimmerState {
 @OptIn(ExperimentalCoilApi::class)
 fun CoilShimmerImage(
     modifier: Modifier,
+    shimmer: Boolean = true,
     painter: ImagePainter,
     placeHolderColor: Color = MaterialTheme.colorScheme.surface,
     placeHolderShimmerColor: Color = MaterialTheme.colorScheme.surfaceVariant,
@@ -234,14 +238,7 @@ fun CoilShimmerImage(
         CoilShimmerState.SUCCESS -> painter.state is ImagePainter.State.Success
     }
     Image(
-        modifier = modifier
-            .then(Modifier
-                .placeholder(holder,
-                    color = placeHolderColor,
-                    highlight = PlaceholderHighlight
-                        .shimmer(placeHolderShimmerColor)
-                )
-            ),
+        modifier = modifier,
         painter = painter,
         contentDescription = contentDescription,
         contentScale = contentScale,

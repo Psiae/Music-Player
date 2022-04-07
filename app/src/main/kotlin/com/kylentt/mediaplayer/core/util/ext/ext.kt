@@ -13,7 +13,8 @@ object Ext {
         }
         val start = System.currentTimeMillis()
         val r: T = block()
-        return Pair(r, System.currentTimeMillis() - start )
+        val end = System.currentTimeMillis() - start
+        return Pair(r, end)
     }
 
     inline fun <T> executeWithTimeMillis(log: (Long) -> Unit, block: () -> T): T {

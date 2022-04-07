@@ -29,3 +29,15 @@ inline fun <T> orNull(condition: Boolean?, block: () -> T?): T? {
         null
     }
 }
+
+@OptIn(ExperimentalContracts::class)
+inline fun elseFalse(condition: Boolean, block: () -> Boolean): Boolean {
+    contract {
+        callsInPlace(block, InvocationKind.EXACTLY_ONCE)
+    }
+    return if (condition) {
+        block()
+    } else {
+        false
+    }
+}

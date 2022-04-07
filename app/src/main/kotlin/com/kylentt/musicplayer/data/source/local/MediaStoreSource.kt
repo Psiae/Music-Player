@@ -11,7 +11,9 @@ import com.kylentt.mediaplayer.core.util.helper.VersionHelper
 import com.kylentt.musicplayer.core.helper.MediaItemUtil
 import com.kylentt.musicplayer.data.ProviderConstants
 import com.kylentt.musicplayer.data.entity.Song
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import timber.log.Timber
 import java.lang.Exception
 
@@ -37,6 +39,7 @@ data class MediaStoreSong(
     override fun getArtistName(): String { return artist }
     override fun getDisplayTitle(): String { return title }
     override fun getUri(): Uri { return mediaUri }
+
     override fun toMediaItem(): MediaItem {
         return MediaItem.Builder()
             .setMediaId(mediaId)
@@ -56,10 +59,14 @@ data class MediaStoreSong(
     }
 }
 
+interface AsMediaItem {
+    fun toMediaItem(): MediaItem
+}
+
 class MediaStoreSource (
     private val context: Context
 ): LocalSource {
-    suspend fun getMediaStoreSong() = flow { emit(queryAudioColumn()) }
+    suspend fun getMediaStoreSong() = flow { emit(queryAudioColumn()) }.flowOn(Dispatchers.IO)
 
     private suspend fun queryAudioColumn(): List<MediaStoreSong> {
 
@@ -70,6 +77,7 @@ class MediaStoreSource (
             val songFolderName = if (VersionHelper.isQ()) { MediaStore.Audio.AudioColumns.BUCKET_DISPLAY_NAME } else {
                 MediaStore.Audio.AudioColumns.DATA
             }
+
             val songFolderId = if (VersionHelper.isQ()) { MediaStore.Audio.AudioColumns.BUCKET_ID } else {
                 MediaStore.Audio.AudioColumns.DATA
             }
@@ -169,6 +177,9 @@ class MediaStoreSource (
             }
         } catch (e: Exception) {
             Timber.e(e)
+        }
+        songList.forEach {
+            Timber.d("MediaStoreSource Queried $it \n")
         }
         return songList
     }

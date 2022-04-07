@@ -7,23 +7,26 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
 import com.kylentt.musicplayer.core.helper.PermissionHelper
 import com.kylentt.musicplayer.core.helper.UIHelper.disableFitWindow
-import com.kylentt.musicplayer.core.helper.elseNull
 import com.kylentt.musicplayer.domain.MediaViewModel
 import com.kylentt.musicplayer.domain.mediasession.service.MediaServiceState
+import com.kylentt.musicplayer.ui.musicactivity.Hidden.checkLauncherIntent
 import com.kylentt.musicplayer.ui.musicactivity.compose.MusicComposeDefault
 import com.kylentt.musicplayer.ui.musicactivity.compose.theme.md3.MaterialTheme3
 import com.kylentt.musicplayer.ui.preferences.AppState
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
+import kotlin.time.Duration
+import kotlin.time.ExperimentalTime
+import kotlin.time.measureTimedValue
 
 @AndroidEntryPoint
 internal class MainActivity : ComponentActivity() {
@@ -31,42 +34,47 @@ internal class MainActivity : ComponentActivity() {
     private val mediaVM: MediaViewModel by viewModels()
 
     private val intentHolder: IntentWrapper = IntentWrapper.EMPTY
+    private val pendingGranted = mutableStateListOf<() -> Unit>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        intentHolder.updateIntent(intent ?: IntentWrapper.EMPTY.intent)
-
+        checkLauncherIntent(intent)
+        intentHolder.updateIntent(intent ?: IntentWrapper.EMPTY.getOriginalIntent())
         savedInstanceState?.let { validateCreation(it) }
             ?: run {
-                elseNull(mediaVM.shouldHandleIntent == false) { intentHolder.action = null }
-                    ?: mediaVM.whenGranted.add { handleIntent(intentHolder) }
-
-                lifecycleScope.launch {
-                    val state = mediaVM.appState.first { it != AppState.Defaults.INVALID }
-                    mediaVM.navStartIndex.value = state.navigationIndex
+                if (mediaVM.shouldHandleIntent == false) {
+                    intentHolder.handled = true
                 }
             }
 
+        pendingGranted.add { handleIntent(intentHolder) }
+
         disableFitWindow()
         installSplashScreen()
-            .setKeepOnScreenCondition { mediaVM.showSplashScreen }
+            .setKeepOnScreenCondition {
+                when (mediaVM.serviceState.value) {
+                    MediaServiceState.CONNECTED, is MediaServiceState.ERROR -> {
+                        mediaVM.appState.value == AppState.Defaults.INVALID
+                    }
+                    else -> true
+                }
+            }
 
         setContent {
 
             MaterialTheme3 {
 
                 MusicComposeDefault {
-                    val whenGranted = remember { mediaVM.whenGranted }
-                    whenGranted.forEach { it() }
-                    whenGranted.clear()
+                    val mPendingGranted = remember { mediaVM.pendingGranted } ; mPendingGranted.forEach { it() } ; mPendingGranted.clear()
+                    val pendingGranted = remember { this.pendingGranted } ; pendingGranted.forEach { it() } ; pendingGranted.clear()
+
                 }
             }
         }
     }
 
     private fun validateCreation(savedInstanceState: Bundle) {
-        Timber.d("savedInstanceState ValidateCreation ${mediaVM.serviceState.value}")
+        Timber.d("MainActivity savedInstanceState ValidateCreation ${mediaVM.serviceState.value}")
         if (mediaVM.serviceState.value is MediaServiceState.UNIT) {
             intentHolder.handled = true
         }
@@ -78,16 +86,15 @@ internal class MainActivity : ComponentActivity() {
         isActive = true
     }
 
-
-
-    // Change to ?let scope if needed
-    // TODO: Move this to Handler class
+    // Consider Make ReceiverActivity for Specific Mime Type for better uri recognition
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
-        Timber.d("onNewIntent $intent")
+        Timber.d("onNewIntent $intent, type = ${intent?.type}, scheme = ${intent?.scheme}")
         if (intent != null) {
+            this.intent = intent
             intentHolder.updateIntent(intent)
-            if (PermissionHelper.checkStoragePermission()) {
+            Timber.d("MainActivity updated Intent $intentHolder, pending = ${pendingGranted.size}")
+            if (PermissionHelper.checkStoragePermission(this)) {
                 handleIntent(intentHolder)
             } else {
                 Toast.makeText(this, "Permission Needed", Toast.LENGTH_SHORT).show()
@@ -95,23 +102,33 @@ internal class MainActivity : ComponentActivity() {
         }
     }
 
+    @OptIn(ExperimentalTime::class)
     private fun handleIntent(wrapped: IntentWrapper) = with(wrapped) {
-        if (handled) return@with
-        val intent = wrapped.copy()
-        lifecycleScope.launch { withContext(Dispatchers.Default) {
-            mediaVM.handleIntent(intent)
-            wrapped.handled = true
-        } }
+        if (handled || action == null) {
+            Timber.d("MainActivity HandleIntent $wrapped is either handled or have null action")
+            return@with
+        }
+        lifecycleScope.launch {
+            withContext(Dispatchers.Default) {
+                val(data: Unit, time: Duration) = measureTimedValue { mediaVM.handleIntent(wrapped.copy()) }
+                Timber.d("MainActivity HandledIntent with ${time.inWholeMilliseconds}ms")
+                wrapped.getOriginalIntent().action = null
+                wrapped.handled = true
+            }
+        }
     }
 
     override fun onDestroy() {
-        super.onDestroy()
+        pendingGranted.clear()
         isActive = false
+        super.onDestroy()
+        Timber.d("MainActivity cleared pendingGranted = ${mediaVM.pendingGranted.size}")
         Timber.d("onDestroy")
     }
 
     companion object {
         var isActive = false
+            private set
     }
 }
 
@@ -120,23 +137,31 @@ data class IntentWrapper (
     var action: String?,
     var data: Uri?,
     var scheme: String?,
-    val intent: Intent,
+    var type: String?,
+    var updatedIntent: Intent,
+    private var originalIntent: Intent, // consider Nullable Instead
     var handled: Boolean = false
 ) {
 
     override fun toString(): String {
-        return "${this.hashCode()} " + "IntentWrapper(action = $action, data = $data, scheme = $scheme, intent = $intent, handled = $handled)"
+        return "${this.hashCode()} " + "\nIntentWrapper(action = $action, data = $data, scheme = $scheme,intent = $updatedIntent OriIntent = $originalIntent, handled = $handled)"
     }
 
     fun updateIntent(
         intent: Intent,
         handled: Boolean = intent.action == null
     ) {
+        if (this.originalIntent == EMPTY.originalIntent) { this.originalIntent = intent }
+
         this.action = intent.action
         this.data = intent.data
         this.scheme = intent.scheme
+        this.type = intent.type
+        this.updatedIntent = intent
         this.handled = handled
     }
+
+    fun getOriginalIntent() = this.originalIntent
 
     companion object {
         val EMPTY = fromIntent(Intent())
@@ -146,7 +171,9 @@ data class IntentWrapper (
             action = action,
             data = data,
             scheme = scheme,
-            intent = this,
+            type = type,
+            updatedIntent = this,
+            originalIntent = this,
             handled = action == null
         )
     }

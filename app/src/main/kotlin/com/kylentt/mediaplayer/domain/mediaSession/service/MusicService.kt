@@ -82,12 +82,12 @@ internal class MusicService : MediaLibraryService() {
 
     private fun validateCreation() {
         if (mediaSessionManager.serviceState.value is MediaServiceState.UNIT) {
-            stopForeground(true)
-            stopSelf()
-            releaseSession()
             if (!MainActivity.isActive) {
                 exitProcess(0)
             }
+            stopForeground(true)
+            stopSelf()
+            releaseSession()
         }
     }
 

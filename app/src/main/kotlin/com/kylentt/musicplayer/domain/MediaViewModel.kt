@@ -15,10 +15,12 @@ import com.kylentt.musicplayer.domain.mediasession.service.MediaServiceState
 import com.kylentt.musicplayer.ui.musicactivity.IntentWrapper
 import com.kylentt.musicplayer.ui.preferences.AppSettings
 import com.kylentt.musicplayer.ui.preferences.AppState
+import dagger.assisted.Assisted
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 
 @HiltViewModel
@@ -36,22 +38,13 @@ internal class MediaViewModel @Inject constructor(
     suspend fun writeAppSettings(data: suspend (AppSettings) -> AppSettings) = protoRepository.writeToSettings { data(it) }
 
     val itemBitmap = mutableStateOf<ItemBitmap>(ItemBitmap.EMPTY)
-    val navStartIndex = mutableStateOf<Int>(0)
-    val whenGranted = mutableStateListOf< () -> Unit >()
+
+    val pendingGranted = mutableStateListOf< () -> Unit >()
 
     // more explicit
     val serviceState = mutableStateOf<MediaServiceState>(MediaServiceState.UNIT)
     val shouldHandleIntent: Boolean?
-        get() {
-            return savedStateHandle.get<Boolean>("CONNECTED")?.not()
-        }
-    val showSplashScreen
-        get() = when(serviceState.value) {
-            MediaServiceState.CONNECTED, is MediaServiceState.ERROR -> {
-                appState.value == AppState.Defaults.INVALID
-            }
-            else -> true
-        }
+        get() { return savedStateHandle.get<Boolean>("CONNECTED")?.not() }
 
     fun connectService() {
         sessionManager.connectService()

@@ -2,14 +2,14 @@ package com.kylentt.musicplayer.data.entity
 
 import android.net.Uri
 import androidx.media3.common.MediaItem
+import com.kylentt.musicplayer.data.source.local.AsMediaItem
 
-interface Song {
+interface Song : AsMediaItem {
 
     fun getAlbumName(): String
     fun getArtistName(): String
     fun getDisplayTitle(): String
     fun getUri(): Uri
-    fun toMediaItem(): MediaItem
 
 }
 

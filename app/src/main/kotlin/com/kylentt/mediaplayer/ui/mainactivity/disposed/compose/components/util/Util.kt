@@ -15,23 +15,26 @@ import androidx.compose.ui.platform.LocalDensity
 
 @Composable
 fun NoRipple(
-    content: @Composable () -> Unit
+  content: @Composable () -> Unit
 ) {
-    CompositionLocalProvider(
-        LocalRippleTheme provides object : RippleTheme {
-            @Composable
-            override fun defaultColor(): Color = Color.Transparent
-            @Composable
-            override fun rippleAlpha(): RippleAlpha = RippleAlpha(
-                0f, 0f, 0f, 0f
-            )
-        }
-    ) {
-        content()
+  CompositionLocalProvider(
+    LocalRippleTheme provides object : RippleTheme {
+      @Composable
+      override fun defaultColor(): Color = Color.Transparent
+
+      @Composable
+      override fun rippleAlpha(): RippleAlpha = RippleAlpha(
+        0f, 0f, 0f, 0f
+      )
     }
+  ) {
+    content()
+  }
 }
 
 @Composable
 fun StatusBarSpacer() {
-    Spacer(modifier = Modifier.height(with(LocalDensity.current) { WindowInsets.statusBars.getTop(this).toDp() }))
+  Spacer(modifier = Modifier.height(with(LocalDensity.current) {
+    WindowInsets.statusBars.getTop(this).toDp()
+  }))
 }

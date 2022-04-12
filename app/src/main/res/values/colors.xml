@@ -10,5 +10,5 @@
     <color name="dark_grey">#121212</color>
 
 
-    <color name="splash_screen_background" >@color/white</color>
+    <color name="splash_screen_background">@color/white</color>
 </resources>

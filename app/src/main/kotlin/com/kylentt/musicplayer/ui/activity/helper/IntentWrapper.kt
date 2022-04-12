@@ -7,11 +7,11 @@ data class IntentWrapper(
   private var handled: Boolean = false
 ) {
 
-  val isHandled get() = handled
-
   private val handledState = listOf(
     handled, intent.action.isNullOrEmpty()
   )
+
+  val isHandled get() = handled
 
   fun getAction() = this.intent.action
   fun getData() = this.intent.data
@@ -27,7 +27,6 @@ data class IntentWrapper(
   }
 
   fun shouldHandleIntent() = !handledState.any { it }
-
 
   override fun toString(): String {
     return "${super.toString()}: " +

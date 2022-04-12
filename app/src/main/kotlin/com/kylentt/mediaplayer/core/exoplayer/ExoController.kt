@@ -75,7 +75,8 @@ internal class ExoController(
       }
     }
 
-  private var notificationManager: ExoNotificationManagers? = ExoNotificationManagers(service, session)
+  private var notificationManager: ExoNotificationManagers? =
+    ExoNotificationManagers(service, session)
 
   private var session: MediaSession? = session
     set(value) {
@@ -98,7 +99,7 @@ internal class ExoController(
   }
 
   private var lastNotification: Notification? = null
-  private var getNotifCallback = MediaNotification.Provider.Callback {  }
+  private var getNotifCallback = MediaNotification.Provider.Callback { }
 
   fun getNotification(
     controller: MediaController,
@@ -117,27 +118,50 @@ internal class ExoController(
       }
       val prev = if (currentIndex > 0) controller.previousMediaItemIndex else currentIndex
 
-      val nextItem = if (next != -1) controller.getMediaItemAt(next) else controller.getMediaItemAt(currentIndex)
-      val prevItem = if (prev != -1) controller.getMediaItemAt(prev) else controller.getMediaItemAt(currentIndex)
+      val nextItem =
+        if (next != -1) controller.getMediaItemAt(next) else controller.getMediaItemAt(currentIndex)
+      val prevItem =
+        if (prev != -1) controller.getMediaItemAt(prev) else controller.getMediaItemAt(currentIndex)
 
-      val bm = when(lastBitmap?.second) {
+      val bm = when (lastBitmap?.second) {
         prevItem.mediaId, nextItem.mediaId -> lastBitmap?.first
         else -> null
       }
-      controller.currentMediaItem?.let { updateNotification(NotificationUpdate.MediaItemTransition(it)) }
+      controller.currentMediaItem?.let {
+        updateNotification(
+          NotificationUpdate.MediaItemTransition(
+            it
+          )
+        )
+      }
         ?: updateNotification(NotificationUpdate.InvalidateMediaItem)
-      return notificationManager!!.makeNotification(bm, notify = false, isPlaying = controller.playWhenReady)
+      return notificationManager!!.makeNotification(
+        bm,
+        notify = false,
+        isPlaying = controller.playWhenReady
+      )
     }
     if (controller.playbackState == Player.STATE_IDLE) {
-      return notificationManager!!.makeNotification(lastBitmap?.first, notify = false, isPlaying = false)
+      return notificationManager!!.makeNotification(
+        lastBitmap?.first,
+        notify = false,
+        isPlaying = false
+      )
     }
     if (controller.playbackState == Player.STATE_BUFFERING) {
-      return notificationManager!!.makeNotification(lastBitmap?.first, notify = false, isPlaying = controller.playWhenReady)
+      return notificationManager!!.makeNotification(
+        lastBitmap?.first,
+        notify = false,
+        isPlaying = controller.playWhenReady
+      )
     }
     return run {
       Timber.d("getNotification returned makeNotification with old $lastBitmap")
       notificationManager!!.makeNotification(
-        lastBitmap?.first, isPlaying = controller.playWhenReady, notify = true, validatePlayPause = true
+        lastBitmap?.first,
+        isPlaying = controller.playWhenReady,
+        notify = true,
+        validatePlayPause = true
       )
     }
   }
@@ -183,7 +207,7 @@ internal class ExoController(
             }
           } ?: Timber.e("ExoController CommandController called when PlayerController is null")
         } ?: Timber.e("ExoController CommandController called when session is null")
-      } catch (e : Exception) {
+      } catch (e: Exception) {
         if (e !is NullPointerException) throw e else Timber.e(e)
       }
     }
@@ -219,7 +243,7 @@ internal class ExoController(
             } ?: Timber.e("ExoController UpdateNotification is Called when manager is null")
           } ?: Timber.e("ExoController UpdateNotification is Called when controller is null")
         } ?: Timber.e("ExoController UpdateNotification is Called when session is null")
-      } catch (e : Exception) {
+      } catch (e: Exception) {
         if (e !is NullPointerException) throw e else Timber.e(e)
       }
     }
@@ -236,7 +260,11 @@ internal class ExoController(
 
   private val newBitmapRequestException = CancellationException("new updateBitmapRequest")
   private var mediaItemTransitionJob = Job().job
-  private fun handleNotifMediaItemTransition(pc: PlayerController, manager: ExoNotificationManagers, item: MediaItem?) {
+  private fun handleNotifMediaItemTransition(
+    pc: PlayerController,
+    manager: ExoNotificationManagers,
+    item: MediaItem?
+  ) {
     val p = pc.player
     item?.let {
       if (item.mediaId == lastBitmap?.second) {
@@ -251,7 +279,12 @@ internal class ExoController(
           val bmId = Pair(it.getUri?.let { uri -> getDisplayEmbed(uri) }, it.mediaId)
           lastBitmap = bmId
           ensureActive()
-          val notif = manager.makeNotification(bm = lastBitmap?.first, notify = false, mi = item, isPlaying = p.playWhenReady)
+          val notif = manager.makeNotification(
+            bm = lastBitmap?.first,
+            notify = false,
+            mi = item,
+            isPlaying = p.playWhenReady
+          )
           getNotifCallback.onNotificationChanged(MediaNotification(NOTIFICATION_ID, notif))
         }
       }
@@ -284,7 +317,7 @@ internal class ExoController(
   }
 
   private fun handleNotifPlayWhenReadyChanged(m: ExoNotificationManagers, play: Boolean) {
-    m.makeNotification( bm = lastBitmap?.first, isPlaying = play)
+    m.makeNotification(bm = lastBitmap?.first, isPlaying = play)
     Timber.d("ExoController UpdateNotification handled PWR changed to $play")
   }
 
@@ -303,7 +336,10 @@ internal class ExoController(
     }
   }
 
-  private fun handleNotifRepeatModeChanged(m: ExoNotificationManagers, @Player.RepeatMode mode: Int) {
+  private fun handleNotifRepeatModeChanged(
+    m: ExoNotificationManagers,
+    @Player.RepeatMode mode: Int
+  ) {
     m.makeNotification(bm = lastBitmap?.first, repeatMode = mode)
     Timber.d("ExoController UpdateNotification handled repeatMode Changed ${mode.toStrRepeat()}")
   }
@@ -407,21 +443,21 @@ internal class ExoController(
       Timber.d("ExoController handled command SeekToPrevMedia()")
     }
 
-    private val exoReadyListener = mutableListOf<( (ExoPlayer) -> Unit )>()
+    private val exoReadyListener = mutableListOf<((ExoPlayer) -> Unit)>()
 
     private fun exoReady() = synchronized(exoReadyListener) {
       exoReadyListener.forEach { it(player) }
       exoReadyListener.clear()
     }
 
-    private fun whenExoReady(command: ( (ExoPlayer) -> Unit ) ) {
+    private fun whenExoReady(command: ((ExoPlayer) -> Unit)) {
       if (player.playbackState == Player.STATE_READY) command(player)
       else exoReadyListener.add(command)
     }
 
     private fun controller(
-      whenReady: ( (ExoPlayer) -> Unit)? = null,
-      command: ( (ExoPlayer) -> Unit) = {}
+      whenReady: ((ExoPlayer) -> Unit)? = null,
+      command: ((ExoPlayer) -> Unit) = {}
     ) {
       command(player)
       whenReady?.let { whenExoReady(it) }
@@ -441,9 +477,13 @@ internal class ExoController(
         super.onPlaybackStateChanged(playbackState)
         when (playbackState) {
           Player.STATE_ENDED -> player.pause()
-          Player.STATE_BUFFERING -> { /* TODO() */ }
-          Player.STATE_IDLE -> { /* TODO() */ }
-          Player.STATE_READY -> { exoReady() }
+          Player.STATE_BUFFERING -> { /* TODO() */
+          }
+          Player.STATE_IDLE -> { /* TODO() */
+          }
+          Player.STATE_READY -> {
+            exoReady()
+          }
         }
 
         /*updateNotification(NotificationUpdate.PlaybackStateChanged(playbackState))*/
@@ -491,7 +531,7 @@ internal class ExoController(
     private val fadeLock = Any()
     private var fadeListener = mutableListOf<ControllerCommand.CommandWithFade>()
     private suspend fun exoFade(
-      @FloatRange(from = 0.0,to = 1.0) to: Float,
+      @FloatRange(from = 0.0, to = 1.0) to: Float,
       command: ControllerCommand.CommandWithFade
     ) {
 
@@ -549,7 +589,8 @@ internal class ExoController(
     private var session: MediaSession,
   ) {
 
-    private val manager = service.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    private val manager =
+      service.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
     init {
       if (VersionHelper.isOreo()) createNotificationChannel()
@@ -558,7 +599,11 @@ internal class ExoController(
     @RequiresApi(Build.VERSION_CODES.O)
     private fun createNotificationChannel() {
       manager.createNotificationChannel(
-        NotificationChannel(NOTIFICATION_CHANNEL_ID, NOTIFICATION_NAME, NotificationManager.IMPORTANCE_LOW)
+        NotificationChannel(
+          NOTIFICATION_CHANNEL_ID,
+          NOTIFICATION_NAME,
+          NotificationManager.IMPORTANCE_LOW
+        )
       )
     }
 
@@ -595,7 +640,8 @@ internal class ExoController(
         setContentIntent(context.packageManager?.getLaunchIntentForPackage(
           context.packageName
         )?.let {
-          PendingIntent.getActivity(context, 445,
+          PendingIntent.getActivity(
+            context, 445,
             it.apply {
               this.putExtra("NOTIFICATION_CONTENT_ID", mi?.mediaId)
               this.putExtra("NOTIFICATION_CONTENT_URI", mi?.mediaMetadata?.mediaUri)
@@ -626,15 +672,15 @@ internal class ExoController(
         addAction(actionCancel)
 
         val media = MediaStyleNotificationHelper.DecoratedMediaCustomViewStyle(session)
-        media.setShowActionsInCompactView(1,2,3)
+        media.setShowActionsInCompactView(1, 2, 3)
 
-        setLargeIcon( bm )
-        setStyle( media )
+        setLargeIcon(bm)
+        setStyle(media)
 
       }.build().also {
         lastNotification = it
         if (notify) {
-          manager.notify(NOTIFICATION_ID,it)
+          manager.notify(NOTIFICATION_ID, it)
           Timber.d("ExoController NotificationUpdated")
           with(service) {
             serviceScope.launch {
@@ -775,7 +821,7 @@ internal class ExoController(
         Timber.d("ExoController getInstance ${instance?.service} != $service")
         instance?.service = service
       }
-      if (instance?.session != session)  {
+      if (instance?.session != session) {
         Timber.d("ExoController getInstance ${instance?.session} != $session")
         instance?.session = session
       }
@@ -819,18 +865,21 @@ sealed class NotificationUpdate {
       return "$m ${state.toStrState()}"
     }
   }
+
   data class PlayWhenReadyChanged(val play: Boolean) : NotificationUpdate() {
     override fun toString(): String {
       val m = "PlayWhenReadyChanged"
       return "$m, $play"
     }
   }
+
   data class RepeatModeChanged(@Player.RepeatMode val repeat: Int) : NotificationUpdate() {
     override fun toString(): String {
       val m = "RepeatModeChanged"
       return "$m, ${repeat.toStrRepeat()}"
     }
   }
+
   object InvalidateMediaItem : NotificationUpdate() {
     override fun toString(): String {
       return "InvalidateMediaItem"
@@ -839,44 +888,52 @@ sealed class NotificationUpdate {
 }
 
 sealed class ControllerCommand {
-  data class CommandWithFade(val command: ControllerCommand, val flush: Boolean) : ControllerCommand() {
+  data class CommandWithFade(val command: ControllerCommand, val flush: Boolean) :
+    ControllerCommand() {
     override fun toString(): String {
       val m = "CommandWithFade"
       return "$m, $command"
     }
   }
+
   data class SetPlayWhenReady(val play: Boolean) : ControllerCommand() {
     override fun toString(): String {
       val m = "SetPlayWhenReady"
       return "$m, $play"
     }
   }
+
   data class SetRepeatMode(@Player.RepeatMode val repeat: Int) : ControllerCommand() {
     override fun toString(): String {
       val m = "SetRepeatMode"
       return "$m, ${repeat.toStrRepeat()}"
     }
   }
+
   object SkipToNext : ControllerCommand() {
     override fun toString(): String {
       return "SkipToNext"
     }
   }
+
   object SkipToPrev : ControllerCommand() {
     override fun toString(): String {
       return "SkipToPrev"
     }
   }
+
   object SkipToPrevMedia : ControllerCommand() {
     override fun toString(): String {
       return "SkipToPrevMedia"
     }
   }
-  object TogglePlayWhenReady: ControllerCommand() {
+
+  object TogglePlayWhenReady : ControllerCommand() {
     override fun toString(): String {
       return "TogglePWR"
     }
   }
+
   data class StopCancel(
     val callback: () -> Unit
   ) : ControllerCommand() {

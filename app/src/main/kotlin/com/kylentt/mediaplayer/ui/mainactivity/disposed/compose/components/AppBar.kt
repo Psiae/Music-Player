@@ -34,7 +34,7 @@ import com.kylentt.mediaplayer.R
 import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.CoilShimmerImage
 import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.CoilShimmerState
 import com.kylentt.musicplayer.data.repository.settingsDataStore
-import com.kylentt.musicplayer.ui.activity.musicactivity.compose.theme.md3.ColorHelper
+import com.kylentt.musicplayer.ui.activity.musicactivity.acompose.theme.md3.ColorHelper
 import com.kylentt.musicplayer.ui.preferences.WallpaperSettings
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -43,109 +43,116 @@ import timber.log.Timber
 @Composable
 fun HomeAppBar() {
 
-    Timber.d("ComposeDebug HomeAppBar")
-    val context = LocalContext.current
-    val perm = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+  Timber.d("ComposeDebug HomeAppBar")
+  val context = LocalContext.current
+  val perm = ContextCompat.checkSelfPermission(
+    context,
+    Manifest.permission.READ_EXTERNAL_STORAGE
+  ) == PackageManager.PERMISSION_GRANTED
 
-    val wp = remember { WallpaperManager.getInstance(context) }
-    val data = if (perm) { wp.drawable.toBitmap() } else ContextCompat.getDrawable(context, R.drawable.test_p2)!!.toBitmap()
+  val wp = remember { WallpaperManager.getInstance(context) }
+  val data = if (perm) {
+    wp.drawable.toBitmap()
+  } else ContextCompat.getDrawable(context, R.drawable.test_p2)!!.toBitmap()
 
-    val profilePainter =  rememberImagePainter(
-        request = ImageRequest.Builder(context)
-            .data(data)
-            .size(256)
-            .build()
+  val profilePainter = rememberImagePainter(
+    request = ImageRequest.Builder(context)
+      .data(data)
+      .size(256)
+      .build()
 
-    )
+  )
+  Row(
+    modifier = Modifier
+      .fillMaxWidth()
+      .height(75.dp),
+    horizontalArrangement = Arrangement.SpaceBetween,
+    verticalAlignment = Alignment.CenterVertically
+  ) {
+    Timber.d("ComposeDebug HomeAppBar Row")
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(75.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+      modifier = Modifier
+        .padding(15.dp),
+      horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.Start),
+      verticalAlignment = Alignment.CenterVertically
     ) {
-        Timber.d("ComposeDebug HomeAppBar Row")
-        Row(
-            modifier = Modifier
-                .padding(15.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.Start),
-            verticalAlignment = Alignment.CenterVertically
+      Timber.d("ComposeDebug HomeAppBar NestedRow")
+      Surface(
+        modifier = Modifier
+          .size(45.dp)
+          .clip(RoundedCornerShape(50))
+          .clipToBounds(),
+        color = Color.Transparent,
+        border = BorderStroke((1).dp, MaterialTheme.colorScheme.primaryContainer),
+        shape = RoundedCornerShape(50),
+        elevation = 1.dp
+
+      ) {
+        Timber.d("ComposeDebug HomeAppBar Surface")
+        IconButton(
+          onClick = {
+            Toast.makeText(context, "Account", Toast.LENGTH_SHORT).show()
+          },
         ) {
-            Timber.d("ComposeDebug HomeAppBar NestedRow")
-            Surface(
-                modifier = Modifier
-                    .size(45.dp)
-                    .clip(RoundedCornerShape(50))
-                    .clipToBounds(),
-                color = Color.Transparent,
-                border = BorderStroke((1).dp, MaterialTheme.colorScheme.primaryContainer), shape = RoundedCornerShape(50),
-                elevation = 1.dp
-
-            ) {
-                Timber.d("ComposeDebug HomeAppBar Surface")
-                IconButton(
-                    onClick = {
-                        Toast.makeText(context, "Account", Toast.LENGTH_SHORT).show()
-                    },
-                ) {
-                    Timber.d("ComposeDebug HomeAppBar IconButton")
-                    if (perm) {
-                        CoilShimmerImage(modifier = Modifier.fillMaxSize(),
-                            painter = profilePainter,
-                            contentDescription = null,
-                            contentAlignment = Alignment.CenterStart,
-                            shimmerState = CoilShimmerState.LOADING
-                        )
-                    } else {
-                        Icon(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clipToBounds(),
-                            imageVector = Icons.Outlined.Settings,
-                            contentDescription = "Account",
-                            tint = MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    }
-                }
-            }
+          Timber.d("ComposeDebug HomeAppBar IconButton")
+          if (perm) {
+            CoilShimmerImage(
+              modifier = Modifier.fillMaxSize(),
+              painter = profilePainter,
+              contentDescription = null,
+              contentAlignment = Alignment.CenterStart,
+              shimmerState = CoilShimmerState.LOADING
+            )
+          } else {
+            Icon(
+              modifier = Modifier
+                .fillMaxSize()
+                .clipToBounds(),
+              imageVector = Icons.Outlined.Settings,
+              contentDescription = "Account",
+              tint = MaterialTheme.colorScheme.surfaceVariant
+            )
+          }
         }
-        Row(
-            modifier = Modifier.padding(15.dp),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = { Toast.makeText(context, "Notification", Toast.LENGTH_SHORT).show() }) {
-                Icon(
-                    modifier = Modifier.size((27.5).dp),
-                    imageVector = Icons.Outlined.Notifications,
-                    contentDescription = "Notification",
-                    tint = ColorHelper.getSurfaceIconTint()
-                )
-            }
-
-            val scope = rememberCoroutineScope()
-
-            IconButton(onClick = { scope.launch { toggleWallpaperSource(context) } }) {
-                Icon(
-                    modifier = Modifier.size((27.5).dp),
-                    imageVector = Icons.Outlined.Settings,
-                    contentDescription = "Settings",
-                    tint = ColorHelper.getSurfaceIconTint()
-                )
-            }
-        }
+      }
     }
+    Row(
+      modifier = Modifier.padding(15.dp),
+      horizontalArrangement = Arrangement.End,
+      verticalAlignment = Alignment.CenterVertically
+    ) {
+      IconButton(onClick = { Toast.makeText(context, "Notification", Toast.LENGTH_SHORT).show() }) {
+        Icon(
+          modifier = Modifier.size((27.5).dp),
+          imageVector = Icons.Outlined.Notifications,
+          contentDescription = "Notification",
+          tint = ColorHelper.getSurfaceIconTint()
+        )
+      }
+
+      val scope = rememberCoroutineScope()
+
+      IconButton(onClick = { scope.launch { toggleWallpaperSource(context) } }) {
+        Icon(
+          modifier = Modifier.size((27.5).dp),
+          imageVector = Icons.Outlined.Settings,
+          contentDescription = "Settings",
+          tint = ColorHelper.getSurfaceIconTint()
+        )
+      }
+    }
+  }
 }
 
-fun WallpaperSettings.Source.getToggled() = when(this) {
-    WallpaperSettings.Source.DEFAULT -> WallpaperSettings.Source.DEVICE_WALLPAPER
-    WallpaperSettings.Source.DEVICE_WALLPAPER -> WallpaperSettings.Source.MEDIA_ITEM
-    WallpaperSettings.Source.MEDIA_ITEM -> WallpaperSettings.Source.DEFAULT
+fun WallpaperSettings.Source.getToggled() = when (this) {
+  WallpaperSettings.Source.DEFAULT -> WallpaperSettings.Source.DEVICE_WALLPAPER
+  WallpaperSettings.Source.DEVICE_WALLPAPER -> WallpaperSettings.Source.MEDIA_ITEM
+  WallpaperSettings.Source.MEDIA_ITEM -> WallpaperSettings.Source.DEFAULT
 }
 
 suspend fun toggleWallpaperSource(context: Context) {
-    context.settingsDataStore.updateData {
-        val to = it.wallpaperSettings.source.getToggled()
-        it.copy(wallpaperSettings = it.wallpaperSettings.copy(source = to))
-    }
+  context.settingsDataStore.updateData {
+    val to = it.wallpaperSettings.source.getToggled()
+    it.copy(wallpaperSettings = it.wallpaperSettings.copy(source = to))
+  }
 }

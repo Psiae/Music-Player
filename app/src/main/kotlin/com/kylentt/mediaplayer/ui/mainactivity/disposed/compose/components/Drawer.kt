@@ -9,11 +9,11 @@ import androidx.compose.ui.Modifier
 
 @Composable
 fun HomeDrawer() {
-    Column(
-        modifier = Modifier
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .fillMaxHeight()
-    ) {
+  Column(
+    modifier = Modifier
+      .background(MaterialTheme.colorScheme.surfaceVariant)
+      .fillMaxHeight()
+  ) {
 
-    }
+  }
 }

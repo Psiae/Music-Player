@@ -294,12 +294,13 @@ internal class MediaIntentHandler(
         if (aa == bbb[bbb.lastIndex - 1]
           && ((aa.startsWith(start) && bb.startsWith(start)))
         ) {
-          Timber.d("maybeCheckDupe," +
-            "\n a = $a" +
-            "\n b = $b" +
-            "\n aa = $aa" +
-            "\n bb = $bb" +
-            "\n bbb = $bbb"
+          Timber.d(
+            "maybeCheckDupe," +
+              "\n a = $a" +
+              "\n b = $b" +
+              "\n aa = $aa" +
+              "\n bb = $bb" +
+              "\n bbb = $bbb"
           )
           return@withContext true
         }
@@ -470,30 +471,30 @@ internal class MediaIntentHandler(
     uri: Uri,
     checkStoragePrefix: Boolean
   ): Boolean = withContext(Dispatchers.IO) {
-      return@withContext try {
-        val uris = uri.toString()
-        if (BuildConfig.DEBUG) {
-          require(uris.isNotEmpty())
-          require(uris.startsWith(ContentProviders.contentScheme))
-        }
-        if (uris.containsAnyOf(listOf("/file", "/file:", "/file%3A"), true).not()) {
-          return@withContext false
-        }
-        val dUri = uris.decodeUrl()
-        val starting = uris.split("/")[4]
-        val dStarting = dUri.split("/")[4]
-        val file = ContentProviders.fileScheme
-        val storage = ContentProviders.DocumentProviders.storagePath.filter(Char::isLetter)
-        if (!checkStoragePrefix) {
-          starting.startsWith("$file%3A%2F%2F") || dStarting.startsWith("$file://")
-        } else {
-          starting.startsWith("$file%3A%2F%2F%2F$storage") || dStarting.startsWith("$file:///$storage")
-        }
-      } catch (e: Exception) {
-        Timber.e(e)
-        false
+    return@withContext try {
+      val uris = uri.toString()
+      if (BuildConfig.DEBUG) {
+        require(uris.isNotEmpty())
+        require(uris.startsWith(ContentProviders.contentScheme))
       }
+      if (uris.containsAnyOf(listOf("/file", "/file:", "/file%3A"), true).not()) {
+        return@withContext false
+      }
+      val dUri = uris.decodeUrl()
+      val starting = uris.split("/")[4]
+      val dStarting = dUri.split("/")[4]
+      val file = ContentProviders.fileScheme
+      val storage = ContentProviders.DocumentProviders.storagePath.filter(Char::isLetter)
+      if (!checkStoragePrefix) {
+        starting.startsWith("$file%3A%2F%2F") || dStarting.startsWith("$file://")
+      } else {
+        starting.startsWith("$file%3A%2F%2F%2F$storage") || dStarting.startsWith("$file:///$storage")
+      }
+    } catch (e: Exception) {
+      Timber.e(e)
+      false
     }
+  }
 
   // TODO fix some holes
   private suspend fun tryBuildPathFromFilePrefix(
@@ -553,9 +554,10 @@ internal class MediaIntentHandler(
             }
           }
         }
-        Timber.d("BuildingPathFromFileUri:" +
-          "\nbuilder = $builder" +
-          "\niterator = $s"
+        Timber.d(
+          "BuildingPathFromFileUri:" +
+            "\nbuilder = $builder" +
+            "\niterator = $s"
         )
       }
       check(builder.startsWith(storage))
@@ -677,11 +679,12 @@ sealed class ContentProviders {
         tries?.let { builder.append(it) }
           ?: builder.append(logUnknownProvider(context, uri))
 
-        Timber.d("getContentMediaUri uri = $uri" +
-          "\n2f = $split2F" +
-          "\n3a = $split3A" +
-          "\ntries = $tries" +
-          "\ndecoded uri: ${uris.decodeUrl()}"
+        Timber.d(
+          "getContentMediaUri uri = $uri" +
+            "\n2f = $split2F" +
+            "\n3a = $split3A" +
+            "\ntries = $tries" +
+            "\ndecoded uri: ${uris.decodeUrl()}"
         )
 
         if (builder.startsWith(storagePath)) {
@@ -793,35 +796,35 @@ sealed class ContentProviders {
       context: Context,
       uri: Uri
     ): String = withContext(Dispatchers.IO) {
-        try {
-          val builder = StringBuilder()
-          val c = context.contentResolver.query(uri, null, null, null, null)
-          c?.use {
-            it.moveToFirst()
-            for (i in 0 until it.columnCount) {
-              try {
-                val name = c.getColumnName(i)
-                val value = c.getString(i)
-                if (name == MediaStore.MediaColumns.DATA) builder.append(value)
-                Timber.d(
-                  "logProvider, i = $i, column = ${it.getColumnName(i)}, value ${
-                    it.getString(
-                      i
-                    )
-                  }"
-                )
-              } catch (e: Exception) {
-                Timber.e("Exception when looping Media Column: $e")
-              }
+      try {
+        val builder = StringBuilder()
+        val c = context.contentResolver.query(uri, null, null, null, null)
+        c?.use {
+          it.moveToFirst()
+          for (i in 0 until it.columnCount) {
+            try {
+              val name = c.getColumnName(i)
+              val value = c.getString(i)
+              if (name == MediaStore.MediaColumns.DATA) builder.append(value)
+              Timber.d(
+                "logProvider, i = $i, column = ${it.getColumnName(i)}, value ${
+                  it.getString(
+                    i
+                  )
+                }"
+              )
+            } catch (e: Exception) {
+              Timber.e("Exception when looping Media Column: $e")
             }
-            Timber.d("from uri: $uri")
           }
-          builder.toString()
-        } catch (e: Exception) {
-          Timber.e(e)
-          ""
+          Timber.d("from uri: $uri")
         }
+        builder.toString()
+      } catch (e: Exception) {
+        Timber.e(e)
+        ""
       }
+    }
 
     private fun getMediaAudioUri(
       context: Context,

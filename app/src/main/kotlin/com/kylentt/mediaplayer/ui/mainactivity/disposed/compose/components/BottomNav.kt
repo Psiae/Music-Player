@@ -17,140 +17,143 @@ import androidx.compose.ui.unit.dp
 import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.components.util.NoRipple
 import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.root.BottomNavigationItem
 import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.root.BottomNavigationRoute
-import com.kylentt.musicplayer.ui.activity.musicactivity.compose.theme.md3.AppTypography
-import com.kylentt.musicplayer.ui.activity.musicactivity.compose.theme.md3.ColorHelper
+import com.kylentt.musicplayer.ui.activity.musicactivity.acompose.theme.md3.AppTypography
+import com.kylentt.musicplayer.ui.activity.musicactivity.acompose.theme.md3.ColorHelper
 
 @Composable
 @Preview
 fun RootBottomNavPreview(
-    ripple: Boolean = false,
-    selected: String =  BottomNavigationRoute.routeList.shuffled()[0].route,
-    navigateTo: (String) -> Unit = { },
+  ripple: Boolean = false,
+  selected: String = BottomNavigationRoute.routeList.shuffled()[0].route,
+  navigateTo: (String) -> Unit = { },
 ) {
-    RootBottomNav(
-        ripple = ripple,
-        selectedRoute = selected,
-        navigateTo = navigateTo
-    )
+  RootBottomNav(
+    ripple = ripple,
+    selectedRoute = selected,
+    navigateTo = navigateTo
+  )
 }
 
 @Composable
 fun RootBottomNav(
-    ripple: Boolean,
-    selectedRoute: String,
-    navigateTo: (String) -> Unit,
+  ripple: Boolean,
+  selectedRoute: String,
+  navigateTo: (String) -> Unit,
 ) {
-    val screens = BottomNavigationRoute.routeList
-    Surface(
-        color = ColorHelper.getTonedSurface()
+  val screens = BottomNavigationRoute.routeList
+  Surface(
+    color = ColorHelper.getTonedSurface()
+  ) {
+    Box(
+      modifier = Modifier
+        .fillMaxWidth()
+        .navigationBarsPadding(),
+      contentAlignment = Alignment.CenterStart
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding(),
-            contentAlignment = Alignment.CenterStart
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 10.dp, bottom = 10.dp),
-                horizontalArrangement = Arrangement.SpaceAround,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                screens.forEach { item ->
-                    if (ripple) {
-                        RootBottomNavItem(
-                            item = item,
-                            isSelected = selectedRoute == item.route,
-                            onClick = navigateTo
-                        )
-                    } else NoRipple {
-                        RootBottomNavItem(
-                            item = item,
-                            isSelected = selectedRoute == item.route,
-                            onClick = navigateTo
-                        )
-                    }
-                }
-            }
+      Row(
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(top = 10.dp, bottom = 10.dp),
+        horizontalArrangement = Arrangement.SpaceAround,
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        screens.forEach { item ->
+          if (ripple) {
+            RootBottomNavItem(
+              item = item,
+              isSelected = selectedRoute == item.route,
+              onClick = navigateTo
+            )
+          } else NoRipple {
+            RootBottomNavItem(
+              item = item,
+              isSelected = selectedRoute == item.route,
+              onClick = navigateTo
+            )
+          }
         }
+      }
     }
+  }
 }
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RootBottomNavItem(
-    item: BottomNavigationItem,
-    isSelected: Boolean,
-    onClick: (String) -> Unit
+  item: BottomNavigationItem,
+  isSelected: Boolean,
+  onClick: (String) -> Unit
 ) {
-    val background = if (isSelected) {
-        MaterialTheme.colorScheme.secondaryContainer
-    } else Color.Transparent
+  val background = if (isSelected) {
+    MaterialTheme.colorScheme.secondaryContainer
+  } else Color.Transparent
 
-    val icon = if (isSelected) {
-        item.icon ?: item.imageVector()!!
-    } else item.outlinedIcon ?: item.imageVector()!!
+  val icon = if (isSelected) {
+    item.icon ?: item.imageVector()!!
+  } else item.outlinedIcon ?: item.imageVector()!!
 
-    val iconTint = if (isSelected) {
-        if (isSystemInDarkTheme()) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.75f).compositeOver(Color.White)
-    } else {
-        if (isSystemInDarkTheme()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f).compositeOver(Color.White)
-    }
+  val iconTint = if (isSelected) {
+    if (isSystemInDarkTheme()) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSecondaryContainer.copy(
+      alpha = 0.75f
+    ).compositeOver(Color.White)
+  } else {
+    if (isSystemInDarkTheme()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(
+      alpha = 0.25f
+    ).compositeOver(Color.White)
+  }
 
-    val textColor = if (isSelected) {
-        MaterialTheme.colorScheme.onSurface
-    } else MaterialTheme.colorScheme.onSurfaceVariant
+  val textColor = if (isSelected) {
+    MaterialTheme.colorScheme.onSurface
+  } else MaterialTheme.colorScheme.onSurfaceVariant
 
-    val route = item.route
-    
-    Card(
-        modifier = Modifier,
-        containerColor = background,
-        shape = CircleShape
+  val route = item.route
+
+  Card(
+    modifier = Modifier,
+    containerColor = background,
+    shape = CircleShape
+  ) {
+
+    Row(
+      modifier = Modifier
+        .clipToBounds()
+        .clickable(true, onClick = { onClick(route) })
+        .padding(start = 10.dp, top = 5.dp, bottom = 5.dp, end = 10.dp),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.Center
     ) {
-        
-        Row(
-            modifier = Modifier
-                .clipToBounds()
-                .clickable(true, onClick = { onClick(route) })
-                .padding(start = 10.dp, top = 5.dp, bottom = 5.dp, end = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
 
-            Icon(
-                modifier = Modifier.size(30.dp),
-                imageVector = icon,
-                contentDescription = item.title,
-                tint = iconTint
-            )
-            
-            Spacer(modifier = Modifier.width(2.dp))
+      Icon(
+        modifier = Modifier.size(30.dp),
+        imageVector = icon,
+        contentDescription = item.title,
+        tint = iconTint
+      )
 
-            AnimatedVisibility(visible = isSelected) {
-                Text(
-                    color = textColor,
-                    fontWeight = AppTypography.labelMedium.fontWeight,
-                    fontSize = AppTypography.bodyMedium.fontSize,
-                    fontStyle = AppTypography.labelMedium.fontStyle,
-                    lineHeight = AppTypography.labelMedium.lineHeight,
-                    text = item.title
-                )
-            }
-        }
+      Spacer(modifier = Modifier.width(2.dp))
+
+      AnimatedVisibility(visible = isSelected) {
+        Text(
+          color = textColor,
+          fontWeight = AppTypography.labelMedium.fontWeight,
+          fontSize = AppTypography.bodyMedium.fontSize,
+          fontStyle = AppTypography.labelMedium.fontStyle,
+          lineHeight = AppTypography.labelMedium.lineHeight,
+          text = item.title
+        )
+      }
     }
+  }
 }
-
 
 
 @Composable
 @Preview
 fun RBNItem1() {
-    RootBottomNavItem(
-        item = BottomNavigationItem.Home,
-        isSelected = true,
-        onClick = {}
-    )
+  RootBottomNavItem(
+    item = BottomNavigationItem.Home,
+    isSelected = true,
+    onClick = {}
+  )
 }

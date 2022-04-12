@@ -1,4 +1,5 @@
 package com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.theme.md3
+
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -9,37 +10,41 @@ import kotlin.math.ln
 
 object ColorUtil {
 
-    @Composable
-    fun getTonedSurface(el: Int = 2): Color {
-        val alpha = ((4.5f * ln((el).dp.value + 1)) + 2f) / 100f
-        val surface = MaterialTheme.colorScheme.surface
-        val primary = MaterialTheme.colorScheme.primary
-        return primary.copy(alpha = alpha).compositeOver(surface)
-    }
+  @Composable
+  fun getTonedSurface(el: Int = 2): Color {
+    val alpha = ((4.5f * ln((el).dp.value + 1)) + 2f) / 100f
+    val surface = MaterialTheme.colorScheme.surface
+    val primary = MaterialTheme.colorScheme.primary
+    return primary.copy(alpha = alpha).compositeOver(surface)
+  }
 }
 
 object DefaultColor {
 
-    val black = Color(0xFF000000)
-    val white = Color(0xFFFFFFFF)
+  val black = Color(0xFF000000)
+  val white = Color(0xFFFFFFFF)
 
-    val lightText = Color(0xFFFFFFFF)
-    val darkText = Color(0xFF0A0A0A)
+  val lightText = Color(0xFFFFFFFF)
+  val darkText = Color(0xFF0A0A0A)
 
-    val darkThemeBackground = Color(0xFF0F0F0F)
-    val lightThemeBackground = white
+  val darkThemeBackground = Color(0xFF0F0F0F)
+  val lightThemeBackground = white
 
-    val Icon1 = Color(0xFFC5E3F6)
-    val Icon2 = Color(0xFFFC5C9C)
+  val Icon1 = Color(0xFFC5E3F6)
+  val Icon2 = Color(0xFFFC5C9C)
 
-    @Composable
-    fun getBlack20(): Color = Color.Black.copy(alpha = 0.20f)
-    @Composable
-    fun getDNBackground(): Color = if (isSystemInDarkTheme()) darkThemeBackground else lightThemeBackground
-    @Composable
-    fun getDNTextColor(): Color = if (isSystemInDarkTheme()) lightText else darkText
-    @Composable
-    fun getSurfaceIconTint(): Color = MaterialTheme.colorScheme.onSurface
+  @Composable
+  fun getBlack20(): Color = Color.Black.copy(alpha = 0.20f)
+
+  @Composable
+  fun getDNBackground(): Color =
+    if (isSystemInDarkTheme()) darkThemeBackground else lightThemeBackground
+
+  @Composable
+  fun getDNTextColor(): Color = if (isSystemInDarkTheme()) lightText else darkText
+
+  @Composable
+  fun getSurfaceIconTint(): Color = MaterialTheme.colorScheme.onSurface
 
 }
 
@@ -98,7 +103,6 @@ val md_theme_dark_inverseOnSurface = Color(0xFF191c1d)
 val md_theme_dark_inverseSurface = Color(0xFFe0e3e3)
 val md_theme_dark_inversePrimary = Color(0xFF006685)
 val md_theme_dark_shadow = Color(0xFF000000)
-
 
 
 val seed = Color(0xFF6750A4)

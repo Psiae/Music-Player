@@ -13,10 +13,10 @@ import dagger.hilt.android.scopes.ServiceScoped
 @InstallIn(ServiceComponent::class)
 object MediaServiceModule {
 
-    @ServiceScoped
-    @Provides
-    fun provideExoPlayer(
-        @ApplicationContext context: Context
-    ) = with(ExoUtil) { newExo(context, defaultAttr()) }
+  @ServiceScoped
+  @Provides
+  fun provideExoPlayer(
+    @ApplicationContext context: Context
+  ) = with(ExoUtil) { newExo(context, defaultAttr()) }
 
 }

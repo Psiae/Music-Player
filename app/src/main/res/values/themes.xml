@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-    <!-- Will try to empty xml's just move them to .kt somehow -->
+<!-- Will try to empty xml's just move them to .kt somehow -->
 
 <resources>
+
     <style name="Theme.MediaPlayer" parent="android:Theme.Material.Light.NoActionBar">
 
     </style>

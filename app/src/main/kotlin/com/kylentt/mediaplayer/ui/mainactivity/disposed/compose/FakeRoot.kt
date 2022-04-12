@@ -11,7 +11,10 @@ import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.screen.home.Fake
 fun FakeRoot() {
     RootScaffold(
         bottomBar = {
-            RootBottomNav(ripple = true, selectedRoute = BottomNavigationRoute.routeList[0].route, navigateTo = {})
+            RootBottomNav(
+                ripple = true,
+                selectedRoute = BottomNavigationRoute.routeList[0].route,
+                navigateTo = {})
         }, containerColor = MaterialTheme.colorScheme.surface
     ) {
         FakeHomeScreen()

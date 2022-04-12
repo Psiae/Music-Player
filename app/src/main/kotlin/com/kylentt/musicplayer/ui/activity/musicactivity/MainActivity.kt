@@ -18,8 +18,8 @@ import com.kylentt.musicplayer.ui.activity.helper.IntentWrapper
 import com.kylentt.musicplayer.ui.activity.helper.IntentWrapper.Companion.EMPTY
 import com.kylentt.musicplayer.ui.activity.helper.IntentWrapper.Companion.isEmpty
 import com.kylentt.musicplayer.ui.activity.helper.IntentWrapper.Companion.wrap
-import com.kylentt.musicplayer.ui.activity.musicactivity.compose.MusicComposeDefault
-import com.kylentt.musicplayer.ui.activity.musicactivity.compose.theme.md3.MaterialTheme3
+import com.kylentt.musicplayer.ui.activity.musicactivity.acompose.MusicComposeDefault
+import com.kylentt.musicplayer.ui.activity.musicactivity.acompose.theme.md3.MaterialTheme3
 import com.kylentt.musicplayer.ui.preferences.AppSettings
 import com.kylentt.musicplayer.ui.preferences.AppState
 import dagger.hilt.android.AndroidEntryPoint

@@ -16,22 +16,22 @@ package com.kylentt.mediaplayer.core.util.ext
 // Todos
 // TODO: Make this app has `Flow` & smooth like feeling :)
 // TODO: Separate Controller. UI & Presenter use MediaController. Service use Scoped ExoPlayer
-    // In case Presenter must command ExoPlayer directly, should be done via broadcast.
-    // control such as setMediaItems must be done via Controller, however if its not possible
-    // then can be done through lambda listener but broadcast is a must to access service
+// In case Presenter must command ExoPlayer directly, should be done via broadcast.
+// control such as setMediaItems must be done via Controller, however if its not possible
+// then can be done through lambda listener but broadcast is a must to access service
 // TODO: Find Applicable MediaBrowser use case
-    // Might not be Implemented until Remote Source is Implemented
+// Might not be Implemented until Remote Source is Implemented
 // TODO: Remote Downloadable Source ( no Streaming for now, but will be implemented for myself )
-    // Because of Firebase Storage Daily Limitation, Unless someone gimme money ofc
+// Because of Firebase Storage Daily Limitation, Unless someone gimme money ofc
 // TODO: Make Command go one place then decouple if necessary
 // TODO: Make Customizable Queue
-    // Since both UI & Exoplayer use MediaItems this should be possible with smooth transition
+// Since both UI & Exoplayer use MediaItems this should be possible with smooth transition
 // TODO: PlayerWrapper sync fix
-    // Idk what might be causing it so wait for further Media3 release for now
+// Idk what might be causing it so wait for further Media3 release for now
 // TODO: Handle Intent Filter
-    // Handle Intent when user want to use this App as Media Player
+// Handle Intent when user want to use this App as Media Player
 // TODO: Handle other app provider & make my own
-    // Handle Uri provider from Intent, especially those custom one such as ColorOS
+// Handle Uri provider from Intent, especially those custom one such as ColorOS
 
 // Idk, but useful
 

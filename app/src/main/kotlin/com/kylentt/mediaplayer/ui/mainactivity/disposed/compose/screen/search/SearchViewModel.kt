@@ -13,17 +13,17 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SearchViewModel @Inject constructor(
-    val mediaStore: MediaStoreSource
+  val mediaStore: MediaStoreSource
 ) : ViewModel() {
 
-    private val _songList = MutableStateFlow(listOf<Song>())
-    val songList get() = _songList.asStateFlow()
+  private val _songList = MutableStateFlow(listOf<Song>())
+  val songList get() = _songList.asStateFlow()
 
-    init {
-        viewModelScope.launch {
-            mediaStore.getMediaStoreSong().collect {
-                _songList.value = it
-            }
-        }
+  init {
+    viewModelScope.launch {
+      mediaStore.getMediaStoreSong().collect {
+        _songList.value = it
+      }
     }
+  }
 }

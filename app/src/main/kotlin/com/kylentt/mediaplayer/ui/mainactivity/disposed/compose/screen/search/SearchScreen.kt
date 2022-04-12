@@ -12,28 +12,28 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.components.util.StatusBarSpacer
-import com.kylentt.musicplayer.ui.activity.musicactivity.compose.theme.md3.ColorHelper
+import com.kylentt.musicplayer.ui.activity.musicactivity.acompose.theme.md3.ColorHelper
 import timber.log.Timber
 
 @Composable
 fun SearchScreen(
-    vm: SearchViewModel = hiltViewModel()
+  vm: SearchViewModel = hiltViewModel()
 ) {
-    Timber.d("ComposeDebug SearchScreen")
-    val songList by vm.songList.collectAsState()
-    val textColor = ColorHelper.getDNTextColor()
+  Timber.d("ComposeDebug SearchScreen")
+  val songList by vm.songList.collectAsState()
+  val textColor = ColorHelper.getDNTextColor()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        StatusBarSpacer()
-        Text(text = "Search Screen", color = textColor)
-        Text(text = "Local Song Found: ${songList.size}", color = textColor)
-        Spacer(modifier = Modifier.height(1000.dp))
-        Text(text = "End Of Column", color = textColor)
-    }
+  Column(
+    modifier = Modifier
+      .fillMaxSize()
+      .verticalScroll(rememberScrollState()),
+    verticalArrangement = Arrangement.Center,
+    horizontalAlignment = Alignment.CenterHorizontally
+  ) {
+    StatusBarSpacer()
+    Text(text = "Search Screen", color = textColor)
+    Text(text = "Local Song Found: ${songList.size}", color = textColor)
+    Spacer(modifier = Modifier.height(1000.dp))
+    Text(text = "End Of Column", color = textColor)
+  }
 }

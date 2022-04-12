@@ -106,7 +106,8 @@ internal fun RootNavigation(
         val context = LocalContext.current
         if (PermissionHelper.checkStoragePermission(context) && navWallpaper) {
             Timber.d("ComposeDebug RootScaffold Content")
-            val currentIndex = BottomNavigationRoute.routeList.map { it.route }.indexOf(state.value?.destination?.route)
+            val currentIndex = BottomNavigationRoute.routeList.map { it.route }
+                .indexOf(state.value?.destination?.route)
             val wps = remember {
                 mutableStateOf(0)
             }
@@ -142,12 +143,12 @@ internal fun NavWallpaper(
     val wpx = with(density) { LocalConfiguration.current.screenWidthDp.dp.toPx() }
 
     val itemBitmap = remember { vm.itemBitmap }
-    val wm = remember(context) { WallpaperManager.getInstance(context)}
+    val wm = remember(context) { WallpaperManager.getInstance(context) }
     val wmD = remember(wm.drawable) { wm.drawable.toBitmap() }
 
     val navSettings = settings.wallpaperSettings
     val alt = navSettings.sourceAlternative
-    val data = when(navSettings.source) {
+    val data = when (navSettings.source) {
         DEFAULT -> null
         DEVICE_WALLPAPER -> wmD
         MEDIA_ITEM -> itemBitmap.value.bitmap
@@ -178,9 +179,11 @@ internal fun NavWallpaper(
                 when {
                     (data?.height ?: 0).toFloat() < hpx -> ContentScale.FillHeight
                     (data?.width ?: 0).toFloat() < hpx -> ContentScale.FillWidth
-                    else -> { ContentScale.None }
+                    else -> {
+                        ContentScale.None
+                    }
                 }
-            } else  {
+            } else {
                 ContentScale.Crop
             }
         }
@@ -199,12 +202,15 @@ internal fun NavWallpaper(
     )
 
     LaunchedEffect(current) {
-        val value = (current.toFloat() / (size -1) * (scrollState.maxValue)).toInt()
-        scrollState.animateScrollTo(value, animationSpec = SpringSpec(stiffness = Spring.StiffnessLow))
+        val value = (current.toFloat() / (size - 1) * (scrollState.maxValue)).toInt()
+        scrollState.animateScrollTo(
+            value,
+            animationSpec = SpringSpec(stiffness = Spring.StiffnessLow)
+        )
     }
 
     LaunchedEffect(scrollState.maxValue) {
-        val value = (current.toFloat() / (size -1) * (scrollState.maxValue)).toInt()
+        val value = (current.toFloat() / (size - 1) * (scrollState.maxValue)).toInt()
         scrollState.scrollTo(value)
     }
 

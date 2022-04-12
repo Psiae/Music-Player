@@ -13,19 +13,19 @@ import javax.inject.Inject
 
 @HiltViewModel
 internal class HomeViewModel @Inject constructor(
-    private val manager: MediaSessionManager
+  private val manager: MediaSessionManager
 ) : ViewModel() {
 
-    val playerItemState = mutableStateOf<MediaItem>(MediaItem.EMPTY)
-    val playerPlaybackState = mutableStateOf<PlaybackState>(PlaybackState.UNIT)
+  val playerItemState = mutableStateOf<MediaItem>(MediaItem.EMPTY)
+  val playerPlaybackState = mutableStateOf<PlaybackState>(PlaybackState.UNIT)
 
-    init {
-        viewModelScope.launch {
-            manager.itemState.collect { playerItemState.value = it }
-        }
-        viewModelScope.launch {
-            manager.playbackState.collect { playerPlaybackState.value = it }
-        }
+  init {
+    viewModelScope.launch {
+      manager.itemState.collect { playerItemState.value = it }
     }
+    viewModelScope.launch {
+      manager.playbackState.collect { playerPlaybackState.value = it }
+    }
+  }
 
 }

@@ -45,233 +45,243 @@ import kotlin.system.exitProcess
 @AndroidEntryPoint
 internal class MusicService : MediaLibraryService() {
 
-    @Inject
-    lateinit var exo: ExoPlayer
-    @Inject
-    lateinit var coilHandler: CoilHandler
-    @Inject
-    lateinit var mediaItemHandler: MediaItemHelper
-    @Inject
-    lateinit var mediaSessionManager: MediaSessionManager
+  @Inject
+  lateinit var exo: ExoPlayer
 
-    lateinit var exoController: ExoController
+  @Inject
+  lateinit var coilHandler: CoilHandler
 
-    private lateinit var libSession: MediaLibrarySession
+  @Inject
+  lateinit var mediaItemHandler: MediaItemHelper
 
-    private val playbackReceiver = PlaybackReceiver()
+  @Inject
+  lateinit var mediaSessionManager: MediaSessionManager
 
-    var isForegroundService = false
+  lateinit var exoController: ExoController
 
-    val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+  private lateinit var libSession: MediaLibrarySession
 
-    /*override fun onUpdateNotification(session: MediaSession): MediaNotification? {
-        return null
-    }*/
+  private val playbackReceiver = PlaybackReceiver()
 
-    override fun onCreate() {
-        super.onCreate()
-        validateCreation()
+  var isForegroundService = false
 
-        Timber.d("$TAG onCreate")
-        initializeSession()
-        registerReceiver()
-        setMediaNotificationProvider(NotifProvider { controller: MediaController, callback ->
-            MediaNotification(NOTIFICATION_ID,exoController.getNotification(controller, callback))
-        })
+  val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+
+  /*override fun onUpdateNotification(session: MediaSession): MediaNotification? {
+      return null
+  }*/
+
+  override fun onCreate() {
+    super.onCreate()
+    validateCreation()
+
+    Timber.d("$TAG onCreate")
+    initializeSession()
+    registerReceiver()
+    setMediaNotificationProvider(NotifProvider { controller: MediaController, callback ->
+      MediaNotification(NOTIFICATION_ID, exoController.getNotification(controller, callback))
+    })
+  }
+
+  private fun validateCreation() {
+    if (mediaSessionManager.serviceState.value is MediaServiceState.UNIT) {
+      if (!MainActivity.isAlive) {
+        exitProcess(0)
+      }
+      stopForeground(true)
+      stopSelf()
+      releaseSession()
+    }
+  }
+
+  private fun initializeSession() {
+    libSession = makeLibrarySession(makeActivityIntent()!!)
+    isActive = true
+  }
+
+  private fun makeActivityIntent() = packageManager?.getLaunchIntentForPackage(packageName)?.let {
+    PendingIntent.getActivity(
+      this,
+      444,
+      it,
+      PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
+  }
+
+  private fun registerReceiver() =
+    registerReceiver(playbackReceiver, IntentFilter(PLAYBACK_INTENT))
+
+  private fun makeLibrarySession(
+    intent: PendingIntent
+  ) = MediaLibrarySession.Builder(this, exo, SessionCallback())
+    .setId(MEDIA_SESSION_ID)
+    .setSessionActivity(intent)
+    .setMediaItemFiller(RepoItemFiller())
+    .build()
+
+  override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? {
+    Timber.d("$TAG onGetSession")
+    return libSession!!
+  }
+
+  inner class SessionCallback : MediaLibrarySession.MediaLibrarySessionCallback {
+    override fun onConnect(
+      session: MediaSession,
+      controller: MediaSession.ControllerInfo,
+    ): MediaSession.ConnectionResult {
+      Timber.d("MusicService onConnect")
+      // any exception here just Log.w()'d
+      exoController = ExoController.getInstance(this@MusicService, session)
+      return super.onConnect(session, controller)
     }
 
-    private fun validateCreation() {
-        if (mediaSessionManager.serviceState.value is MediaServiceState.UNIT) {
-            if (!MainActivity.isAlive) {
-                exitProcess(0)
-            }
-            stopForeground(true)
-            stopSelf()
-            releaseSession()
-        }
+    override fun onPostConnect(session: MediaSession, controller: MediaSession.ControllerInfo) {
+      Timber.d("MusicService onPostConnect")
+      super.onPostConnect(session, controller)
     }
 
-    private fun initializeSession() {
-        libSession = makeLibrarySession(makeActivityIntent()!!)
-        isActive = true
+    override fun onDisconnected(
+      session: MediaSession,
+      controller: MediaSession.ControllerInfo,
+    ) {
+      Timber.d("MusicService onDisconnected")
+      super.onDisconnected(session, controller)
     }
 
-    private fun makeActivityIntent() = packageManager?.getLaunchIntentForPackage(packageName)?.let {
-        PendingIntent.getActivity(this, 444, it, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+    override fun onCustomCommand(
+      session: MediaSession,
+      controller: MediaSession.ControllerInfo,
+      customCommand: SessionCommand,
+      args: Bundle,
+    ): ListenableFuture<SessionResult> {
+      Timber.d("ExoController ${customCommand.customAction} onCustomCommand")
+      return super.onCustomCommand(session, controller, customCommand, args)
     }
+  }
 
-    private fun registerReceiver() =
-        registerReceiver(playbackReceiver, IntentFilter(PLAYBACK_INTENT))
+  inner class RepoItemFiller : MediaSession.MediaItemFiller {
+    override fun fillInLocalConfiguration(
+      session: MediaSession,
+      controller: MediaSession.ControllerInfo,
+      mediaItem: MediaItem,
+    ): MediaItem = with(mediaItemHandler) { mediaItem.rebuild() }
+  }
 
-    private fun makeLibrarySession(
-        intent: PendingIntent
-    ) = MediaLibrarySession.Builder(this, exo, SessionCallback())
-        .setId(MEDIA_SESSION_ID)
-        .setSessionActivity(intent)
-        .setMediaItemFiller(RepoItemFiller())
-        .build()
+  inner class PlaybackReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context?, intent: Intent?) {
 
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? {
-        Timber.d("$TAG onGetSession")
-        return libSession!!
-    }
+      Timber.d("onReceive BroadcastReceiver")
 
-    inner class SessionCallback : MediaLibrarySession.MediaLibrarySessionCallback {
-        override fun onConnect(
-            session: MediaSession,
-            controller: MediaSession.ControllerInfo,
-        ): MediaSession.ConnectionResult {
-            Timber.d("MusicService onConnect")
-            // any exception here just Log.w()'d
-            exoController = ExoController.getInstance(this@MusicService, session)
-            return super.onConnect(session, controller)
-        }
-
-        override fun onPostConnect(session: MediaSession, controller: MediaSession.ControllerInfo) {
-            Timber.d("MusicService onPostConnect")
-            super.onPostConnect(session, controller)
-        }
-
-        override fun onDisconnected(
-            session: MediaSession,
-            controller: MediaSession.ControllerInfo,
-        ) {
-            Timber.d("MusicService onDisconnected")
-            super.onDisconnected(session, controller)
-        }
-
-        override fun onCustomCommand(
-            session: MediaSession,
-            controller: MediaSession.ControllerInfo,
-            customCommand: SessionCommand,
-            args: Bundle,
-        ): ListenableFuture<SessionResult> {
-            Timber.d("ExoController ${customCommand.customAction} onCustomCommand")
-            return super.onCustomCommand(session, controller, customCommand, args)
-        }
-    }
-
-    inner class RepoItemFiller : MediaSession.MediaItemFiller {
-        override fun fillInLocalConfiguration(
-            session: MediaSession,
-            controller: MediaSession.ControllerInfo,
-            mediaItem: MediaItem,
-        ): MediaItem = with(mediaItemHandler) { mediaItem.rebuild() }
-    }
-
-    inner class PlaybackReceiver: BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-
-            Timber.d("onReceive BroadcastReceiver")
-
-            when (intent?.getStringExtra("ACTION")) {
-                ACTION_NEXT -> exoController.commandController(
-                    ControllerCommand.CommandWithFade(ControllerCommand.SkipToNext, false)
-                )
-                ACTION_PREV -> exoController.commandController(
-                    ControllerCommand.CommandWithFade(ControllerCommand.SkipToPrevMedia, false)
-                )
-                ACTION_PLAY -> exoController.commandController(
-                    ControllerCommand.SetPlayWhenReady(true)
-                )
-                ACTION_PAUSE -> exoController.commandController(
-                    ControllerCommand.SetPlayWhenReady(false)
-                )
-                ACTION_REPEAT_OFF_TO_ONE -> exoController.commandController(
-                    ControllerCommand.SetRepeatMode(Player.REPEAT_MODE_ONE)
-                )
-                ACTION_REPEAT_ONE_TO_ALL -> exoController.commandController(
-                    ControllerCommand.SetRepeatMode(Player.REPEAT_MODE_ALL)
-                )
-                ACTION_REPEAT_ALL_TO_OFF -> exoController.commandController(
-                    ControllerCommand.SetRepeatMode(Player.REPEAT_MODE_OFF)
-                )
-                ACTION_CANCEL -> {
-                    handleActionCancelDefault()
-                }
-            }
-            when (intent?.getStringExtra("SESSION")) {
-                NEW_SESSION_PLAYER -> {
-                    libSession?.let {
-                        newSessionPlayer(it, false)
-                    }
-                }
-                NEW_SESSION_PLAYER_RECOVER -> {
-                    libSession?.let {
-                        newSessionPlayer(it, true)
-                    }
-                }
-            }
-        }
-    }
-
-    fun handleActionCancelDefault() {
-        exoController.commandController(
-            ControllerCommand.CommandWithFade(ControllerCommand.StopCancel {
-                libSession?.let {
-                    considerReleasing(it)
-                }
-            }, flush = true)
+      when (intent?.getStringExtra("ACTION")) {
+        ACTION_NEXT -> exoController.commandController(
+          ControllerCommand.CommandWithFade(ControllerCommand.SkipToNext, false)
         )
-    }
-
-    private fun newSessionPlayer(session: MediaSession, recover: Boolean = true) {
-        val context = this
-        with(ExoUtil) {
-            synchronized(playbackReceiver) {
-                val p = session.player as ExoPlayer
-                val new = newExo(context)
-                if (recover) { new.copyFrom(p, seekToi = true, seekToPos = true) }
-                p.release()
-                session.player = new
-                ExoController.updateSession(session)
-            }
+        ACTION_PREV -> exoController.commandController(
+          ControllerCommand.CommandWithFade(ControllerCommand.SkipToPrevMedia, false)
+        )
+        ACTION_PLAY -> exoController.commandController(
+          ControllerCommand.SetPlayWhenReady(true)
+        )
+        ACTION_PAUSE -> exoController.commandController(
+          ControllerCommand.SetPlayWhenReady(false)
+        )
+        ACTION_REPEAT_OFF_TO_ONE -> exoController.commandController(
+          ControllerCommand.SetRepeatMode(Player.REPEAT_MODE_ONE)
+        )
+        ACTION_REPEAT_ONE_TO_ALL -> exoController.commandController(
+          ControllerCommand.SetRepeatMode(Player.REPEAT_MODE_ALL)
+        )
+        ACTION_REPEAT_ALL_TO_OFF -> exoController.commandController(
+          ControllerCommand.SetRepeatMode(Player.REPEAT_MODE_OFF)
+        )
+        ACTION_CANCEL -> {
+          handleActionCancelDefault()
         }
-    }
-
-    // there's no need to release the Player, just playing around
-    private fun considerReleasing(session: MediaLibrarySession) {
-        Timber.d("MusicService considerRelease called")
-        if (!MainActivity.isAlive) {
-            releaseSession()
-            Timber.d("MusicService considerRelease released, reason = MainActivity.isActive == ${MainActivity.isAlive}")
-        } else {
-            Timber.d("MusicService considerRelease not released, reason = MainActivity.isActive == ${MainActivity.isAlive}, resetting Player")
-            sendBroadcast(
-                Intent(PLAYBACK_INTENT).apply {
-                    putExtra("SESSION", NEW_SESSION_PLAYER_RECOVER)
-                    setPackage(packageName)
-                }
-            )
+      }
+      when (intent?.getStringExtra("SESSION")) {
+        NEW_SESSION_PLAYER -> {
+          libSession?.let {
+            newSessionPlayer(it, false)
+          }
         }
-    }
-
-    private fun releaseSession() {
-        Timber.d("$TAG releaseSession")
-        if (::exoController.isInitialized) ExoController.releaseInstance(exoController)
-        unregisterReceiver(playbackReceiver)
-        stopForeground(true).also { isForegroundService = false }
-        stopSelf()
-
-    }
-
-    override fun onDestroy() {
-        Timber.d("$TAG onDestroy")
-        serviceScope.cancel()
-        this.sessions.forEach { it.release() }
-        if (::libSession.isInitialized) {
-            libSession.player.release()
-            libSession.release()
+        NEW_SESSION_PLAYER_RECOVER -> {
+          libSession?.let {
+            newSessionPlayer(it, true)
+          }
         }
-        super.onDestroy()
-
-        // for whatever reason MediaLibrarySessionImpl is leaking this service context?
-        if (MainActivity.isAlive.not()) exitProcess(0)
+      }
     }
+  }
 
-    companion object {
-        val TAG: String = MusicService::class.simpleName ?: "Music Service"
-        var isActive = false
-            private set
+  fun handleActionCancelDefault() {
+    exoController.commandController(
+      ControllerCommand.CommandWithFade(ControllerCommand.StopCancel {
+        libSession?.let {
+          considerReleasing(it)
+        }
+      }, flush = true)
+    )
+  }
+
+  private fun newSessionPlayer(session: MediaSession, recover: Boolean = true) {
+    val context = this
+    with(ExoUtil) {
+      synchronized(playbackReceiver) {
+        val p = session.player as ExoPlayer
+        val new = newExo(context)
+        if (recover) {
+          new.copyFrom(p, seekToi = true, seekToPos = true)
+        }
+        p.release()
+        session.player = new
+        ExoController.updateSession(session)
+      }
     }
+  }
+
+  // there's no need to release the Player, just playing around
+  private fun considerReleasing(session: MediaLibrarySession) {
+    Timber.d("MusicService considerRelease called")
+    if (!MainActivity.isAlive) {
+      releaseSession()
+      Timber.d("MusicService considerRelease released, reason = MainActivity.isActive == ${MainActivity.isAlive}")
+    } else {
+      Timber.d("MusicService considerRelease not released, reason = MainActivity.isActive == ${MainActivity.isAlive}, resetting Player")
+      sendBroadcast(
+        Intent(PLAYBACK_INTENT).apply {
+          putExtra("SESSION", NEW_SESSION_PLAYER_RECOVER)
+          setPackage(packageName)
+        }
+      )
+    }
+  }
+
+  private fun releaseSession() {
+    Timber.d("$TAG releaseSession")
+    if (::exoController.isInitialized) ExoController.releaseInstance(exoController)
+    unregisterReceiver(playbackReceiver)
+    stopForeground(true).also { isForegroundService = false }
+    stopSelf()
+
+  }
+
+  override fun onDestroy() {
+    Timber.d("$TAG onDestroy")
+    serviceScope.cancel()
+    this.sessions.forEach { it.release() }
+    if (::libSession.isInitialized) {
+      libSession.player.release()
+      libSession.release()
+    }
+    super.onDestroy()
+
+    // for whatever reason MediaLibrarySessionImpl is leaking this service context?
+    if (MainActivity.isAlive.not()) exitProcess(0)
+  }
+
+  companion object {
+    val TAG: String = MusicService::class.simpleName ?: "Music Service"
+    var isActive = false
+      private set
+  }
 }

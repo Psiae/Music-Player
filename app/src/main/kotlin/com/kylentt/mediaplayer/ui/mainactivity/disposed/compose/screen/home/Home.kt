@@ -16,61 +16,61 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.kylentt.mediaplayer.core.util.handler.getDisplayTitle
 import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.components.HomeAppBar
 import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.components.util.StatusBarSpacer
-import com.kylentt.musicplayer.ui.activity.musicactivity.compose.theme.md3.ColorHelper
+import com.kylentt.musicplayer.ui.activity.musicactivity.acompose.theme.md3.ColorHelper
 import timber.log.Timber
 
 @Composable
 internal fun HomeScreen(
-    vm: HomeViewModel = hiltViewModel(),
+  vm: HomeViewModel = hiltViewModel(),
 ) {
-    val currentlyPlaying by remember { vm.playerItemState }
-    val currentPlayState by remember { vm.playerPlaybackState }
-    val textColor = ColorHelper.getDNTextColor()
+  val currentlyPlaying by remember { vm.playerItemState }
+  val currentPlayState by remember { vm.playerPlaybackState }
+  val textColor = ColorHelper.getDNTextColor()
 
-    Timber.d("ComposeDebug HomeScreen")
+  Timber.d("ComposeDebug HomeScreen")
 
-    HomeScreenLayout(
-        textColor = textColor,
-        currentlyPlaying = currentlyPlaying.getDisplayTitle,
-        currentlyPlayingState = currentPlayState.toStrState()
-    )
+  HomeScreenLayout(
+    textColor = textColor,
+    currentlyPlaying = currentlyPlaying.getDisplayTitle,
+    currentlyPlayingState = currentPlayState.toStrState()
+  )
 }
 
 @Composable
 fun HomeScreenLayout(
-    textColor: Color = MaterialTheme.colorScheme.onSurface,
-    currentlyPlaying: CharSequence? = "My Song",
-    currentlyPlayingState: String = "State Unit",
+  textColor: Color = MaterialTheme.colorScheme.onSurface,
+  currentlyPlaying: CharSequence? = "My Song",
+  currentlyPlayingState: String = "State Unit",
 ) {
 
-    Timber.d("ComposeDebug HomeScreenLayout")
+  Timber.d("ComposeDebug HomeScreenLayout")
 
-    val scroll = rememberScrollState()
+  val scroll = rememberScrollState()
+  Column(
+    modifier = Modifier
+      .fillMaxSize()
+      .verticalScroll(state = scroll),
+    verticalArrangement = Arrangement.Top,
+    horizontalAlignment = Alignment.CenterHorizontally
+  ) {
+    StatusBarSpacer()
+    HomeAppBar()
+    HomeBarCardSpacer()
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(state = scroll),
-        verticalArrangement = Arrangement.Top,
-        horizontalAlignment = Alignment.CenterHorizontally
+      modifier = Modifier,
+      verticalArrangement = Arrangement.Center,
+      horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        StatusBarSpacer()
-        HomeAppBar()
-        HomeBarCardSpacer()
-        Column(
-            modifier = Modifier,
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(text = "Home Screen", color = textColor)
-            Text(text = "Currently Playing: $currentlyPlaying", color = textColor)
-            Text(text = "Currently Playing State: $currentlyPlayingState", color = textColor)
-        }
-        Spacer(modifier = Modifier.height(1000.dp))
-        Text(text = "END OF COLUMN")
+      Text(text = "Home Screen", color = textColor)
+      Text(text = "Currently Playing: $currentlyPlaying", color = textColor)
+      Text(text = "Currently Playing State: $currentlyPlayingState", color = textColor)
     }
+    Spacer(modifier = Modifier.height(1000.dp))
+    Text(text = "END OF COLUMN")
+  }
 }
 
 @Composable
 fun HomeBarCardSpacer() {
-    Spacer(modifier = Modifier.height(15.dp))
+  Spacer(modifier = Modifier.height(15.dp))
 }

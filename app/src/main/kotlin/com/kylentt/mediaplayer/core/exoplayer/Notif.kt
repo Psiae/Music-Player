@@ -9,23 +9,23 @@ import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants
 import timber.log.Timber
 
 class NotifProvider(
-    private val notif: ((controller: MediaController, callback: MediaNotification.Provider.Callback) -> MediaNotification)
+  private val notif: ((controller: MediaController, callback: MediaNotification.Provider.Callback) -> MediaNotification)
 ) : MediaNotification.Provider {
 
-    // Handle Notification myself
-    override fun createNotification(
-        mediaController: MediaController,
-        actionFactory: MediaNotification.ActionFactory,
-        onNotificationChangedCallback: MediaNotification.Provider.Callback,
-    ): MediaNotification {
-        Timber.d("NotificationProvider createNotification")
-        return notif(mediaController, onNotificationChangedCallback)
-    }
+  // Handle Notification myself
+  override fun createNotification(
+    mediaController: MediaController,
+    actionFactory: MediaNotification.ActionFactory,
+    onNotificationChangedCallback: MediaNotification.Provider.Callback,
+  ): MediaNotification {
+    Timber.d("NotificationProvider createNotification")
+    return notif(mediaController, onNotificationChangedCallback)
+  }
 
-    // This method wasn't called for some reason
-    override fun handleCustomAction(
-        mediaController: MediaController,
-        action: String,
-        extras: Bundle,
-    ) = Unit
+  // This method wasn't called for some reason
+  override fun handleCustomAction(
+    mediaController: MediaController,
+    action: String,
+    extras: Bundle,
+  ) = Unit
 }

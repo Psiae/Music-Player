@@ -62,7 +62,7 @@ android {
     sourceSets.all {
         kotlin.srcDir("src/$name/kotlin")
     }
-    sourceSets{
+    sourceSets {
         main.java.srcDirs += 'src/main/kotlin'
     }
 }
@@ -113,7 +113,7 @@ dependencies {
         implementation "androidx.compose.material3:material3:1.0.0-alpha08"
         implementation "androidx.navigation:navigation-compose:$composeNavigation"
     }
-    
+
     // Debugging
     dependencies {
         implementation 'com.jakewharton.timber:timber:5.0.1'

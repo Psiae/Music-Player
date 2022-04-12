@@ -13,20 +13,20 @@ import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.components.util.
 
 @Composable
 fun FakeHomeScreen() {
-    FakeHomeScreenLayout()
+  FakeHomeScreenLayout()
 }
 
 @Composable
 fun FakeHomeScreenLayout() {
-    Column(
-        modifier = Modifier
-            .fillMaxSize(),
-        verticalArrangement = Arrangement.Top,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        StatusBarSpacer()
-        HomeAppBar()
-        HomeBarCardSpacer()
-        HomeCard()
-    }
+  Column(
+    modifier = Modifier
+      .fillMaxSize(),
+    verticalArrangement = Arrangement.Top,
+    horizontalAlignment = Alignment.CenterHorizontally
+  ) {
+    StatusBarSpacer()
+    HomeAppBar()
+    HomeBarCardSpacer()
+    HomeCard()
+  }
 }

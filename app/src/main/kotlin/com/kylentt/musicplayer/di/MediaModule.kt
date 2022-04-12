@@ -19,20 +19,20 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object MediaModule {
 
-    @Singleton
-    @Provides
-    internal fun provideSessionManager(
-        @ApplicationContext context: Context,
-        scope: AppScope
-    ) = MediaSessionManager.build(context, scope)
+  @Singleton
+  @Provides
+  internal fun provideSessionManager(
+    @ApplicationContext context: Context,
+    scope: AppScope
+  ) = MediaSessionManager.build(context, scope)
 
-    @Singleton
-    @Provides
-    internal fun provideMediaIntentHandler(
-        @ApplicationContext context: Context,
-        manager: MediaSessionManager,
-        mediaStore: MediaStoreSource,
-        proto: ProtoRepository
-    ) = MediaIntentHandler(context, manager, mediaStore, proto)
+  @Singleton
+  @Provides
+  internal fun provideMediaIntentHandler(
+    @ApplicationContext context: Context,
+    manager: MediaSessionManager,
+    mediaStore: MediaStoreSource,
+    proto: ProtoRepository
+  ) = MediaIntentHandler(context, manager, mediaStore, proto)
 
 }

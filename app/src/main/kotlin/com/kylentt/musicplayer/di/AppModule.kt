@@ -22,31 +22,34 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object AppModule {
 
-    @Singleton
-    @Provides
-    fun provideCoilInstance(@ApplicationContext context: Context) = Coil.imageLoader(context)
+  @Singleton
+  @Provides
+  fun provideCoilInstance(@ApplicationContext context: Context) = Coil.imageLoader(context)
 
-    @Singleton
-    @Provides
-    fun provideCoilHandler(@ApplicationContext context: Context, coil: ImageLoader) = CoilHandler(context, coil)
+  @Singleton
+  @Provides
+  fun provideCoilHandler(@ApplicationContext context: Context, coil: ImageLoader) =
+    CoilHandler(context, coil)
 
-    @Singleton
-    @Provides
-    fun provideMediaStoreSource(@ApplicationContext context: Context) = MediaStoreSource(context)
+  @Singleton
+  @Provides
+  fun provideMediaStoreSource(@ApplicationContext context: Context) = MediaStoreSource(context)
 
-    @Singleton
-    @Provides
-    fun provideMediaRepository(@ApplicationContext context: Context, ms: MediaStoreSource) = MediaRepository(context, ms)
+  @Singleton
+  @Provides
+  fun provideMediaRepository(@ApplicationContext context: Context, ms: MediaStoreSource) =
+    MediaRepository(context, ms)
 
-    @Singleton
-    @Provides
-    fun provideProtoRepository(@ApplicationContext context: Context, scope: AppScope) = ProtoRepository(context, scope)
+  @Singleton
+  @Provides
+  fun provideProtoRepository(@ApplicationContext context: Context, scope: AppScope) =
+    ProtoRepository(context, scope)
 
-    @Singleton
-    @Provides
-    fun provideAppScope() = AppScope(
-        defaultScope = CoroutineScope(Dispatchers.Default + SupervisorJob()),
-        ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob()),
-        mainScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
-    )
+  @Singleton
+  @Provides
+  fun provideAppScope() = AppScope(
+    defaultScope = CoroutineScope(Dispatchers.Default + SupervisorJob()),
+    ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob()),
+    mainScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+  )
 }

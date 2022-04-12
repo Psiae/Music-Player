@@ -6,7 +6,7 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import com.google.android.material.color.DynamicColors
-import com.kylentt.musicplayer.ui.musicactivity.compose.theme.md3.Md3Defaults
+import com.kylentt.musicplayer.ui.activity.musicactivity.compose.theme.md3.Md3Defaults
 
 object ThemeHelper {
 

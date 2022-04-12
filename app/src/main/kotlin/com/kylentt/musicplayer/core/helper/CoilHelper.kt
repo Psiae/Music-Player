@@ -18,29 +18,29 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class CoilHelper @Inject constructor (
-    @ApplicationContext private val context: Context,
-    private val coil: ImageLoader
+class CoilHelper @Inject constructor(
+  @ApplicationContext private val context: Context,
+  private val coil: ImageLoader
 ) {
 
-    suspend fun squareWithCoil(bitmap: Bitmap) = bitmap.squareWithCoil()
+  suspend fun squareWithCoil(bitmap: Bitmap) = bitmap.squareWithCoil()
 
-    suspend fun Bitmap.squareWithCoil(
-        @Px height: Int = this.height,
-        @Px width: Int = this.width,
-        @Px size: Int = -1,
-    ): Bitmap {
-        val s = if (size >= 0) PixelSize(size, size) else PixelSize(height, width)
-        val c = coil.execute(
-            ImageRequest.Builder(context)
-                .diskCachePolicy(CachePolicy.ENABLED)
-                .data(this)
-                .size(s)
-                .scale(Scale.FILL)
-                .transformations(CropCenterTransformation())
-                .build()
-        ).drawable as BitmapDrawable
-        return c.bitmap
-    }
+  suspend fun Bitmap.squareWithCoil(
+    @Px height: Int = this.height,
+    @Px width: Int = this.width,
+    @Px size: Int = -1,
+  ): Bitmap {
+    val s = if (size >= 0) PixelSize(size, size) else PixelSize(height, width)
+    val c = coil.execute(
+      ImageRequest.Builder(context)
+        .diskCachePolicy(CachePolicy.ENABLED)
+        .data(this)
+        .size(s)
+        .scale(Scale.FILL)
+        .transformations(CropCenterTransformation())
+        .build()
+    ).drawable as BitmapDrawable
+    return c.bitmap
+  }
 
 }

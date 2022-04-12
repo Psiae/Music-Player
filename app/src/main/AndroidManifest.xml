@@ -46,7 +46,7 @@
         </service>
 
         <activity
-            android:name="com.kylentt.musicplayer.ui.musicactivity.MainActivity"
+            android:name="com.kylentt.musicplayer.ui.activity.musicactivity.MainActivity"
             android:exported="true"
             android:theme="@style/Theme.App.SplashScreen"
             android:launchMode="singleTask">
@@ -54,6 +54,12 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+        </activity>
+
+        <activity
+            android:name="com.kylentt.musicplayer.ui.activity.ReceiverActivity"
+            android:exported="true"
+            android:theme="@style/Theme.App.SplashScreen">
 
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>

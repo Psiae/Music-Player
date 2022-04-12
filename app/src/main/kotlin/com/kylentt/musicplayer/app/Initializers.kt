@@ -7,23 +7,25 @@ import com.kylentt.mediaplayer.BuildConfig
 import timber.log.Timber
 
 class BaseInitializer : Initializer<Unit> {
-    override fun create(context: Context) {
-        AppProxy.provideBase(context as Application)
-        /* TODO() WorkManager */
-    }
+  override fun create(context: Context) {
+    AppProxy.provideBase(context as Application)
+    /* TODO() WorkManager */
+  }
 
-    override fun dependencies(): MutableList<Class<out Initializer<*>>> {
-        val depends = mutableListOf<Class<out Initializer<*>>>()
-        if (BuildConfig.DEBUG) depends.add(DebugInitializer::class.java)
-        return depends
-    }
+  override fun dependencies(): MutableList<Class<out Initializer<*>>> {
+    val depends = mutableListOf<Class<out Initializer<*>>>()
+    if (BuildConfig.DEBUG) depends.add(DebugInitializer::class.java)
+    return depends
+  }
 }
 
 class DebugInitializer : Initializer<Unit> {
-    override fun create(context: Context) {
-        Timber.plant(Timber.DebugTree())
-        Timber.d("Timber Planted")
-    }
+  override fun create(context: Context) {
+    Timber.plant(Timber.DebugTree())
+    Timber.d("Timber Planted")
+  }
 
-    override fun dependencies(): MutableList<Class<out Initializer<*>>> { return mutableListOf() }
+  override fun dependencies(): MutableList<Class<out Initializer<*>>> {
+    return mutableListOf()
+  }
 }

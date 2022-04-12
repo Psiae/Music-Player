@@ -14,13 +14,17 @@ internal class MediaPlayerApp : Application()
 // Should be very rarely used
 internal object AppProxy {
 
-    private lateinit var base: Application
+  private lateinit var base: Application
 
-    fun provideBase(app: Application) { base = app }
+  fun provideBase(app: Application) {
+    base = app
+  }
 
-    fun checkSelfPermission(perm: String): Boolean = ContextCompat.checkSelfPermission(base, perm) == PackageManager.PERMISSION_GRANTED
+  fun checkSelfPermission(perm: String): Boolean =
+    ContextCompat.checkSelfPermission(base, perm) == PackageManager.PERMISSION_GRANTED
 
-    fun getVectorImage(id: Int): ImageVector = ImageVector.vectorResource(base.theme, base.resources, id)
+  fun getVectorImage(id: Int): ImageVector =
+    ImageVector.vectorResource(base.theme, base.resources, id)
 }
 
 

@@ -14,9 +14,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.ExperimentalUnitApi
 import androidx.compose.ui.unit.dp
 import com.kylentt.mediaplayer.R
-import com.kylentt.musicplayer.ui.musicactivity.compose.theme.md3.AppTypography
-import com.kylentt.musicplayer.ui.musicactivity.compose.theme.md3.ColorDefaults
-import com.kylentt.musicplayer.ui.musicactivity.compose.theme.md3.ColorHelper
+import com.kylentt.musicplayer.ui.activity.musicactivity.compose.theme.md3.AppTypography
+import com.kylentt.musicplayer.ui.activity.musicactivity.compose.theme.md3.ColorDefaults
+import com.kylentt.musicplayer.ui.activity.musicactivity.compose.theme.md3.ColorHelper
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Preview

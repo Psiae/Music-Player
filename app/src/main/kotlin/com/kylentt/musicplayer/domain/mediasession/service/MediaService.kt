@@ -6,13 +6,8 @@ import com.kylentt.musicplayer.domain.mediasession.MediaSessionManager
 
 internal class MediaService : MediaLibraryService() {
 
-    override fun onCreate() {
-        super.onCreate()
 
-    }
-
-
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? {
-        TODO("Not yet implemented")
-    }
+  override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? {
+    TODO("Not yet implemented")
+  }
 }

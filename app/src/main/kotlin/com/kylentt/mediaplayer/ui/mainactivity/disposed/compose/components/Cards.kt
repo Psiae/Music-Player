@@ -18,8 +18,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.kylentt.musicplayer.ui.musicactivity.compose.theme.md3.AppTypography
-import com.kylentt.musicplayer.ui.musicactivity.compose.theme.md3.ColorHelper
+import com.kylentt.musicplayer.ui.activity.musicactivity.compose.theme.md3.AppTypography
+import com.kylentt.musicplayer.ui.activity.musicactivity.compose.theme.md3.ColorHelper
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

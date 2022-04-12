@@ -32,7 +32,7 @@ import com.kylentt.mediaplayer.domain.mediaSession.service.MusicServiceConstants
 import com.kylentt.musicplayer.core.helper.MediaItemHelper
 import com.kylentt.musicplayer.domain.mediasession.MediaSessionManager
 import com.kylentt.musicplayer.domain.mediasession.service.MediaServiceState
-import com.kylentt.musicplayer.ui.musicactivity.MainActivity
+import com.kylentt.musicplayer.ui.activity.musicactivity.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -82,7 +82,7 @@ internal class MusicService : MediaLibraryService() {
 
     private fun validateCreation() {
         if (mediaSessionManager.serviceState.value is MediaServiceState.UNIT) {
-            if (!MainActivity.isActive) {
+            if (!MainActivity.isAlive) {
                 exitProcess(0)
             }
             stopForeground(true)
@@ -232,11 +232,11 @@ internal class MusicService : MediaLibraryService() {
     // there's no need to release the Player, just playing around
     private fun considerReleasing(session: MediaLibrarySession) {
         Timber.d("MusicService considerRelease called")
-        if (!MainActivity.isActive) {
+        if (!MainActivity.isAlive) {
             releaseSession()
-            Timber.d("MusicService considerRelease released, reason = MainActivity.isActive == ${MainActivity.isActive}")
+            Timber.d("MusicService considerRelease released, reason = MainActivity.isActive == ${MainActivity.isAlive}")
         } else {
-            Timber.d("MusicService considerRelease not released, reason = MainActivity.isActive == ${MainActivity.isActive}, resetting Player")
+            Timber.d("MusicService considerRelease not released, reason = MainActivity.isActive == ${MainActivity.isAlive}, resetting Player")
             sendBroadcast(
                 Intent(PLAYBACK_INTENT).apply {
                     putExtra("SESSION", NEW_SESSION_PLAYER_RECOVER)
@@ -266,7 +266,7 @@ internal class MusicService : MediaLibraryService() {
         super.onDestroy()
 
         // for whatever reason MediaLibrarySessionImpl is leaking this service context?
-        if (MainActivity.isActive.not()) exitProcess(0)
+        if (MainActivity.isAlive.not()) exitProcess(0)
     }
 
     companion object {

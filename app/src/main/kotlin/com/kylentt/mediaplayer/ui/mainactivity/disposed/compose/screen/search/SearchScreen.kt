@@ -12,7 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.components.util.StatusBarSpacer
-import com.kylentt.musicplayer.ui.musicactivity.compose.theme.md3.ColorHelper
+import com.kylentt.musicplayer.ui.activity.musicactivity.compose.theme.md3.ColorHelper
 import timber.log.Timber
 
 @Composable

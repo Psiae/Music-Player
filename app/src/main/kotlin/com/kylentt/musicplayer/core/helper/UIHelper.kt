@@ -10,11 +10,13 @@ import com.kylentt.musicplayer.app.AppProxy
 
 object UIHelper {
 
-    @Composable
-    fun Context.getComposeImageVector(id: Int) = ImageVector.vectorResource(id = id)
+  @Composable
+  fun Context.getComposeImageVector(id: Int) = ImageVector.vectorResource(id = id)
+  fun Context.getImageVector(id: Int) = ImageVector.vectorResource(theme, resources, id)
 
-    fun ComponentActivity.disableFitWindow() = WindowCompat.setDecorFitsSystemWindows(window, false)
-    fun Context.getImageVector(id: Int) = ImageVector.vectorResource(theme, resources, id)
+  fun ComponentActivity.disableFitWindow() = WindowCompat.setDecorFitsSystemWindows(window, false)
 
-    fun getVectorImage(id: Int, context: Context? = null): ImageVector = context?.getImageVector(id) ?: AppProxy.getVectorImage(id)
+  fun getVectorImage(id: Int, context: Context? = null): ImageVector =
+    context?.getImageVector(id) ?: AppProxy.getVectorImage(id)
+
 }

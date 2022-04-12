@@ -1,4 +1,5 @@
-package com.kylentt.musicplayer.ui.musicactivity.compose.theme.md3
+package com.kylentt.musicplayer.ui.activity.musicactivity.compose.theme.md3
+
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -10,20 +11,20 @@ import kotlin.math.ln
 
 object ColorDefaults {
 
-    val black = Color(0xFF000000)
-    val white = Color(0xFFFFFFFF)
+  val black = Color(0xFF000000)
+  val white = Color(0xFFFFFFFF)
 
-    val lightText = Color(0xFFFFFFFF)
-    val darkText = Color(0xFF0A0A0A)
+  val lightText = Color(0xFFFFFFFF)
+  val darkText = Color(0xFF0A0A0A)
 
-    val darkThemeBackground = Color(0xFF0F0F0F)
-    val lightThemeBackground = Color(0xFFFFFFFF)
+  val darkThemeBackground = Color(0xFF0F0F0F)
+  val lightThemeBackground = Color(0xFFFFFFFF)
 
-    fun idk() {
-    }
+  fun idk() {
+  }
 
-    val IconPrimary = Color(0xFFC5E3F6)
-    val IconSecondary = Color(0xFFFC5C9C)
+  val IconPrimary = Color(0xFFC5E3F6)
+  val IconSecondary = Color(0xFFFC5C9C)
 
 }
 
@@ -82,7 +83,6 @@ val md_theme_dark_inverseOnSurface = Color(0xFF191c1d)
 val md_theme_dark_inverseSurface = Color(0xFFe0e3e3)
 val md_theme_dark_inversePrimary = Color(0xFF006685)
 val md_theme_dark_shadow = Color(0xFF000000)
-
 
 
 val seed = Color(0xFF6750A4)

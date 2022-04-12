@@ -8,36 +8,36 @@ import kotlin.contracts.contract
 
 @OptIn(ExperimentalContracts::class)
 inline fun <T> elseNull(condition: Boolean, block: () -> T?): T? {
-    contract {
-        callsInPlace(block, InvocationKind.EXACTLY_ONCE)
-    }
-    return if (condition) {
-        block()
-    } else {
-        null
-    }
+  contract {
+    callsInPlace(block, InvocationKind.EXACTLY_ONCE)
+  }
+  return if (condition) {
+    block()
+  } else {
+    null
+  }
 }
 
 @OptIn(ExperimentalContracts::class)
 inline fun <T> orNull(condition: Boolean?, block: () -> T?): T? {
-    contract {
-        callsInPlace(block, InvocationKind.EXACTLY_ONCE)
-    }
-    return if (condition != false) {
-        block()
-    } else {
-        null
-    }
+  contract {
+    callsInPlace(block, InvocationKind.EXACTLY_ONCE)
+  }
+  return if (condition != false) {
+    block()
+  } else {
+    null
+  }
 }
 
 @OptIn(ExperimentalContracts::class)
 inline fun elseFalse(condition: Boolean, block: () -> Boolean): Boolean {
-    contract {
-        callsInPlace(block, InvocationKind.EXACTLY_ONCE)
-    }
-    return if (condition) {
-        block()
-    } else {
-        false
-    }
+  contract {
+    callsInPlace(block, InvocationKind.EXACTLY_ONCE)
+  }
+  return if (condition) {
+    block()
+  } else {
+    false
+  }
 }

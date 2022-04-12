@@ -6,15 +6,15 @@ import com.kylentt.musicplayer.data.source.local.AsMediaItem
 
 interface Song : AsMediaItem {
 
-    fun getAlbumName(): String
-    fun getArtistName(): String
-    fun getDisplayTitle(): String
-    fun getUri(): Uri
+  fun getAlbumName(): String
+  fun getArtistName(): String
+  fun getDisplayTitle(): String
+  fun getUri(): Uri
 
 }
 
 object SongDefaults {
-    const val mediaItemBuilderKey = "Builder"
+  const val mediaItemBuilderKey = "Builder"
 }
 
 data class Artist(val name: String)

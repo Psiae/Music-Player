@@ -17,8 +17,8 @@ import androidx.compose.ui.unit.dp
 import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.components.util.NoRipple
 import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.root.BottomNavigationItem
 import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.root.BottomNavigationRoute
-import com.kylentt.musicplayer.ui.musicactivity.compose.theme.md3.AppTypography
-import com.kylentt.musicplayer.ui.musicactivity.compose.theme.md3.ColorHelper
+import com.kylentt.musicplayer.ui.activity.musicactivity.compose.theme.md3.AppTypography
+import com.kylentt.musicplayer.ui.activity.musicactivity.compose.theme.md3.ColorHelper
 
 @Composable
 @Preview

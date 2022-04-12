@@ -21,53 +21,51 @@ import javax.inject.Singleton
 
 // Current Media Playback Single Info Source
 internal class MediaSessionManager private constructor(
-    private val base: Context,
-    private val appScope: AppScope
+  private val base: Context,
+  private val appScope: AppScope
 ) {
+  private val mainScope = appScope.mainScope
 
-    private val mainScope = appScope.mainScope
+  private var mediaServiceConnector: MediaServiceConnector
+  private val controller
+    get() = mediaServiceConnector.mediaServiceController
+  val bitmapState
+    get() = mediaServiceConnector.playerBitmap
+  val itemState
+    get() = mediaServiceConnector.playerMediaItem
+  val playbackState
+    get() = mediaServiceConnector.playerState
+  val serviceState
+    get() = mediaServiceConnector.serviceState
 
-    private var mediaServiceConnector: MediaServiceConnector
-    private val controller
-        get() = mediaServiceConnector.mediaServiceController
+  init {
+    require(base is Application) { "MediaSessionManager Invalid Context" }
+    mediaServiceConnector = MediaServiceConnector(this, base, appScope)
+  }
 
+  @MainThread
+  fun connectService() {
+    verifyMainThread()
+    controller.commandController(ControllerCommand.Unit)
+  }
 
-    private fun MediaLibraryService.getServiceController() = controller
-    fun serviceController(service: MediaLibraryService) = service.getServiceController()
+  @MainThread
+  fun sendCommand(command: ControllerCommand) {
+    verifyMainThread()
+    controller.commandController(command)
+  }
 
-    val bitmapState
-        get() = mediaServiceConnector.playerBitmap
-    val itemState
-        get() = mediaServiceConnector.playerMediaItem
-    val playbackState
-        get() = mediaServiceConnector.playerState
-    val serviceState
-        get() = mediaServiceConnector.serviceState
+  // In case I'm lazy enough to not switch nor manage Context :)
+  suspend fun mainSendCommand(command: ControllerCommand) =
+    withContext(Dispatchers.Main) { sendCommand(command) }
 
-    init {
-        check(base is Application) { "MediaSessionManager Invalid Context" }
-        mediaServiceConnector = MediaServiceConnector(this, base, appScope)
-    }
+  suspend fun mainConnectService() = withContext(Dispatchers.Main) { connectService() }
+  suspend fun outScopeSendCommand(command: ControllerCommand) =
+    mainScope.launch { mainSendCommand(command) }
 
-    @MainThread
-    fun connectService() {
-        verifyMainThread()
-        controller.commandController(ControllerCommand.Unit)
-    }
+  suspend fun outScopeConnectService() = mainScope.launch { mainConnectService() }
 
-    @MainThread
-    fun sendCommand(command: ControllerCommand) {
-        verifyMainThread()
-        controller.commandController(command)
-    }
-
-    // In case I'm lazy enough to not switch nor manage Context :)
-    suspend fun mainSendCommand(command: ControllerCommand) = withContext(Dispatchers.Main) { sendCommand(command) }
-    suspend fun mainConnectService() = withContext(Dispatchers.Main) { connectService() }
-    suspend fun outScopeSendCommand(command: ControllerCommand) = mainScope.launch { mainSendCommand(command) }
-    suspend fun outScopeConnectService() = mainScope.launch { mainConnectService() }
-
-    companion object {
-        fun build(context: Context, scope: AppScope) = MediaSessionManager(context, scope)
-    }
+  companion object {
+    fun build(context: Context, scope: AppScope) = MediaSessionManager(context, scope)
+  }
 }

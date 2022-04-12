@@ -34,7 +34,7 @@ import com.kylentt.mediaplayer.R
 import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.CoilShimmerImage
 import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.CoilShimmerState
 import com.kylentt.musicplayer.data.repository.settingsDataStore
-import com.kylentt.musicplayer.ui.musicactivity.compose.theme.md3.ColorHelper
+import com.kylentt.musicplayer.ui.activity.musicactivity.compose.theme.md3.ColorHelper
 import com.kylentt.musicplayer.ui.preferences.WallpaperSettings
 import kotlinx.coroutines.launch
 import timber.log.Timber

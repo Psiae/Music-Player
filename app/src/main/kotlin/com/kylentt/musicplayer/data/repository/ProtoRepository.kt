@@ -19,45 +19,45 @@ val Context.settingsDataStore by dataStore("app-settings.json", AppSettingsSeria
 val Context.stateDataStore by dataStore("app-state.json", AppStateSerializer)
 
 class ProtoRepository(
-    val context: Context,
-    val scope: AppScope
+  val context: Context,
+  val scope: AppScope
 ) {
 
-    private val _appState = MutableStateFlow<AppState>(AppState.Defaults.INVALID)
-    private val _appSettings = MutableStateFlow<AppSettings>(AppSettings.Defaults.invalid)
+  private val _appState = MutableStateFlow<AppState>(AppState.Defaults.INVALID)
+  private val _appSettings = MutableStateFlow<AppSettings>(AppSettings.Defaults.INVALID)
 
-    val appState = _appState.asStateFlow()
-    val appSettings = _appSettings.asStateFlow()
+  val appState = _appState.asStateFlow()
+  val appSettings = _appSettings.asStateFlow()
 
-    init {
-        check(context is Application) { "Invalid Context" }
-        scope.ioScope.launch { collectState().collect { _appState.value = it } }
-        scope.ioScope.launch { collectSettings().collect { _appSettings.value = it } }
+  init {
+    check(context is Application) { "Invalid Context" }
+    scope.ioScope.launch { collectState().collect { _appState.value = it } }
+    scope.ioScope.launch { collectSettings().collect { _appSettings.value = it } }
+  }
+
+  suspend fun writeToSettings(data: suspend (AppSettings) -> AppSettings) {
+    try {
+      context.settingsDataStore.updateData { data(it) }
+    } catch (e: Exception) {
+      Timber.e(e)
     }
+  }
 
-    suspend fun writeToSettings(data: suspend (AppSettings) -> AppSettings) {
-        try {
-            context.settingsDataStore.updateData { data(it) }
-        } catch (e: Exception) {
-            Timber.e(e)
-        }
+  suspend fun writeToState(data: suspend (current: AppState) -> AppState) {
+    try {
+      context.stateDataStore.updateData { data(it) }
+    } catch (e: Exception) {
+      Timber.e(e)
     }
+  }
 
-    suspend fun writeToState(data: suspend (current: AppState) -> AppState) {
-        try {
-            context.stateDataStore.updateData { data(it) }
-        } catch (e: Exception) {
-            Timber.e(e)
-        }
-    }
+  fun collectSettings(): Flow<AppSettings> {
+    return context.settingsDataStore.data
+  }
 
-    fun collectSettings(): Flow<AppSettings> {
-        return context.settingsDataStore.data
-    }
-
-    fun collectState(): Flow<AppState> {
-        return context.stateDataStore.data
-    }
+  fun collectState(): Flow<AppState> {
+    return context.stateDataStore.data
+  }
 
 
 }

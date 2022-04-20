@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.kylentt.mediaplayer">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.INTERNET" />
@@ -10,11 +9,11 @@
     <queries>
         <provider
             android:authorities="com.google.android.apps.docs.storage.legacy"
-            android:exported="false"></provider>
+            android:exported="false"/>
     </queries>
 
     <application
-        android:name="com.kylentt.musicplayer.app.MediaPlayerApp"
+        android:name="com.kylentt.mediaplayer.app.MediaPlayerApp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher_3"
         android:label="@string/app_name"
@@ -25,15 +24,13 @@
             android:name="androidx.startup.InitializationProvider"
             android:authorities="${applicationId}.androidx-startup"
             android:exported="false">
-
             <meta-data
                 android:name="com.kylentt.musicplayer.app.BaseInitializer"
-                android:value="androidx.startup"></meta-data>
-
+                android:value="androidx.startup"/>
         </provider>
 
         <service
-            android:name="com.kylentt.mediaplayer.domain.mediaSession.service.MusicService"
+            android:name="com.kylentt.mediaplayer.disposed.domain.mediaSession.service.MusicService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback">

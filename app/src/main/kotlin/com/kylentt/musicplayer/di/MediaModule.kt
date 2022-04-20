@@ -1,10 +1,11 @@
 package com.kylentt.musicplayer.di
 
 import android.content.Context
-import com.kylentt.mediaplayer.core.util.handler.IntentHandler
-import com.kylentt.musicplayer.app.util.AppScope
-import com.kylentt.musicplayer.data.repository.ProtoRepository
-import com.kylentt.musicplayer.data.source.local.MediaStoreSource
+import com.kylentt.mediaplayer.app.AppScope
+import com.kylentt.mediaplayer.data.repository.MediaRepository
+import com.kylentt.mediaplayer.data.repository.MediaRepositoryImpl
+import com.kylentt.mediaplayer.data.repository.ProtoRepository
+import com.kylentt.mediaplayer.data.repository.ProtoRepositoryImpl
 import com.kylentt.musicplayer.domain.mediasession.MediaIntentHandler
 import com.kylentt.musicplayer.domain.mediasession.MediaSessionManager
 import dagger.Module
@@ -31,8 +32,8 @@ object MediaModule {
   internal fun provideMediaIntentHandler(
     @ApplicationContext context: Context,
     manager: MediaSessionManager,
-    mediaStore: MediaStoreSource,
+    mediaRepo: MediaRepository,
     proto: ProtoRepository
-  ) = MediaIntentHandler(context, manager, mediaStore, proto)
+  ) = MediaIntentHandler(context, manager, mediaRepo, proto)
 
 }

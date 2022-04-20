@@ -17,10 +17,10 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.util.UnstableApi
 import com.kylentt.mediaplayer.BuildConfig
-import com.kylentt.mediaplayer.core.util.helper.VersionHelper
-import com.kylentt.musicplayer.data.repository.ProtoRepository
-import com.kylentt.musicplayer.data.source.local.MediaStoreSong
-import com.kylentt.musicplayer.data.source.local.MediaStoreSource
+import com.kylentt.mediaplayer.data.repository.MediaRepository
+import com.kylentt.mediaplayer.data.repository.ProtoRepository
+import com.kylentt.mediaplayer.data.source.local.MediaStoreSong
+import com.kylentt.mediaplayer.helper.VersionHelper
 import com.kylentt.musicplayer.domain.mediasession.service.ControllerCommand
 import com.kylentt.musicplayer.ui.activity.helper.IntentWrapper
 import kotlinx.coroutines.Dispatchers
@@ -39,7 +39,7 @@ import kotlin.time.measureTimedValue
 internal class MediaIntentHandler(
   private val context: Context,
   private val manager: MediaSessionManager,
-  private val mediaStore: MediaStoreSource,
+  private val mediaRepo: MediaRepository,
   private val proto: ProtoRepository
 ) {
 
@@ -65,7 +65,7 @@ internal class MediaIntentHandler(
       intent.getData()?.let { uri ->
         val (pair: Pair<String, List<MediaStoreSong>>, time: Duration) = measureTimedValue {
           val dPath = async { getPathFromUri(uri, intent.getType() ?: "") }
-          val dmsSong = async { mediaStore.getMediaStoreSong().first() }
+          val dmsSong = async { mediaRepo.getMediaStoreSong().first() }
           Pair(dPath.await(), dmsSong.await())
         }
 
@@ -177,12 +177,12 @@ internal class MediaIntentHandler(
     Timber.d("MediaIntentDebug findMatchingMediaStore for $pred")
 
     val envs = Environment.getExternalStorageDirectory().toString()
-    val storage = if (VersionHelper.isR()) {
+    val storage = if (VersionHelper.hasR()) {
       Environment.getStorageDirectory().toString()
     } else {
       "/storage"
     }
-    val a = songList.ifEmpty { mediaStore.getMediaStoreSong().first() }
+    val a = songList.ifEmpty { mediaRepo.getMediaStoreSong().first() }
     var b: MediaStoreSong? = null
     try {
       when {
@@ -365,10 +365,6 @@ internal class MediaIntentHandler(
       }
 
       when {
-        DocumentsContract.isDocumentUri(context, uri) -> {
-          Timber.d("MediaIntentDebug, isDocumentUri == true")
-          return ContentProviders.DocumentProviders.getContentMediaUri(context, uri, fileName)
-        }
         contentHasFileUri(
           uri,
           true
@@ -627,7 +623,7 @@ sealed class ContentProviders {
 
   object DocumentProviders : ContentProviders() {
     const val INVALID_PATH = "INVALID_PATH"
-    val storagePath = if (VersionHelper.isR()) {
+    val storagePath = if (VersionHelper.hasR()) {
       Environment.getStorageDirectory().toString()
     } else {
       "/storage"
@@ -665,10 +661,12 @@ sealed class ContentProviders {
           }
         }
 
+        val auth = uri.authority ?: ""
+
         val tries = when {
-          split2F[2].startsWith(auth_provider_externalStorage) -> tryExternalStorage(uri, fileName)
-          split2F[2].startsWith(auth_provider_media) -> tryMediaProviders(uri, context)
-          split2F[2].startsWith(auth_provider_download) -> tryDownloadProviders(
+          auth.startsWith(auth_provider_externalStorage) -> tryExternalStorage(uri, fileName)
+          auth.startsWith(auth_provider_media) -> tryMediaProviders(uri, context)
+          auth.startsWith(auth_provider_download) -> tryDownloadProviders(
             uri,
             context,
             fileName
@@ -853,7 +851,7 @@ sealed class ContentProviders {
       val dc = URLDecoder.decode(uri.toString(), "UTF-8")
         .split("/")
 
-      val cUri = if (VersionHelper.isQ() && dc.last().startsWith("msf")) {
+      val cUri = if (VersionHelper.hasQ() && dc.last().startsWith("msf")) {
         val a = context.contentResolver.query(uri, null, null, null, null)?.use {
           it.moveToFirst()
           it.getString(it.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE))
@@ -877,11 +875,8 @@ sealed class ContentProviders {
           for (i in 0 until it.columnCount) {
             try {
               Timber.d(
-                "getDownloadAudioPath, i = $i, column = ${it.getColumnName(i)}, value ${
-                  it.getString(
-                    i
-                  )
-                }"
+                "getDownloadAudioPath," +
+                  " i = $i, column = ${it.getColumnName(i)}, " + "value ${it.getString(i)}"
               )
             } catch (e: Exception) {
               Timber.e("Exception when looping Media Column: $e")

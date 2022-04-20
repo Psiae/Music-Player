@@ -1,19 +1,18 @@
 package com.kylentt.musicplayer.domain
 
-import android.graphics.Bitmap
+import android.graphics.drawable.BitmapDrawable
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
-import com.kylentt.musicplayer.data.repository.ProtoRepository
 import com.kylentt.musicplayer.domain.mediasession.MediaIntentHandler
 import com.kylentt.musicplayer.domain.mediasession.MediaSessionManager
 import com.kylentt.musicplayer.domain.mediasession.service.MediaServiceState
 import com.kylentt.musicplayer.ui.activity.helper.IntentWrapper
-import com.kylentt.musicplayer.ui.preferences.AppSettings
-import com.kylentt.musicplayer.ui.preferences.AppState
+import com.kylentt.mediaplayer.app.settings.AppSettings
+import com.kylentt.mediaplayer.data.repository.ProtoRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
@@ -30,11 +29,9 @@ internal class MediaViewModel @Inject constructor(
   private val protoRepository: ProtoRepository
 ) : ViewModel() {
 
-  val appState = protoRepository.appState
-  val appSettings = protoRepository.appSettings
+  var pendingNewIntent: MutableList<IntentWrapper> = mutableListOf()
 
-  suspend fun writeAppState(data: suspend (AppState) -> AppState) =
-    protoRepository.writeToState { data(it) }
+  val appSettings = protoRepository.appSettingSF
 
   suspend fun writeAppSettings(data: suspend (AppSettings) -> AppSettings) =
     protoRepository.writeToSettings { data(it) }
@@ -60,8 +57,7 @@ internal class MediaViewModel @Inject constructor(
 
   private suspend fun collectServiceState(): Unit = sessionManager.serviceState.collect { state ->
     when (state) {
-      is MediaServiceState.ERROR -> { /* TODO */
-      }
+      is MediaServiceState.ERROR -> { /* TODO */ }
       else -> serviceState.value = state
     }
   }
@@ -69,7 +65,9 @@ internal class MediaViewModel @Inject constructor(
   private suspend fun collectItemBitmap(): Unit = sessionManager.bitmapState.collect { bitmap ->
     val item = sessionManager.itemState.first()
     val ibm = itemBitmap.value
-    itemBitmap.value = ibm.copy(bitmap = bitmap, item = item, fade = ibm.item != item)
+    itemBitmap.value = ItemBitmap(
+      bitmapDrawable = bitmap, lastBitmapDrawable = ibm.bitmapDrawable, item = item, fade = item != ibm.item
+    )
   }
 
   init {
@@ -83,11 +81,12 @@ internal class MediaViewModel @Inject constructor(
 }
 
 data class ItemBitmap(
-  val bitmap: Bitmap?,
+  val bitmapDrawable: BitmapDrawable?,
+  val lastBitmapDrawable: BitmapDrawable?,
   val item: MediaItem,
   val fade: Boolean = true
 ) {
   companion object {
-    val EMPTY = ItemBitmap(null, MediaItem.EMPTY)
+    val EMPTY = ItemBitmap(null,null, MediaItem.EMPTY)
   }
 }

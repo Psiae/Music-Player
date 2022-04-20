@@ -1,32 +1,38 @@
 package com.kylentt.musicplayer.ui.activity.musicactivity
 
+import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
-import androidx.compose.runtime.mutableStateListOf
+import androidx.annotation.IntDef
 import androidx.compose.runtime.remember
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.lifecycle.lifecycleScope
-import com.kylentt.musicplayer.core.helper.PermissionHelper.checkStoragePermission
+import com.kylentt.mediaplayer.app.delegates.AppDelegate
+import com.kylentt.mediaplayer.app.AppScope
+import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.theme.MaterialDesign3Theme
 import com.kylentt.musicplayer.core.helper.UIHelper.disableFitWindow
 import com.kylentt.musicplayer.domain.MediaViewModel
+import com.kylentt.mediaplayer.helper.Preconditions.verifyMainThread
 import com.kylentt.musicplayer.domain.mediasession.service.MediaServiceState
 import com.kylentt.musicplayer.ui.activity.helper.IntentWrapper
-import com.kylentt.musicplayer.ui.activity.helper.IntentWrapper.Companion.EMPTY
-import com.kylentt.musicplayer.ui.activity.helper.IntentWrapper.Companion.isEmpty
 import com.kylentt.musicplayer.ui.activity.helper.IntentWrapper.Companion.wrap
+import com.kylentt.musicplayer.ui.activity.musicactivity.MainActivity.Companion.Lifecycle.Alive
+import com.kylentt.musicplayer.ui.activity.musicactivity.MainActivity.Companion.Lifecycle.Destroyed
+import com.kylentt.musicplayer.ui.activity.musicactivity.MainActivity.Companion.Lifecycle.Ready
+import com.kylentt.musicplayer.ui.activity.musicactivity.MainActivity.Companion.Lifecycle.Visible
+import com.kylentt.musicplayer.ui.activity.musicactivity.MainActivity.Companion.Lifecycle.setCurrentHash
+import com.kylentt.musicplayer.ui.activity.musicactivity.MainActivity.Companion.Lifecycle.setCurrentState
 import com.kylentt.musicplayer.ui.activity.musicactivity.acompose.MusicComposeDefault
-import com.kylentt.musicplayer.ui.activity.musicactivity.acompose.theme.md3.MaterialTheme3
-import com.kylentt.musicplayer.ui.preferences.AppSettings
+import com.kylentt.musicplayer.ui.helper.AppToaster
+import com.kylentt.mediaplayer.app.settings.AppSettings
 import com.kylentt.musicplayer.ui.preferences.AppState
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import timber.log.Timber
+import javax.inject.Inject
 import kotlin.time.Duration
 import kotlin.time.ExperimentalTime
 import kotlin.time.measureTimedValue
@@ -35,126 +41,123 @@ import kotlin.time.measureTimedValue
 internal class MainActivity : ComponentActivity() {
 
   private val mediaVM: MediaViewModel by viewModels()
-  private val pendingGranted = mutableStateListOf<() -> Unit>()
+
+  @Inject
+  lateinit var appScope: AppScope
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     checkLauncherIntent()
-    disableFitWindow()
-    installSplashScreen()
-      .setKeepOnScreenCondition { keepScreenCondition() }
+    setupExtra()
+
+    Timber.d("MainActivity onCreate ${mediaVM.pendingGranted.size}")
+
     setContent {
-      MaterialTheme3 {
+      MaterialDesign3Theme {
         MusicComposeDefault {
           val mPendingGranted = remember { mediaVM.pendingGranted }
-          val pendingGranted = remember { pendingGranted }
           mPendingGranted.syncEachClear()
-          pendingGranted.syncEachClear()
         }
       }
     }
+  }
+
+  private fun setupExtra() {
+    disableFitWindow()
+    setCurrentHash()
+    setCurrentState(Alive)
   }
 
   override fun onStart() {
+    Timber.d("MainActivity onStart")
     mediaVM.connectService()
-    setVisible()
-    return run {
-      Timber.d("MainActivity onStart")
-      super.onStart()
-    }
+    setCurrentState(Visible)
+    return super.onStart()
   }
 
   override fun onPostCreate(savedInstanceState: Bundle?) {
-    if (!pendingNewIntent.isEmpty()) {
-      val intent = pendingNewIntent.getIntent()
-      pendingNewIntent = EMPTY
-      onNewIntent(intent)
-    }
-    return run {
-      Timber.d("MainActivity onPostCreate")
-      super.onPostCreate(savedInstanceState)
-    }
+    Timber.d("MainActivity onPostCreate")
+    return super.onPostCreate(savedInstanceState)
+  }
+
+  override fun onResume() {
+    Timber.d("MainActivity onResume")
+    setCurrentState(Ready)
+    return super.onResume()
   }
 
   override fun onNewIntent(intent: Intent?) {
-    Timber.d("onNewIntent $intent, type = ${intent?.type}, scheme = ${intent?.scheme}")
+    Timber.d("MainActivity onNewIntent $intent, type = ${intent?.type}, scheme = ${intent?.scheme}")
     intent?.let {
-      val wrapped = it.wrap()
-      when {
-        wrapped.isActionView() -> {
-          if (checkStoragePermission()) {
-            handleIntent(wrapped)
-          } else {
-            if (pendingNewIntent.isEmpty()) {
-              pendingNewIntent = wrapped
-              pendingGranted.add {
-                handleIntent(pendingNewIntent)
-                pendingNewIntent = EMPTY
-              }
-            } else {
-              pendingNewIntent = wrapped
-            }
-            Toast.makeText(this, "Storage Permission Needed", Toast.LENGTH_LONG).show()
-          }
-        }
-      }
+      require(IntentValidator.hasKey(it))
+      handleIntent(it.wrap())
     }
     return run {
-      Timber.d("onNewIntent returning with \npending = $pendingNewIntent \npendingGranted = ${pendingGranted.size}")
+      Timber.d("onNewIntent returning with " +
+        "\npendingGranted = ${mediaVM.pendingGranted.size}")
       super.onNewIntent(intent)
     }
   }
 
   override fun onStop() {
     Timber.d("onStop")
-    setAlive()
+    setCurrentState(Alive)
     return super.onStop()
   }
 
   override fun onDestroy() {
     Timber.d("onDestroy")
-    setNoActivity()
+    setCurrentState(Destroyed)
     return super.onDestroy()
   }
 
+
+
   private fun checkLauncherIntent() {
     requireNotNull(intent)
-    check(intent.action == Intent.ACTION_MAIN)
-    setCurrentActivity()
+    check(intent.action == Defaults.intentAction)
+    installSplashScreen()
   }
 
   private fun isRecreated(savedInstanceState: Bundle?) = savedInstanceState != null
-  private fun isConnectAttempted() =
-    MediaServiceState.isConnectAttempted(mediaVM.serviceState.value)
-
-  private fun shouldHandleLauncherIntent(savedInstanceState: Bundle?): Boolean {
-    if (!isConnectAttempted()) {
-      if (isRecreated(savedInstanceState)) return false
-      if (mediaVM.getConnectedStateHandle) return false
-    }
-    return true
-  }
 
   private fun keepScreenCondition(): Boolean = listOf(
-    when (mediaVM.serviceState.value) {
-      is MediaServiceState.UNIT, is MediaServiceState.CONNECTING -> true; else -> false
-    },
-    mediaVM.appState.value == AppState.Defaults.INVALID,
-    mediaVM.appSettings.value == AppSettings.Defaults.INVALID
+    mediaVM.serviceState.value is MediaServiceState.UNIT,
+    mediaVM.serviceState.value is MediaServiceState.CONNECTING,
+    mediaVM.appSettings.value == AppSettings.INVALID
   ).any { it }
 
   @OptIn(ExperimentalTime::class)
   private fun handleIntent(wrapped: IntentWrapper) {
+    verifyMainThread()
     if (!wrapped.shouldHandleIntent()) {
       Timber.d("MainActivity HandleIntent $wrapped is either handled or have null required properties")
       return
     }
-    lifecycleScope.launch {
-      withContext(Dispatchers.Default) {
-        val (_: Unit, time: Duration) = measureTimedValue { mediaVM.handleIntent(wrapped.copy()) }
-        Timber.d("MainActivity HandledIntent with ${time.inWholeMilliseconds}ms")
-        wrapped.markHandled()
+    if (wrapped.isActionView()) {
+      if (!AppDelegate.hasStoragePermission) {
+        with(mediaVM.pendingNewIntent) {
+          if (isEmpty()) {
+            add(wrapped)
+            mediaVM.pendingGranted.add {
+              forEach { handleIntent(it) }
+              clear()
+            }
+          } else {
+            removeAll { it.isActionView() }
+            add(wrapped)
+          }
+        }
+        appScope.mainScope.launch {
+          AppToaster.blockIfSameToasting("Storage Permission Needed", true)
+        }
+        return
       }
+    }
+    appScope.ioScope.launch {
+      val (_: Unit, time: Duration) = measureTimedValue { mediaVM.handleIntent(wrapped) }
+      Timber.d("MainActivity HandledIntent with ${time.inWholeMilliseconds}ms")
+      wrapped.markHandled()
     }
   }
 
@@ -167,54 +170,112 @@ internal class MainActivity : ComponentActivity() {
 
   // TODO: Expose Activity state
   companion object {
-    private const val noActivity = 1
-    private const val AliveInt = 2
-    private const val VisibleInt = 3
 
-    private var currentActivityHash: Int = noActivity
-    private var currentActivityState: Int = noActivity
-    private var pendingNewIntent: IntentWrapper = EMPTY
-
+    val wasLaunched
+      get() = Lifecycle.wasLaunched
+    val isDestroyed
+      get() = !Lifecycle.isAlive && wasLaunched
     val isAlive
-      get() = currentActivityState >= AliveInt
+      get() = Lifecycle.isAlive
     val isVisible
-      get() = currentActivityState >= VisibleInt
+      get() = Lifecycle.isVisible
+    val isReady
+      get() = Lifecycle.isReady
 
-    private fun MainActivity.setCurrentActivity() {
-      Timber.d("ActivityHash $currentActivityHash changed to ${this.hashCode()}")
-      currentActivityHash = this.hashCode()
-      setAlive()
-    }
+    val activityStateStr
+      get() = Lifecycle.getStateStr
 
-    private fun MainActivity.setNoActivity() {
-      val thisHash = this.hashCode()
-      val thatHash = currentActivityHash
-      if (thisHash != thatHash) {
-        return Timber.d("ActivityHash notEquals, ignored, \nthis = ${thisHash}\ncurrent = $thatHash")
+    fun startActivity(
+      launcher: Activity,
+      intent: Intent? = null
+    ) {
+      if (!isAlive) {
+        launcher.startActivity(Defaults.getDefaultIntent(launcher))
       }
-      currentActivityState = noActivity
-      currentActivityHash = noActivity
-      return Timber.d("ActivityHash Equals, changed to -1, \nthis = ${thisHash}\nthat = ${thatHash}\nto = $currentActivityState ")
+      if (intent != null) {
+        intent.apply { setClass(launcher, MainActivity::class.java) }
+        return launcher.startActivity(intent)
+      }
     }
 
-    private fun MainActivity.setAlive() {
-      val thisHash = this.hashCode()
-      val thatHash = currentActivityHash
-      if (thisHash != thatHash) {
-        return Timber.d("ActivityHash notEquals, ignored, \nthis = ${thisHash}\ncurrent = $thatHash")
-      }
-      currentActivityState = AliveInt
-      return Timber.d("ActivityHash Equals, changed to -1, \nthis = ${thisHash}\nthat = ${thatHash}\nto = $currentActivityState ")
+    private object Defaults {
+      const val intentAction = Intent.ACTION_MAIN
+      fun getDefaultIntent(context: Context) = Intent()
+        .apply {
+          action = intentAction
+          setClass(context, MainActivity::class.java)
+        }
     }
 
-    private fun MainActivity.setVisible() {
-      val thisHash = this.hashCode()
-      val thatHash = currentActivityHash
-      if (thisHash != thatHash) {
-        return Timber.d("ActivityHash notEquals, ignored, \nthis = ${thisHash}\ncurrent = $thatHash")
+    private object Lifecycle {
+
+      @Retention(AnnotationRetention.SOURCE)
+      @Target(
+        AnnotationTarget.FIELD,
+        AnnotationTarget.FUNCTION,
+        AnnotationTarget.PROPERTY_GETTER,
+        AnnotationTarget.PROPERTY_SETTER,
+        AnnotationTarget.VALUE_PARAMETER,
+        AnnotationTarget.LOCAL_VARIABLE,
+      )
+      @IntDef(Nothing, Destroyed, Alive, Visible, Ready)
+      annotation class ActivityState
+
+      const val Nothing = 0 // Not Launched in any way
+      const val Destroyed = 1 // onDestroy() was called
+      const val Alive = 2 // onCreate() or onStop() was called
+      const val Visible = 3 // onStart() or onPause() was called
+      const val Ready = 4 // onResume() was called
+
+      private var currentActivityHash = Nothing
+      private var currentActivityState = Nothing
+
+      val getStateStr
+        get() = toActivityStateStr(currentActivityState)
+
+      val wasLaunched
+        get() = currentActivityState > Nothing
+          && currentActivityHash != Nothing
+      val isAlive
+        get() = currentActivityState > Destroyed
+      val isVisible
+        get() = currentActivityState > Alive
+      val isReady
+        get() = currentActivityState > Visible
+
+      fun toActivityStateStr(@ActivityState int: Int) =
+        when(currentActivityState) {
+          Nothing -> "Not Launched"
+          Destroyed -> "Destroyed"
+          Alive -> "Alive"
+          Visible -> "Visible"
+          Ready -> "Ready"
+          else -> "INVALID"
+        }
+
+      fun MainActivity.setCurrentHash() {
+        currentActivityHash = this.hashCode()
       }
-      currentActivityState = VisibleInt
-      return Timber.d("ActivityHash Equals, changed to -1, \nthis = ${thisHash}\nthat = ${thatHash}\nto = $currentActivityState ")
+
+      private fun MainActivity.checkCurrentHash(): Boolean {
+        val thisHash = this.hashCode()
+        val thatHash = currentActivityHash
+        return thisHash == thatHash
+      }
+
+      fun MainActivity.setCurrentState(@ActivityState state: Int) {
+        if (state == Destroyed) {
+          if (!checkCurrentHash()) {
+            return Timber.e("MainActivity onDestroy ${this.hashCode()} was Called Late")
+          }
+        }
+        check(checkCurrentHash())
+        currentActivityState = state
+      }
+
     }
+
   }
+
+
 }

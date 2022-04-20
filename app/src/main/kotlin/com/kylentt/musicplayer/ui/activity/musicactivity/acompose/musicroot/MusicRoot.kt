@@ -1,22 +1,25 @@
 package com.kylentt.musicplayer.ui.activity.musicactivity.acompose.musicroot
 
-import android.content.Context
+import android.graphics.drawable.BitmapDrawable
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.*
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.drawable.toBitmap
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -27,16 +30,18 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navigation
-import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.NavWallpaper
-import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.screen.home.HomeScreen
-import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.screen.library.LibraryScreen
-import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.screen.search.SearchScreen
+import com.kylentt.mediaplayer.app.delegates.device.DeviceWallpaperDelegate
+import com.kylentt.mediaplayer.app.settings.WallpaperSettings.Source.*
+import com.kylentt.mediaplayer.disposed.ui.mainactivity.disposed.compose.screen.home.HomeScreen
+import com.kylentt.mediaplayer.disposed.ui.mainactivity.disposed.compose.screen.library.LibraryScreen
+import com.kylentt.mediaplayer.disposed.ui.mainactivity.disposed.compose.screen.search.SearchScreen
+import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.LifeCycleExtension.RecomposeOnEvent
 import com.kylentt.musicplayer.core.helper.PermissionHelper
-import com.kylentt.musicplayer.data.repository.stateDataStore
 import com.kylentt.musicplayer.domain.MediaViewModel
 import com.kylentt.musicplayer.ui.activity.musicactivity.acompose.theme.md3.AppTypography
 import com.kylentt.musicplayer.ui.activity.musicactivity.acompose.theme.md3.ColorHelper
-import kotlinx.coroutines.launch
+import timber.log.Timber
+import kotlin.math.roundToInt
 
 @Composable
 fun MusicRoot(
@@ -72,7 +77,6 @@ internal fun MusicRootNavigator(
     MusicRootScaffold(
         entry = stateHolder.value,
         onNavigate = {
-            val i = MusicRootNavigation.routeList.map { route -> route.routeName }.indexOf(it)
             hostController.navigate(it) {
                 restoreState = true
                 launchSingleTop = true
@@ -80,19 +84,10 @@ internal fun MusicRootNavigator(
                     saveState = true
                 }
             }
-            if (i >= 0) {
-                scope.launch { vm.writeAppState { it.copy(navigationIndex = i) } }
-            }
         },
         navWallpaper = navWallpaper
     ) {
         MusicRootNavHost(modifier = Modifier.padding(it), rootController = hostController)
-    }
-}
-
-suspend fun saveNavIndex(context: Context, i: Int) {
-    context.stateDataStore.updateData {
-        it.copy(navigationIndex = i)
     }
 }
 
@@ -105,6 +100,8 @@ internal fun MusicRootScaffold(
     onNavigate: (String) -> Unit,
     content: @Composable (PaddingValues) -> Unit
 ) {
+
+    Timber.d("ComposeDebug MusicRootScaffold")
 
     val settings = vm.appSettings.collectAsState()
 
@@ -122,16 +119,66 @@ internal fun MusicRootScaffold(
         }
     ) {
         if (navWallpaper && PermissionHelper.checkStoragePermission()) {
-            val wallpaperPadding =
-                if (ColorHelper.getNavBarColor().alpha < 1) PaddingValues(0.dp) else it
-            NavWallpaper(
-                modifier = Modifier.padding(wallpaperPadding),
-                current = MusicRootNavigation.routeList
-                    .map { it.routeName }
-                    .indexOf(entry?.destination?.route),
-                size = MusicRootNavigation.routeList.size,
-                settings = settings.value
-            )
+
+            LocalLifecycleOwner.current.lifecycle.RecomposeOnEvent(
+                onEvent = Lifecycle.Event.ON_START
+            ) {
+                val wallpaper by DeviceWallpaperDelegate
+                val wallpaperPadding =
+                    if (ColorHelper.getNavBarColor().alpha < 1) PaddingValues(0.dp) else it
+
+
+                val localContext = LocalContext.current
+                val density = LocalDensity.current
+                val hpx = with(density) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
+                val wpx = with(density) { LocalConfiguration.current.screenWidthDp.dp.toPx() }
+                val background = MaterialTheme.colorScheme.surfaceVariant
+
+                val deviceWallpaper = remember(wallpaper) {
+                    wallpaper?.let { drawable -> drawable as BitmapDrawable }
+                }
+                val mediaItemBitmapDrawable = remember(vm.itemBitmap.value) {
+                    vm.itemBitmap.value.bitmapDrawable
+                }
+                val systemModeBitmap = remember(isSystemInDarkTheme()) {
+                    // No need for key, just for clarity
+                    Paint()
+                        .apply {
+                            color = background
+                            style = PaintingStyle.Fill
+                        }
+                        .let { paint ->
+                            ImageBitmap(wpx.roundToInt(), hpx.roundToInt()).let { bmp ->
+                                Canvas(bmp).drawRect(0f,0f,wpx,hpx, paint)
+                                BitmapDrawable(localContext.resources, bmp.asAndroidBitmap())
+                            }
+                        }
+                }
+                val alt = remember(settings.value, vm.itemBitmap, wallpaper) {
+                    when (settings.value.wallpaperSettings.sourceALT) {
+                        DEVICE_WALLPAPER -> deviceWallpaper
+                        MEDIA_ITEM -> mediaItemBitmapDrawable
+                        SYSTEM_MODE -> systemModeBitmap
+                    }
+                }
+                val wp = remember(settings.value, vm.itemBitmap, wallpaper) {
+                    when (settings.value.wallpaperSettings.source) {
+                        DEVICE_WALLPAPER -> deviceWallpaper
+                        MEDIA_ITEM -> mediaItemBitmapDrawable
+                        SYSTEM_MODE -> systemModeBitmap
+                    }
+                }
+                val nWallpaper = wp ?: alt
+                com.kylentt.mediaplayer.ui.activity.mainactivity.compose.NavWallpaper(
+                    modifier = Modifier.padding(wallpaperPadding),
+                    wallpaper = nWallpaper?.bitmap,
+                    size = MusicRootNavigation.routeList.size,
+                    fadeDuration = 500,
+                    currentIndex = MusicRootNavigation.routeList
+                        .map { it.routeName }
+                        .indexOf(entry?.destination?.route),
+                )
+            }
         }
         content(it)
     }
@@ -256,7 +303,6 @@ internal fun MusicRootNavHost(
 fun NavGraphBuilder.bottomNavGraph(
     start: String = MusicRootNavigation.routeList.first().routeName
 ) {
-
     navigation(
         startDestination = start,
         MusicRootNavigation.routeName
@@ -277,7 +323,7 @@ fun NavGraphBuilder.bottomNavGraph(
 fun shouldShowBottomNav(
     entry: NavBackStackEntry?
 ): Boolean {
-    return MusicRootNavigation.routeList.map { it.routeName }
-        .find { it == entry?.destination?.route }
-        ?.let { true } ?: false
+    return MusicRootNavigation.routeListString.find { it == entry?.destination?.route }
+        ?.let { true }
+        ?: false
 }

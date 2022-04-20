@@ -14,11 +14,12 @@ sealed class MusicRootNavigation {
 
     companion object {
         val routeName = UIConstants.ComposeConstants.MUSIC_ROOT_BOTTOM_NAV_ROUTE
-        val routeList = mutableListOf(
+        val routeList = listOf(
             MusicRootBottomItem.HomeItem,
             MusicRootBottomItem.SearchItem,
             MusicRootBottomItem.LibraryScreen
         )
+        val routeListString = routeList.map { it.routeName }
     }
 }
 

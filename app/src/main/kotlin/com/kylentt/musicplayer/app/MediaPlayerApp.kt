@@ -7,8 +7,8 @@ import androidx.compose.ui.res.vectorResource
 import androidx.core.content.ContextCompat
 import dagger.hilt.android.HiltAndroidApp
 
-@HiltAndroidApp
-internal class MediaPlayerApp : Application()
+/*@HiltAndroidApp
+internal class MediaPlayerApp : Application()*/
 
 // Application Level Resource Accessor
 // Should be very rarely used

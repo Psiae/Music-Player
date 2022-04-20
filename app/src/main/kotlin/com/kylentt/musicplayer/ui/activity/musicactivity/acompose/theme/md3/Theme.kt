@@ -5,7 +5,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
-import com.kylentt.mediaplayer.ui.mainactivity.disposed.compose.theme.ThemeHelper.getDynamicM3Color
+import com.kylentt.mediaplayer.disposed.ui.mainactivity.disposed.compose.theme.ThemeHelper.getDynamicM3Color
 
 object Md3Defaults {
 

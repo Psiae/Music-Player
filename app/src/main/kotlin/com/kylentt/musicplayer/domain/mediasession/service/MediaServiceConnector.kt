@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.drawable.BitmapDrawable
 import android.os.Looper
 import androidx.annotation.FloatRange
 import androidx.annotation.MainThread
@@ -14,14 +15,14 @@ import androidx.media3.session.SessionToken
 import coil.Coil
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
-import com.kylentt.mediaplayer.core.exoplayer.util.toStrState
-import com.kylentt.mediaplayer.core.util.handler.CoilHandler
-import com.kylentt.mediaplayer.core.util.handler.MediaItemHandler
-import com.kylentt.mediaplayer.domain.mediaSession.service.MusicService
-import com.kylentt.musicplayer.app.util.AppScope
+import com.kylentt.mediaplayer.app.AppScope
+import com.kylentt.mediaplayer.disposed.core.exoplayer.util.toStrState
+import com.kylentt.mediaplayer.disposed.core.util.handler.CoilHandler
+import com.kylentt.mediaplayer.disposed.core.util.handler.MediaItemHandler
+import com.kylentt.mediaplayer.disposed.domain.mediaSession.service.MusicService
 import com.kylentt.musicplayer.core.helper.MediaItemUtil
 import com.kylentt.musicplayer.core.helper.elseNull
-import com.kylentt.musicplayer.domain.helper.Preconditions.verifyMainThread
+import com.kylentt.mediaplayer.helper.Preconditions.verifyMainThread
 import com.kylentt.musicplayer.domain.mediasession.MediaSessionManager
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -93,8 +94,8 @@ sealed class ControllerCommand {
   data class WithFade(
     val command: ControllerCommand,
     @FloatRange(from = 0.0, to = 1.0) val to: Float = 0f,
-    val interval: Long = 100,
-    val duration: Long = 500,
+    val interval: Long = 50,
+    val duration: Long = 1000,
     val flush: Boolean = false
   ) : ControllerCommand()
 }
@@ -111,13 +112,13 @@ internal class MediaServiceConnector(
   )
     private set
 
-  private val defScope = appScope.defaultScope
+  private val computeScope = appScope.computationScope
   private val ioScope = appScope.ioScope
   private val mainScope = appScope.mainScope
 
   private val connectLock = Any()
 
-  private val _playerBitmap = MutableStateFlow<Bitmap?>(null)
+  private val _playerBitmap = MutableStateFlow<BitmapDrawable?>(null)
   val playerBitmap = _playerBitmap.asStateFlow()
 
   private val _playerState = MutableStateFlow<PlaybackState>(PlaybackState.UNIT)
@@ -256,14 +257,14 @@ internal class MediaServiceConnector(
 
     private fun whenReady(listener: (MediaController) -> Unit) {
       if (mediaController.playbackState == Player.STATE_READY) {
-        listener(mediaController); return
+        return listener(mediaController)
       }
       controlReadyListener.add(listener)
     }
 
     private fun whenBuffer(listener: (MediaController) -> Unit) {
       if (mediaController.playbackState == Player.STATE_READY) {
-        listener(mediaController); return
+        return listener(mediaController)
       }
       controlReadyListener.add(listener)
     }
@@ -349,10 +350,9 @@ internal class MediaServiceConnector(
       val bitmap = withContext(Dispatchers.IO) {
         itemHandler.getEmbeds(item)?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
           ?: elseNull(useArtUri) {
-            ensureActive()
             item.mediaMetadata.artworkUri?.let { coilHandler.makeBitmap(MediaItemUtil.showArtUri(it)) }
           }
-      }
+      }?.let { BitmapDrawable(context.resources, it) }
       ensureActive()
       _playerBitmap.value = bitmap
     }
@@ -374,19 +374,12 @@ internal class MediaServiceConnector(
       return Timber.d("setPlayerVolume to $f")
     }
 
+
     @MainThread
     private suspend fun exoFade(
       command: ControllerCommand.WithFade
     ) {
       verifyMainThread()
-      val to = command.to
-      val interval = command.interval.toFloat()
-      val duration = command.duration.toFloat()
-      val step = duration / interval
-      val deltaVol = getPlayerVolume() / step
-
-      Timber.d("ExoFade to = $to\ninterval = $interval\nduration = $duration\nstep = $step\ndeltaVol = $deltaVol")
-
       if (command.flush) fadeListener.clear()
       fadeListener.add(command)
 
@@ -401,6 +394,14 @@ internal class MediaServiceConnector(
       }
 
       fading = true
+
+      val to = command.to
+      val interval = command.interval.toFloat()
+      val duration = command.duration.toFloat()
+      val step = duration / interval
+      val deltaVol = getPlayerVolume() / step
+
+      Timber.d("ExoFade to = $to\ninterval = $interval\nduration = $duration\nstep = $step\ndeltaVol = $deltaVol")
 
       while (getPlayerVolume() > to
         && fading
@@ -421,8 +422,8 @@ internal class MediaServiceConnector(
           fadeListener.clear()
           whenReady { setPlayerVolume(1f) }
         }
-        return
       }
     }
+
   }
 }

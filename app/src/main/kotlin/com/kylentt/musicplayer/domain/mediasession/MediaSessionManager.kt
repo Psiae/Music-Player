@@ -3,20 +3,13 @@ package com.kylentt.musicplayer.domain.mediasession
 import android.app.Application
 import android.content.Context
 import androidx.annotation.MainThread
-import androidx.media3.session.MediaLibraryService
-import com.kylentt.musicplayer.app.util.AppScope
-import com.kylentt.musicplayer.domain.helper.Preconditions.verifyMainThread
+import com.kylentt.mediaplayer.app.AppScope
+import com.kylentt.mediaplayer.helper.Preconditions.verifyMainThread
 import com.kylentt.musicplayer.domain.mediasession.service.ControllerCommand
 import com.kylentt.musicplayer.domain.mediasession.service.MediaServiceConnector
-import dagger.Module
-import dagger.Provides
-import dagger.hilt.InstallIn
-import dagger.hilt.android.qualifiers.ApplicationContext
-import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import javax.inject.Singleton
 
 
 // Current Media Playback Single Info Source

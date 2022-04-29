@@ -10,6 +10,8 @@ import androidx.annotation.Px
 import coil.ImageLoader
 import coil.request.CachePolicy
 import coil.request.ImageRequest
+import coil.size.OriginalSize
+import coil.size.PixelSize
 import com.kylentt.mediaplayer.app.delegates.device.StoragePermissionDelegate
 import com.kylentt.mediaplayer.helper.image.CoilHelper.CenterCropTransform.*
 import jp.wasabeef.transformers.coil.CenterBottomCropTransformation
@@ -25,10 +27,8 @@ class CoilHelper(
   private val imageLoader: ImageLoader
 ) {
 
-  val storagePermission by StoragePermissionDelegate
-
   init {
-      check(context is Application)
+    check(context is Application)
   }
 
   enum class CenterCropTransform {
@@ -62,8 +62,20 @@ class CoilHelper(
     (loader.execute(req).drawable as BitmapDrawable).bitmap
   }
 
-  fun bitmapFromUri(uri: Uri) {
-
+  suspend fun bitmapFromUri(
+    context: Context = this.context,
+    loader: ImageLoader = this.imageLoader,
+    cache: CachePolicy = CachePolicy.ENABLED,
+    @Px size: Int = 0,
+    uri: Uri
+  ): Bitmap? = withContext(coroutineContext) {
+    val req = ImageRequest
+      .Builder(context)
+      .data(uri)
+      .diskCachePolicy(cache)
+      .size( if (size > 0) PixelSize(size, size) else OriginalSize )
+      .build()
+    (loader.execute(req).drawable as BitmapDrawable).bitmap
   }
 
 }

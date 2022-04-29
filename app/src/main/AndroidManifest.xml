@@ -25,12 +25,12 @@
             android:authorities="${applicationId}.androidx-startup"
             android:exported="false">
             <meta-data
-                android:name="com.kylentt.musicplayer.app.BaseInitializer"
+                android:name="com.kylentt.mediaplayer.app.AppInitializer"
                 android:value="androidx.startup"/>
         </provider>
 
         <service
-            android:name="com.kylentt.mediaplayer.disposed.domain.mediaSession.service.MusicService"
+            android:name="com.kylentt.mediaplayer.domain.mediasession.service.MediaService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback">
@@ -40,7 +40,7 @@
         </service>
 
         <activity
-            android:name="com.kylentt.musicplayer.ui.activity.musicactivity.MainActivity"
+            android:name="com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity"
             android:exported="true"
             android:theme="@style/Theme.App.SplashScreen"
             android:launchMode="singleTask">
@@ -51,20 +51,18 @@
         </activity>
 
         <activity
-            android:name="com.kylentt.musicplayer.ui.activity.ReceiverActivity"
+            android:name=".ui.external.ReceiverActivity"
             android:exported="true"
             android:theme="@style/Theme.App.SplashScreen">
-
             <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.APP_MUSIC" />
-                <category android:name="android.intent.category.DEFAULT" />
-
-                <data android:scheme="content" />
-                <data android:mimeType="audio/*" />
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.APP_MUSIC"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:scheme="content"/>
+                <data android:mimeType="audio/*"/>
             </intent-filter>
         </activity>
+
     </application>
 
 </manifest>

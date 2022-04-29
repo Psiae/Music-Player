@@ -1,11 +1,9 @@
 package com.kylentt.mediaplayer.ui.activity.mainactivity.compose
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.neverEqualPolicy
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import com.google.accompanist.permissions.*
 import com.kylentt.mediaplayer.app.delegates.device.StoragePermissionDelegate
+import timber.log.Timber
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
@@ -15,23 +13,34 @@ inline fun RequireStorage(
     whenGranted: @Composable (state: PermissionState) -> Unit,
 ) {
     val hasStoragePermission by StoragePermissionDelegate
-    val permissionResult = remember { mutableStateOf(false, policy = neverEqualPolicy()) }
+
+    val permissionResult = remember {
+        mutableStateOf(hasStoragePermission, policy = neverEqualPolicy())
+    }
+
     val permission = rememberPermissionState(
         permission = StoragePermissionDelegate.Write_External_Storage
     ) { result ->
         permissionResult.value = result
     }
 
+    Timber.d("RequireStorage Composable," +
+        "\nhasPermission: $hasStoragePermission," +
+        "\nresult: ${permissionResult.value}" +
+        "\nstatus: ${permission.status},"
+    )
+
     when {
-        permission.status.isGranted && hasStoragePermission -> {
-            whenGranted(permission)
-        }
-        !permissionResult.value && permission.status.shouldShowRationale -> {
+        permission.status.isGranted
+            && hasStoragePermission -> whenGranted(permission)
+        !permissionResult.value
+            && permission.status.shouldShowRationale
+            && !hasStoragePermission -> {
             whenShowRationale(permission)
         }
-        !permissionResult.value && !permission.status.shouldShowRationale -> {
-            whenDenied(permission)
-        }
+        !permissionResult.value
+            && !permission.status.shouldShowRationale
+            && !hasStoragePermission -> whenDenied(permission)
         else -> {
             throw IllegalStateException(
                 "Should Never Reach Here," +

@@ -7,7 +7,7 @@ import com.kylentt.mediaplayer.BuildConfig
 import com.kylentt.mediaplayer.app.delegates.AppDelegate
 import timber.log.Timber
 
-class AppInitializer() : Initializer<Unit> {
+class AppInitializer : Initializer<Unit> {
 
   override fun create(context: Context) {
     require(context is Application)
@@ -22,7 +22,8 @@ class AppInitializer() : Initializer<Unit> {
 
 }
 
-class DebugInitializer() : Initializer<Unit> {
+class DebugInitializer : Initializer<Unit> {
+
   override fun create(context: Context) {
     plantTimber()
   }

@@ -9,14 +9,6 @@ data class WallpaperSettings(
   val sourceALT: Source
 ) {
 
-  companion object {
-    val DEFAULT = WallpaperSettings(
-      mode = Mode.NAVIGATION,
-      source = Source.SYSTEM_MODE,
-      sourceALT = Source.SYSTEM_MODE
-    )
-  }
-
   enum class Mode {
     NORMAL,
     NAVIGATION,
@@ -26,5 +18,13 @@ data class WallpaperSettings(
     DEVICE_WALLPAPER,
     MEDIA_ITEM,
     SYSTEM_MODE
+  }
+
+  companion object {
+    val DEFAULT = WallpaperSettings(
+      mode = Mode.NAVIGATION,
+      source = Source.MEDIA_ITEM,
+      sourceALT = Source.DEVICE_WALLPAPER
+    )
   }
 }

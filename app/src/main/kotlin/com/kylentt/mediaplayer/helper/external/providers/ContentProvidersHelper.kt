@@ -1,15 +1,9 @@
 package com.kylentt.mediaplayer.helper.external.providers
 
 import android.content.ContentResolver
-import android.content.Context
-import android.net.Uri
 import android.os.Environment
-import android.provider.MediaStore
-import android.provider.OpenableColumns
 import com.kylentt.mediaplayer.helper.VersionHelper
-import com.kylentt.musicplayer.domain.mediasession.ContentProviders
 import kotlinx.coroutines.withContext
-import timber.log.Timber
 import java.net.URLDecoder
 import kotlin.coroutines.coroutineContext
 
@@ -25,9 +19,9 @@ object ContentProvidersHelper {
     get() = Environment.getExternalStorageDirectory()
 
   val storageDirString
-    get() = storageDir ?: storagePath
+    get() = (storageDir ?: storagePath).toString()
   val externalStorageDirString
-    get() = externalStorageDir ?: exteralStoragePath
+    get() = (externalStorageDir ?: exteralStoragePath).toString()
 
   @Suppress("BlockingMethodInNonBlockingContext")
   private suspend fun decodeUrl(str: String, encoder: String = "UTF-8") =

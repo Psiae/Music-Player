@@ -19,22 +19,9 @@ class ReceiverActivity: ComponentActivity() {
 
   private fun launchMainActivity() {
     MainActivity.startActivity(launcher = this, intent)
-    if (Helper.isFirstLaunch()) {
+    if (!MainActivity.wasLaunched) {
       overridePendingTransition(R.anim.anim_stay_still, R.anim.anim_stay_still)
     }
-  }
-
-  private object Helper {
-    private var first = true
-    fun isFirstLaunch(): Boolean {
-      return if (first) {
-        first = !first
-        !first
-      } else {
-        first
-      }
-    }
-
   }
 
 }

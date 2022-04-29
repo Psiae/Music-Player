@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.util.Patterns
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -12,6 +13,7 @@ import androidx.annotation.IntDef
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.kylentt.mediaplayer.app.AppDispatchers
 import com.kylentt.mediaplayer.app.AppScope
+import com.kylentt.mediaplayer.app.delegates.AppDelegate
 import com.kylentt.mediaplayer.app.delegates.device.StoragePermissionDelegate
 import com.kylentt.mediaplayer.domain.viewmodels.MainViewModel
 import com.kylentt.mediaplayer.domain.viewmodels.MediaViewModel
@@ -20,21 +22,19 @@ import com.kylentt.mediaplayer.helper.external.IntentWrapper
 import com.kylentt.mediaplayer.ui.activity.ActivityExtension.disableWindowFitSystemDecor
 import com.kylentt.mediaplayer.ui.activity.IntentExtension.appendMainActivityAction
 import com.kylentt.mediaplayer.ui.activity.IntentExtension.appendMainActivityClass
-import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity.Companion.Lifecycle.setCurrentHash
-import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity.Companion.Lifecycle.setCurrentState
+import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity.Companion.LifecycleState.Alive
+import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity.Companion.LifecycleState.Destroyed
+import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity.Companion.LifecycleState.Ready
+import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity.Companion.LifecycleState.Visible
+import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity.Companion.LifecycleState.toActivityStateStr
 import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.MainActivityContent
+import dagger.hilt.android.AndroidEntryPoint
 import timber.log.Timber
+import java.util.regex.Pattern
 import javax.inject.Inject
 
-interface ExposeActivityState {
-  fun setCurrent()
-  fun alive()
-  fun visible()
-  fun ready()
-  fun destroyed()
-}
-
-internal class MainActivity : ComponentActivity(), ExposeActivityState {
+@AndroidEntryPoint
+class MainActivity : ComponentActivity() {
 
   @Inject lateinit var appScope: AppScope
   @Inject lateinit var dispatcher: AppDispatchers
@@ -43,20 +43,23 @@ internal class MainActivity : ComponentActivity(), ExposeActivityState {
   private val mediaViewModel: MediaViewModel by viewModels()
   private val storagePermission: Boolean by StoragePermissionDelegate
 
+  private val storagePermToast by lazy {
+    Toast.makeText(this, "Storage Permission Needed", Toast.LENGTH_LONG)
+  }
+
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     checkLauncherIntent()
-    installSplashScreen()
-    setupExtra()
+    setupActivity()
     setContent {
-      MainActivityContent(mainViewModel)
+      MainActivityContent()
     }
   }
 
   private fun checkLauncherIntent() {
     requireNotNull(intent)
-    check(intent.action == Defaults.intentAction)
-    setCurrent()
+    check(intent.action == Companion.Defaults.intentAction)
+    setAsCurrentHash()
     return alive()
   }
 
@@ -94,48 +97,55 @@ internal class MainActivity : ComponentActivity(), ExposeActivityState {
     }
   }
 
-  override fun setCurrent() = setCurrentHash()
-  override fun alive() = setCurrentState(Lifecycle.Alive)
-  override fun visible() = setCurrentState(Lifecycle.Visible)
-  override fun ready() = setCurrentState(Lifecycle.Ready)
-  override fun destroyed() = setCurrentState(Lifecycle.Destroyed)
-
-  private val storagePermToast = Toast.makeText(
-    this, "Storage Permission Needed", Toast.LENGTH_LONG
-  )
-
-  private fun setupExtra() {
-    connectMediaService()
+  private fun setupActivity() {
     disableWindowFitSystemDecor()
+    installSplashScreen()
+    connectMediaService()
+  }
+
+  override fun onBackPressed() {
+    super.onBackPressed()
   }
 
   private fun connectMediaService() = mediaViewModel.connectService()
 
   private fun handleIntent(intent: IntentWrapper) {
     verifyMainThread()
-    if (!intent.shouldHandleIntent) {
+    if (!intent.shouldHandleIntent) return
+    if (!storagePermission) {
+      mainViewModel.pendingStorageIntent.add(intent)
+      storagePermToast?.show()
       return
     }
-    if (!storagePermission) {
-      mainViewModel.pendingStorageGranted.add { handleIntent(intent) }
-      storagePermToast.show()
+    if (mainViewModel.pendingStorageIntent.isNotEmpty()) {
+      mainViewModel.pendingStorageIntent.add(intent)
       return
     }
     mediaViewModel.handleMediaIntent(intent)
   }
 
+  private fun setAsCurrentHash() = LifecycleState.setCurrentHash(this)
+  private fun alive() = LifecycleState.setCurrentState(this, Alive)
+  private fun visible() = LifecycleState.setCurrentState(this, Visible)
+  private fun ready() = LifecycleState.setCurrentState(this, Ready)
+  private fun destroyed() = LifecycleState.setCurrentState(this, Destroyed)
+
   companion object {
+
     val wasLaunched
-      get() = Lifecycle.wasLaunched
+      get() = LifecycleState.wasLaunched
     val isAlive
-      get() = Lifecycle.isAlive
+      get() = LifecycleState.isAlive
     val isVisible
-      get() = Lifecycle.isVisible
+      get() = LifecycleState.isVisible
     val isDestroyed
-      get() = Lifecycle.isDestroyed
+      get() = LifecycleState.isDestroyed
+
+    val stateStr
+      get() = LifecycleState.stateStr
 
     fun startActivity(
-      launcher: Activity,
+      launcher: Context,
       intent: Intent? = null
     ) = with(launcher) {
       if (!isAlive) {
@@ -149,7 +159,8 @@ internal class MainActivity : ComponentActivity(), ExposeActivityState {
       }
     }
 
-    private object Lifecycle {
+    private object LifecycleState {
+
       @Retention(AnnotationRetention.SOURCE)
       @Target(
         AnnotationTarget.FIELD,
@@ -182,9 +193,11 @@ internal class MainActivity : ComponentActivity(), ExposeActivityState {
         get() = currentActivityState >= Ready
       val isDestroyed
         get() = currentActivityState == Destroyed
+      val stateStr
+        get() = toActivityStateStr(currentActivityState)
 
       fun toActivityStateStr(@ActivityState int: Int) =
-        when (currentActivityState) {
+        when (int) {
           Nothing -> "Not Launched"
           Destroyed -> "Destroyed"
           Alive -> "Alive"
@@ -193,8 +206,8 @@ internal class MainActivity : ComponentActivity(), ExposeActivityState {
           else -> "INVALID"
         }
 
-      fun MainActivity.setCurrentHash() {
-        currentActivityHash = this.hashCode()
+      fun setCurrentHash(activity: Activity) {
+        currentActivityHash = activity.hashCode()
         return Timber.d(
           "MainActivity HashCode changed," +
             "\n from: $currentActivityHash" +
@@ -202,37 +215,34 @@ internal class MainActivity : ComponentActivity(), ExposeActivityState {
         )
       }
 
-      fun MainActivity.setCurrentState(@ActivityState state: Int) {
+      fun setCurrentState(activity: Activity, @ActivityState state: Int) {
         // onDestroy() may be called late, usually after other onPostCreate()
-        if (state == Destroyed) if (!hashEqual()) return
-        require(hashEqual())
+        if (state == Destroyed) if (!currentHashEqual(activity)) return
+        require(currentHashEqual(activity))
         currentActivityState = state
+        return Timber.d("MainActivity state changed to ${toActivityStateStr(state)}")
       }
 
-      private fun MainActivity.hashEqual(): Boolean {
-        return this.hashCode() == currentActivityHash
+      private fun currentHashEqual(activity: Activity): Boolean {
+        return activity.hashCode() == currentActivityHash
       }
-
     }
 
     object Defaults {
       const val intentAction = Intent.ACTION_MAIN
       private val defClass = MainActivity::class.java
 
-      fun appendClass(context: Context, intent: Intent) = intent
-        .apply { setClass(context, defClass) }
+      fun appendAction(intent: Intent) =
+        intent.apply { action = intentAction }
 
-      fun appendAction(intent: Intent) = intent
-        .apply { action = intentAction }
+      fun appendClass(context: Context, intent: Intent) =
+        intent.apply { setClass(context, defClass) }
 
       fun makeDefaultIntent(context: Context): Intent {
         return Intent()
           .appendMainActivityAction()
           .appendMainActivityClass(context)
       }
-
     }
-
   }
-
 }

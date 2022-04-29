@@ -8,7 +8,7 @@ import kotlin.reflect.KProperty
 
 object DeviceWallpaperDelegate {
 
-  fun getDeviceWallpaper(accessor: Context): Drawable? {
+  private fun getDeviceWallpaper(accessor: Context): Drawable? {
     return if (AppDelegate.checkStoragePermission()) {
       WallpaperManager.getInstance(accessor).drawable
     } else {
@@ -20,15 +20,7 @@ object DeviceWallpaperDelegate {
     return getDeviceWallpaper(appDelegate.base)
   }
 
-  operator fun getValue(context: Context, property: KProperty<*>): Drawable? {
-    return getDeviceWallpaper(context)
-  }
-
-  operator fun getValue(nothing: Nothing?, property: KProperty<*>): Drawable? {
-    return AppDelegate.deviceWallpaper
-  }
-
-  operator fun getValue(any: Any, property: KProperty<*>): Drawable? {
+  operator fun getValue(any: Any?, property: KProperty<*>): Drawable? {
     return AppDelegate.deviceWallpaper
   }
 }

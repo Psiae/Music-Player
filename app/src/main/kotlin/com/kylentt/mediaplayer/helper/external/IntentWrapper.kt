@@ -28,7 +28,12 @@ data class IntentWrapper(
   fun isSchemeContent() = scheme == ContentResolver.SCHEME_CONTENT
   fun isTypeAudio() = type.startsWith("audio/")
 
+  fun markHandled() {
+    this.handled = true
+  }
+
   companion object {
+    val EMPTY = fromIntent(Intent())
     fun fromIntent(intent: Intent) = IntentWrapper(intent)
   }
 }

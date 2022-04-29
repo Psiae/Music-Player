@@ -9,8 +9,8 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import com.kylentt.mediaplayer.app.AppDispatchers
 import com.kylentt.mediaplayer.helper.VersionHelper
-import com.kylentt.musicplayer.core.helper.MediaItemUtil
-import com.kylentt.musicplayer.data.entity.SongEntity
+import com.kylentt.disposed.musicplayer.core.helper.MediaItemUtil
+import com.kylentt.disposed.musicplayer.data.entity.SongEntity
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.withContext
@@ -37,7 +37,8 @@ data class MediaStoreSong(
 ) : SongEntity {
 
   override fun toString(): String {
-    return "MediaStoreSong, title: $title" +
+    return "MediaStoreSong" +
+      "\ntitle: $title" +
       "\nalbum: $album" +
       "\nartist: $artist" +
       "\nduration: $duration" +
@@ -132,48 +133,36 @@ class MediaStoreSourceImpl(
           while (cursor.moveToNext()) {
             ensureActive()
 
-            val songId = cursor.getString(
-              cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns._ID)
-            )
-            val album = cursor.getString(
-              cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.ALBUM)
-            )
-            val albumId = cursor.getLong(
-              cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.ALBUM_ID)
-            )
-            val artist = cursor.getString(
-              cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.ARTIST)
-            )
-            val artistId = cursor.getLong(
-              cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.ARTIST_ID)
-            )
-            val byteSize = cursor.getLong(
-              cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.SIZE)
-            )
-            val d = cursor.getColumnIndex(MediaStore.Audio.AudioColumns.DATA)
+            val songId =
+              cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns._ID))
+            val album =
+              cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.ALBUM))
+            val albumId =
+              cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.ALBUM_ID))
+            val artist =
+              cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.ARTIST))
+            val artistId =
+              cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.ARTIST_ID))
+            val byteSize =
+              cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.SIZE))
 
+            val d = cursor.getColumnIndex(MediaStore.Audio.AudioColumns.DATA)
             val data = if (d > -1) cursor.getString(d) else "DEPRECATED"
 
-            val dateModified = cursor.getLong(
-              cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.DATE_MODIFIED)
-            )
-
-            val duration = cursor.getLong(
-              cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.DURATION)
-            )
-
-            val fileName = cursor.getString(
-              cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.DISPLAY_NAME)
-            )
-            val title = cursor.getString(
-              cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.TITLE)
-            )
-            val folder = cursor.getString(
-              cursor.getColumnIndexOrThrow(songFolderName)
-            )
-            val folderId = cursor.getString(
-              cursor.getColumnIndexOrThrow(songFolderId)
-            )
+            val dateModified =
+              cursor
+                .getLong(cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.DATE_MODIFIED))
+            val duration =
+              cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.DURATION))
+            val fileName =
+              cursor
+                .getString(cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.DISPLAY_NAME))
+            val title =
+              cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.TITLE))
+            val folder =
+              cursor.getString(cursor.getColumnIndexOrThrow(songFolderName))
+            val folderId =
+              cursor.getString(cursor.getColumnIndexOrThrow(songFolderId))
 
             val albumUri = ContentUris
               .withAppendedId(Uri.parse(MEDIASTORE_ALBUM_ART_PATH), albumId)

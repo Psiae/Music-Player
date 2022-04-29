@@ -10,31 +10,27 @@ import androidx.navigation.NavHostController
 import androidx.navigation.navigation
 import com.google.accompanist.navigation.animation.AnimatedNavHost
 import com.google.accompanist.navigation.animation.composable
+import com.kylentt.disposed.disposed.ui.mainactivity.disposed.compose.screen.library.LibraryScreen
+import com.kylentt.disposed.disposed.ui.mainactivity.disposed.compose.screen.search.SearchScreen
 import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.home.HomeScreen
 
-sealed class Screen(val route: String) {
-    object Home : Screen(Home_Screen_route)
-    object Search : Screen(Search_Screen_route)
-    object Library : Screen(Library_Screen_route)
-    object Extra : Screen(Extra_Screen_route)
+sealed class Screen(
+    val route: String,
+    val label: String
+) {
+    object Home : Screen(Home_Screen_route, Home_Screen_label)
+    object Search : Screen(Search_Screen_route, Search_Screen_label)
+    object Library : Screen(Library_Screen_route, Library_Screen_label)
 
-    companion object {
+    private companion object {
         const val Home_Screen_route = "Home"
         const val Search_Screen_route = "Search"
         const val Library_Screen_route = "Library"
-        const val Extra_Screen_route = "Extra"
-    }
-}
 
-object MainBottomNavigation {
-    val screenList = listOf(
-        Screen.Home,
-        Screen.Search,
-        Screen.Library,
-        Screen.Extra
-    )
-    val routeList = screenList.map { it.route }
-    var startDestination = routeList.first()
+        const val Home_Screen_label = "Home"
+        const val Search_Screen_label = "Search"
+        const val Library_Screen_label = "Library"
+    }
 }
 
 @Composable
@@ -43,28 +39,29 @@ fun AnimatedMainAppNavigator(
     modifier: Modifier = Modifier
 ) {
     AnimatedNavHost(
+        modifier = modifier,
         navController = controller,
-        startDestination = MainBottomNavigation.startDestination
+        startDestination = "HomeRoute"
     ) {
         addHomeRoute(controller)
         addSearchRoute(controller)
         addLibraryRoute(controller)
-        addExtraRoute(controller)
     }
 }
 
+const val homeRoute = "HomeRoute"
 private fun NavGraphBuilder.addHomeRoute(
     controller: NavHostController
 ) {
     navigation(
-        route = Screen.Home.route,
+        route = homeRoute,
         startDestination = Screen.Home.route,
     ) {
-        addHome(controller)
+        addHomeScreen(controller)
     }
 }
 
-private fun NavGraphBuilder.addHome(
+private fun NavGraphBuilder.addHomeScreen(
     controller: NavHostController
 ) {
     composable(
@@ -73,27 +70,50 @@ private fun NavGraphBuilder.addHome(
         HomeScreen(
             openSearchScreen = { /*TODO*/ },
             openLibraryScreen = { /*TODO*/ },
-            openExtraScreen = { /*TODO*/ },
-            openSettingScreen = { /*TODO*/ }) {
+            openSettingScreen = { /*TODO*/ }
+        ) {
+
         }
     }
 }
 
+const val searchRoute = "SearchRoute"
 private fun NavGraphBuilder.addSearchRoute(
     controller: NavHostController
 ) {
-
+    navigation(
+        route = searchRoute,
+        startDestination = Screen.Search.route
+    ) {
+        addSearchScreen(controller)
+    }
 }
 
+private fun NavGraphBuilder.addSearchScreen(
+    controller: NavHostController
+) {
+    composable(route = Screen.Search.route) {
+        SearchScreen()
+    }
+}
+
+const val libraryRoute = "LibraryRoute"
 private fun NavGraphBuilder.addLibraryRoute(
     controller: NavHostController
 ) {
-
+    navigation(
+        route = libraryRoute,
+        startDestination = Screen.Library.route
+    ) {
+        addLibraryScreen(controller)
+    }
 }
 
-private fun NavGraphBuilder.addExtraRoute(
+private fun NavGraphBuilder.addLibraryScreen(
     controller: NavHostController
 ) {
-
+    composable(route = Screen.Library.route) {
+        LibraryScreen()
+    }
 }
 

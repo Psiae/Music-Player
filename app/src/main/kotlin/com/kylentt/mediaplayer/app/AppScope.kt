@@ -10,15 +10,19 @@ data class AppScope(
   val mainScope: CoroutineScope,
   val immediateScope: CoroutineScope
 ) {
-  companion object {
-    fun fromAppDispatchers(dispatchers: AppDispatchers) = AppScope(
-      computationScope = CoroutineScope(dispatchers.computation + SupervisorJob()),
-      ioScope = CoroutineScope(dispatchers.io + SupervisorJob()),
-      mainScope = CoroutineScope(dispatchers.main + SupervisorJob()),
-      immediateScope = CoroutineScope(dispatchers.mainImmediate + SupervisorJob())
-    )
-  }
 
+  companion object {
+
+    fun fromAppDispatchers(dispatchers: AppDispatchers = AppDispatchers.Default) =
+      with(dispatchers) {
+        AppScope(
+          computationScope = CoroutineScope(computation + SupervisorJob()),
+          ioScope = CoroutineScope(io + SupervisorJob()),
+          mainScope = CoroutineScope(main + SupervisorJob()),
+          immediateScope = CoroutineScope(mainImmediate + SupervisorJob())
+        )
+      }
+  }
 }
 
 data class AppDispatchers(
@@ -27,6 +31,7 @@ data class AppDispatchers(
   val main: CoroutineDispatcher,
   val mainImmediate: CoroutineDispatcher
 ) {
+
   companion object {
     val Default = with(kotlinx.coroutines.Dispatchers) {
       AppDispatchers(
@@ -36,7 +41,5 @@ data class AppDispatchers(
         mainImmediate = Main.immediate
       )
     }
-
   }
-
 }

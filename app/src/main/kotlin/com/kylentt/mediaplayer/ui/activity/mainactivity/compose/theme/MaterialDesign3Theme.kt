@@ -12,9 +12,11 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.google.android.material.color.ColorRoles
+import com.google.android.material.color.DynamicColors
 import com.google.android.material.color.MaterialColors
 import com.kylentt.mediaplayer.helper.VersionHelper
 import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.theme.helper.ColorHelper
+import timber.log.Timber
 
 private val LightThemeColors = lightColorScheme(
 
@@ -75,6 +77,7 @@ private val DarkThemeColors = darkColorScheme(
     inversePrimary = md_theme_dark_inversePrimary,
 )
 
+
 @Composable
 fun MaterialDesign3Theme(
     dynamic: Boolean = VersionHelper.hasSnowCone(),
@@ -83,7 +86,42 @@ fun MaterialDesign3Theme(
 ) {
 
     val systemUiController = rememberSystemUiController()
-    val overrideSystemUI = @Composable {
+
+    Timber.d("hasSnowCone? ${VersionHelper.hasSnowCone()}")
+
+    if (dynamic && DynamicColors.isDynamicColorAvailable()) {
+       return HarmonizedTheme(dynamic,useDarkTheme) {
+           with(systemUiController) {
+               setStatusBarColor(ColorHelper.getTonedSurface().copy(alpha = 0.5f))
+               setNavigationBarColor(Color.Transparent)
+               isNavigationBarContrastEnforced = false
+               statusBarDarkContentEnabled = !useDarkTheme
+               navigationBarDarkContentEnabled = !useDarkTheme
+           }
+           content()
+       }
+    }
+
+    val colors = if (DynamicColors.isDynamicColorAvailable()) {
+        if (useDarkTheme) {
+            dynamicDarkColorScheme(LocalContext.current)
+        } else {
+            dynamicLightColorScheme(LocalContext.current)
+        }
+    } else {
+        if (useDarkTheme) {
+            DarkThemeColors
+        } else {
+            LightThemeColors
+        }
+    }
+
+
+
+    MaterialTheme(
+        colorScheme = colors,
+        typography = AppTypography,
+    ) {
         with(systemUiController) {
             setStatusBarColor(ColorHelper.getTonedSurface().copy(alpha = 0.5f))
             setNavigationBarColor(Color.Transparent)
@@ -91,29 +129,8 @@ fun MaterialDesign3Theme(
             statusBarDarkContentEnabled = !useDarkTheme
             navigationBarDarkContentEnabled = !useDarkTheme
         }
-    }
-
-    if (dynamic && VersionHelper.hasSnowCone()) {
-       return HarmonizedTheme(dynamic,useDarkTheme) {
-           overrideSystemUI()
-           content()
-       }
-    }
-
-    val colors = if (!useDarkTheme) {
-        LightThemeColors
-    } else {
-        DarkThemeColors
-    }
-
-    MaterialTheme(
-        colorScheme = colors,
-        typography = AppTypography,
-    ) {
-        overrideSystemUI()
         content()
     }
-
 }
 
 data class CustomColor(val name:String, val color: Color, val harmonized: Boolean, var roles: ColorRoles)

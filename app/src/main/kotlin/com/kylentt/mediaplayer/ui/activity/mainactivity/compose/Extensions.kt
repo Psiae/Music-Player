@@ -9,7 +9,7 @@ import java.lang.IllegalStateException
 object LifeCycleExtension {
 
     @Composable
-    internal fun Lifecycle.RecomposeOnEvent(
+    internal inline fun Lifecycle.RecomposeOnEvent(
         onEvent: Lifecycle.Event,
         content: @Composable () -> Unit
     ) {

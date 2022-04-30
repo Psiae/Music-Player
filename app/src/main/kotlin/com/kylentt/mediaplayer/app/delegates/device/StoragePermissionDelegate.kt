@@ -8,6 +8,12 @@ import com.kylentt.mediaplayer.app.delegates.AppDelegate
 import kotlin.reflect.KProperty
 
 object StoragePermissionDelegate {
+
+  /**
+   * Delegate to check Storage Permission, gets the context from AppDelegate Class
+   * Which is the requirement for the App to function properly
+   * */
+
   const val Read_External_Storage = Manifest.permission.READ_EXTERNAL_STORAGE
   const val Write_External_Storage = Manifest.permission.WRITE_EXTERNAL_STORAGE
 
@@ -26,6 +32,7 @@ object StoragePermissionDelegate {
       checkWriteStoragePermission(appDelegate.base)
   }
 
+  /** can be Delegated inside Composable */
   operator fun getValue(any: Any?, property: KProperty<*>): Boolean {
     return AppDelegate.hasStoragePermission
   }

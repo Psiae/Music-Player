@@ -3,12 +3,17 @@ package com.kylentt.mediaplayer.data.repository
 import android.app.Application
 import android.content.Context
 import androidx.datastore.dataStore
-import com.kylentt.mediaplayer.app.AppScope
+import com.kylentt.mediaplayer.app.coroutines.AppScope
 import com.kylentt.mediaplayer.app.settings.AppSettings
 import com.kylentt.mediaplayer.app.settings.AppSettingsSerializer
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import timber.log.Timber
+
+/**
+ * Repository Containing Protobuf related data.
+ * e.g: AppSettings in Proto DataStore
+ * */
 
 val Context.settingsDataStore by dataStore("app-settings.json", AppSettingsSerializer)
 

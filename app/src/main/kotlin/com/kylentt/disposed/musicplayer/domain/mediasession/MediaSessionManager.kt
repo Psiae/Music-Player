@@ -3,7 +3,7 @@ package com.kylentt.disposed.musicplayer.domain.mediasession
 import android.app.Application
 import android.content.Context
 import androidx.annotation.MainThread
-import com.kylentt.mediaplayer.app.AppScope
+import com.kylentt.mediaplayer.app.coroutines.AppScope
 import com.kylentt.mediaplayer.helper.Preconditions.verifyMainThread
 import com.kylentt.disposed.musicplayer.domain.mediasession.service.ControllerCommand
 import com.kylentt.disposed.musicplayer.domain.mediasession.service.MediaServiceConnector

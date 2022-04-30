@@ -13,6 +13,10 @@ import dagger.hilt.android.components.ServiceComponent
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.scopes.ServiceScoped
 
+/**
+ * Hilt Module Providing MediaService dependencies
+ * */
+
 @Module
 @InstallIn(ServiceComponent::class)
 object MediaServiceModule {

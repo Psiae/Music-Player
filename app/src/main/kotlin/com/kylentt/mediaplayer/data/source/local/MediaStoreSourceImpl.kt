@@ -7,7 +7,7 @@ import android.provider.MediaStore
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
-import com.kylentt.mediaplayer.app.AppDispatchers
+import com.kylentt.mediaplayer.app.coroutines.AppDispatchers
 import com.kylentt.mediaplayer.helper.VersionHelper
 import com.kylentt.disposed.musicplayer.core.helper.MediaItemUtil
 import com.kylentt.disposed.musicplayer.data.entity.SongEntity

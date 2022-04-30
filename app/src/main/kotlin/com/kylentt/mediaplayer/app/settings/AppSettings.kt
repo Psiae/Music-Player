@@ -9,6 +9,10 @@ import timber.log.Timber
 import java.io.InputStream
 import java.io.OutputStream
 
+/**
+ * Class to store the Application Settings, @Serializable for dataStore
+ * */
+
 @Serializable
 data class AppSettings(
   val navigationSettings: NavigationSettings,
@@ -18,8 +22,8 @@ data class AppSettings(
 
   companion object {
     val DEFAULT = AppSettings(
-      navigationSettings = NavigationSettings.DEFAULT,
-      wallpaperSettings = WallpaperSettings.DEFAULT
+        navigationSettings = NavigationSettings.DEFAULT,
+        wallpaperSettings = WallpaperSettings.DEFAULT
     )
     val INVALID = DEFAULT.copy(isValid = false)
   }
@@ -32,13 +36,10 @@ object AppSettingsSerializer : Serializer<AppSettings> {
   @OptIn(InternalSerializationApi::class)
   override suspend fun readFrom(input: InputStream): AppSettings {
     return try {
-      Json
-        .decodeFromString(
-          deserializer = AppSettings::class.serializer(),
-          string = input
-            .readBytes()
-            .decodeToString()
-        )
+      Json.decodeFromString(
+        deserializer = AppSettings::class.serializer(),
+        string = input.readBytes().decodeToString()
+      )
     } catch (e: Exception) {
       Timber.e(e)
       defaultValue
@@ -49,12 +50,10 @@ object AppSettingsSerializer : Serializer<AppSettings> {
   @Suppress("BlockingMethodInNonBlockingContext")
   override suspend fun writeTo(t: AppSettings, output: OutputStream) {
     try {
-      output
-        .write(
-          Json
-            .encodeToString(serializer = AppSettings::class.serializer(), value = t)
-            .encodeToByteArray()
-        )
+      output.write(
+        Json.encodeToString(serializer = AppSettings::class.serializer(), value = t)
+          .encodeToByteArray()
+      )
     } catch (e: Exception) {
       Timber.e(e)
     }

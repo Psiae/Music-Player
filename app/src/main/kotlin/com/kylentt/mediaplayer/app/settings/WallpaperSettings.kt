@@ -2,6 +2,11 @@ package com.kylentt.mediaplayer.app.settings
 
 import kotlinx.serialization.Serializable
 
+/**
+ * The Preference Settings for App Wallpaper,
+ * e.g: Scrolling Wallpaper from MediaItem embedded Picture, similar to some phone Home Screen
+ * */
+
 @Serializable
 data class WallpaperSettings(
   val mode: Mode,

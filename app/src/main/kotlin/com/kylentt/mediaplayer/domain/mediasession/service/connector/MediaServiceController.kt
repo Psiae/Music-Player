@@ -11,8 +11,8 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
-import com.kylentt.mediaplayer.core.exoplayer.Constants
-import com.kylentt.mediaplayer.core.exoplayer.Helper
+import com.kylentt.mediaplayer.core.exoplayer.PlayerConstants
+import com.kylentt.mediaplayer.core.exoplayer.PlayerHelper
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateBuffering
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateEnded
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateIdle
@@ -32,26 +32,84 @@ class MediaServiceController(
   val playbackStateSF = MutableStateFlow<PlaybackState>(PlaybackState.EMPTY)
   val serviceStateSF = MutableStateFlow<MediaServiceState>(MediaServiceState.NOTHING)
 
+  @Volatile
   @GuardedBy("controllerLock")
-  lateinit var futureMediaController: ListenableFuture<MediaController>
-  lateinit var mediaController: MediaController
-  lateinit var sessionToken: SessionToken
+  private lateinit var futureMediaController: ListenableFuture<MediaController>
+  private lateinit var mediaController: MediaController
+  private lateinit var sessionToken: SessionToken
 
   private val controllerLock = Any()
+  private val listenerLock: Any = Any()
   private val directExecutor = MoreExecutors.directExecutor()
 
-  val context = serviceConnector.baseContext
-  val itemHelper = serviceConnector.itemHelper
-  val ioScope = serviceConnector.appScope.ioScope
-  val mainScope = serviceConnector.appScope.mainScope
+  private val context = serviceConnector.baseContext
+  private val itemHelper = serviceConnector.itemHelper
+  private val ioScope = serviceConnector.appScope.ioScope
+  private val mainScope = serviceConnector.appScope.mainScope
 
-  val ioDispatcher = serviceConnector.dispatchers.io
-  val mainDispatcher = serviceConnector.dispatchers.main
+  private val ioDispatcher = serviceConnector.dispatchers.io
+  private val mainDispatcher = serviceConnector.dispatchers.main
 
-  val isControllerConnected
+  @GuardedBy("listenerLock")
+  private val controlIdleListener = mutableListOf<(MediaController) -> Unit>()
+
+  @GuardedBy("listenerLock")
+  private val controlBufferListener = mutableListOf<(MediaController) -> Unit>()
+
+  @GuardedBy("listenerLock")
+  private val controlReadyListener = mutableListOf<(MediaController) -> Unit>()
+
+  @GuardedBy("listenerLock")
+  private val controlEndedListener = mutableListOf<(MediaController) -> Unit>()
+
+  private val isControllerConnected
     get() = if (::mediaController.isInitialized) mediaController.isConnected else false
-  val isControllerConnecting
+  private val isControllerConnecting
     get() = serviceStateSF.value is MediaServiceState.CONNECTING
+
+  private val playerListener = object : Player.Listener {
+
+    override fun onPlaybackStateChanged(playbackState: Int) {
+      super.onPlaybackStateChanged(playbackState)
+      when (playbackState) {
+        Player.STATE_BUFFERING -> {
+          controlBufferListener.forEachClear(listenerLock) { it(mediaController) }
+        }
+        Player.STATE_ENDED -> {
+          controlEndedListener.forEachClear(listenerLock) { it(mediaController) }
+        }
+        Player.STATE_IDLE -> {
+          controlIdleListener.forEachClear(listenerLock) { it(mediaController) }
+        }
+        Player.STATE_READY -> {
+          controlReadyListener.forEachClear(listenerLock) { it(mediaController) }
+        }
+      }
+      playbackStateSF.value = playbackStateSF.value.copy(playerState = playbackState)
+    }
+
+    override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+      super.onPlayWhenReadyChanged(playWhenReady, reason)
+      playbackStateSF.value = playbackStateSF.value.copy(playWhenReady = playWhenReady)
+    }
+
+    override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+      super.onMediaItemTransition(mediaItem, reason)
+      val item = mediaItem ?: MediaItem.EMPTY
+      playbackStateSF.value = playbackStateSF.value.copy(currentMediaItem = item)
+      updateItemBitmapSF(item)
+    }
+
+    override fun onIsPlayingChanged(isPlaying: Boolean) {
+      super.onIsPlayingChanged(isPlaying)
+      playbackStateSF.value = playbackStateSF.value.copy(isPlaying = isPlaying)
+    }
+
+    override fun onRepeatModeChanged(repeatMode: Int) {
+      super.onRepeatModeChanged(repeatMode)
+      playbackStateSF.value = playbackStateSF.value.copy(repeatMode = repeatMode)
+    }
+  }
 
   fun connectController(
     onConnected: (MediaController) -> Unit
@@ -61,83 +119,34 @@ class MediaServiceController(
       return onConnected(mediaController)
     }
     if (isControllerConnecting) {
-      require(::futureMediaController.isInitialized)
+      check(::futureMediaController.isInitialized)
       return futureMediaController.addListener({ onConnected(mediaController) }, directExecutor)
     }
     serviceStateSF.value = MediaServiceState.CONNECTING
     sessionToken = SessionToken(context, MediaService.getComponentName(context))
-    futureMediaController =
-      MediaController
-        .Builder(context, sessionToken)
-        .setApplicationLooper(Looper.myLooper()!!)
-        .buildAsync()
-        .apply {
-          addListener(
-            {
-              try {
-                val c = this.get()
-                mediaController = c
-                setupMediaController(c)
-                onConnected(c)
-                serviceStateSF.value = MediaServiceState.CONNECTED
-              } catch (e: Exception) {
-                serviceStateSF.value = MediaServiceState.ERROR("${Timber.e(e)}", e)
-              }
-            },
-            directExecutor
-          )
-        }
+    futureMediaController = MediaController.Builder(context, sessionToken)
+      .setApplicationLooper(Looper.myLooper()!!)
+      .buildAsync()
+      .apply {
+        addListener(
+          {
+            try {
+              require(this.isDone)
+              mediaController = this.get()
+              setupMediaController(mediaController)
+              onConnected(mediaController)
+              serviceStateSF.value = MediaServiceState.CONNECTED
+            } catch (e: Exception) {
+              serviceStateSF.value = MediaServiceState.ERROR("${Timber.e(e)}", e)
+            }
+          }, directExecutor
+        )
+      }
   }
 
   private fun setupMediaController(controller: MediaController) {
     verifyMainThread()
-
-    with(controller) {
-
-      addListener(object : Player.Listener {
-
-        override fun onPlaybackStateChanged(playbackState: Int) {
-          super.onPlaybackStateChanged(playbackState)
-          when (playbackState) {
-            Player.STATE_BUFFERING -> {
-              controlBufferListener.forEachClear(listenerLock) { it(mediaController) }
-            }
-            Player.STATE_ENDED -> {
-              controlEndedListener.forEachClear(listenerLock) { it(mediaController) }
-            }
-            Player.STATE_IDLE -> {
-              controlIdleListener.forEachClear(listenerLock) { it(mediaController) }
-            }
-            Player.STATE_READY -> {
-              controlReadyListener.forEachClear(listenerLock) { it(mediaController) }
-            }
-          }
-          playbackStateSF.value = playbackStateSF.value.copy(playerState = playbackState)
-        }
-
-        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
-          super.onPlayWhenReadyChanged(playWhenReady, reason)
-          playbackStateSF.value = playbackStateSF.value.copy(playWhenReady = playWhenReady)
-        }
-
-        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-          super.onMediaItemTransition(mediaItem, reason)
-          val item = mediaItem ?: MediaItem.EMPTY
-          playbackStateSF.value = playbackStateSF.value.copy(currentMediaItem = item)
-          updateItemBitmapSF(item)
-        }
-
-        override fun onIsPlayingChanged(isPlaying: Boolean) {
-          super.onIsPlayingChanged(isPlaying)
-          playbackStateSF.value = playbackStateSF.value.copy(isPlaying = isPlaying)
-        }
-
-        override fun onRepeatModeChanged(repeatMode: Int) {
-          super.onRepeatModeChanged(repeatMode)
-          playbackStateSF.value = playbackStateSF.value.copy(repeatMode = repeatMode)
-        }
-      })
-    }
+    controller.addListener(playerListener)
   }
 
   private val commandLock = Any()
@@ -184,39 +193,24 @@ class MediaServiceController(
   }
 
   /**
-   * All Command Below does Not check for MediaController Initialization
+   * All Command Below does Not check for MediaController Initialization nor Looper
    * assuming the entry point is the commandController function which already check for it
    * */
 
-  val listenerLock: Any = Any()
-  val playerVolume: Float
-    get() {
-      verifyMainThread()
-      return mediaController.volume
-    }
-  val playerIsPlaying: Boolean
-    get() {
-      verifyMainThread()
-      return mediaController.isPlaying
-    }
+  private val fadeOutLock: Any = Any()
+  private val maxVolume: Float = PlayerConstants.MAX_VOLUME
+  private val minVolume: Float = PlayerConstants.MIN_VOLUME
 
-  val maxVolume = Constants.MAX_VOLUME
-  val minVolume = Constants.MIN_VOLUME
+  @GuardedBy("fadeOutLock")
+  private val fadeOutListener = mutableListOf<ControllerCommand.WithFadeOut>()
 
-  @GuardedBy("listenerLock")
-  private val controlIdleListener = mutableListOf<(MediaController) -> Unit>()
+  private val playerVolume: Float
+    get() = mediaController.volume
 
-  @GuardedBy("listenerLock")
-  private val controlBufferListener = mutableListOf<(MediaController) -> Unit>()
-
-  @GuardedBy("listenerLock")
-  private val controlReadyListener = mutableListOf<(MediaController) -> Unit>()
-
-  @GuardedBy("listenerLock")
-  private val controlEndedListener = mutableListOf<(MediaController) -> Unit>()
+  private val playerIsPlaying: Boolean
+    get() = mediaController.isPlaying
 
   private fun whenReady(listener: (MediaController) -> Unit) {
-    verifyMainThread()
     if (mediaController.playbackState.isStateReady()) {
       return listener(mediaController)
     }
@@ -224,7 +218,6 @@ class MediaServiceController(
   }
 
   private fun whenBuffering(listener: (MediaController) -> Unit) {
-    verifyMainThread()
     if (mediaController.playbackState.isStateBuffering()) {
       return listener(mediaController)
     }
@@ -232,7 +225,6 @@ class MediaServiceController(
   }
 
   private fun whenIdling(listener: (MediaController) -> Unit) {
-    verifyMainThread()
     if (mediaController.playbackState.isStateIdle()) {
       return listener(mediaController)
     }
@@ -240,7 +232,6 @@ class MediaServiceController(
   }
 
   private fun whenEnded(listener: (MediaController) -> Unit) {
-    verifyMainThread()
     if (mediaController.playbackState.isStateEnded()) {
       return listener(mediaController)
     }
@@ -250,35 +241,30 @@ class MediaServiceController(
   private fun setPlayerVolume(
     @FloatRange(from = 0.0, to = 1.0) v: Float
   ) {
-    verifyMainThread()
-    val fv = Helper.fixVolumeToRange(v)
+    val fv = PlayerHelper.fixVolumeToRange(v)
     mediaController.volume = fv
     Timber.d("setPlayerVolume to $v or $fv")
   }
 
-  private val fadeOutLock = Any()
-
-  @GuardedBy("fadeOutLock")
   @Volatile
-  private var fadingOut = false
-
   @GuardedBy("fadeOutLock")
-  private val fadeOutListener = mutableListOf<ControllerCommand.WithFadeOut>()
+  private var fadingOut = false
 
   suspend fun fadeOut(
     command: ControllerCommand.WithFadeOut
   ) {
-    verifyMainThread()
     synchronized(fadeOutLock) {
       if (command.flush) fadeOutListener.clear()
       fadeOutListener.add(command)
 
-      if (fadingOut || !playerIsPlaying) {
+      if (fadingOut || !playerIsPlaying || playerVolume == minVolume) {
         fadingOut = false
-        fadeOutListener.forEachClear(fadeOutLock) { commandController(it.command) }
+        fadeOutListener.forEachClear(fadeOutLock) {
+          commandController(it.command)
+          it.afterFadeOut()
+        }
         return whenReady { setPlayerVolume(maxVolume) }
       }
-
       fadingOut = true
     }
 
@@ -298,14 +284,17 @@ class MediaServiceController(
     synchronized(fadeOutLock) {
       if (fadingOut) {
         fadingOut = false
-        fadeOutListener.forEachClear(fadeOutLock) { commandController(it.command) }
+        fadeOutListener.forEachClear(fadeOutLock) {
+          commandController(it.command)
+          it.afterFadeOut()
+        }
         return whenReady { setPlayerVolume(maxVolume) }
       }
     }
   }
 
   @Volatile
-  var updateItemBitmapJob = Job().job
+  private var updateItemBitmapJob = Job().job
 
   fun updateItemBitmapSF(item: MediaItem) {
     updateItemBitmapJob.cancel()
@@ -349,12 +338,32 @@ sealed class ControllerCommand {
   ) : ControllerCommand()
 
   data class WithFadeOut(
-    val command: ControllerCommand,
+    val command: ControllerCommand, // Expose the cause
     val flush: Boolean,
     val duration: Long,
     val interval: Long,
-    @FloatRange(from = 0.0, to = 1.0) val to: Float = 0f
+    @FloatRange(from = 0.0, to = 1.0) val to: Float = 0f,
+    val afterFadeOut: () -> Unit = {}
   ) : ControllerCommand()
+
+
+  companion object {
+
+    fun ControllerCommand.wrapWithFadeOut(
+      flush: Boolean = false,
+      duration: Long = 1000L,
+      interval: Long = 50L,
+      to: Float = 0F
+    ) = Companion.wrapFadeOut(this, flush, duration, interval, to)
+
+    fun wrapFadeOut(
+      command: ControllerCommand,
+      flush: Boolean = false,
+      duration: Long = 1000L,
+      interval: Long = 50L,
+      to: Float = 0F
+    ) = ControllerCommand.WithFadeOut(command, flush, duration, interval, to)
+  }
 }
 
 data class PlaybackState(

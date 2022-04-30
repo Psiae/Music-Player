@@ -25,7 +25,7 @@
             android:authorities="${applicationId}.androidx-startup"
             android:exported="false">
             <meta-data
-                android:name="com.kylentt.mediaplayer.app.AppInitializer"
+                android:name="com.kylentt.mediaplayer.app.dependency.AppInitializer"
                 android:value="androidx.startup"/>
         </provider>
 

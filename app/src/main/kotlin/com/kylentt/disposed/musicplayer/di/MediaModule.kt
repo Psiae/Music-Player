@@ -1,7 +1,7 @@
 package com.kylentt.disposed.musicplayer.di
 
 import android.content.Context
-import com.kylentt.mediaplayer.app.AppScope
+import com.kylentt.mediaplayer.app.coroutines.AppScope
 import com.kylentt.mediaplayer.data.repository.MediaRepository
 import com.kylentt.mediaplayer.data.repository.ProtoRepository
 import com.kylentt.disposed.musicplayer.domain.mediasession.MediaIntentHandler

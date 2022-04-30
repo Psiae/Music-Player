@@ -84,24 +84,16 @@ class MediaIntentHandler(
 
             val list = mutableListOf(
               ControllerCommand.STOP,
-              ControllerCommand.SetMediaItems(
-                List.map { item -> item.toMediaItem() },
-                List.indexOf(song)
-              ),
+              ControllerCommand
+                .SetMediaItems(List.map { item -> item.toMediaItem() }, List.indexOf(song)),
               ControllerCommand.PREPARE,
               ControllerCommand.SetPlayWhenReady(true)
             )
 
             withContext(Dispatchers.Main) {
-              manager.sendControllerCommand(
-
-                ControllerCommand.WithFadeOut(
-                  ControllerCommand.MultiCommand(list),
-                  false,
-                  1000L,
-                  50,
-                )
-              )
+              val command = ControllerCommand
+                .WithFadeOut(ControllerCommand.MultiCommand(list),false, 1000L, 50L, 0F)
+              manager.sendControllerCommand(command)
             }
 
           } ?: run {
@@ -109,11 +101,7 @@ class MediaIntentHandler(
             val m = fromMetadata(uri.toUri())
             if (m == MediaItem.EMPTY) {
               withContext(Dispatchers.Main) {
-                Toast.makeText(
-                  context,
-                  "Unable to Play Media",
-                  Toast.LENGTH_LONG
-                ).show()
+                Toast.makeText(context, "Unable to Play Media", Toast.LENGTH_LONG).show()
               }
             } else {
               prepareWithFade(m)
@@ -131,12 +119,9 @@ class MediaIntentHandler(
       ControllerCommand.PREPARE,
       ControllerCommand.SetPlayWhenReady(true)
     )
-    manager.sendControllerCommand(
-      ControllerCommand.WithFadeOut(
-        ControllerCommand.MultiCommand(list),
-        false, 1000, 50, 0F
-      )
-    )
+    val command = ControllerCommand
+      .WithFadeOut(ControllerCommand.MultiCommand(list),false, 1000, 50, 0F)
+    manager.sendControllerCommand(command)
   }
 
   private suspend fun fromMetadata(uri: Uri): MediaItem = withContext(Dispatchers.IO) {

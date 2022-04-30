@@ -10,7 +10,7 @@ import android.provider.OpenableColumns
 import android.widget.Toast
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
-import com.kylentt.mediaplayer.app.AppDispatchers
+import com.kylentt.mediaplayer.app.coroutines.AppDispatchers
 import com.kylentt.mediaplayer.data.repository.MediaRepository
 import com.kylentt.mediaplayer.data.repository.ProtoRepository
 import com.kylentt.mediaplayer.data.source.local.MediaStoreSong
@@ -85,19 +85,23 @@ class MediaIntentHandlerImpl(
         val defPath = async { getAudioPathFromContentUri(intent) }
         val defSongs = async { mediaRepo.getMediaStoreSong().first() }
 
+        ensureActive()
+
         findMatchingMediaStoreData(defPath.await(), defSongs.await())
           ?.let { pair ->
 
             val (song: MediaStoreSong, list: List<MediaStoreSong>) = pair
-            withContext(dispatcher.main) {
+            withContext(dispatcher.mainImmediate) {
+              ensureActive()
               playMediaItem(song, list, true)
             }
           }
-          ?: withContext(dispatcher.main) {
+          ?: withContext(dispatcher.mainImmediate) {
             val item = itemHelper.buildFromMetadata(intent.data.toUri())
             if (item == MediaItem.EMPTY) {
               Toast.makeText(context, "Unable To Play Media", Toast.LENGTH_LONG).show()
             } else {
+              ensureActive()
               playMediaItem(item, listOf(item), true)
             }
           }
@@ -125,11 +129,15 @@ class MediaIntentHandlerImpl(
         ControllerCommand.STOP, ControllerCommand.SetMediaItems(list, list.indexOf(item)),
         ControllerCommand.PREPARE, ControllerCommand.SetPlayWhenReady(true)
       )
-      sessionManager.sendControllerCommand(
-        ControllerCommand.WithFadeOut(
-          ControllerCommand.MultiCommand(commandList), true, 1000L, 50, 0f
-        )
-      )
+
+      val command = ControllerCommand.MultiCommand(commandList)
+      sessionManager.sendControllerCommand(if (fadeOut) command.wrapFadeOut() else command)
+    }
+
+    private fun ControllerCommand.wrapFadeOut(
+      flush: Boolean = false, duration: Long = 1000, interval: Long = 50L, to: Float = 0F
+    ): ControllerCommand {
+       return ControllerCommand.WithFadeOut(this, flush, duration, interval, to)
     }
 
     private suspend fun getAudioPathFromContentUri(

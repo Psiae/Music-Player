@@ -4,16 +4,14 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.util.Patterns
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.annotation.IntDef
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import com.kylentt.mediaplayer.app.AppDispatchers
-import com.kylentt.mediaplayer.app.AppScope
-import com.kylentt.mediaplayer.app.delegates.AppDelegate
+import com.kylentt.mediaplayer.app.coroutines.AppDispatchers
+import com.kylentt.mediaplayer.app.coroutines.AppScope
 import com.kylentt.mediaplayer.app.delegates.device.StoragePermissionDelegate
 import com.kylentt.mediaplayer.domain.viewmodels.MainViewModel
 import com.kylentt.mediaplayer.domain.viewmodels.MediaViewModel
@@ -26,18 +24,16 @@ import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity.Companion.L
 import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity.Companion.LifecycleState.Destroyed
 import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity.Companion.LifecycleState.Ready
 import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity.Companion.LifecycleState.Visible
-import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity.Companion.LifecycleState.toActivityStateStr
 import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.MainActivityContent
 import dagger.hilt.android.AndroidEntryPoint
 import timber.log.Timber
-import java.util.regex.Pattern
 import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
   @Inject lateinit var appScope: AppScope
-  @Inject lateinit var dispatcher: AppDispatchers
+  @Inject lateinit var dispatchers: AppDispatchers
 
   private val mainViewModel: MainViewModel by viewModels()
   private val mediaViewModel: MediaViewModel by viewModels()
@@ -103,10 +99,6 @@ class MainActivity : ComponentActivity() {
     connectMediaService()
   }
 
-  override fun onBackPressed() {
-    super.onBackPressed()
-  }
-
   private fun connectMediaService() = mediaViewModel.connectService()
 
   private fun handleIntent(intent: IntentWrapper) {
@@ -151,7 +143,7 @@ class MainActivity : ComponentActivity() {
       if (!isAlive) {
         // Might be safer to just always Launch this first
         // but I want to see how consistent this is
-        startActivity(Defaults.makeDefaultIntent(this))
+        startActivity(Defaults.getDefaultIntent(this))
       }
       if (intent != null) {
         intent.appendMainActivityClass(this)
@@ -220,7 +212,7 @@ class MainActivity : ComponentActivity() {
         if (state == Destroyed) if (!currentHashEqual(activity)) return
         require(currentHashEqual(activity))
         currentActivityState = state
-        return Timber.d("MainActivity state changed to ${toActivityStateStr(state)}")
+        return Timber.d("MainActivity state changed to $stateStr")
       }
 
       private fun currentHashEqual(activity: Activity): Boolean {
@@ -231,6 +223,7 @@ class MainActivity : ComponentActivity() {
     object Defaults {
       const val intentAction = Intent.ACTION_MAIN
       private val defClass = MainActivity::class.java
+      private lateinit var defIntent: Intent
 
       fun appendAction(intent: Intent) =
         intent.apply { action = intentAction }
@@ -238,10 +231,13 @@ class MainActivity : ComponentActivity() {
       fun appendClass(context: Context, intent: Intent) =
         intent.apply { setClass(context, defClass) }
 
-      fun makeDefaultIntent(context: Context): Intent {
-        return Intent()
-          .appendMainActivityAction()
-          .appendMainActivityClass(context)
+      fun getDefaultIntent(context: Context): Intent {
+        if (!::defIntent.isInitialized) {
+          defIntent = Intent()
+            .appendMainActivityAction()
+            .appendMainActivityClass(context)
+        }
+        return defIntent
       }
     }
   }

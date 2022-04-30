@@ -3,6 +3,11 @@ package com.kylentt.mediaplayer.app.settings
 import androidx.annotation.FloatRange
 import kotlinx.serialization.Serializable
 
+/**
+ * The Preference Settings for App Navigation Component,
+ * e.g: Bottom Navigation @Composable Appearance
+ * */
+
 @Serializable
 data class NavigationSettings(
   val bnvSettings: BottomNavigationSettings

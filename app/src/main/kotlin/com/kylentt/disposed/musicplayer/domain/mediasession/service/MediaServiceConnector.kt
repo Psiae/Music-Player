@@ -15,9 +15,9 @@ import androidx.media3.session.SessionToken
 import coil.Coil
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
-import com.kylentt.mediaplayer.app.AppScope
-import com.kylentt.mediaplayer.core.exoplayer.Constants.MAX_VOLUME
-import com.kylentt.mediaplayer.core.exoplayer.Helper.fixVolumeToRange
+import com.kylentt.mediaplayer.app.coroutines.AppScope
+import com.kylentt.mediaplayer.core.exoplayer.PlayerConstants.MAX_VOLUME
+import com.kylentt.mediaplayer.core.exoplayer.PlayerHelper.fixVolumeToRange
 import com.kylentt.disposed.disposed.core.exoplayer.util.toStrState
 import com.kylentt.disposed.disposed.core.util.handler.CoilHandler
 import com.kylentt.disposed.disposed.core.util.handler.MediaItemHandler

@@ -1,8 +1,9 @@
 package com.kylentt.mediaplayer.domain.mediasession.service.connector
 
 import android.content.Context
-import com.kylentt.mediaplayer.app.AppDispatchers
-import com.kylentt.mediaplayer.app.AppScope
+import androidx.annotation.MainThread
+import com.kylentt.mediaplayer.app.coroutines.AppDispatchers
+import com.kylentt.mediaplayer.app.coroutines.AppScope
 import com.kylentt.mediaplayer.data.repository.ProtoRepository
 import com.kylentt.mediaplayer.domain.mediasession.MediaSessionManager
 import com.kylentt.mediaplayer.helper.Preconditions.verifyMainThread
@@ -10,6 +11,8 @@ import com.kylentt.mediaplayer.helper.image.CoilHelper
 import com.kylentt.mediaplayer.helper.media.MediaItemHelper
 import kotlinx.coroutines.flow.asStateFlow
 import timber.log.Timber
+
+/** Connector between MediaSessionManager and MediaServiceController */
 
 class MediaServiceConnector(
   val appScope: AppScope,
@@ -26,13 +29,13 @@ class MediaServiceConnector(
   val playbackState = serviceController.playbackStateSF.asStateFlow()
   val serviceState = serviceController.serviceStateSF.asStateFlow()
 
+  @MainThread
   fun connectService() {
-    verifyMainThread()
     serviceController.connectController { Timber.d("Controller Connected") }
   }
 
+  @MainThread
   fun commandController(command: ControllerCommand) {
-    verifyMainThread()
     serviceController.commandController(command)
   }
 }

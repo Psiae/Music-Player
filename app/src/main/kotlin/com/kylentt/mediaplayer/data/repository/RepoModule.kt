@@ -1,7 +1,7 @@
 package com.kylentt.mediaplayer.data.repository
 
 import android.content.Context
-import com.kylentt.mediaplayer.app.AppScope
+import com.kylentt.mediaplayer.app.coroutines.AppScope
 import com.kylentt.mediaplayer.data.source.local.MediaStoreSource
 import dagger.Module
 import dagger.Provides
@@ -9,6 +9,8 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
+
+/** Hilt Module providing Repositories */
 
 @Module
 @InstallIn(SingletonComponent::class)

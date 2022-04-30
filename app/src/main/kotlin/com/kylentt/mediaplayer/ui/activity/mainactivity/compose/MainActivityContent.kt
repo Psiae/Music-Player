@@ -441,8 +441,8 @@ private val MainBottomNavItems = listOf(
     ),
     MainBottomNavItem.ImageVectorIcon(
         screen = Screen.Library,
-        imageVector = AppDelegate.getVectorImage(R.drawable.ic_bookshelf),
-        selectedImageVector = AppDelegate.getVectorImage(R.drawable.ic_bookshelf)
+        imageVector = AppDelegate.getImageVector(R.drawable.ic_bookshelf),
+        selectedImageVector = AppDelegate.getImageVector(R.drawable.ic_bookshelf)
     )
 )
 

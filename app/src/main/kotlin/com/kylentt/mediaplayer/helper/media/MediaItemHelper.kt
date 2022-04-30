@@ -20,6 +20,7 @@ class MediaItemHelper(
   fun buildFromMetadata(uri: Uri): MediaItem {
     return try {
       val mtr = MediaMetadataRetriever()
+      mtr.setDataSource(context, uri)
       val artist = mtr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST) ?: "<Unknown>"
       val album = mtr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM) ?: "<Unknown>"
       val title = mtr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
@@ -29,8 +30,9 @@ class MediaItemHelper(
               cursor.moveToFirst()
               cursor.getString(cursor.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME))
             }
+            ?: "Unknown"
         } else {
-          File(uri.toString()).name
+          "Unknown"
         }
 
       MediaItem.Builder()
@@ -64,8 +66,8 @@ class MediaItemHelper(
   }
 
   fun getEmbeddedPicture(uri: Uri): ByteArray? {
-    val mtr = MediaMetadataRetriever()
     return try {
+      val mtr = MediaMetadataRetriever()
       mtr.setDataSource(context, uri)
       mtr.embeddedPicture
     } catch (e: Exception) {

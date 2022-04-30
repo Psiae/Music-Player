@@ -4,20 +4,20 @@ import android.app.Notification
 import android.app.PendingIntent
 import android.content.*
 import android.content.pm.ServiceInfo
-import android.os.Build
 import androidx.annotation.IntDef
-import androidx.annotation.RequiresApi
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
-import com.kylentt.mediaplayer.app.AppDispatchers
-import com.kylentt.mediaplayer.app.AppScope
+import com.kylentt.mediaplayer.app.coroutines.AppDispatchers
+import com.kylentt.mediaplayer.app.coroutines.AppScope
+import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateEnded
 import com.kylentt.mediaplayer.data.repository.ProtoRepository
 import com.kylentt.mediaplayer.domain.mediasession.MediaSessionManager
 import com.kylentt.mediaplayer.domain.mediasession.service.MediaService.Companion.Constants.SESSION_ID
 import com.kylentt.mediaplayer.domain.mediasession.service.MediaService.Companion.Lifecycle.ALIVE
+import com.kylentt.mediaplayer.domain.mediasession.service.MediaService.Companion.Lifecycle.DESTROYED
 import com.kylentt.mediaplayer.domain.mediasession.service.MediaService.Companion.Lifecycle.FOREGROUND
 import com.kylentt.mediaplayer.domain.mediasession.service.MediaService.Companion.Lifecycle.setCurrent
 import com.kylentt.mediaplayer.domain.mediasession.service.MediaService.Companion.Lifecycle.updateState
@@ -32,15 +32,14 @@ import com.kylentt.mediaplayer.domain.mediasession.service.MediaServiceNotificat
 import com.kylentt.mediaplayer.domain.mediasession.service.MediaServiceNotification.Companion.PLAYBACK_CONTROL_ACTION
 import com.kylentt.mediaplayer.domain.mediasession.service.MediaServiceNotification.Companion.PLAYBACK_CONTROL_INTENT
 import com.kylentt.mediaplayer.domain.mediasession.service.connector.ControllerCommand
+import com.kylentt.mediaplayer.domain.mediasession.service.connector.ControllerCommand.Companion.wrapWithFadeOut
 import com.kylentt.mediaplayer.helper.VersionHelper
 import com.kylentt.mediaplayer.helper.image.CoilHelper
 import com.kylentt.mediaplayer.helper.media.MediaItemHelper
+import com.kylentt.mediaplayer.ui.activity.CollectionExtension.syncEachClear
 import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import javax.inject.Inject
 import kotlin.system.exitProcess
 
@@ -48,8 +47,9 @@ import kotlin.system.exitProcess
 class MediaService : MediaLibraryService() {
 
   init {
-    if (!MainActivity.wasLaunched) exitProcess(0)
-    setCurrent()
+    if (!MainActivity.wasLaunched) {
+      exitProcess(0)
+    }
   }
 
   @Inject lateinit var appScope: AppScope
@@ -71,46 +71,50 @@ class MediaService : MediaLibraryService() {
       .build()
   }
 
-  private val notificationProvider by lazy {
-    MediaServiceNotification(service = this)
-  }
-
   private val sessionActivity by lazy {
-    PendingIntent
-      .getActivity(this, 444,
-        packageManager.getLaunchIntentForPackage(packageName),
-        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-      )
+    val intent = packageManager.getLaunchIntentForPackage(packageName)
+    val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    PendingIntent.getActivity(this, 444, intent, flag)
   }
 
-  val mainScope by lazy {
-    CoroutineScope(dispatchers.main + SupervisorJob())
-  }
-  val ioScope by lazy {
-    CoroutineScope(dispatchers.io + SupervisorJob())
-  }
-  val computationScope by lazy {
-    CoroutineScope(dispatchers.computation + SupervisorJob())
-  }
+  private val notificationProvider by lazy { MediaServiceNotification(service = this) }
+  val computationScope by lazy { CoroutineScope(dispatchers.computation + SupervisorJob()) }
+  val mainScope by lazy { CoroutineScope(dispatchers.main + SupervisorJob()) }
+  val ioScope by lazy { CoroutineScope(dispatchers.io + SupervisorJob()) }
+
+  val onDestroyCallback = mutableListOf<() -> Unit>()
+  val playbackReceiver = PlaybackActionReceiver()
 
   override fun onCreate() {
     super.onCreate()
-    setMediaNotificationProvider(notificationProvider)
-    registerReceiver(PlaybackActionReceiver(), IntentFilter(PLAYBACK_CONTROL_INTENT))
+    setCurrent()
     updateState(ALIVE)
+    setMediaNotificationProvider(notificationProvider)
+    registerReceiver(playbackReceiver, IntentFilter(PLAYBACK_CONTROL_INTENT))
   }
 
-  override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession {
-    return librarySession
-  }
+  override fun onGetSession(controllerInfo: MediaSession.ControllerInfo) = librarySession
 
   override fun onDestroy() {
+    onDestroyCallback.syncEachClear()
     librarySession.release()
     exoPlayer.release()
+    cancelServiceScope()
+    unregisterReceiver(playbackReceiver)
     return run {
-      if (!MainActivity.isAlive) exitProcess(0)
+      if (!MainActivity.isAlive) {
+        // MediaSessionStub could be Leaking this Service Context Internally
+        exitProcess(0)
+      }
       super.onDestroy()
+      updateState(DESTROYED)
     }
+  }
+
+  private fun cancelServiceScope() {
+    computationScope.cancel()
+    ioScope.cancel()
+    mainScope.cancel()
   }
 
   fun startServiceAsForeground(id: Int, notification: Notification) {
@@ -122,11 +126,21 @@ class MediaService : MediaLibraryService() {
     updateState(FOREGROUND)
   }
 
+  fun stopServiceAsForeground(removeNotification: Boolean) {
+    stopForeground(removeNotification)
+    updateState(ALIVE)
+  }
+
   inner class PlaybackActionReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context?, intent: Intent?) {
       when (intent?.getStringExtra(PLAYBACK_CONTROL_ACTION)) {
         ACTION_PLAY -> {
+          if (exoPlayer.playbackState.isStateEnded()) {
+            if (exoPlayer.hasNextMediaItem()) exoPlayer.seekToNextMediaItem()
+            exoPlayer.seekTo(0)
+          }
+          sessionManager.sendControllerCommand(ControllerCommand.PREPARE)
           sessionManager.sendControllerCommand(ControllerCommand.SetPlayWhenReady(true))
         }
         ACTION_PAUSE -> {
@@ -151,17 +165,15 @@ class MediaService : MediaLibraryService() {
           sessionManager.sendControllerCommand(ControllerCommand.SetRepeatMode(mode))
         }
         ACTION_STOP_CANCEL -> {
-          val stop = ControllerCommand.STOP
-          val duration = 1000L
-          sessionManager.sendControllerCommand(
-            ControllerCommand.WithFadeOut(stop, true, duration, 50L, 0F)
-          )
-          mainScope.launch {
-            delay(1000)
-            stopForeground(true)
-            stopSelf()
-          }
+          val duration = 1000L // App Settings
+          val command = ControllerCommand
+            .WithFadeOut(ControllerCommand.STOP,true, duration, 50L, 0F) {
+              stopServiceAsForeground(true)
+            }
+          sessionManager.sendControllerCommand(command)
+
         }
+
       }
     }
   }
@@ -197,6 +209,7 @@ class MediaService : MediaLibraryService() {
     fun getComponentName(context: Context) = ComponentName(context, MediaService::class.java)
 
     private object Lifecycle {
+
       @Retention(AnnotationRetention.SOURCE)
       @Target(
         AnnotationTarget.FIELD,
@@ -220,27 +233,26 @@ class MediaService : MediaLibraryService() {
       val wasLaunched
         get() = currentServiceHash != NOTHING
           && currentServiceState != NOTHING
-
       val isAlive
         get() = currentServiceState >= ALIVE
       val isDestroyed
-        get() = !isAlive && wasLaunched
+        get() = currentServiceState == DESTROYED
       val isForeground
-        get() = currentServiceState >= FOREGROUND
+        get() = currentServiceState == FOREGROUND
 
       fun MediaService.setCurrent() {
         currentServiceHash = this.hashCode()
       }
 
-      fun MediaService.checkCurrentHash(): Boolean {
+      fun MediaService.updateState(@ServiceState int: Int) {
+        require(currentHashEqual())
+        currentServiceState = int
+      }
+
+      private fun MediaService.currentHashEqual(): Boolean {
         val thisHash = this.hashCode()
         val thatHash = currentServiceHash
         return thisHash == thatHash
-      }
-
-      fun MediaService.updateState(@ServiceState int: Int) {
-        check(checkCurrentHash())
-        currentServiceState = int
       }
     }
 

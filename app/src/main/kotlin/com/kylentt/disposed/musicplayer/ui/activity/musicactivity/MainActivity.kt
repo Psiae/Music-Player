@@ -10,7 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.annotation.IntDef
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import com.kylentt.mediaplayer.app.AppScope
+import com.kylentt.mediaplayer.app.coroutines.AppScope
 import com.kylentt.mediaplayer.app.delegates.device.StoragePermissionDelegate
 import com.kylentt.mediaplayer.app.settings.AppSettings
 import com.kylentt.mediaplayer.helper.Preconditions.verifyMainThread

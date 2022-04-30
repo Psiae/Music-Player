@@ -8,6 +8,8 @@ import kotlin.reflect.KProperty
 
 object DeviceWallpaperDelegate {
 
+  /** Delegate to get DeviceWallpaper, gets the context from AppDelegate Class */
+
   private fun getDeviceWallpaper(accessor: Context): Drawable? {
     return if (AppDelegate.checkStoragePermission()) {
       WallpaperManager.getInstance(accessor).drawable
@@ -20,6 +22,7 @@ object DeviceWallpaperDelegate {
     return getDeviceWallpaper(appDelegate.base)
   }
 
+  /** can be Delegated inside Composable */
   operator fun getValue(any: Any?, property: KProperty<*>): Drawable? {
     return AppDelegate.deviceWallpaper
   }

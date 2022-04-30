@@ -7,6 +7,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Singleton
 
+/**
+ * Repository Containing Media related data.
+ * e.g: Song List from MediaStore
+ * */
+
 interface MediaRepository {
   suspend fun getMediaStoreSong(): Flow<List<MediaStoreSong>>
 }

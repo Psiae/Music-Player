@@ -56,7 +56,7 @@ class MediaServiceNotification(
     }
   }
 
-  @Volatile /* maybeTODO: Cache Previous / Next Item Bitmap */
+  @Volatile /* TODO: Cache Previous / Next Item Bitmap */
   private var itemBitmap: Pair<MediaItem, Bitmap?> = Pair(MediaItem.EMPTY, null)
   @Volatile
   private var notificationCallbackJob = Job().job

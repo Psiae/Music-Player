@@ -5,8 +5,6 @@ import javax.inject.Singleton
 
 /**
  * Better than hardcoding the dispatcher Ig
- * @author Kylentt, copied from Tivi Google Sample
- * @since 2022/04/30
  * @constructor [computation] Dispatcher for Computation Task
  * @constructor [io] Dispatcher for IO_Operation Task
  * @constructor [main] Dispatcher for Main_Thread Task
@@ -14,6 +12,8 @@ import javax.inject.Singleton
  * @constructor [unconfined] Dispatcher for other than above Task
  * @property [AppDispatchers.DEFAULT] the Default Implementation
  * @see [AppScope]
+ * @author Kylentt, copied from Tivi Google Sample
+ * @since 2022/04/30
  */
 
 @Singleton
@@ -24,8 +24,8 @@ data class AppDispatchers(
   @JvmField val mainImmediate: CoroutineDispatcher,
   @JvmField val unconfined: CoroutineDispatcher
 ) {
-  companion object {
 
+  companion object {
     @JvmStatic
     val DEFAULT = with(kotlinx.coroutines.Dispatchers) {
       AppDispatchers(
@@ -36,4 +36,5 @@ data class AppDispatchers(
     }
 
   }
+
 }

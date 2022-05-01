@@ -33,9 +33,9 @@ import kotlin.coroutines.coroutineContext
 
 /**
  * Interface for handling Media Type [android.content.Intent]
+ * @see [MediaIntentHandlerImpl]
  * @author Kylentt
  * @since 2022/04/30
- * @see [MediaIntentHandlerImpl]
  */
 
 interface MediaIntentHandler {
@@ -44,9 +44,9 @@ interface MediaIntentHandler {
 
 /**
  * Base Implementation for [MediaIntentHandler]
+ * @see [IntentWrapper]
  * @author Kylentt
  * @since 2022/04/30
- * @see [IntentWrapper]
  */
 
 @Singleton

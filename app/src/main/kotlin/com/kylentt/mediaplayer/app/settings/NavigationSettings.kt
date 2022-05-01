@@ -6,10 +6,10 @@ import kotlinx.serialization.Serializable
 /**
  * Class to store the Preference Settings for App Navigation Component,
  * e.g: Bottom Navigation @Composable Appearance
- * @author Kylentt
- * @since 2022/04/30
  * @constructor [BottomNavigationSettings] the settings for Bottom Navigation
  * @property [Companion.DEFAULT] static Default Instance
+ * @author Kylentt
+ * @since 2022/04/30
  */
 
 @Serializable

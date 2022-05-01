@@ -8,11 +8,12 @@ import com.kylentt.mediaplayer.app.delegates.AppDelegate
 import kotlin.reflect.KProperty
 
 /**
- * Delegate to check Storage Permission, the required Permission for the App to function properly
+ * Delegate to check Storage Permission Status, the required Permission for the App to function properly
  * gets the Context from [AppDelegate] Class
+ * @return [Boolean] true if both [checkReadStoragePermission] and [checkWriteStoragePermission] is true
+ * @see [DeviceWallpaperDelegate]
  * @author Kylentt
  * @since 2022/04/30
- * @return Boolean from [checkReadStoragePermission] and [checkWriteStoragePermission]
  */
 
 object StoragePermissionDelegate {
@@ -20,12 +21,12 @@ object StoragePermissionDelegate {
   const val Read_External_Storage = Manifest.permission.READ_EXTERNAL_STORAGE
   const val Write_External_Storage = Manifest.permission.WRITE_EXTERNAL_STORAGE
 
-  fun checkReadStoragePermission(context: Context): Boolean {
+  @JvmStatic fun checkReadStoragePermission(context: Context): Boolean {
     return ContextCompat
       .checkSelfPermission(context, Read_External_Storage) == PackageManager.PERMISSION_GRANTED
   }
 
-  fun checkWriteStoragePermission(context: Context): Boolean {
+  @JvmStatic fun checkWriteStoragePermission(context: Context): Boolean {
     return ContextCompat
       .checkSelfPermission(context, Write_External_Storage) == PackageManager.PERMISSION_GRANTED
   }

@@ -26,8 +26,6 @@ import kotlin.time.measureTimedValue
 /**
  * Singleton that Handles [androidx.media3.session.MediaSession] and Expose necessary Information,
  * e.g: [PlaybackState] of [androidx.media3.common.Player] Interface
- * @author Kylentt
- * @since 2022/04/30
  * @constructor [appScope] [AppScope] for Async Task
  * @constructor [baseContext] [Context] to access App Resources
  * @constructor [coilHelper] [CoilHelper] for ImageLoading Task
@@ -38,6 +36,8 @@ import kotlin.time.measureTimedValue
  * @see [MediaServiceConnector]
  * @see [MediaServiceController]
  * @see [MediaService]
+ * @author Kylentt
+ * @since 2022/04/30
  */
 
 @Singleton

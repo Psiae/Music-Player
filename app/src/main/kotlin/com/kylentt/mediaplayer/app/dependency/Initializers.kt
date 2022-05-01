@@ -10,11 +10,10 @@ import timber.log.Timber
 
 /**
  * Initializer Interface from [Initializer], specified in AndroidManifest.xml
- * feel like better option than [MediaPlayerApp.onCreate]
- * @author Kylentt
- * @since 2022/04/30
  * @see [AppDelegate]
  * @see [Timber]
+ * @author Kylentt
+ * @since 2022/04/30
  */
 
 class AppInitializer : Initializer<Unit> {

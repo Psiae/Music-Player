@@ -15,12 +15,12 @@ import kotlinx.coroutines.SupervisorJob
 import javax.inject.Singleton
 
 /**
- * Dagger Hilt Module for Application-Wide Singletons, e.g: [AppScope]
- * @author Kylentt
- * @since 2022/04/30
+ * Dagger Hilt Module providing Application-Wide Singletons.
  * @see [AppDispatchers]
  * @see [AppScope]
  * @see [Coil.imageLoader]
+ * @author Kylentt
+ * @since 2022/04/30
  */
 
 @Module

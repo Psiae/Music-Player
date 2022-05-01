@@ -6,10 +6,10 @@ import androidx.media3.common.Player
 
 /**
  * [Player] Interface Property Constants
- * @author Kylentt
- * @since 2022/04/30
  * @see [PlayerConstants]
  * @see [PlayerHelper]
+ * @author Kylentt
+ * @since 2022/04/30
  */
 
 object PlayerConstants {
@@ -19,13 +19,21 @@ object PlayerConstants {
 
 /**
  * [Player] Interface Property Helper Function
- * @author Kylentt
- * @since 2022/04/30
  * @see [PlayerConstants]
  * @see [PlayerExtension]
+ * @author Kylentt
+ * @since 2022/04/30
  */
 
 object PlayerHelper {
+
+  /**
+   * @param [vol] the requested Volume as [Float]
+   * @return [MIN_VOLUME] if [vol] is under [MIN_VOLUME]
+   * @return [MAX_VOLUME] if [vol] is over [MAX_VOLUME]
+   * otherwise @return [vol]
+   */
+
   @JvmStatic fun fixVolumeToRange(vol: Float): Float {
     return when {
       vol < MIN_VOLUME -> MIN_VOLUME

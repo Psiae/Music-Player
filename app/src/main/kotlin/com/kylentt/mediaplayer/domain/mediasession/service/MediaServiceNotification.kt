@@ -27,14 +27,16 @@ import kotlinx.coroutines.*
 import timber.log.Timber
 import kotlin.coroutines.coroutineContext
 
+/**
+ * [MediaNotification.Provider] Implementation for [MediaService]
+ * must be Initialized after [androidx.media3.session.MediaLibraryService] Super.onCreate()
+ * @author Kylentt
+ * @since 2022/04/30
+ */
+
 class MediaServiceNotification(
   private val service: MediaService
 ) : MediaNotification.Provider {
-
-  /**
-   * Notification.Provider Implementation for MediaLibraryService
-   * must be Initialized after MediaLibraryService Super.onCreate() or Context is Attached
-   * */
 
   val appScope = service.appScope
   val coiLHelper = service.coilHelper

@@ -11,14 +11,13 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 
 /**
- * Repository Containing Protobuf related data.
- * e.g: AppSettings in Proto DataStore
- * @author Kylentt
- * @since 2022/04/30
+ * Repository Containing Protobuf related data, e.g: AppSettings in Proto DataStore
  * @property [appSettingSF] @returns [StateFlow] of [AppSettings] from [collectFromSettings]
  * @property [collectFromSettings] @returns [Flow] of [AppSettings] from [androidx.datastore.core.DataStore]
  * @property [writeToSettings] Writes [AppSettings] to [androidx.datastore.core.DataStore]
  * @see ProtoRepositoryImpl
+ * @author Kylentt
+ * @since 2022/04/30
  */
 
 

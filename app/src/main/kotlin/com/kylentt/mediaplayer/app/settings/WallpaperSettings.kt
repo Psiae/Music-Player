@@ -6,12 +6,12 @@ import kotlinx.serialization.Serializable
  * Class to store the Preference Settings for App Wallpaper,
  * e.g: Scrolling Wallpaper from MediaItem embedded Picture controlled by Navigation Index,
  * similar to some phone Home Screen
- * @author Kylentt
- * @since 2022/04/30
  * @constructor [mode] the [Mode] of the Wallpaper
  * @constructor [source] the [Source] of the Wallpaper
  * @constructor [sourceALT] the [Source] of the Wallpaper if [source] doesn't Exist
- * @property [Companion.DEFAULT] static Default Implementation Instance
+ * @property [Companion.DEFAULT] static Default Instance
+ * @author Kylentt
+ * @since 2022/04/30
  */
 
 @Serializable

@@ -7,16 +7,18 @@ import com.kylentt.mediaplayer.app.delegates.AppDelegate
 import kotlin.reflect.KProperty
 
 /**
- * Delegate to get DeviceWallpaper, gets the Context from [AppDelegate] Class
- * Can be Delegated in Receiver that has no Context Object Available, including Composable
+ * Delegate to get [WallpaperManager] Wallpaper as [Drawable]?, gets the [Context] from [AppDelegate] Class
+ * Can be delegated inside receiver that has no [Context] Object available, including [androidx.compose.runtime.Composable]
+ * @return [Drawable]? from [WallpaperManager] if this App has StoragePermission and Valid Wallpaper is set else null
+ * @see StoragePermissionDelegate
  * @author Kylentt
  * @since 2022/04/30
- * @return Null if there's No Storage Permission, else Drawable from WallpaperManager
  */
 
 object DeviceWallpaperDelegate {
 
   private fun getDeviceWallpaper(accessor: Context): Drawable? {
+
     return if (AppDelegate.checkStoragePermission()) {
       WallpaperManager.getInstance(accessor).drawable
     } else {

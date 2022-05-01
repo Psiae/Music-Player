@@ -5,9 +5,9 @@ import androidx.media3.common.MediaItem
 
 /**
  * Interface of Song
+ * @see [com.kylentt.mediaplayer.data.source.local.MediaStoreSong]
  * @author Kylentt
  * @since 2022/04/30
- * @see [com.kylentt.mediaplayer.data.source.local.MediaStoreSong]
  */
 
 interface SongEntity {

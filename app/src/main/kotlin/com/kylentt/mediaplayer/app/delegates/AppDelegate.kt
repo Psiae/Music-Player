@@ -9,7 +9,7 @@ import com.kylentt.mediaplayer.app.delegates.device.DeviceWallpaperDelegate
 import com.kylentt.mediaplayer.app.delegates.device.StoragePermissionDelegate
 
 /**
- * Singleton to use if there's need to get the [Application] Class instead of casting it
+ * Singleton to use if there's need to get the [Application] Class instead of casting its Context
  * @author Kylentt
  * @since 2022/04/30
  */
@@ -34,13 +34,11 @@ class AppDelegate private constructor(app: Application) {
   companion object {
     private lateinit var delegate: AppDelegate
 
-    @JvmStatic
     val deviceWallpaper
-      get() = delegate.deviceWallpaperDrawable
+      @JvmStatic get() = delegate.deviceWallpaperDrawable
 
-    @JvmStatic
     val hasStoragePermission
-      get() = delegate.storagePermission
+      @JvmStatic get() = delegate.storagePermission
 
     /**
      * Bypass [androidx.annotation.RequiresPermission]
@@ -52,9 +50,8 @@ class AppDelegate private constructor(app: Application) {
     @JvmStatic fun checkStoragePermission() = hasStoragePermission
 
     /**
-     * In case there's need to get ImageVector of a Drawable when context isn't available,
-     * e.g: Sealed Class
-     * @param [id] the Int id of [DrawableRes] reference
+     * In case there's need to get ImageVector of a Drawable when context isn't available, e.g: Sealed Class
+     * @param [id] the Int id representation of [DrawableRes]
      * @return [ImageVector] from [ImageVector.Companion.vectorResource]
      */
     @JvmStatic fun getImageVector(@DrawableRes id: Int) = delegate.getImageVectorFromDrawable(id)

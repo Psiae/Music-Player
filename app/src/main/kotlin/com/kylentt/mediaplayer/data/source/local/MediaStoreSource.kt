@@ -19,9 +19,9 @@ import javax.inject.Singleton
 
 /**
  * [SongEntity] Implementation for [android.provider.MediaStore] sourced Song
+ * @see [MediaStoreSource]
  * @author Kylentt
  * @since 2022/04/30
- * @see [MediaStoreSource]
  */
 
 data class MediaStoreSong @JvmOverloads constructor(
@@ -112,10 +112,10 @@ data class MediaStoreSong @JvmOverloads constructor(
 
 /**
  * Data Source Interface for [android.provider.MediaStore]
+ * @see [MediaStoreSong]
+ * @see [MediaStoreSourceImpl]
  * @author Kylentt
  * @since 2022/04/30
- * @see [MediaStoreSourceImpl]
- * @see [MediaStoreSong]
  */
 
 interface MediaStoreSource {
@@ -124,9 +124,9 @@ interface MediaStoreSource {
 
 /**
  * Base Implementation for [MediaStoreSource] Interface
+ * @see [MediaStoreSong]
  * @author Kylentt
  * @since 2022/04/30
- * @see [MediaStoreSong]
  */
 
 @Singleton

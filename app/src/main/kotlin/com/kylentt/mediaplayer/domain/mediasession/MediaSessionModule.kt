@@ -16,9 +16,9 @@ import javax.inject.Singleton
 
 /**
  * Hilt Module Providing MediaSession Component
+ * @see [MediaSessionManager]
  * @author Kylentt
  * @since 2022/04/03
- * @see [MediaSessionManager]
  */
 
 @Module

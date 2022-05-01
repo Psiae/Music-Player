@@ -9,12 +9,11 @@ import javax.inject.Singleton
 
 /**
  * Repository Containing Media related data.
- * e.g: Song List from MediaStore
- * @author Kylentt
- * @since 2022/04/30
- * @property [getMediaStoreSong] @returns [Flow] of [MediaStoreSong] from [android.provider.MediaStore]
+ * @property [getMediaStoreSong] @returns [Flow] of List<[MediaStoreSong]>
  * @see [MediaStoreSource]
  * @see [MediaRepositoryImpl]
+ * @author Kylentt
+ * @since 2022/04/30
  */
 
 interface MediaRepository {

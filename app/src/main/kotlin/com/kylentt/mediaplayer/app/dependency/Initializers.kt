@@ -4,13 +4,18 @@ import android.app.Application
 import android.content.Context
 import androidx.startup.Initializer
 import com.kylentt.mediaplayer.BuildConfig
+import com.kylentt.mediaplayer.app.MediaPlayerApp
 import com.kylentt.mediaplayer.app.delegates.AppDelegate
 import timber.log.Timber
 
 /**
- * Initializer Interface from Androidx.startup Library, specified in AndroidManifest.xml
- * feel like better option than Application Class onCreate()
- * */
+ * Initializer Interface from [Initializer], specified in AndroidManifest.xml
+ * feel like better option than [MediaPlayerApp.onCreate]
+ * @author Kylentt
+ * @since 2022/04/30
+ * @see [AppDelegate]
+ * @see [Timber]
+ */
 
 class AppInitializer : Initializer<Unit> {
 

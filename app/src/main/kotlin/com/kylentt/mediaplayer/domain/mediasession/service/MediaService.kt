@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.*
 import android.content.pm.ServiceInfo
 import androidx.annotation.IntDef
+import androidx.annotation.MainThread
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
@@ -32,7 +33,7 @@ import com.kylentt.mediaplayer.domain.mediasession.service.MediaServiceNotificat
 import com.kylentt.mediaplayer.domain.mediasession.service.MediaServiceNotification.Companion.PLAYBACK_CONTROL_ACTION
 import com.kylentt.mediaplayer.domain.mediasession.service.MediaServiceNotification.Companion.PLAYBACK_CONTROL_INTENT
 import com.kylentt.mediaplayer.domain.mediasession.service.connector.ControllerCommand
-import com.kylentt.mediaplayer.domain.mediasession.service.connector.ControllerCommand.Companion.wrapWithFadeOut
+import com.kylentt.mediaplayer.helper.Preconditions.verifyMainThread
 import com.kylentt.mediaplayer.helper.VersionHelper
 import com.kylentt.mediaplayer.helper.image.CoilHelper
 import com.kylentt.mediaplayer.helper.media.MediaItemHelper
@@ -78,12 +79,13 @@ class MediaService : MediaLibraryService() {
   }
 
   private val notificationProvider by lazy { MediaServiceNotification(service = this) }
+  private val playbackReceiver by lazy { PlaybackActionReceiver() }
   val computationScope by lazy { CoroutineScope(dispatchers.computation + SupervisorJob()) }
   val mainScope by lazy { CoroutineScope(dispatchers.main + SupervisorJob()) }
   val ioScope by lazy { CoroutineScope(dispatchers.io + SupervisorJob()) }
 
   val onDestroyCallback = mutableListOf<() -> Unit>()
-  val playbackReceiver = PlaybackActionReceiver()
+
 
   override fun onCreate() {
     super.onCreate()
@@ -197,15 +199,16 @@ class MediaService : MediaLibraryService() {
   }
 
   companion object {
-    val wasLaunched
+    @JvmStatic val wasLaunched
       get() = Lifecycle.wasLaunched
-    val isAlive
+    @JvmStatic val isAlive
       get() = Lifecycle.isAlive
-    val isDestroyed
+    @JvmStatic val isDestroyed
       get() = Lifecycle.isDestroyed
-    val isForeground
+    @JvmStatic val isForeground
       get() = Lifecycle.isForeground
 
+    @JvmStatic
     fun getComponentName(context: Context) = ComponentName(context, MediaService::class.java)
 
     private object Lifecycle {
@@ -240,13 +243,18 @@ class MediaService : MediaLibraryService() {
       val isForeground
         get() = currentServiceState == FOREGROUND
 
+      @MainThread
       fun MediaService.setCurrent() {
+        verifyMainThread()
         currentServiceHash = this.hashCode()
       }
 
-      fun MediaService.updateState(@ServiceState int: Int) {
+      @MainThread
+      fun MediaService.updateState(@ServiceState state: Int) {
+        verifyMainThread()
+        require(state in (NOTHING + 1)..FOREGROUND)
         require(currentHashEqual())
-        currentServiceState = int
+        currentServiceState = state
       }
 
       private fun MediaService.currentHashEqual(): Boolean {

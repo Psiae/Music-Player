@@ -6,9 +6,15 @@ import android.graphics.drawable.Drawable
 import com.kylentt.mediaplayer.app.delegates.AppDelegate
 import kotlin.reflect.KProperty
 
-object DeviceWallpaperDelegate {
+/**
+ * Delegate to get DeviceWallpaper, gets the Context from [AppDelegate] Class
+ * Can be Delegated in Receiver that has no Context Object Available, including Composable
+ * @author Kylentt
+ * @since 2022/04/30
+ * @return Null if there's No Storage Permission, else Drawable from WallpaperManager
+ */
 
-  /** Delegate to get DeviceWallpaper, gets the context from AppDelegate Class */
+object DeviceWallpaperDelegate {
 
   private fun getDeviceWallpaper(accessor: Context): Drawable? {
     return if (AppDelegate.checkStoragePermission()) {
@@ -22,7 +28,6 @@ object DeviceWallpaperDelegate {
     return getDeviceWallpaper(appDelegate.base)
   }
 
-  /** can be Delegated inside Composable */
   operator fun getValue(any: Any?, property: KProperty<*>): Drawable? {
     return AppDelegate.deviceWallpaper
   }

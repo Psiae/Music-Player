@@ -12,7 +12,7 @@ class ReceiverActivity: ComponentActivity() {
    * MainActivity can misbehave when the launcher Intent is not its Default,
    * e.g: re-launched with action.VIEW after process-death causes it to re-handle the Intent.
    * There is better workaround with stateHandle but I would rather just keep the same action.MAIN.
-   * */
+   */
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)

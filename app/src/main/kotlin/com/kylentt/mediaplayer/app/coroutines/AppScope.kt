@@ -1,28 +1,27 @@
 package com.kylentt.mediaplayer.app.coroutines
 
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import javax.inject.Singleton
 
 /**
- * Better than hardcoding the dispatcher Ig
- * */
+ * Application Scoped CoroutineScope,
+ * @since 2022/04/30
+ * @author Kylentt, copied from Tivi Google Sample
+ * @constructor [computationScope] CoroutineScope for Computation Task
+ * @constructor [ioScope] CoroutineScope for IO_Operation Task
+ * @constructor [mainScope] CoroutineScope for Main_Thread Task
+ * @constructor [immediateScope] CoroutineScope for Main_Thread Immediate Task
+ * @constructor [unconfinedScope] CoroutineScope for other than above Task
+ * @see [AppDispatchers]
+ */
 
+@Singleton
 data class AppScope(
   val computationScope: CoroutineScope,
   val ioScope: CoroutineScope,
   val mainScope: CoroutineScope,
-  val immediateScope: CoroutineScope
+  val immediateScope: CoroutineScope,
+  val unconfinedScope: CoroutineScope
 )
 
-data class AppDispatchers(
-  val computation: CoroutineDispatcher,
-  val io: CoroutineDispatcher,
-  val main: CoroutineDispatcher,
-  val mainImmediate: CoroutineDispatcher
-) {
-  companion object {
-    val Default = with(kotlinx.coroutines.Dispatchers) {
-      AppDispatchers(computation = Default, io = IO, main = Main, mainImmediate = Main.immediate)
-    }
-  }
-}
+

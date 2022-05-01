@@ -1,7 +1,6 @@
 package com.kylentt.mediaplayer.helper
 
 import android.os.Looper
-import timber.log.Timber
 
 object Preconditions {
 

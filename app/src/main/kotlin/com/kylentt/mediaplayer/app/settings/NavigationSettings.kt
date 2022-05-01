@@ -4,9 +4,13 @@ import androidx.annotation.FloatRange
 import kotlinx.serialization.Serializable
 
 /**
- * The Preference Settings for App Navigation Component,
+ * Class to store the Preference Settings for App Navigation Component,
  * e.g: Bottom Navigation @Composable Appearance
- * */
+ * @author Kylentt
+ * @since 2022/04/30
+ * @constructor [BottomNavigationSettings] the settings for Bottom Navigation
+ * @property [Companion.DEFAULT] static Default Instance
+ */
 
 @Serializable
 data class NavigationSettings(
@@ -14,7 +18,10 @@ data class NavigationSettings(
 ) {
 
   companion object {
-    val DEFAULT = NavigationSettings(bnvSettings = BottomNavigationSettings.DEFAULT)
+    @JvmStatic val DEFAULT by lazy {
+      val bnvSettings = BottomNavigationSettings.DEFAULT
+      NavigationSettings(bnvSettings = bnvSettings)
+    }
   }
 }
 
@@ -36,10 +43,11 @@ data class BottomNavigationSettings(
   }
 
   companion object {
-    val DEFAULT = BottomNavigationSettings(
-      ItemAnimation.VISIBILITY,
-      ItemAlignment.VERTICAL,
-      100f
-    )
+    @JvmStatic val DEFAULT by lazy {
+      val defAnimation = ItemAnimation.VISIBILITY
+      val defAlignment = ItemAlignment.VERTICAL
+      val defVisibility = 90f
+      BottomNavigationSettings(defAnimation, defAlignment, defVisibility)
+    }
   }
 }

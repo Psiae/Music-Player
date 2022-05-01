@@ -70,10 +70,8 @@ import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.theme.MaterialDe
 import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.theme.helper.ColorHelper
 import com.kylentt.disposed.musicplayer.ui.activity.musicactivity.acompose.environtment.NoRipple
 import com.kylentt.disposed.musicplayer.ui.activity.musicactivity.acompose.theme.md3.AppTypography
+import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.ComposableExtension.noPadding
 import kotlin.math.roundToInt
-
-private val noPadding = PaddingValues(0.dp)
-
 
 @Composable
 fun MainActivityContent(
@@ -198,7 +196,7 @@ private fun RootBottomNavigation(
                 BottomNavigation(
                     modifier = modifier,
                     elevation = 0.dp,
-                    backgroundColor = backgroundColor,
+                    backgroundColor = Color.Transparent,
                     contentColor = contentColor,
                 ) {
                     MainBottomNavItems.forEach { item ->

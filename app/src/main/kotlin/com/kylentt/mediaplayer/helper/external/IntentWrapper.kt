@@ -3,9 +3,9 @@ package com.kylentt.mediaplayer.helper.external
 import android.content.ContentResolver
 import android.content.Intent
 
-data class IntentWrapper(
+data class IntentWrapper @JvmOverloads constructor(
   private val intent: Intent,
-  private var cancelable: Boolean = false,
+  private val cancellable: Boolean = true,
   private var handled: Boolean = false
 ) {
 
@@ -21,6 +21,9 @@ data class IntentWrapper(
   val shouldHandleIntent: Boolean
     get() = !(handled || isActionEmpty() || (isActionView() && isDataEmpty()))
 
+  @JvmField
+  val isCancellable = this.cancellable // TODO
+
   fun isActionEmpty() = action.isEmpty()
   fun isActionMain() = action == Intent.ACTION_MAIN
   fun isActionView() = action == Intent.ACTION_VIEW
@@ -33,7 +36,7 @@ data class IntentWrapper(
   }
 
   companion object {
-    val EMPTY = fromIntent(Intent())
-    fun fromIntent(intent: Intent) = IntentWrapper(intent)
+    @JvmStatic val EMPTY = fromIntent(Intent())
+    @JvmStatic fun fromIntent(intent: Intent) = IntentWrapper(intent)
   }
 }

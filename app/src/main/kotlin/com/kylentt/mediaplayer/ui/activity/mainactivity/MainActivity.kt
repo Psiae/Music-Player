@@ -9,6 +9,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.annotation.IntDef
+import androidx.annotation.MainThread
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.kylentt.mediaplayer.app.coroutines.AppDispatchers
 import com.kylentt.mediaplayer.app.coroutines.AppScope
@@ -39,7 +40,7 @@ class MainActivity : ComponentActivity() {
   private val mediaViewModel: MediaViewModel by viewModels()
   private val storagePermission: Boolean by StoragePermissionDelegate
 
-  private val storagePermToast by lazy {
+  private val storagePermToast: Toast? by lazy {
     Toast.makeText(this, "Storage Permission Needed", Toast.LENGTH_LONG)
   }
 
@@ -47,16 +48,10 @@ class MainActivity : ComponentActivity() {
     super.onCreate(savedInstanceState)
     checkLauncherIntent()
     setupActivity()
+    setupService()
     setContent {
       MainActivityContent()
     }
-  }
-
-  private fun checkLauncherIntent() {
-    requireNotNull(intent)
-    check(intent.action == Companion.Defaults.intentAction)
-    setAsCurrentHash()
-    return alive()
   }
 
   override fun onStart() {
@@ -66,6 +61,7 @@ class MainActivity : ComponentActivity() {
 
   override fun onNewIntent(intent: Intent?) {
     super.onNewIntent(intent)
+    Timber.d("onNewIntent $intent\nwith Uri: ${intent?.data}")
     intent?.let { handleIntent(IntentWrapper.fromIntent(it)) }
   }
 
@@ -80,22 +76,28 @@ class MainActivity : ComponentActivity() {
   }
 
   override fun onStop() {
-    return run {
-      alive()
-      super.onStop()
-    }
+    super.onStop()
+    return alive()
   }
 
   override fun onDestroy() {
-    return run {
-      destroyed()
-      super.onDestroy()
-    }
+    super.onDestroy()
+    return destroyed()
+  }
+
+  private fun checkLauncherIntent() {
+    requireNotNull(intent)
+    check(intent.action == Companion.Defaults.intentAction)
+    setAsCurrentHash()
+    return alive()
   }
 
   private fun setupActivity() {
     disableWindowFitSystemDecor()
     installSplashScreen()
+  }
+
+  private fun setupService() {
     connectMediaService()
   }
 
@@ -110,6 +112,8 @@ class MainActivity : ComponentActivity() {
       return
     }
     if (mainViewModel.pendingStorageIntent.isNotEmpty()) {
+      // RequireStoragePermission Composable is recomposed OnResume,
+      // always after onNewIntent() that might call this function
       mainViewModel.pendingStorageIntent.add(intent)
       return
     }
@@ -124,22 +128,24 @@ class MainActivity : ComponentActivity() {
 
   companion object {
 
-    val wasLaunched
-      get() = LifecycleState.wasLaunched
-    val isAlive
-      get() = LifecycleState.isAlive
-    val isVisible
-      get() = LifecycleState.isVisible
-    val isDestroyed
-      get() = LifecycleState.isDestroyed
-
     val stateStr
-      get() = LifecycleState.stateStr
+      @JvmStatic get() = LifecycleState.stateStr
+    val wasLaunched
+      @JvmStatic get() = LifecycleState.wasLaunched
+    val isAlive
+      @JvmStatic get() = LifecycleState.isAlive
+    val isVisible
+      @JvmStatic get() = LifecycleState.isVisible
+    val isDestroyed
+      @JvmName("isStateDestroyed")
+      @JvmStatic get() = LifecycleState.isDestroyed
 
+    @MainThread
     fun startActivity(
       launcher: Context,
       intent: Intent? = null
     ) = with(launcher) {
+      verifyMainThread()
       if (!isAlive) {
         // Might be safer to just always Launch this first
         // but I want to see how consistent this is
@@ -171,7 +177,9 @@ class MainActivity : ComponentActivity() {
       const val Visible = 3 // onStart() or onPause() was called
       const val Ready = 4 // onResume() was called
 
+      @ActivityState
       private var currentActivityHash = Nothing
+      @ActivityState
       private var currentActivityState = Nothing
 
       val wasLaunched
@@ -188,8 +196,8 @@ class MainActivity : ComponentActivity() {
       val stateStr
         get() = toActivityStateStr(currentActivityState)
 
-      fun toActivityStateStr(@ActivityState int: Int) =
-        when (int) {
+      fun toActivityStateStr(@ActivityState state: Int) =
+        when (state) {
           Nothing -> "Not Launched"
           Destroyed -> "Destroyed"
           Alive -> "Alive"
@@ -198,6 +206,7 @@ class MainActivity : ComponentActivity() {
           else -> "INVALID"
         }
 
+      @MainThread
       fun setCurrentHash(activity: Activity) {
         currentActivityHash = activity.hashCode()
         return Timber.d(
@@ -207,9 +216,16 @@ class MainActivity : ComponentActivity() {
         )
       }
 
-      fun setCurrentState(activity: Activity, @ActivityState state: Int) {
-        // onDestroy() may be called late, usually after other onPostCreate()
-        if (state == Destroyed) if (!currentHashEqual(activity)) return
+      @MainThread
+      fun setCurrentState(
+        activity: Activity,
+        @ActivityState state: Int
+      ) {
+        if (state == Destroyed) {
+          // onDestroy() may be called late, usually after other onPostCreate()
+          if (!currentHashEqual(activity)) return
+        }
+        require(state in (Nothing + 1)..Ready)
         require(currentHashEqual(activity))
         currentActivityState = state
         return Timber.d("MainActivity state changed to $stateStr")
@@ -240,5 +256,6 @@ class MainActivity : ComponentActivity() {
         return defIntent
       }
     }
+
   }
 }

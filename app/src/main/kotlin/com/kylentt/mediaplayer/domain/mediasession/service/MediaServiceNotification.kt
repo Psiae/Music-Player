@@ -25,6 +25,7 @@ import com.kylentt.mediaplayer.helper.VersionHelper
 import com.kylentt.mediaplayer.helper.image.CoilHelper
 import kotlinx.coroutines.*
 import timber.log.Timber
+import kotlin.coroutines.coroutineContext
 
 class MediaServiceNotification(
   private val service: MediaService
@@ -58,7 +59,6 @@ class MediaServiceNotification(
 
   @Volatile /* TODO: Cache Previous / Next Item Bitmap */
   private var itemBitmap: Pair<MediaItem, Bitmap?> = Pair(MediaItem.EMPTY, null)
-  @Volatile
   private var notificationCallbackJob = Job().job
 
   init {
@@ -119,7 +119,8 @@ class MediaServiceNotification(
     if (session.player.currentMediaItem.idEqual(itemBitmap.first)) {
       manager.notify(NOTIFICATION_ID, getNotification(session.player, itemBitmap.second))
     } else {
-      service.mainScope
+      notificationCallbackJob.cancel()
+      notificationCallbackJob = service.mainScope
         .launch { manager.notify(NOTIFICATION_ID, getUpdatedNotification(session.player) ) }
     }
   }
@@ -137,7 +138,7 @@ class MediaServiceNotification(
 
     val item = player.currentMediaItem ?: MediaItem.EMPTY
 
-    Timber.d("updateNotification ${item.mediaMetadata.displayTitle}")
+    Timber.d("getNotification ${item.mediaMetadata.displayTitle}")
 
     return notificationBuilder
       .buildMediaNotification(
@@ -179,21 +180,27 @@ class MediaServiceNotification(
       ensureActive()
       callback.onNotificationChanged(mediaNotification)
 
-      delay(500)
+      Timber.d("Notification Updated for ${player.currentMediaItem?.mediaMetadata?.displayTitle}")
+
+      delay(750)
+
+      Timber.d("Notification re-Updated for ${player.currentMediaItem?.mediaMetadata?.displayTitle}")
 
       ensureActive()
       callback.onNotificationChanged(mediaNotification)
     }
   }
 
-  suspend fun getUpdatedNotification(player: Player): Notification {
-    val item = player.currentMediaItem ?: MediaItem.EMPTY
-    val bitmap = withContext(dispatchers.io) { getSquaredBitmapFromItem(item) }
-    itemBitmap = Pair(item, bitmap)
-    return getNotification(player, itemBitmap.second)
+  private suspend fun  getUpdatedNotification(player: Player): Notification =
+    withContext(coroutineContext) {
+      val item = player.currentMediaItem ?: MediaItem.EMPTY
+      val bitmap = withContext(dispatchers.io) { getSquaredBitmapFromItem(item) }
+      ensureActive()
+      itemBitmap = Pair(item, bitmap)
+      getNotification(player, itemBitmap.second)
   }
 
-  suspend fun getSquaredBitmapFromItem(item: MediaItem?): Bitmap? {
+  private suspend fun getSquaredBitmapFromItem(item: MediaItem?): Bitmap? {
     var toReturn: Bitmap? = null
     val size = if (VersionHelper.hasR()) 256 else 1024
     if (item != null) {

@@ -21,6 +21,12 @@ import kotlinx.coroutines.withContext
 import javax.inject.Singleton
 import kotlin.coroutines.coroutineContext
 
+/**
+ * Singleton Helper for ImageLoading Task with [coil.Coil.imageLoader]
+ * @author Kylentt
+ * @since 2022/04/30
+ */
+
 @Singleton
 class CoilHelper(
   private val context: Context,
@@ -40,7 +46,7 @@ class CoilHelper(
   suspend fun squareBitmap(
     context: Context = this.context,
     loader: ImageLoader = this.imageLoader,
-    cache: CachePolicy = CachePolicy.ENABLED,
+    cache: CachePolicy = CachePolicy.DISABLED,
     placeHolder: Drawable? = null,
     type: CenterCropTransform,
     bitmap: Bitmap,
@@ -65,7 +71,7 @@ class CoilHelper(
   suspend fun bitmapFromUri(
     context: Context = this.context,
     loader: ImageLoader = this.imageLoader,
-    cache: CachePolicy = CachePolicy.ENABLED,
+    cache: CachePolicy = CachePolicy.DISABLED,
     @Px size: Int = 0,
     uri: Uri
   ): Bitmap? = withContext(coroutineContext) {

@@ -85,7 +85,7 @@ class MediaIntentHandler(
             val list = mutableListOf(
               ControllerCommand.STOP,
               ControllerCommand
-                .SetMediaItems(List.map { item -> item.toMediaItem() }, List.indexOf(song)),
+                .SetMediaItems(List.map { item -> item.asMediaItem }, List.indexOf(song)),
               ControllerCommand.PREPARE,
               ControllerCommand.SetPlayWhenReady(true)
             )
@@ -183,7 +183,7 @@ class MediaIntentHandler(
     try {
       when {
         pred.startsWith(ContentProviders.contentScheme) -> {
-          b = a.find { it.mediaUri.toString() == pred }
+          b = a.find { it.songMediaUri.toString() == pred }
         }
         pred.startsWith(storage) && File(pred).exists() -> {
           Timber.d("startsWith $storage and File does exist")

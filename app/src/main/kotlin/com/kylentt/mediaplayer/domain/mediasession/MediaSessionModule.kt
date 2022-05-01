@@ -14,6 +14,13 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
+/**
+ * Hilt Module Providing MediaSession Component
+ * @author Kylentt
+ * @since 2022/04/03
+ * @see [MediaSessionManager]
+ */
+
 @Module
 @InstallIn(SingletonComponent::class)
 object MediaSessionModule {

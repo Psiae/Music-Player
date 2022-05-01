@@ -9,34 +9,62 @@ import com.kylentt.mediaplayer.app.delegates.device.DeviceWallpaperDelegate
 import com.kylentt.mediaplayer.app.delegates.device.StoragePermissionDelegate
 
 /**
- * Singleton to use if there's need to get the Application Class instead of casting the Context
- * Delegation seems like a good Idea
- * */
+ * Singleton to use if there's need to get the [Application] Class instead of casting it
+ * @author Kylentt
+ * @since 2022/04/30
+ */
 
 class AppDelegate private constructor(app: Application) {
 
+  /**
+   * My CodeStyle is to convert Function to Getter Variable if it represent a STATE of thing
+   * except when theres reasonable reason for not doing so
+   * @see [checkStoragePermission]
+   */
+
+  @JvmField
   val base = app
-  val deviceWallpaper: Drawable? by DeviceWallpaperDelegate
+
+  val deviceWallpaperDrawable: Drawable? by DeviceWallpaperDelegate
   val storagePermission: Boolean by StoragePermissionDelegate
 
-  fun getImageVector(@DrawableRes id: Int): ImageVector =
+  fun getImageVectorFromDrawable(@DrawableRes id: Int): ImageVector =
     ImageVector.vectorResource(base.theme, base.resources, id)
 
   companion object {
     private lateinit var delegate: AppDelegate
 
+    @JvmStatic
     val deviceWallpaper
-      get() = delegate.deviceWallpaper
+      get() = delegate.deviceWallpaperDrawable
+
+    @JvmStatic
     val hasStoragePermission
       get() = delegate.storagePermission
 
-    /** bypass @RequiresPermission annotation, because the getter variable couldn't do so as it check the function name  */
-    fun checkStoragePermission() = hasStoragePermission
+    /**
+     * Bypass [androidx.annotation.RequiresPermission]
+     * of [android.Manifest.permission.READ_EXTERNAL_STORAGE] and [android.Manifest.permission.WRITE_EXTERNAL_STORAGE] annotation,
+     * because the getter variable couldn't do so as it check the function name
+     * @see [hasStoragePermission]
+     * @return [Boolean] from [StoragePermissionDelegate]
+     */
+    @JvmStatic fun checkStoragePermission() = hasStoragePermission
 
-    fun getImageVector(@DrawableRes id: Int) = delegate.getImageVector(id)
+    /**
+     * In case there's need to get ImageVector of a Drawable when context isn't available,
+     * e.g: Sealed Class
+     * @param [id] the Int id of [DrawableRes] reference
+     * @return [ImageVector] from [ImageVector.Companion.vectorResource]
+     */
+    @JvmStatic fun getImageVector(@DrawableRes id: Int) = delegate.getImageVectorFromDrawable(id)
 
-    /** provide the Instance, should be done through One-Time Initializer, e.g: Androidx.startup */
-    fun provides(app: Application) {
+    /**
+     * Provide the Instance, should be done through One-Time Initializer, e.g: Androidx.startup
+     * @see [com.kylentt.mediaplayer.app.dependency.AppInitializer.create]
+     * @param [app] the base [Application] class to access resource from
+     */
+    @JvmStatic fun provides(app: Application) {
       check(!::delegate.isInitialized) { "check failed, AppDelegate was Initialized" }
       delegate = AppDelegate(app)
     }

@@ -10,7 +10,13 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
-/** Hilt Module providing Repositories */
+/**
+ * Hilt Module providing Repositories
+ * @author Kylentt
+ * @since 2022/04/30
+ * @see [ProtoRepositoryImpl]
+ * @see [MediaRepositoryImpl]
+ */
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -30,6 +36,5 @@ object RepoModule {
     coroutineScope: AppScope,
     mediaStoreSource: MediaStoreSource
   ) = MediaRepositoryImpl(context, mediaStoreSource)
-
 
 }

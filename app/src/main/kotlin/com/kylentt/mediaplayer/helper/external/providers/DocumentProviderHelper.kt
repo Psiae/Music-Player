@@ -10,32 +10,41 @@ import android.provider.MediaStore
 import android.provider.OpenableColumns
 import com.kylentt.mediaplayer.helper.VersionHelper
 import com.kylentt.disposed.musicplayer.domain.mediasession.ContentProviders
+import com.kylentt.mediaplayer.app.coroutines.AppDispatchers
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
 import java.net.URLDecoder
+import kotlin.coroutines.coroutineContext
 
-object DocumentProviders {
+object DocumentProviderHelper {
   const val auth_provider_externalStorage = "com.android.externalstorage"
   const val auth_provider_media = "com.android.providers.media"
   const val auth_provider_download = "com.android.providers.downloads"
   const val contentScheme = ContentResolver.SCHEME_CONTENT
   const val fileScheme = ContentResolver.SCHEME_FILE
 
-  val extStoragePath: File? = Environment.getExternalStorageDirectory()
-  val extStoragePathString = extStoragePath?.toString() ?: "/storage/emulated/0"
+  @JvmStatic val extStoragePath: File?
+    get() = Environment.getExternalStorageDirectory()
 
-  val storagePath = if (VersionHelper.hasR()) {
-    Environment.getStorageDirectory().toString()
-  } else {
-    "/storage"
-  }
+  @JvmStatic val extStoragePathString
+    get() = extStoragePath?.toString()
+      ?: "/storage/emulated/0"
+
+  @JvmStatic val storagePath
+    get() = if (VersionHelper.hasR()) {
+      Environment.getStorageDirectory().toString()
+    } else {
+      "/storage"
+    }
 
   @Suppress("BlockingMethodInNonBlockingContext")
   suspend fun decodeUrl(url: String, enc: String = "UTF-8"): String {
-    return withContext(Dispatchers.IO) { URLDecoder.decode(url, enc) }
+    return withContext(coroutineContext) { URLDecoder.decode(url, enc) }
   }
+
+  private val dispatchers = AppDispatchers.DEFAULT
 
   suspend fun getAudioPathFromContentUri(
     context: Context,
@@ -44,7 +53,7 @@ object DocumentProviders {
     return try {
       require(DocumentsContract.isDocumentUri(context, uri))
       val fileName =
-        withContext(Dispatchers.IO) {
+        withContext(dispatchers.io) {
           context.contentResolver.query(uri, null, null, null, null)
             ?.use { cursor ->
               cursor.moveToFirst()
@@ -78,7 +87,6 @@ object DocumentProviders {
       }
 
       if (tries != null) {
-
         if ((tries.endsWith(fileName) && File(tries).exists())
           || tries.startsWith(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI.toString())
         ) {
@@ -145,9 +153,9 @@ object DocumentProviders {
     val stringBuilder = StringBuilder()
     val uriString = uri.toString()
     val decodedUriString = decodeUrl(uriString)
-    val dSplit2F = uriString.split("/")
+    val dSplit2F = decodedUriString.split("/")
 
-    val fUri = withContext(Dispatchers.IO) {
+    val fUri = withContext(dispatchers.io) {
       if (VersionHelper.hasQ() && dSplit2F.last().startsWith("msf")) {
         val mime = context.contentResolver.query(uri, null, null, null, null)
           ?.use { cursor ->
@@ -165,7 +173,7 @@ object DocumentProviders {
       }
     }
 
-    return withContext(Dispatchers.IO) {
+    return withContext(dispatchers.io) {
       context.contentResolver.query(fUri, null, null, null, null)
         ?.use { cursor ->
           cursor.moveToFirst()
@@ -187,7 +195,7 @@ object DocumentProviders {
 
   private suspend fun tryMediaProvider(context: Context, filename: String, uri: Uri): String {
     val stringBuilder = StringBuilder()
-    val id = withContext(Dispatchers.IO) {
+    val id = withContext(dispatchers.io) {
       context.contentResolver.query(uri, null, null, null, null)
         ?.use { cursor ->
           cursor.moveToFirst()

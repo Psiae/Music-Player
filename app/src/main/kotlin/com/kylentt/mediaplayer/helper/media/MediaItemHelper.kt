@@ -5,11 +5,12 @@ import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.provider.OpenableColumns
+import androidx.core.app.NotificationCompat
+import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
-import com.kylentt.mediaplayer.helper.external.providers.ContentProvidersHelper
+import com.kylentt.mediaplayer.helper.StringExtension.setPrefix
 import timber.log.Timber
-import java.io.File
 import javax.inject.Singleton
 
 @Singleton
@@ -35,17 +36,20 @@ class MediaItemHelper(
           "Unknown"
         }
 
+      val mediaId = MediaItem.fromUri(uri).hashCode().toString()
+
+      val metadata = MediaMetadata.Builder()
+        .setMediaUri(uri)
+        .setArtist(artist)
+        .setAlbumTitle(album)
+        .setDisplayTitle(title)
+        .build()
+
       MediaItem.Builder()
         .setUri(uri)
-        .setMediaId(MediaItem.fromUri(uri).hashCode().toString())
-        .setMediaMetadata(
-          MediaMetadata.Builder()
-            .setMediaUri(uri)
-            .setArtist(artist)
-            .setAlbumTitle(album)
-            .setDisplayTitle(title)
-            .build()
-        ).build()
+        .setMediaId(mediaId)
+        .setMediaMetadata(metadata)
+        .build()
     } catch (e: Exception) {
       Timber.e(e)
       MediaItem.EMPTY
@@ -79,5 +83,22 @@ class MediaItemHelper(
 
   init {
     require(context is Application)
+  }
+
+  companion object {
+    private const val ART_URI_PREFIX = "ART"
+
+    /**
+     * In case of [MediaItem] some devices might override [NotificationCompat.Builder.mLargeIcon]
+     * with [android.graphics.Bitmap] from [MediaMetadata.artworkUri] of the current [MediaItem]
+     * of the [androidx.media3.session.MediaSession] that is set to the [NotificationCompat].
+     * In e.g: Pixel Android 12 it will always try to maintain the aspect-ratio
+     * so it might came out bad, so the ArtworkUri is Hidden to be properly scaled as 1:1 later
+     */
+
+    @JvmStatic fun hideArtUri(uri: Uri): Uri = hideArtUri(uri.toString()).toUri()
+    @JvmStatic fun showArtUri(uri: Uri): Uri = showArtUri(uri.toString()).toUri()
+    @JvmStatic fun hideArtUri(uri: String): String = uri.setPrefix(ART_URI_PREFIX)
+    @JvmStatic fun showArtUri(uri: String): String = uri.removePrefix(ART_URI_PREFIX)
   }
 }

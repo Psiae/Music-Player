@@ -12,7 +12,10 @@ import javax.inject.Singleton
 
 /**
  * Hilt Module Providing DataSource
- * */
+ * @author Kylentt
+ * @since 2022/04/30
+ * @see [MediaStoreSourceImpl]
+ */
 
 object SourceModule {
 

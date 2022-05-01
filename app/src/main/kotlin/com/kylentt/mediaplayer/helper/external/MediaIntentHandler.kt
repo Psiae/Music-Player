@@ -18,10 +18,11 @@ import com.kylentt.mediaplayer.domain.mediasession.MediaSessionManager
 import com.kylentt.mediaplayer.domain.mediasession.service.connector.ControllerCommand
 import com.kylentt.mediaplayer.helper.Preconditions.verifyMainThread
 import com.kylentt.mediaplayer.helper.external.providers.ContentProvidersHelper
-import com.kylentt.mediaplayer.helper.external.providers.DocumentProviders
+import com.kylentt.mediaplayer.helper.external.providers.DocumentProviderHelper
 import com.kylentt.mediaplayer.helper.media.MediaItemHelper
-import com.kylentt.disposed.musicplayer.data.entity.SongEntity
+import com.kylentt.mediaplayer.data.SongEntity
 import com.kylentt.disposed.musicplayer.domain.mediasession.ContentProviders
+import com.kylentt.mediaplayer.domain.mediasession.service.connector.ControllerCommand.Companion.wrapWithFadeOut
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
 import timber.log.Timber
@@ -30,9 +31,23 @@ import java.net.URLDecoder
 import javax.inject.Singleton
 import kotlin.coroutines.coroutineContext
 
+/**
+ * Interface for handling Media Type [android.content.Intent]
+ * @author Kylentt
+ * @since 2022/04/30
+ * @see [MediaIntentHandlerImpl]
+ */
+
 interface MediaIntentHandler {
   suspend fun handleMediaIntent(intent: IntentWrapper)
 }
+
+/**
+ * Base Implementation for [MediaIntentHandler]
+ * @author Kylentt
+ * @since 2022/04/30
+ * @see [IntentWrapper]
+ */
 
 @Singleton
 class MediaIntentHandlerImpl(
@@ -55,7 +70,7 @@ class MediaIntentHandlerImpl(
 
   @Suppress("BlockingMethodInNonBlockingContext")
   private suspend fun decodeUrl(str: String, encoder: String = "UTF-8") =
-    withContext(coroutineContext) { URLDecoder.decode(str, encoder) }
+    withContext(dispatcher.io) { URLDecoder.decode(str, encoder) }
 
   private inner class ActionViewHandler() {
 
@@ -64,11 +79,18 @@ class MediaIntentHandlerImpl(
     suspend fun handleIntentActionView(intent: IntentWrapper): Unit
     = withContext(coroutineContext) {
       require(intent.isActionView())
+
+      val job: suspend () -> Unit = when {
+        intent.isSchemeContent() -> { { intentSchemeContent(intent) } }
+        else -> { { Unit } }
+      }
+
       actionViewJob.cancel()
-      actionViewJob = launch {
-        when {
-          intent.isSchemeContent() -> intentSchemeContent(intent)
-        }
+
+      if (intent.isCancellable) {
+        actionViewJob = launch { job() }
+      } else {
+        job()
       }
     }
 
@@ -80,6 +102,7 @@ class MediaIntentHandlerImpl(
     }
 
     private suspend fun intentContentUriAudio(intent: IntentWrapper) {
+      require(intent.isSchemeContent())
       require(intent.isTypeAudio())
       withContext(dispatcher.io) {
         val defPath = async { getAudioPathFromContentUri(intent) }
@@ -114,7 +137,7 @@ class MediaIntentHandlerImpl(
       fadeOut: Boolean
     ) {
       verifyMainThread()
-      val itemList = list.map { it.toMediaItem() }
+      val itemList = list.map { it.asMediaItem }
       val item = itemList[list.indexOf(song)]
       playMediaItem(item, itemList, fadeOut)
     }
@@ -131,19 +154,13 @@ class MediaIntentHandlerImpl(
       )
 
       val command = ControllerCommand.MultiCommand(commandList)
-      sessionManager.sendControllerCommand(if (fadeOut) command.wrapFadeOut() else command)
-    }
-
-    private fun ControllerCommand.wrapFadeOut(
-      flush: Boolean = false, duration: Long = 1000, interval: Long = 50L, to: Float = 0F
-    ): ControllerCommand {
-       return ControllerCommand.WithFadeOut(this, flush, duration, interval, to)
+      sessionManager.sendControllerCommand(if (fadeOut) command.wrapWithFadeOut() else command)
     }
 
     private suspend fun getAudioPathFromContentUri(
       intent: IntentWrapper
-    ): String {
-      return try {
+    ): String = withContext(dispatcher.computation) {
+      try {
         require(intent.isSchemeContent())
         val uriString = intent.data
         val uri = Uri.parse(uriString)
@@ -167,11 +184,11 @@ class MediaIntentHandlerImpl(
             if (dataIndex > -1) {
               val path = cursor.getString(dataIndex)
               if (File(path).exists() && path.endsWith(name)) {
-                return path
+                return@withContext path
               }
             }
             name
-        }
+          }
 
         check(
           !fileName.isNullOrBlank()
@@ -179,27 +196,39 @@ class MediaIntentHandlerImpl(
             && !fileName.endsWith("/")
         )
 
+        ensureActive()
+
         if (DocumentsContract.isDocumentUri(context, uri)) {
-          val a = DocumentProviders.getAudioPathFromContentUri(context, uri)
-          if (a.startsWith(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI.toString())) return a
-          if (a.isNotBlank() && a.endsWith(fileName) && File(a).exists()) return a
+          val a = DocumentProviderHelper.getAudioPathFromContentUri(context, uri)
+          if (
+            a.startsWith(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI.toString())
+            || ((a.isNotBlank() && a.endsWith(fileName) && File(a).exists()))
+          ) {
+            return@withContext a
+          }
         }
 
         if (contentHasFileUri(uri, checkStoragePrefix = true)
           && (dSplit2F.last().endsWith(fileName) || ddSplit2F.last().endsWith(fileName))
         ) {
           val b = tryBuildPathFromFilePrefix(uri, fileName)
-          if (b.isNotBlank() && b.endsWith(fileName) && File(b).exists()) return b
+          if (b.isNotBlank() && b.endsWith(fileName) && File(b).exists()) {
+            return@withContext b
+          }
         }
 
         if (uriString.contains(extStorageString)) {
           val c = tryBuildPathContainsExtStorage(fileName, uri)
-          if (c.isNotBlank() && c.endsWith(fileName) && File(c).exists()) return c
+          if (c.isNotBlank() && c.endsWith(fileName) && File(c).exists()) {
+            return@withContext c
+          }
         }
 
         if (split2F.last() == fileName || decodeUrl(split2F.last()) == fileName) {
           val d = tryBuildPathEndsWithFileName(fileName, uri)
-          if (d.isNotBlank() && d.endsWith(fileName) && File(d).exists()) return d
+          if (d.isNotBlank() && d.endsWith(fileName) && File(d).exists()) {
+            return@withContext d
+          }
         }
 
         if (
@@ -208,8 +237,11 @@ class MediaIntentHandlerImpl(
           && (split2F.last() != fileName || decodeUrl(split2F.last()) != fileName)
         ) {
           val e = tryBuildPathFromUriWithAudioId(context, fileName, uri)
-          if (e.isNotBlank() && e.endsWith(fileName) && File(e).exists()) return e
+          if (e.isNotBlank() && e.endsWith(fileName) && File(e).exists()) {
+            return@withContext e
+          }
         }
+
         ""
       } catch (e: Exception) {
         Timber.e(e)
@@ -224,22 +256,20 @@ class MediaIntentHandlerImpl(
   ): Boolean = withContext(Dispatchers.IO) {
     return@withContext try {
       val uriString = uri.toString()
-      val decodedUriString = decodeUrl(uriString)
-      val file = ContentProviders.fileScheme
-      val storage = DocumentProviders.storagePath.filter(Char::isLetter)
       require(uriString.isNotEmpty())
       require(uriString.startsWith(ContentProviders.contentScheme))
+      val decodedUriString = decodeUrl(uriString)
+      val file = ContentProviders.fileScheme
+      val storage = DocumentProviderHelper.storagePath.filter(Char::isLetter)
       if (!uriString.containsAnyOf(listOf("/file", "/file:", "/file%3A"), true)) {
         return@withContext false
       }
-      val starting = uriString.split("/")[4]
-      val dStarting = decodedUriString.split("/")[4]
-      if (!checkStoragePrefix) {
-        starting.startsWith("$file%3A%2F%2F")
-          || dStarting.startsWith("$file://")
+      if (checkStoragePrefix) {
+        uriString.contains("$file%3A%2F%2F%2F$storage")
+          || decodedUriString.contains("$file:///$storage")
       } else {
-        starting.startsWith("$file%3A%2F%2F%2F$storage")
-          || dStarting.startsWith("$file:///$storage")
+        uriString.contains("$file%3A%2F%2F")
+          || decodedUriString.contains("$file://")
       }
     } catch (e: Exception) {
       Timber.e(e)
@@ -358,7 +388,7 @@ class MediaIntentHandlerImpl(
       val splitted2F = mutableListOf<String>()
 
       if (decodeUrl(split2F.last()) == fileName) {
-        split2F.forEachIndexed { i, s -> if (i != split2F.lastIndex) splitted2F.add(stringUri) }
+        split2F.forEachIndexed { i, s -> if (i != split2F.lastIndex) splitted2F.add(s) }
         splitted2F.add(decodeUrl(split2F.last()))
       } else {
         split2F.forEach { splitted2F.add(it) }
@@ -396,12 +426,15 @@ class MediaIntentHandlerImpl(
       }
 
       val s = stringBuilder.toString()
-      if (
-        (s.startsWith(storage) || s.startsWith(fStorage))
-        && s.endsWith(fileName)
-        && File(s).exists()
-      ) {
-        return s
+
+      if ((s.startsWith(storage)) && s.endsWith(fileName)) {
+        if (File(s).exists()) return s
+        s.split("/").forEachIndexed { i, str ->
+          if (i != s.lastIndex) if (str.contains("%")) {
+            val s2 = decodeUrl(s)
+            if (File(s2).exists()) return s2
+          }
+        }
       }
 
       ""
@@ -465,7 +498,7 @@ class MediaIntentHandlerImpl(
 
       when {
         predicate.startsWith(contentUris) -> {
-          val a = songList.find { it.mediaUri.toString() == predicate }
+          val a = songList.find { it.songMediaUri.toString() == predicate }
           if (a != null) return Pair(a, songList)
         }
         !File(predicate).exists() -> return null

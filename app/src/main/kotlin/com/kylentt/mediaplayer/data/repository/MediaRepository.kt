@@ -10,7 +10,12 @@ import javax.inject.Singleton
 /**
  * Repository Containing Media related data.
  * e.g: Song List from MediaStore
- * */
+ * @author Kylentt
+ * @since 2022/04/30
+ * @property [getMediaStoreSong] @returns [Flow] of [MediaStoreSong] from [android.provider.MediaStore]
+ * @see [MediaStoreSource]
+ * @see [MediaRepositoryImpl]
+ */
 
 interface MediaRepository {
   suspend fun getMediaStoreSong(): Flow<List<MediaStoreSong>>

@@ -8,8 +8,8 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 
 @Composable
-fun NoRipple(
-    content: @Composable () -> Unit
+inline fun NoRipple(
+    crossinline content: @Composable () -> Unit
 ) {
     CompositionLocalProvider(
         LocalRippleTheme provides object : RippleTheme {

@@ -94,7 +94,7 @@ fun MaterialDesign3Theme(
            with(systemUiController) {
                setStatusBarColor(ColorHelper.getTonedSurface().copy(alpha = 0.5f))
                setNavigationBarColor(Color.Transparent)
-               isNavigationBarContrastEnforced = false
+               isNavigationBarContrastEnforced = true
                statusBarDarkContentEnabled = !useDarkTheme
                navigationBarDarkContentEnabled = !useDarkTheme
            }
@@ -125,7 +125,7 @@ fun MaterialDesign3Theme(
         with(systemUiController) {
             setStatusBarColor(ColorHelper.getTonedSurface().copy(alpha = 0.5f))
             setNavigationBarColor(Color.Transparent)
-            isNavigationBarContrastEnforced = false
+            isNavigationBarContrastEnforced = true
             statusBarDarkContentEnabled = !useDarkTheme
             navigationBarDarkContentEnabled = !useDarkTheme
         }

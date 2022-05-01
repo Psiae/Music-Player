@@ -5,6 +5,7 @@ import android.graphics.drawable.BitmapDrawable
 import android.os.Looper
 import androidx.annotation.FloatRange
 import androidx.annotation.GuardedBy
+import androidx.annotation.MainThread
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
@@ -24,6 +25,15 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import timber.log.Timber
 
+/**
+ * Class that handle [ControllerCommand] to control MediaPlayback using [MediaController]
+ * [MediaService] is started from [connectController] Function
+ * @throws [IllegalStateException] if accessed from other than [Looper.getMainLooper]
+ * except its blocking internal work, e.g: [updateItemBitmapSF]
+ * @author Kylentt
+ * @since 2022/04/30
+ */
+
 class MediaServiceController(
   serviceConnector: MediaServiceConnector
 ) {
@@ -32,7 +42,6 @@ class MediaServiceController(
   val playbackStateSF = MutableStateFlow<PlaybackState>(PlaybackState.EMPTY)
   val serviceStateSF = MutableStateFlow<MediaServiceState>(MediaServiceState.NOTHING)
 
-  @Volatile
   @GuardedBy("controllerLock")
   private lateinit var futureMediaController: ListenableFuture<MediaController>
   private lateinit var mediaController: MediaController
@@ -44,11 +53,17 @@ class MediaServiceController(
 
   private val context = serviceConnector.baseContext
   private val itemHelper = serviceConnector.itemHelper
+
+
   private val ioScope = serviceConnector.appScope.ioScope
   private val mainScope = serviceConnector.appScope.mainScope
+  private val computationScope = serviceConnector.appScope.computationScope
+  private val mainImmediateScope = serviceConnector.appScope.immediateScope
 
   private val ioDispatcher = serviceConnector.dispatchers.io
   private val mainDispatcher = serviceConnector.dispatchers.main
+  private val computationDispatcher = serviceConnector.dispatchers.computation
+  private val mainImmediateDispatcher = serviceConnector.dispatchers.mainImmediate
 
   @GuardedBy("listenerLock")
   private val controlIdleListener = mutableListOf<(MediaController) -> Unit>()
@@ -195,7 +210,7 @@ class MediaServiceController(
   /**
    * All Command Below does Not check for MediaController Initialization nor Looper
    * assuming the entry point is the commandController function which already check for it
-   * */
+   */
 
   private val fadeOutLock: Any = Any()
   private val maxVolume: Float = PlayerConstants.MAX_VOLUME
@@ -246,7 +261,6 @@ class MediaServiceController(
     Timber.d("setPlayerVolume to $v or $fv")
   }
 
-  @Volatile
   @GuardedBy("fadeOutLock")
   private var fadingOut = false
 
@@ -293,19 +307,19 @@ class MediaServiceController(
     }
   }
 
-  @Volatile
   private var updateItemBitmapJob = Job().job
 
   fun updateItemBitmapSF(item: MediaItem) {
     updateItemBitmapJob.cancel()
-    updateItemBitmapJob = mainScope.launch {
+    updateItemBitmapJob = ioScope.launch {
       val bitmap = withContext(ioDispatcher) {
         itemHelper.getEmbeddedPicture(item)
           ?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
       }
       val bitmapDrawable = bitmap?.let { BitmapDrawable(context.resources, it) }
-      if (playbackStateSF.value.currentMediaItem == item) withContext(mainDispatcher) {
+      withContext(mainDispatcher) {
         ensureActive()
+        check(playbackStateSF.value.currentMediaItem.mediaId == item.mediaId)
         itemBitmapSF.value = Pair(item, bitmapDrawable)
       }
     }
@@ -349,14 +363,14 @@ sealed class ControllerCommand {
 
   companion object {
 
-    fun ControllerCommand.wrapWithFadeOut(
+    @JvmStatic fun ControllerCommand.wrapWithFadeOut(
       flush: Boolean = false,
       duration: Long = 1000L,
       interval: Long = 50L,
       to: Float = 0F
-    ) = Companion.wrapFadeOut(this, flush, duration, interval, to)
+    ) = wrapFadeOut(this, flush, duration, interval, to)
 
-    fun wrapFadeOut(
+    @JvmStatic fun wrapFadeOut(
       command: ControllerCommand,
       flush: Boolean = false,
       duration: Long = 1000L,
@@ -374,13 +388,15 @@ data class PlaybackState(
   val repeatMode: @Player.RepeatMode Int
 ) {
   companion object {
-    val EMPTY = PlaybackState(
-      isPlaying = false,
-      playWhenReady = false,
-      currentMediaItem = MediaItem.EMPTY,
-      playerState = Player.STATE_IDLE,
-      repeatMode = Player.REPEAT_MODE_OFF
-    )
+    @JvmStatic val EMPTY by lazy {
+      PlaybackState(
+        isPlaying = false,
+        playWhenReady = false,
+        currentMediaItem = MediaItem.EMPTY,
+        playerState = Player.STATE_IDLE,
+        repeatMode = Player.REPEAT_MODE_OFF
+      )
+    }
   }
 }
 

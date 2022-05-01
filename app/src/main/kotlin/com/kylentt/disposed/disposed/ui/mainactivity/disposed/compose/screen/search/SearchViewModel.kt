@@ -3,7 +3,7 @@ package com.kylentt.disposed.disposed.ui.mainactivity.disposed.compose.screen.se
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kylentt.mediaplayer.data.source.local.MediaStoreSource
-import com.kylentt.disposed.musicplayer.data.entity.SongEntity
+import com.kylentt.mediaplayer.data.SongEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow

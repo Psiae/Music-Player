@@ -6,24 +6,30 @@ import com.kylentt.mediaplayer.app.coroutines.AppDispatchers
 import com.kylentt.mediaplayer.app.coroutines.AppScope
 import com.kylentt.mediaplayer.data.repository.ProtoRepository
 import com.kylentt.mediaplayer.domain.mediasession.MediaSessionManager
-import com.kylentt.mediaplayer.helper.Preconditions.verifyMainThread
+import com.kylentt.mediaplayer.domain.mediasession.service.MediaService
 import com.kylentt.mediaplayer.helper.image.CoilHelper
 import com.kylentt.mediaplayer.helper.media.MediaItemHelper
 import kotlinx.coroutines.flow.asStateFlow
 import timber.log.Timber
 
-/** Connector between MediaSessionManager and MediaServiceController */
+/**
+ * Connector between [MediaSessionManager] and [MediaServiceController]
+ * @author Kylentt
+ * @since 2022/04/30
+ * @see [MediaService]
+ */
 
 class MediaServiceConnector(
-  val appScope: AppScope,
-  val baseContext: Context,
-  val coilHelper: CoilHelper,
-  val dispatchers: AppDispatchers,
-  val itemHelper: MediaItemHelper,
-  val protoRepo: ProtoRepository,
-  sessionManager: MediaSessionManager
+  @JvmField val appScope: AppScope,
+  @JvmField val baseContext: Context,
+  @JvmField val coilHelper: CoilHelper,
+  @JvmField val dispatchers: AppDispatchers,
+  @JvmField val itemHelper: MediaItemHelper,
+  @JvmField val protoRepo: ProtoRepository,
+  @JvmField val sessionManager: MediaSessionManager
 ) {
-  val serviceController = MediaServiceController(this)
+
+  private val serviceController = MediaServiceController(this)
 
   val itemBitmap = serviceController.itemBitmapSF.asStateFlow()
   val playbackState = serviceController.playbackStateSF.asStateFlow()

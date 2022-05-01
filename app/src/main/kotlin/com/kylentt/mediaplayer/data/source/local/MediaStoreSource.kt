@@ -9,32 +9,83 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import com.kylentt.mediaplayer.app.coroutines.AppDispatchers
 import com.kylentt.mediaplayer.helper.VersionHelper
-import com.kylentt.disposed.musicplayer.core.helper.MediaItemUtil
-import com.kylentt.disposed.musicplayer.data.entity.SongEntity
+import com.kylentt.mediaplayer.data.SongEntity
+import com.kylentt.mediaplayer.helper.media.MediaItemHelper
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import javax.inject.Singleton
-import kotlin.coroutines.coroutineContext
 
-data class MediaStoreSong(
-  val album: String,
-  val albumArtUri: Uri,
-  val albumId: Long,
-  val artist: String,
-  val artistId: Long,
-  val byteSize: Long,
-  val duration: Long,
-  val data: String?,
-  val fileName: String,
-  val fileBucket: String,
-  val fileBuckedId: String,
-  val lastModified: Long,
-  val mediaId: String,
-  val mediaUri: Uri,
-  val title: String
+/**
+ * [SongEntity] Implementation for [android.provider.MediaStore] sourced Song
+ * @author Kylentt
+ * @since 2022/04/30
+ * @see [MediaStoreSource]
+ */
+
+data class MediaStoreSong @JvmOverloads constructor(
+  @JvmField val album: String = "",
+  @JvmField val albumArtUri: Uri = Uri.EMPTY,
+  @JvmField val albumId: Long = -1,
+  @JvmField val artist: String = "",
+  @JvmField val artistId: Long = -1,
+  @JvmField val byteSize: Long = -1,
+  @JvmField val duration: Long = -1,
+  @JvmField val data: String? = null,
+  @JvmField val fileName: String = "",
+  @JvmField val fileBucket: String = "",
+  @JvmField val fileBuckedId: String = "",
+  @JvmField val lastModified: Long = -1,
+  @JvmField val mediaId: String = "",
+  @JvmField val mediaUri: Uri = Uri.EMPTY,
+  @JvmField val title: String = ""
 ) : SongEntity {
+
+  override val mediaIdPrefix: String
+    get() = MEDIA_ID_PREFIX
+
+  override val albumName: String
+    get() = this.album
+  override val artistName: String
+    get() = this.artist
+  override val displayTitle: String
+    get() = this.title
+  override val songMediaArtworkUri: Uri
+    get() = this.albumArtUri
+  override val songMediaId: String
+    get() = this.mediaIdPrefix + mediaId
+  override val songMediaUri: Uri
+    get() = this.mediaUri
+
+  val mediaItem by lazy {
+    val artworkUri = MediaItemHelper.hideArtUri(songMediaArtworkUri)
+    MediaItem.Builder()
+      .setMediaId(songMediaId)
+      .setUri(songMediaUri)
+      .setMediaMetadata(
+        MediaMetadata.Builder()
+          .setArtist(artistName)
+          .setAlbumArtist(artistName)
+          .setAlbumTitle(albumName)
+          .setArtworkUri(artworkUri)
+          .setDisplayTitle(displayTitle)
+          .setDescription(fileName)
+          .setMediaUri(songMediaUri)
+          .setSubtitle(artist)
+          .setIsPlayable(duration > 0)
+          .build()
+      ).build()
+  }
+
+  override val asMediaItem: MediaItem
+    get() = mediaItem
+
+  override fun equalMediaItem(item: MediaItem?): Boolean {
+    return item != null
+      && item.mediaId == this.songMediaId
+      && item.mediaMetadata.mediaUri == this.songMediaUri
+  }
 
   override fun toString(): String {
     return "MediaStoreSong" +
@@ -43,40 +94,40 @@ data class MediaStoreSong(
       "\nartist: $artist" +
       "\nduration: $duration" +
       "\ndata: $data" +
-      "\nmediaId: $mediaId" +
-      "\nmediaUri: $mediaUri" +
+      "\nmediaId: $songMediaId" +
+      "\nmediaUri: $songMediaUri" +
       "\nextra: $albumArtUri, $albumId, $artistId, $byteSize, $fileName, $fileBucket, " +
       "$fileBuckedId, $lastModified"
   }
 
-  override fun getAlbumName(): String = this.album
-  override fun getArtistName(): String = this.artist
-  override fun getDisplayTitle(): String = this.title
-  override fun getUri(): Uri = mediaUri
+  companion object {
+    const val MEDIA_ID_PREFIX = "MEDIASTORE_"
 
-  override fun toMediaItem(): MediaItem {
-    return MediaItem.Builder()
-      .setMediaId(mediaId)
-      .setUri(mediaUri)
-      .setMediaMetadata(
-        MediaMetadata.Builder()
-          .setArtist(getArtistName())
-          .setAlbumArtist(getArtistName())
-          .setAlbumTitle(getAlbumName())
-          .setArtworkUri(MediaItemUtil.hideArtUri(albumArtUri))
-          .setDisplayTitle(getDisplayTitle())
-          .setDescription(fileName)
-          .setMediaUri(mediaUri)
-          .setSubtitle(artist)
-          .setIsPlayable(duration > 0)
-          .build()
-      ).build()
+    @JvmStatic
+    val EMPTY = MediaStoreSong()
+
+    @JvmStatic fun MediaItem.isMediaStoreSong() = this.mediaId.startsWith(MEDIA_ID_PREFIX)
   }
 }
+
+/**
+ * Data Source Interface for [android.provider.MediaStore]
+ * @author Kylentt
+ * @since 2022/04/30
+ * @see [MediaStoreSourceImpl]
+ * @see [MediaStoreSong]
+ */
 
 interface MediaStoreSource {
   suspend fun getMediaStoreSong(): Flow<List<MediaStoreSong>>
 }
+
+/**
+ * Base Implementation for [MediaStoreSource] Interface
+ * @author Kylentt
+ * @since 2022/04/30
+ * @see [MediaStoreSong]
+ */
 
 @Singleton
 class MediaStoreSourceImpl(
@@ -86,10 +137,9 @@ class MediaStoreSourceImpl(
 
   override suspend fun getMediaStoreSong(): Flow<List<MediaStoreSong>> =
     flow { emit(queryAudioColumn()) }
-      .flowOn(dispatchers.io)
 
   private suspend fun queryAudioColumn(): List<MediaStoreSong> =
-    withContext(coroutineContext) {
+    withContext(dispatchers.io) {
       val songList = mutableListOf<MediaStoreSong>()
       try {
 
@@ -165,7 +215,7 @@ class MediaStoreSourceImpl(
               cursor.getString(cursor.getColumnIndexOrThrow(songFolderId))
 
             val albumUri = ContentUris
-              .withAppendedId(Uri.parse(MEDIASTORE_ALBUM_ART_PATH), albumId)
+              .withAppendedId(Uri.parse(MEDIASTORE_ALBUM_ART_PREFIX), albumId)
             val songUri = ContentUris
               .withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, songId.toLong()).toString()
 
@@ -196,13 +246,11 @@ class MediaStoreSourceImpl(
       songList.forEachIndexed { index, mediaStoreSong ->
         Timber.d("MediaStoreSource Queried: \n$mediaStoreSong\ntotal:$index")
       }
-      return@withContext run {
-        ensureActive()
-        songList
-      }
+      ensureActive()
+      songList
   }
 
   companion object {
-    const val MEDIASTORE_ALBUM_ART_PATH = "content://media/external/audio/albumart"
+    const val MEDIASTORE_ALBUM_ART_PREFIX = "content://media/external/audio/albumart"
   }
 }

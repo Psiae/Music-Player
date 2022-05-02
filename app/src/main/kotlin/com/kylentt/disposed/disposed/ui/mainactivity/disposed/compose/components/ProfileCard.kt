@@ -28,7 +28,7 @@ fun ProfileCard() {
       .height(100.dp),
     shape = RoundedCornerShape(10),
     elevation = CardDefaults.elevatedCardElevation(),
-    containerColor = MaterialTheme.colorScheme.surfaceVariant
+      colors = CardDefaults.cardColors( containerColor = MaterialTheme.colorScheme.surfaceVariant)
   ) {
     ProfileCardRow()
   }
@@ -79,7 +79,7 @@ fun ProfileCardProfile() {
       .aspectRatio(1f)
       .fillMaxHeight(),
     shape = RoundedCornerShape(50),
-    containerColor = ColorDefaults.white,
+      colors = CardDefaults.cardColors( containerColor = ColorDefaults.white),
     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
     elevation = CardDefaults.elevatedCardElevation(),
   ) {

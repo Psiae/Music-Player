@@ -46,14 +46,14 @@ fun RootBottomNav(
   ) {
     Box(
       modifier = Modifier
-        .fillMaxWidth()
-        .navigationBarsPadding(),
+          .fillMaxWidth()
+          .navigationBarsPadding(),
       contentAlignment = Alignment.CenterStart
     ) {
       Row(
         modifier = Modifier
-          .fillMaxWidth()
-          .padding(top = 10.dp, bottom = 10.dp),
+            .fillMaxWidth()
+            .padding(top = 10.dp, bottom = 10.dp),
         horizontalArrangement = Arrangement.SpaceAround,
         verticalAlignment = Alignment.CenterVertically
       ) {
@@ -111,15 +111,15 @@ fun RootBottomNavItem(
 
   Card(
     modifier = Modifier,
-    containerColor = background,
+    colors = CardDefaults.cardColors(containerColor = background),
     shape = CircleShape
   ) {
 
     Row(
       modifier = Modifier
-        .clipToBounds()
-        .clickable(true, onClick = { onClick(route) })
-        .padding(start = 10.dp, top = 5.dp, bottom = 5.dp, end = 10.dp),
+          .clipToBounds()
+          .clickable(true, onClick = { onClick(route) })
+          .padding(start = 10.dp, top = 5.dp, bottom = 5.dp, end = 10.dp),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.Center
     ) {

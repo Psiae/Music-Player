@@ -81,7 +81,7 @@ fun WhateverCard(
         .clip(RoundedCornerShape(50))
         .clipToBounds()
         .clickable { },
-      containerColor = MaterialTheme.colorScheme.secondaryContainer,
+      colors = CardDefaults.cardColors( containerColor = MaterialTheme.colorScheme.secondaryContainer),
       elevation = CardDefaults.elevatedCardElevation(defaultElevation = 3.dp)
     ) {
       Icon(

@@ -18,7 +18,7 @@ static def Properties getProp(File file) {
 def Properties getRootProp(String propName) {
     def propFile = rootProject.file(propName)
     if (!propFile.exists()) {
-        throw new IllegalArgumentException("couldn't find $propName in $rootProject")
+        throw new IllegalStateException("couldn't find $propName in $rootProject")
     }
     def prop = getProp(propFile)
     return prop
@@ -120,7 +120,7 @@ dependencies {
         def accompanistVersion = "0.24.3-alpha"
         def navAnimationVersion = "0.24.4-alpha"
         def pagerVersion = "0.24.4-alpha"
-        
+
         implementation "com.google.accompanist:accompanist-drawablepainter:$accompanistVersion"
         implementation "com.google.accompanist:accompanist-navigation-animation:$navAnimationVersion"
         implementation "com.google.accompanist:accompanist-navigation-material:$accompanistVersion"
@@ -130,7 +130,7 @@ dependencies {
         implementation "com.google.accompanist:accompanist-systemuicontroller:$accompanistVersion"
     }
 
-    // Core
+    // Androidx Extra
     dependencies {
         def splashScreenVersion = "1.0.0-beta02"
         def startupVersion = "1.1.1"
@@ -139,7 +139,7 @@ dependencies {
         implementation "androidx.startup:startup-runtime:$startupVersion"
     }
 
-    // Compose
+    // Androidx.compose Extra
     dependencies {
         def composeNavigation = "2.5.0-beta01"
         def composeMaterialVersion = "1.1.1"

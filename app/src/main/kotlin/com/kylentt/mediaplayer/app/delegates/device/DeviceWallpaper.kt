@@ -19,7 +19,7 @@ import kotlin.reflect.KProperty
  * @author Kylentt
  * @since 2022/04/30
  * @see StoragePermission
- * @sample [com.kylentt.mediaplayer.ui.compose.rememberWallpaperDrawableAsState]
+ * @sample [com.kylentt.mediaplayer.ui.compose.rememberWallpaperBitmapAsState]
  */
 
 object DeviceWallpaper {
@@ -43,18 +43,15 @@ object DeviceWallpaper {
     return if (condition) block() else null
   }
 
+  @JvmStatic fun getBitmap(): Bitmap? {
+    return AppDelegate.deviceWallpaper?.toBitmap()
+  }
+
   operator fun getValue(appDelegate: AppDelegate, property: KProperty<*>): Drawable? {
     return getDeviceWallpaper(appDelegate.base)
   }
 
   operator fun getValue(any: Any?, property: KProperty<*>): Drawable? {
     return AppDelegate.deviceWallpaper
-  }
-}
-
-object DeviceWallpaperBitmap {
-
-  operator fun getValue(any: Any?, property: KProperty<*>): Bitmap? {
-    return AppDelegate.deviceWallpaper?.toBitmap()
   }
 }

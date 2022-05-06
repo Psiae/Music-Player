@@ -1,17 +1,19 @@
 package com.kylentt.mediaplayer.app.delegates
 
+import com.kylentt.mediaplayer.BuildConfig
 import com.kylentt.mediaplayer.app.annotation.UnsafeClass
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
+import com.kylentt.mediaplayer.ui.activity.CollectionExtension.forEachClear
 import kotlinx.coroutines.*
 import timber.log.Timber
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 
 /**
- * Lateinit val basically
+ * Lateinit val basically, any attempt to update the value is ignored
  * @param lock the Lock
- * @throws IllegalStateException if value is not Initialized
- * @sample LateLazySample
+ * @throws IllegalStateException on any attempt to get value when its not Initialized
+ * @sample LateLazySample.testCase1
  */
 
 class LateLazy<T>(lock: Any? = null) : ReadOnlyProperty<Any?, T> {
@@ -52,7 +54,8 @@ class LateLazy<T>(lock: Any? = null) : ReadOnlyProperty<Any?, T> {
 
 object LateLazySample {
 
-  fun runTestCase(times: Int = 3) {
+  fun runTestCase(times: Int = 5) {
+    if (!BuildConfig.DEBUG) return
     repeat(times) {
       testCase1()
       testCase2()
@@ -74,6 +77,7 @@ object LateLazySample {
     checkState(myObject === any1)
   }
 
+
   private fun testCase2() {
     val initializer = LateLazy<String>()
     val myObject by initializer
@@ -82,6 +86,7 @@ object LateLazySample {
 
     val scope = CoroutineScope(Dispatchers.IO)
     scope.launch {
+
       val a = async {
         val key = "a"
         delay(200)
@@ -105,14 +110,15 @@ object LateLazySample {
       b.await()
       c.await()
 
-      checkState(myObject === jobs.first())
-      Timber.d("LateLazy validCase3 success" +
-        "\nresult: $myObject, sequence: ${jobs[0]} ${jobs[1]} ${jobs[2]} ")
+      checkState(myObject === jobs.first()) {
+        "LateLazy validCase3 failed." +
+          "\nresult: $myObject" +
+          "\nexpected ${jobs.first()}" +
+          "\nactual: $jobs"
+      }
       scope.cancel()
     }
   }
-
-
 }
 
 @UnsafeClass

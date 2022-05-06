@@ -8,6 +8,7 @@ import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.net.Uri
 import androidx.annotation.Px
+import androidx.annotation.WorkerThread
 import androidx.core.graphics.component1
 import androidx.core.graphics.component2
 import androidx.core.graphics.component3
@@ -21,6 +22,7 @@ import coil.size.PixelSize
 import coil.size.Precision
 import coil.size.Scale
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
+import com.kylentt.mediaplayer.helper.Preconditions.checkNotMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.helper.image.CoilHelper.CenterCropTransform.*
 import jp.wasabeef.transformers.coil.CenterBottomCropTransformation
@@ -54,6 +56,7 @@ class CoilHelper(
     BOTTOM
   }
 
+  @WorkerThread
   suspend fun squareBitmap(
     context: Context = this.context,
     loader: ImageLoader = this.imageLoader,
@@ -64,6 +67,7 @@ class CoilHelper(
     bitmap: Bitmap,
     @Px size: Int
   ): Bitmap = withContext(coroutineContext) {
+    checkNotMainThread()
 
     Timber.d("squareBitmap $bitmap")
 
@@ -80,39 +84,40 @@ class CoilHelper(
       .placeholder(placeHolder)
       .transformations(centerType)
       .size(size)
-      .scale(Scale.FILL)
+      .scale(Scale.FIT)
       .precision(Precision.EXACT)
       .build()
 
-    val result = executeBitmapRequest(loader, req, bitmap, recycle)
+    val result = executeBitmapRequest(loader, req, size, size, true)
     if (recycle) checkState(result !== bitmap)
     Timber.d("squaredBitmap with size: $size?${result.width}:${result.height}, alloc: ${result.allocationByteCount}")
     result
   }
 
-  suspend fun executeBitmapRequest(
+  private suspend fun executeBitmapRequest(
     loader: ImageLoader,
     request: ImageRequest,
-    bitmap: Bitmap,
+    @Px height: Int,
+    @Px width: Int,
     recycle: Boolean
   ): Bitmap = withContext(coroutineContext) {
-    checkArgument(request.data === bitmap)
+    checkArgument(request.data is Bitmap)
     val drawable = loader.execute(request).drawable!!
     val result =
       if (recycle) {
-        val new = drawable.toNewBitmap()
-        bitmap.recycle()
+        val new = drawable.toNewBitmap(height, width)
+        (request.data as Bitmap).recycle()
         new
       } else {
         drawable.toBitmap()
       }
     ensureActive()
-    return@withContext result
+    result
   }
 
-  fun Drawable.toNewBitmap(
-    @Px width: Int = intrinsicWidth,
+  private fun Drawable.toNewBitmap(
     @Px height: Int = intrinsicHeight,
+    @Px width: Int = intrinsicWidth,
     config: Bitmap.Config? = null,
   ): Bitmap {
     val (oldLeft, oldTop, oldRight, oldBottom) = bounds
@@ -140,7 +145,7 @@ class CoilHelper(
       .size(width, height)
       .build()
     ensureActive()
-    (loader.execute(req).drawable as BitmapDrawable)
+    (loader.execute(req).drawable as BitmapDrawable).bitmap
   }
 
   suspend fun bitmapFromUri(

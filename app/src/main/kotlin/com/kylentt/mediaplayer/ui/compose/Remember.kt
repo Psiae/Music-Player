@@ -7,8 +7,9 @@ import android.graphics.drawable.Drawable
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.Lifecycle
-import com.kylentt.mediaplayer.app.delegates.device.DeviceWallpaperBitmap
+import com.kylentt.mediaplayer.app.delegates.device.DeviceWallpaper
 import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.LifeCycleExtension.RecomposeOnEvent
 
 @Composable
@@ -19,7 +20,8 @@ fun rememberWallpaperBitmapAsState(): State<Bitmap?> {
         onEvent = Lifecycle.Event.ON_START
     ) { _ ->
 
-        val bitmap by DeviceWallpaperBitmap
+        val drawable by DeviceWallpaper
+        val bitmap = drawable?.toBitmap()
 
         LaunchedEffect(key1 = bitmap.hashCode()) {
             wallpaper.value = bitmap

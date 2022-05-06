@@ -28,6 +28,8 @@ class MediaViewModel @Inject constructor(
   private val mediaSessionManager: MediaSessionManager
 ) : ViewModel() {
 
+  private val ioScope = viewModelScope + dispatchers.io
+
   val mediaItemBitmap = MutableStateFlow(MediaItemBitmap.EMPTY)
   val mediaPlaybackState = MutableStateFlow(PlaybackState.EMPTY)
 
@@ -54,17 +56,14 @@ class MediaViewModel @Inject constructor(
 
   private suspend fun dispatchUpdateItemBitmap(item: MediaItem) {
     updateItemBitmapJob.cancel()
-    updateItemBitmapJob = viewModelScope.launch {
-      withContext(dispatchers.io) {
-        val bitmap = itemHelper.getEmbeddedPicture(item)?.let { bytes: ByteArray ->
-          ensureActive()
-          BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-        }
-        withContext(dispatchers.main) {
-          if (!isActive) bitmap?.recycle()
-          ensureValidCurrentItem(item) { "dispatchUpdateItemBitmap inconsistent" }
-          mediaItemBitmap.value = MediaItemBitmap(item, bitmap)
-        }
+    updateItemBitmapJob = ioScope.launch {
+      val bitmap = itemHelper.getEmbeddedPicture(item)?.let { bytes: ByteArray ->
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+      }
+      withContext(dispatchers.main) {
+        if (!isActive) bitmap?.recycle()
+        ensureValidCurrentItem(item) { "dispatchUpdateItemBitmap inconsistent" }
+        mediaItemBitmap.value = MediaItemBitmap(item, bitmap)
       }
     }
   }
@@ -74,7 +73,7 @@ class MediaViewModel @Inject constructor(
     checkMainThread()
     coroutineContext.ensureActive()
     val current = mediaPlaybackState.value.currentMediaItem
-    checkState(item == current) {
+    checkState(item === current) {
       "checkValidCurrentItem failed." +
         "\nexpected : ${item.mediaMetadata.displayTitle}, id: ${item.mediaId}" +
         "\ncurrent: $current, id: ${item.mediaId}" +

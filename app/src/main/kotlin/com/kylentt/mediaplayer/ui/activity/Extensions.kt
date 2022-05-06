@@ -41,7 +41,7 @@ object IntentExtension {
 object CollectionExtension {
 
   @JvmStatic
-  fun <T> MutableList<T>.forEachClear(lock: Any = this, each: (T) -> Unit) {
+  inline fun <T> MutableList<T>.forEachClear(lock: Any = this, each: (T) -> Unit) {
     synchronized(lock) {
       forEach { each(it) }
       clear()

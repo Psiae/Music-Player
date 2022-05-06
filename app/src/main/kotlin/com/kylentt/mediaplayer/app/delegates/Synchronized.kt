@@ -1,13 +1,17 @@
 package com.kylentt.mediaplayer.app.delegates
 
+import androidx.annotation.GuardedBy
 import androidx.annotation.MainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 
 class Synchronize<T>(defaultValue: T, lock: Any? = null): ReadWriteProperty<Any, T> {
-  private var value = defaultValue
+
   private val lock = lock ?: this
+
+  @GuardedBy("lock")
+  @Volatile private var value = defaultValue
 
   override fun getValue(thisRef: Any, property: KProperty<*>): T {
     return synchronized(lock) { value }

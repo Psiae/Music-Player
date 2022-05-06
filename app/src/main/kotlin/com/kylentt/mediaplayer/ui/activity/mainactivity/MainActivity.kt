@@ -97,8 +97,8 @@ class MainActivity : ComponentActivity() {
     checkNotNull(intent) {
       "Intent must not be Null."
     }
-    checkState(intent.action == Companion.Defaults.intentAction) {
-      "MainActivity Intent.action must Always be ${Defaults.intentAction}"
+    checkState(intent.action == Defaults.intentAction) {
+      "MainActivity Intent.action must Always be ${Defaults.intentAction}, caught: $intent"
     }
     setAsCurrentHash()
     return alive()
@@ -205,7 +205,7 @@ class MainActivity : ComponentActivity() {
     @JvmStatic
     val isDestroyed
       @JvmName("isStateDestroyed")
-       get() = LifecycleState.isDestroyedd
+       get() = LifecycleState.isDestroyed
 
     /**
      * Static Method to Launch [MainActivity] with its Default Intent.
@@ -228,11 +228,10 @@ class MainActivity : ComponentActivity() {
       checkArgument(launcher !is Service) {
         "Service Cannot Start MainActivity"
       }
-      if (!isAlive) {
-        // Might be safer to just always call this, but I want to see how consistent this is
-        val defIntent = Defaults.getDefaultIntent(launcher)
-        launcher.startActivity(defIntent)
-      }
+
+      val defIntent = Defaults.getDefaultIntent(launcher)
+      launcher.startActivity(defIntent)
+
       if (intent != null) {
         val clone = intent.clone() as Intent
         val appended = clone.appendMainActivityClass(launcher)
@@ -272,7 +271,7 @@ class MainActivity : ComponentActivity() {
         get() = currentActivityState >= Visible
       val isReady
         get() = currentActivityState == Ready
-      val isDestroyedd
+      val isDestroyed
         get() = currentActivityState == Destroyed
       val stateString
         get() = toActivityStateStr(currentActivityState)

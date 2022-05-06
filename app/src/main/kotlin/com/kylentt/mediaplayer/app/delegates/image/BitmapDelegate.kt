@@ -1,6 +1,7 @@
 package com.kylentt.mediaplayer.app.delegates.image
 
 import android.graphics.Bitmap
+import androidx.annotation.GuardedBy
 import androidx.media3.common.MediaItem
 import com.kylentt.mediaplayer.app.delegates.Synchronize
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
@@ -8,7 +9,7 @@ import timber.log.Timber
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 
-class RecycleBitmapDelegate(defaultValue: Bitmap?) : ReadWriteProperty <Any, Bitmap?> {
+class RecycleBitmap(defaultValue: Bitmap?) : ReadWriteProperty <Any, Bitmap?> {
 
   private var bitmap by Synchronize(defaultValue)
 
@@ -29,23 +30,22 @@ class RecyclePairBitmap<T>(
   defaultValue: Pair<T, Bitmap?>
 ) : ReadWriteProperty<Any, Pair<T, Bitmap?>> {
 
-  private var pair by Synchronize<Pair<T, Bitmap?>>(defaultValue)
+  private val lock = Any()
 
-  override fun getValue(thisRef: Any, property: KProperty<*>): Pair<T, Bitmap?> {
-    checkState(pair.second?.isRecycled != true) {
-      "tried to return Recycled Bitmap ${pair.second}"
-    }
-    return pair
-  }
+  @GuardedBy("lock")
+  @Volatile private var pair = defaultValue
 
-  override fun setValue(thisRef: Any, property: KProperty<*>, value: Pair<T, Bitmap?>) {
-    if (pair.first is MediaItem) {
-      val cast = pair.first as MediaItem
-      val valueCast = value.first as MediaItem
-      Timber.d("RecycleBitmapDelegate, setValue from ${cast.mediaMetadata.displayTitle} to ${valueCast.mediaMetadata.displayTitle}")
+  override fun getValue(thisRef: Any, property: KProperty<*>): Pair<T, Bitmap?> =
+    synchronized(lock) {
+      checkState(pair.second?.isRecycled != true) {
+        "tried to return Recycled Bitmap ${pair.second}"
+      }
+      return pair
     }
-    Timber.d("RecycleBitmapDelegate, setValue from ${pair.second} to ${value.second}")
-    pair.second?.recycle()
-    pair = value
-  }
+
+  override fun setValue(thisRef: Any, property: KProperty<*>, value: Pair<T, Bitmap?>) =
+    synchronized(lock) {
+      pair.second?.recycle()
+      pair = value
+    }
 }

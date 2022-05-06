@@ -57,6 +57,7 @@ class MediaServiceNotification(
     get() = service.currentMediaSession
 
   private val notificationBuilder: NotificationBuilder
+
   val notificationManager: NotificationManager
 
   private var notificationUpdateJob = Job().job
@@ -198,9 +199,11 @@ class MediaServiceNotification(
         ensureActive()
         notificationManager.notify(NOTIFICATION_ID, notification)
       }
-      if (!cancelCurrent) return@withContext update()
-      notificationUpdateJob.cancel()
-      notificationUpdateJob = launch { update() }
+      if (isActive) {
+        if (!cancelCurrent) return@withContext update()
+        notificationUpdateJob.cancel()
+        notificationUpdateJob = launch { update() }
+      }
     }
   /**
    * Update Notification Callback from [androidx.media3.session.MediaNotificationManager.MediaControllerListener]
@@ -331,7 +334,7 @@ class MediaServiceNotification(
   private suspend fun resizeBitmapForNotification(bitmap: Bitmap): Bitmap =
     withContext(coroutineContext) {
       checkNotMainThread()
-      val size = if (VersionHelper.hasR()) 128 else 384
+      val size = if (VersionHelper.hasR()) 256 else 512
       val resized = coiLHelper.squareBitmap(bitmap = bitmap, size = size, recycle = true)
       ensureActive()
       resized

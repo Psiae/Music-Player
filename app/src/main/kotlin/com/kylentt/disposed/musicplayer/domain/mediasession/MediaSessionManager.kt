@@ -4,7 +4,7 @@ import android.app.Application
 import android.content.Context
 import androidx.annotation.MainThread
 import com.kylentt.mediaplayer.app.coroutines.AppScope
-import com.kylentt.mediaplayer.helper.Preconditions.verifyMainThread
+import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.disposed.musicplayer.domain.mediasession.service.ControllerCommand
 import com.kylentt.disposed.musicplayer.domain.mediasession.service.MediaServiceConnector
 import kotlinx.coroutines.Dispatchers
@@ -38,13 +38,13 @@ class MediaSessionManager private constructor(
 
   @MainThread
   fun connectService() {
-    verifyMainThread()
+    checkMainThread()
     controller.commandController(ControllerCommand.Unit)
   }
 
   @MainThread
   fun sendCommand(command: ControllerCommand) {
-    verifyMainThread()
+    checkMainThread()
     controller.commandController(command)
   }
 

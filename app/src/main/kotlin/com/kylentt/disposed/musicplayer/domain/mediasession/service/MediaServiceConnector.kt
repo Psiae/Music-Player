@@ -24,7 +24,7 @@ import com.kylentt.disposed.disposed.core.util.handler.MediaItemHandler
 import com.kylentt.disposed.disposed.domain.mediaSession.service.MusicService
 import com.kylentt.disposed.musicplayer.core.helper.MediaItemUtil
 import com.kylentt.disposed.musicplayer.core.helper.elseNull
-import com.kylentt.mediaplayer.helper.Preconditions.verifyMainThread
+import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.ui.activity.CollectionExtension.forEachClear
 import com.kylentt.disposed.musicplayer.domain.mediasession.MediaSessionManager
 import kotlinx.coroutines.*
@@ -141,7 +141,7 @@ internal class MediaServiceConnector(
   private fun connectService(
     onConnected: (MediaController) -> Unit
   ) = synchronized(connectLock) {
-    verifyMainThread()
+    checkMainThread()
 
     if (isControllerConnected()) {
       onConnected(mediaController)
@@ -181,7 +181,7 @@ internal class MediaServiceConnector(
   }
 
   private fun isControllerConnected(): Boolean {
-    verifyMainThread()
+    checkMainThread()
     return when {
       !::mediaController.isInitialized -> false
       else -> mediaController.isConnected
@@ -206,7 +206,7 @@ internal class MediaServiceConnector(
     fun commandController(command: ControllerCommand): Unit = synchronized(commandLock) {
       Timber.d("commandController $command")
 
-      verifyMainThread()
+      checkMainThread()
       if (!::controller.isInitialized) {
         connectService { commandController(command) }
         return
@@ -280,7 +280,7 @@ internal class MediaServiceConnector(
 
     private fun triggerStateListener(state: PlaybackState): Unit =
       synchronized(controlListenerLock) {
-        verifyMainThread()
+        checkMainThread()
         _playerState.value = state
         when (state) {
           is PlaybackState.BUFFERING -> {
@@ -309,7 +309,7 @@ internal class MediaServiceConnector(
     val newBitmapRequestException = CancellationException("new updateBitmapRequest")
 
     private fun setupController(controller: MediaController) {
-      verifyMainThread()
+      checkMainThread()
 
       with(controller) {
 
@@ -369,14 +369,14 @@ internal class MediaServiceConnector(
 
 
     private fun getPlayerVolume(): Float {
-      verifyMainThread()
+      checkMainThread()
       return mediaController.volume
     }
 
     private fun setPlayerVolume(
       @FloatRange(from = 0.0, to = 1.0) f: Float
     ) {
-      verifyMainThread()
+      checkMainThread()
       val fv = fixVolumeToRange(f)
       mediaController.volume = fv
       return Timber.d("setPlayerVolume to $f or $fv")
@@ -396,7 +396,7 @@ internal class MediaServiceConnector(
     suspend fun fadeOut(
       command: ControllerCommand.WithFade
     ) {
-      verifyMainThread()
+      checkMainThread()
       synchronized(fadeLock) {
         if (command.flush) fadeListener.clear()
         fadeListener.add(command)

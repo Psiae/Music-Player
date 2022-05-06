@@ -31,7 +31,6 @@ class MediaServiceConnector(
 
   private val serviceController = MediaServiceController(this)
 
-  val itemBitmap = serviceController.itemBitmapSF.asStateFlow()
   val playbackState = serviceController.playbackStateSF.asStateFlow()
   val serviceState = serviceController.serviceStateSF.asStateFlow()
 

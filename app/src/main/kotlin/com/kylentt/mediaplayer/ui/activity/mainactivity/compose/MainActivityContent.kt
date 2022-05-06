@@ -8,7 +8,6 @@ package com.kylentt.mediaplayer.ui.activity.mainactivity.compose
 
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.drawable.BitmapDrawable
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -38,10 +37,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -54,23 +51,22 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionState
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.shouldShowRationale
+import com.kylentt.disposed.musicplayer.ui.activity.musicactivity.acompose.environtment.NoRipple
+import com.kylentt.disposed.musicplayer.ui.activity.musicactivity.acompose.theme.md3.AppTypography
 import com.kylentt.mediaplayer.R
 import com.kylentt.mediaplayer.app.delegates.AppDelegate
-import com.kylentt.mediaplayer.app.delegates.device.DeviceWallpaperDelegate
-import com.kylentt.mediaplayer.app.delegates.device.StoragePermissionDelegate
+import com.kylentt.mediaplayer.app.delegates.device.StoragePermission
 import com.kylentt.mediaplayer.app.settings.AppSettings
 import com.kylentt.mediaplayer.app.settings.WallpaperSettings
 import com.kylentt.mediaplayer.app.settings.WallpaperSettings.Source.*
 import com.kylentt.mediaplayer.domain.viewmodels.MainViewModel
 import com.kylentt.mediaplayer.domain.viewmodels.MediaViewModel
 import com.kylentt.mediaplayer.ui.activity.CollectionExtension.forEachClear
-import com.kylentt.mediaplayer.ui.activity.CollectionExtension.syncEachClear
-import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.LifeCycleExtension.RecomposeOnEvent
+import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.ComposableExtension.noPadding
 import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.theme.MaterialDesign3Theme
 import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.theme.helper.ColorHelper
-import com.kylentt.disposed.musicplayer.ui.activity.musicactivity.acompose.environtment.NoRipple
-import com.kylentt.disposed.musicplayer.ui.activity.musicactivity.acompose.theme.md3.AppTypography
-import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.ComposableExtension.noPadding
+import com.kylentt.mediaplayer.ui.compose.rememberWallpaperBitmapAsState
+import timber.log.Timber
 import kotlin.math.roundToInt
 
 @Composable
@@ -86,22 +82,22 @@ fun MainActivityContent(
             whenDenied = { StorageDenied(it) },
             whenShowRationale = { ShowStorageRationale(it) },
         ) {
-            if (AppDelegate.checkStoragePermission()) {
-                with(mainViewModel) {
-                    pendingStorageGranted.syncEachClear()
-                    pendingStorageIntent.forEachClear { mediaViewModel.handleMediaIntent(it) }
-                }
-                MainActivityRoot(appSettings.value)
+            require(AppDelegate.checkStoragePermission()) {
+                "App Storage Permission is Not Granted"
             }
+            with(mainViewModel) {
+                pendingStorageGranted.forEachClear()
+                pendingStorageIntent.forEachClear { mediaViewModel.handleMediaIntent(it) }
+            }
+            MainActivityRoot(appSettings.value)
         }
     }
 }
 
 @RequiresPermission(anyOf = [
-    StoragePermissionDelegate.Read_External_Storage,
-    StoragePermissionDelegate.Write_External_Storage
+    StoragePermission.Read_External_Storage,
+    StoragePermission.Write_External_Storage
 ])
-
 @Composable
 private fun MainActivityRoot(
     appSettings: AppSettings
@@ -119,10 +115,6 @@ private fun MainActivityRoot(
     }
 }
 
-@RequiresPermission(anyOf = [
-    StoragePermissionDelegate.Read_External_Storage,
-    StoragePermissionDelegate.Write_External_Storage
-])
 @Composable
 private fun RootScaffold(
     appSettings: AppSettings,
@@ -137,10 +129,11 @@ private fun RootScaffold(
                 val backgroundColor = ColorHelper.getTonedSurface()
                     .copy(alpha = appSettings.navigationSettings.bnvSettings.visibility / 100)
                 RootBottomNavigation(
-                    appSettings,
+                    appSettings = appSettings,
                     backgroundColor = backgroundColor,
                     modifier = Modifier.fillMaxWidth(),
-                    selectedItem = MainBottomNavItems.map { it.screen }
+                    selectedItem = MainBottomNavItems
+                        .map { it.screen }
                         .find { it.route == backStackEntry.value!!.destination.route }!!,
                     onItemClicked = { item ->
                         navController.navigate(item.route) {
@@ -254,11 +247,8 @@ private fun AnimatedVisibilityText(visible: Boolean, text: String) {
     }
 }
 
-private fun showBottomNav(stack: NavBackStackEntry?): Boolean {
-    return MainBottomNavItems
-        .map { it.screen.route }
-        .find { it == stack?.destination?.route }?.let { true } ?: false
-}
+private fun showBottomNav(stack: NavBackStackEntry?): Boolean =
+    MainBottomNavItems.map { it.screen }.find { it.route == stack?.destination?.route } != null
 
 
 @Suppress("NOTHING_TO_INLINE")
@@ -297,10 +287,6 @@ private inline fun ShowStorageRationale(
     }
 }
 
-@RequiresPermission(anyOf = [
-    StoragePermissionDelegate.Read_External_Storage,
-    StoragePermissionDelegate.Write_External_Storage
-])
 @Composable
 private fun MainActivityNavWallpaper(
     mediaViewModel: MediaViewModel = viewModel(),
@@ -309,66 +295,60 @@ private fun MainActivityNavWallpaper(
     backstackEntry: NavBackStackEntry?,
     appSettings: AppSettings,
 ) {
-    LocalLifecycleOwner.current.lifecycle.RecomposeOnEvent(
-        onEvent = Lifecycle.Event.ON_START
-    ) {
-        val deviceWallpaper by DeviceWallpaperDelegate
-        val itemBitmap = mediaViewModel.mediaItemBitmap.collectAsState()
 
-        val context = LocalContext.current
-        val wpx = with(LocalDensity.current) { LocalConfiguration.current.screenWidthDp.dp.toPx() }
-        val hpx = with(LocalDensity.current) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
-        val backgroundColor = MaterialTheme.colorScheme.background
+    Timber.d("MainActivity NavWallpaper Recomposed")
 
-        val systemModeBitmap = remember {
-            Paint()
-                .apply {
-                    color = backgroundColor
-                    style = PaintingStyle.Fill
+    val context = LocalContext.current
+    val wpx = with(LocalDensity.current) { LocalConfiguration.current.screenWidthDp.dp.toPx() }
+    val hpx = with(LocalDensity.current) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
+    val backgroundColor = MaterialTheme.colorScheme.background
+
+    val systemModeBitmap: () -> Bitmap = {
+        Paint()
+            .apply {
+                color = backgroundColor
+                style = PaintingStyle.Fill
+            }
+            .let { paint ->
+                ImageBitmap(wpx.roundToInt(), hpx.roundToInt()).let { bmp ->
+                    Canvas(bmp).drawRect(0f,0f,wpx,hpx, paint)
+                    bmp.asAndroidBitmap()
                 }
-                .let { paint ->
-                    ImageBitmap(wpx.roundToInt(), hpx.roundToInt()).let { bmp ->
-                        Canvas(bmp).drawRect(0f,0f,wpx,hpx, paint)
-                        bmp.asAndroidBitmap()
-                    }
-                }
-        }
-
-        val deviceWallpaperBD = remember(deviceWallpaper) {
-            deviceWallpaper?.let { (it as BitmapDrawable).bitmap }
-        }
-
-        val alt = when(appSettings.wallpaperSettings.sourceALT) {
-            DEVICE_WALLPAPER -> deviceWallpaperBD
-            MEDIA_ITEM -> itemBitmap.value.bitmapDrawable?.bitmap
-            SYSTEM_MODE -> systemModeBitmap
-        }
-
-        val wp = when(appSettings.wallpaperSettings.source) {
-            DEVICE_WALLPAPER -> deviceWallpaperBD
-            MEDIA_ITEM -> itemBitmap.value.bitmapDrawable?.bitmap
-            SYSTEM_MODE -> systemModeBitmap
-        }
-
-        val itemIndex = MainBottomNavItems
-            .map { it.screen.route }
-            .indexOf(backstackEntry?.destination?.route)
-
-        val currentIndex = if (itemIndex > -1) {
-            mainViewModel.savedBottomNavIndex = itemIndex
-            itemIndex
-        } else {
-            mainViewModel.savedBottomNavIndex
-        }
-
-        NavWallpaper(
-            modifier = modifier,
-            wallpaper = wp ?: alt,
-            fadeDuration = 500,
-            size = MainBottomNavItems.size,
-            currentIndex = currentIndex,
-        )
+            }
     }
+
+    val wp = when(appSettings.wallpaperSettings.source) {
+        DEVICE_WALLPAPER -> rememberWallpaperBitmapAsState().value
+        MEDIA_ITEM -> mediaViewModel.mediaItemBitmap.collectAsState().value.bitmap
+        SYSTEM_MODE -> systemModeBitmap()
+    }
+
+    val alt: @Composable () -> Bitmap? = {
+        when(appSettings.wallpaperSettings.sourceALT) {
+            DEVICE_WALLPAPER -> rememberWallpaperBitmapAsState().value
+            MEDIA_ITEM -> mediaViewModel.mediaItemBitmap.collectAsState().value.bitmap
+            SYSTEM_MODE -> systemModeBitmap()
+        }
+    }
+
+    val itemIndex = MainBottomNavItems
+        .map { it.screen.route }
+        .indexOf(backstackEntry?.destination?.route)
+
+    val currentIndex = if (itemIndex > -1) {
+        mainViewModel.savedBottomNavIndex = itemIndex
+        itemIndex
+    } else {
+        mainViewModel.savedBottomNavIndex
+    }
+
+    NavWallpaper(
+        modifier = modifier,
+        wallpaper = wp ?: alt(),
+        fadeDuration = 500,
+        size = MainBottomNavItems.size,
+        currentIndex = currentIndex,
+    )
 }
 
 @Composable
@@ -379,9 +359,10 @@ fun NavWallpaper(
     currentIndex: Int,
     size: Int,
 ) {
+
     val context = LocalContext.current
     val scale = ContentScale.Crop
-    val req = remember(wallpaper) {
+    val req = remember(wallpaper.hashCode()) {
         ImageRequest.Builder(context)
             .crossfade(fadeDuration)
             .data(wallpaper)
@@ -389,6 +370,7 @@ fun NavWallpaper(
     }
     val painter = rememberImagePainter(req)
     val scrollState = rememberScrollState()
+
     Image(
         modifier = modifier
             .fillMaxSize()
@@ -414,6 +396,8 @@ fun NavWallpaper(
         }
     }
 }
+
+private fun Bitmap?.copyDefaultArgb() = this?.copy(Bitmap.Config.ARGB_8888, false)
 
 sealed class MainBottomNavItem(
     val screen: Screen,

@@ -16,7 +16,7 @@ import com.kylentt.mediaplayer.data.repository.ProtoRepository
 import com.kylentt.mediaplayer.data.source.local.MediaStoreSong
 import com.kylentt.mediaplayer.domain.mediasession.MediaSessionManager
 import com.kylentt.mediaplayer.domain.mediasession.service.connector.ControllerCommand
-import com.kylentt.mediaplayer.helper.Preconditions.verifyMainThread
+import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.external.providers.ContentProvidersHelper
 import com.kylentt.mediaplayer.helper.external.providers.DocumentProviderHelper
 import com.kylentt.mediaplayer.helper.media.MediaItemHelper
@@ -63,6 +63,7 @@ class MediaIntentHandlerImpl(
 
   override suspend fun handleMediaIntent(intent: IntentWrapper) {
     require(intent.shouldHandleIntent)
+    Timber.d("MediaIntentHandler, handleMediaIntent $intent")
     when {
       intent.isActionView() -> actionViewHandler.handleIntentActionView(intent)
     }
@@ -76,22 +77,22 @@ class MediaIntentHandlerImpl(
 
     private var actionViewJob = Job().job
 
-    suspend fun handleIntentActionView(intent: IntentWrapper): Unit
-    = withContext(coroutineContext) {
-      require(intent.isActionView())
+    suspend fun handleIntentActionView(intent: IntentWrapper): Unit =
+      withContext(coroutineContext) {
+        require(intent.isActionView())
 
-      val job: suspend () -> Unit = when {
-        intent.isSchemeContent() -> { { intentSchemeContent(intent) } }
-        else -> { { Unit } }
-      }
+        val job: suspend () -> Unit = when {
+          intent.isSchemeContent() -> { { intentSchemeContent(intent) } }
+          else -> { { Unit } }
+        }
 
-      actionViewJob.cancel()
+        actionViewJob.cancel()
 
-      if (intent.isCancellable) {
-        actionViewJob = launch { job() }
-      } else {
-        job()
-      }
+        if (intent.isCancellable) {
+          actionViewJob = launch { job() }
+        } else {
+          job()
+        }
     }
 
     private suspend fun intentSchemeContent(intent: IntentWrapper) {
@@ -112,9 +113,8 @@ class MediaIntentHandlerImpl(
 
         findMatchingMediaStoreData(defPath.await(), defSongs.await())
           ?.let { pair ->
-
-            val (song: MediaStoreSong, list: List<MediaStoreSong>) = pair
             withContext(dispatcher.mainImmediate) {
+              val (song: MediaStoreSong, list: List<MediaStoreSong>) = pair
               ensureActive()
               playMediaItem(song, list, true)
             }
@@ -136,7 +136,7 @@ class MediaIntentHandlerImpl(
       list: List<SongEntity>,
       fadeOut: Boolean
     ) {
-      verifyMainThread()
+      checkMainThread()
       val itemList = list.map { it.asMediaItem }
       val item = itemList[list.indexOf(song)]
       playMediaItem(item, itemList, fadeOut)
@@ -147,12 +147,11 @@ class MediaIntentHandlerImpl(
       list: List<MediaItem>,
       fadeOut: Boolean
     ) {
-      verifyMainThread()
+      checkMainThread()
       val commandList = listOf(
         ControllerCommand.STOP, ControllerCommand.SetMediaItems(list, list.indexOf(item)),
         ControllerCommand.PREPARE, ControllerCommand.SetPlayWhenReady(true)
       )
-
       val command = ControllerCommand.MultiCommand(commandList)
       sessionManager.sendControllerCommand(if (fadeOut) command.wrapWithFadeOut() else command)
     }
@@ -202,7 +201,7 @@ class MediaIntentHandlerImpl(
           val a = DocumentProviderHelper.getAudioPathFromContentUri(context, uri)
           if (
             a.startsWith(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI.toString())
-            || ((a.isNotBlank() && a.endsWith(fileName) && File(a).exists()))
+            || (a.endsWith(fileName) && File(a).exists())
           ) {
             return@withContext a
           }
@@ -212,7 +211,7 @@ class MediaIntentHandlerImpl(
           && (dSplit2F.last().endsWith(fileName) || ddSplit2F.last().endsWith(fileName))
         ) {
           val b = tryBuildPathFromFilePrefix(uri, fileName)
-          if (b.isNotBlank() && b.endsWith(fileName) && File(b).exists()) {
+          if (b.endsWith(fileName) && File(b).exists()) {
             return@withContext b
           }
         }

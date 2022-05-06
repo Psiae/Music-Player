@@ -4,15 +4,18 @@ import kotlinx.coroutines.CoroutineScope
 import javax.inject.Singleton
 
 /**
- * Application Scoped CoroutineScope,
- * @constructor [computationScope] CoroutineScope for Computation Task
- * @constructor [ioScope] CoroutineScope for IO_Operation Task
- * @constructor [mainScope] CoroutineScope for Main_Thread Task
- * @constructor [immediateScope] CoroutineScope for Main_Thread Immediate Task
- * @constructor [unconfinedScope] CoroutineScope for other than above Task
+ * Application Coroutine Scope
+ *
+ * ~ copied from Tivi Google Sample
+ *
+ * @param [computationScope] Computation Task
+ * @param [ioScope] IO Task
+ * @param [mainScope] Main Thread Task
+ * @param [immediateScope] Main Thread Immediate Task
+ * @param [unconfinedScope] Other Task
  * @see [AppDispatchers]
+ * @author Kylentt
  * @since 2022/04/30
- * @author Kylentt, copied from Tivi Google Sample
  */
 
 @Singleton

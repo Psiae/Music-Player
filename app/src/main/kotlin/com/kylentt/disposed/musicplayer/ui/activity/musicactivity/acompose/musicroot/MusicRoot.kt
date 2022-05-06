@@ -26,7 +26,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navigation
-import com.kylentt.mediaplayer.app.delegates.device.DeviceWallpaperDelegate
+import com.kylentt.mediaplayer.app.delegates.device.DeviceWallpaper
 import com.kylentt.mediaplayer.app.settings.WallpaperSettings.Source.*
 import com.kylentt.disposed.disposed.ui.mainactivity.disposed.compose.screen.home.HomeScreen
 import com.kylentt.disposed.disposed.ui.mainactivity.disposed.compose.screen.library.LibraryScreen
@@ -120,7 +120,7 @@ internal fun MusicRootScaffold(
             LocalLifecycleOwner.current.lifecycle.RecomposeOnEvent(
                 onEvent = Lifecycle.Event.ON_START
             ) {
-                val wallpaper by DeviceWallpaperDelegate
+                val wallpaper by DeviceWallpaper
                 val wallpaperPadding =
                     if (ColorHelper.getNavBarColor().alpha < 1) PaddingValues(0.dp) else it
 

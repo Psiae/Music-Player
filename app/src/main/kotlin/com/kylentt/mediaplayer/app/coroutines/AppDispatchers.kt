@@ -4,15 +4,17 @@ import kotlinx.coroutines.CoroutineDispatcher
 import javax.inject.Singleton
 
 /**
- * Better than hardcoding the dispatcher Ig
- * @constructor [computation] Dispatcher for Computation Task
- * @constructor [io] Dispatcher for IO_Operation Task
- * @constructor [main] Dispatcher for Main_Thread Task
- * @constructor [mainImmediate] Dispatcher for Main_Thread Immediate Task
- * @constructor [unconfined] Dispatcher for other than above Task
- * @property [AppDispatchers.DEFAULT] the Default Implementation
+ * Application Coroutine Dispatchers
+ *
+ * ~ copied from Tivi Google Sample
+ *
+ * @param [computation] Computation Task
+ * @param [io] IO Task
+ * @param [main] Main Thread Task
+ * @param [mainImmediate] Main Thread Immediate Task
+ * @param [unconfined] Other Task
  * @see [AppScope]
- * @author Kylentt, copied from Tivi Google Sample
+ * @author Kylentt
  * @since 2022/04/30
  */
 
@@ -26,6 +28,9 @@ data class AppDispatchers(
 ) {
 
   companion object {
+
+    /** Default Dispatchers from [kotlinx.coroutines.Dispatchers] */
+
     @JvmStatic
     val DEFAULT = with(kotlinx.coroutines.Dispatchers) {
       AppDispatchers(

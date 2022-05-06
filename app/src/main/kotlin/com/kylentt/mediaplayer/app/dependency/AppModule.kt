@@ -15,10 +15,7 @@ import kotlinx.coroutines.SupervisorJob
 import javax.inject.Singleton
 
 /**
- * Dagger Hilt Module providing Application-Wide Singletons.
- * @see [AppDispatchers]
- * @see [AppScope]
- * @see [Coil.imageLoader]
+ * Dagger Hilt Module providing Application-Wide Singletons
  * @author Kylentt
  * @since 2022/04/30
  */
@@ -33,19 +30,19 @@ object AppModule {
 
   @Provides
   @Singleton
-  fun provideAppScope(dispatchers: AppDispatchers): AppScope = with(dispatchers) {
-    AppScope(
-      ioScope = CoroutineScope(context = io + SupervisorJob()),
-      mainScope = CoroutineScope(context = main + SupervisorJob()),
-      computationScope = CoroutineScope(context = computation + SupervisorJob()),
-      immediateScope = CoroutineScope(context = mainImmediate + SupervisorJob()),
-      unconfinedScope = CoroutineScope(context = unconfined + SupervisorJob())
-    )
-  }
+  fun provideImageLoader(@ApplicationContext context: Context) = Coil.imageLoader(context)
 
   @Provides
   @Singleton
-  fun provideCoilInstance(
-    @ApplicationContext context: Context
-  ): ImageLoader = Coil.imageLoader(context)
+  fun provideAppScope(dispatchers: AppDispatchers): AppScope =
+    with(dispatchers) {
+      AppScope(
+        ioScope = CoroutineScope(context = io + SupervisorJob()),
+        mainScope = CoroutineScope(context = main + SupervisorJob()),
+        computationScope = CoroutineScope(context = computation + SupervisorJob()),
+        immediateScope = CoroutineScope(context = mainImmediate + SupervisorJob()),
+        unconfinedScope = CoroutineScope(context = unconfined + SupervisorJob())
+      )
+  }
+
 }

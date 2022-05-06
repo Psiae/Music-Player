@@ -2,6 +2,8 @@ package com.kylentt.mediaplayer.helper.external
 
 import android.content.ContentResolver
 import android.content.Intent
+import android.provider.MediaStore
+import com.kylentt.mediaplayer.helper.external.providers.ContentProvidersHelper
 
 data class IntentWrapper @JvmOverloads constructor(
   private val intent: Intent,
@@ -10,33 +12,55 @@ data class IntentWrapper @JvmOverloads constructor(
 ) {
 
   val action
-    get() = intent.action ?: ""
+    get() = intent.action
   val data
     get() = intent.data?.toString() ?: ""
   val scheme
-    get() = intent.scheme ?: ""
+    get() = intent.scheme
+      ?: if (ContentProvidersHelper.isSchemeContentUri(data)) {
+        ContentProvidersHelper.contentScheme
+      } else {
+        ""
+      }
   val type
-    get() = intent.type ?: ""
+    get() = intent.type
+      ?: if (ContentProvidersHelper.isMediaAudioUri(data)) {
+        "audio/"
+      } else {
+        ""
+      }
 
   val shouldHandleIntent: Boolean
     get() = !(handled || isActionEmpty() || (isActionView() && isDataEmpty()))
 
-  @JvmField
   val isCancellable = this.cancellable // TODO
 
-  fun isActionEmpty() = action.isEmpty()
+  fun isActionEmpty() = action.isNullOrBlank()
   fun isActionMain() = action == Intent.ACTION_MAIN
   fun isActionView() = action == Intent.ACTION_VIEW
-  fun isDataEmpty() = data.isEmpty()
-  fun isSchemeContent() = scheme == ContentResolver.SCHEME_CONTENT
-  fun isTypeAudio() = type.startsWith("audio/")
+  fun isDataEmpty() = data.isBlank()
+  fun isSchemeContent() = scheme == ContentProvidersHelper.contentScheme
+  fun isTypeAudio() = type.startsWith(typeAudioPrefix)
 
   fun markHandled() {
     this.handled = true
   }
 
+  override fun toString(): String {
+    return "IntentWrapper, intent: $intent" +
+      "\n action: $action" +
+      "\n data: $data" +
+      "\n scheme: $scheme" +
+      "\n type: $type"
+  }
+
   companion object {
-    @JvmStatic val EMPTY = fromIntent(Intent())
-    @JvmStatic fun fromIntent(intent: Intent) = IntentWrapper(intent)
+    @JvmStatic
+    val EMPTY = fromIntent(Intent())
+    @JvmStatic
+    val typeAudioPrefix = "audio/"
+
+    @JvmStatic
+    fun fromIntent(intent: Intent) = IntentWrapper(intent)
   }
 }

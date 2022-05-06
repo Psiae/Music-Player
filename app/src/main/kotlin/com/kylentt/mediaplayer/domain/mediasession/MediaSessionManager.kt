@@ -13,6 +13,7 @@ import com.kylentt.mediaplayer.domain.mediasession.service.connector.MediaServic
 import com.kylentt.mediaplayer.domain.mediasession.service.connector.MediaServiceConnector
 import com.kylentt.mediaplayer.domain.mediasession.service.connector.PlaybackState
 import com.kylentt.mediaplayer.domain.mediasession.service.MediaService
+import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import com.kylentt.mediaplayer.helper.external.IntentWrapper
 import com.kylentt.mediaplayer.helper.external.MediaIntentHandlerImpl
 import com.kylentt.mediaplayer.helper.image.CoilHelper
@@ -76,9 +77,10 @@ class MediaSessionManager(
     )
   }
 
-  val itemBitmap = serviceConnector.itemBitmap
-  val playbackState = serviceConnector.playbackState
-  val serviceState = serviceConnector.serviceState
+  val playbackState
+    get() = serviceConnector.playbackState
+  val serviceState
+    get() = serviceConnector.serviceState
 
   @MainThread
   fun connectService() {
@@ -97,13 +99,13 @@ class MediaSessionManager(
       val time = measureTimedValue { intentHandler.handleMediaIntent(intent) }.duration
       Timber.d("handleMediaIntent handled in ${time.inWholeMilliseconds}ms")
     } catch (e: Exception) {
-      Toast
-        .makeText(context, "Unable To Play Media", Toast.LENGTH_LONG)
-        .show()
+      Toast.makeText(context, "Unable To Play Media", Toast.LENGTH_LONG).show()
     }
   }
 
   init {
-    require(baseContext is Application)
+    checkArgument(baseContext is Application) {
+      "Singleton Context must be Application"
+    }
   }
 }

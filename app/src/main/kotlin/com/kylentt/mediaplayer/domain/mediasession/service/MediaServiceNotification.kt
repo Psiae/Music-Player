@@ -4,13 +4,16 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
 import android.os.Bundle
+import androidx.annotation.MainThread
 import androidx.annotation.RequiresApi
+import androidx.annotation.WorkerThread
 import androidx.core.app.NotificationCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
@@ -19,17 +22,22 @@ import androidx.media3.session.MediaNotification
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaStyleNotificationHelper
 import com.kylentt.mediaplayer.R
+import com.kylentt.mediaplayer.app.delegates.image.RecyclePairBitmap
+import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isOngoing
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateBuffering
-import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateReady
+import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
+import com.kylentt.mediaplayer.helper.Preconditions.checkNotMainThread
+import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.helper.VersionHelper
-import com.kylentt.mediaplayer.helper.image.CoilHelper
 import kotlinx.coroutines.*
 import timber.log.Timber
 import kotlin.coroutines.coroutineContext
 
+
 /**
  * [MediaNotification.Provider] Implementation for [MediaService]
- * must be Initialized after [androidx.media3.session.MediaLibraryService] Super.onCreate()
+ * must be Initialized after [Service] Super.onCreate()
+ * @throws [IllegalStateException] if [Service] baseContext is null
  * @author Kylentt
  * @since 2022/04/30
  */
@@ -38,77 +46,180 @@ class MediaServiceNotification(
   private val service: MediaService
 ) : MediaNotification.Provider {
 
-  val appScope = service.appScope
-  val coiLHelper = service.coilHelper
-  val dispatchers = service.dispatchers
-  val itemHelper = service.itemHelper
-  val protoRepo = service.protoRepo
+  private val appScope = service.appScope
+  private val coiLHelper = service.coilHelper
+  private val dispatchers = service.dispatchers
+  private val itemHelper = service.itemHelper
+  private val sessionManager = service.sessionManager
+  private val protoRepo = service.protoRepo
 
-  val mediaSession
-    get() = service.mediaSession
+  private val mediaSession
+    get() = service.currentMediaSession
 
-  val manager =
-    service.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+  private val notificationBuilder: NotificationBuilder
+  val notificationManager: NotificationManager
 
-  private val notificationBuilder = NotificationBuilder()
+  private var notificationUpdateJob = Job().job
+
+  private var itemBitmap by RecyclePairBitmap(MediaItem.EMPTY to null)
 
   private val playerListener = object : Player.Listener {
+
+    private var itemTransitionJob = Job().job
+
+    override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+      super.onMediaItemTransition(mediaItem, reason)
+      val item = mediaItem ?: MediaItem.EMPTY
+      launchItemTransitionJob(item)
+    }
+
+    private fun launchItemTransitionJob(item: MediaItem) {
+      itemTransitionJob.cancel()
+      itemTransitionJob = service.ioScope.launch {
+        val bitmap = itemHelper.getEmbeddedPicture(item)?.let { byteArray ->
+          resizeBitmapForNotification(BitmapFactory.decodeByteArray(byteArray, 0, byteArray.size))
+        }
+        ensureActive()
+        itemBitmap = item to bitmap
+        withContext(dispatchers.main) { suspendingUpdateNotification(mediaSession, false) }
+      }
+    }
+
     override fun onRepeatModeChanged(repeatMode: Int) {
       super.onRepeatModeChanged(repeatMode)
       updateNotification(mediaSession)
     }
   }
 
-  @Volatile /* TODO: Cache Previous / Next Item Bitmap */
-  private var itemBitmap: Pair<MediaItem, Bitmap?> = Pair(MediaItem.EMPTY, null)
-  private var notificationCallbackJob = Job().job
-
   init {
-    if (VersionHelper.hasOreo()) {
-      createNotificationChannel()
+    checkNotNull(service.baseContext) {
+      "Service Context must Not be null, try Initializing lazily after Super.onCreate()"
     }
-    addPlayerListener()
-  }
+    checkState(service.sessions.isEmpty()) {
+      "This Provider should be called before MediaLibraryService.onGetSession()"
+    }
 
-  private fun addPlayerListener() {
-    service.exoPlayer.addListener(playerListener)
-    service.onDestroyCallback.add { removeListener() }
-  }
+    notificationBuilder = NotificationBuilder()
 
-  private fun removeListener() {
-    service.exoPlayer.removeListener(playerListener)
-  }
+    notificationManager =
+      service.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-  @RequiresApi(Build.VERSION_CODES.O)
-  private fun createNotificationChannel() {
-    manager.createNotificationChannel(
-      NotificationChannel(
-        NOTIFICATION_CHANNEL_ID,
-        NOTIFICATION_NAME,
-        NotificationManager.IMPORTANCE_LOW
-      )
-    )
+    if (VersionHelper.hasOreo()) {
+      createNotificationChannel(notificationManager)
+    }
+
+    addPlayerListener(playerListener)
   }
 
   /**
-   * Player.EVENT_PLAYBACK_STATE_CHANGED
-   * Player.EVENT_PLAY_WHEN_READY_CHANGED,
-   * Player.EVENT_MEDIA_METADATA_CHANGED
-   * */
+   * Create [NotificationChannel] for [VersionHelper.hasOreo]
+   * @param manager The Notification Manager
+   */
+
+  @RequiresApi(Build.VERSION_CODES.O)
+  private fun createNotificationChannel(manager: NotificationManager) {
+    val importance = NotificationManager.IMPORTANCE_LOW
+    val channel = NotificationChannel(NOTIFICATION_CHANNEL_ID, NOTIFICATION_NAME, importance)
+    manager.createNotificationChannel(channel)
+  }
+
+  /**
+   * add [Player.Listener] to [MediaService.sessionPlayer] to update Notification,
+   * might change this in the future for possible [Player] change in [MediaSession]
+   * @param listener the Listener Object
+   * @see removePlayerListener
+   */
+
+  private fun addPlayerListener(listener: Player.Listener) {
+    service.whenSessionReady {
+      val player = it.sessionPlayer
+      it.registerListener(player, listener)
+      service.onDestroyCallback.add {
+        Timber.d("addPlayerListener onDestroyCallback, removePlayerListener")
+        removePlayerListener(listener)
+      }
+    }
+  }
+
+  /**
+   * remove [Player.Listener] from [MediaService.serviceSession] before releasing,
+   * might change in the future for possible [Player] change in [MediaSession]
+   * @param listener the Listener Object
+   * @see addPlayerListener
+   */
+
+
+  private fun removePlayerListener(listener: Player.Listener) {
+    service.whenSessionReady {
+      Timber.d("addPlayerListener onDestroyCallback, unregisteringPlayerListener")
+      it.unregisterListener(listener)
+    }
+  }
+
+  /**
+   * @param [player] the player
+   * @return [itemBitmap]? if [player] MediaItem Bitmap is ready
+   * @see itemBitmap
+   * @see createNotification
+   * @see updateNotification
+   */
+
+  private fun getItemBitmap(player: Player): Bitmap? {
+    return if (player.currentMediaItem.idEqual(itemBitmap.first)) {
+      itemBitmap.second
+    } else {
+      null
+    }
+  }
+
+  /**
+   * function to update [Notification] with [notificationManager] when [MediaNotification.Provider.Callback]
+   * is not available, e.g: [Player.Listener.onRepeatModeChanged]
+   * @see [suspendingUpdateNotification]
+   */
+
+  @MainThread
+  fun updateNotification(session: MediaSession) {
+    checkMainThread()
+    val channelId = NOTIFICATION_CHANNEL_ID
+    val notification =
+      getNotificationFromPlayer(session.player, getItemBitmap(session.player), channelId)
+    notificationManager.notify(NOTIFICATION_ID, notification)
+  }
+
+  @MainThread
+  suspend fun suspendingUpdateNotification(session: MediaSession, cancelCurrent: Boolean) =
+    withContext(coroutineContext) {
+      checkMainThread()
+      val update = {
+        val channelId = NOTIFICATION_CHANNEL_ID
+        val notification =
+          getNotificationFromPlayer(session.player, getItemBitmap(session.player), channelId)
+        ensureActive()
+        notificationManager.notify(NOTIFICATION_ID, notification)
+      }
+      if (!cancelCurrent) return@withContext update()
+      notificationUpdateJob.cancel()
+      notificationUpdateJob = launch { update() }
+    }
+  /**
+   * Update Notification Callback from [androidx.media3.session.MediaNotificationManager.MediaControllerListener]
+   * anyOf: [Player.EVENT_PLAYBACK_STATE_CHANGED], [Player.EVENT_PLAY_WHEN_READY_CHANGED], [Player.EVENT_MEDIA_METADATA_CHANGED]
+   * @param mediaController of the Linked [MediaSession]
+   * @param onNotificationChangedCallback Callback Method for Async Task
+   * @see launchNotificationCallback
+   */
 
   override fun createNotification(
     mediaController: MediaController,
     actionFactory: MediaNotification.ActionFactory,
     onNotificationChangedCallback: MediaNotification.Provider.Callback
   ): MediaNotification {
-    val notification =
-      if (mediaController.currentMediaItem.idEqual(itemBitmap.first)) {
-        MediaNotification(NOTIFICATION_ID, getNotification(mediaController, itemBitmap.second))
-      } else {
-        MediaNotification(NOTIFICATION_ID, getNotification(mediaController, null))
-      }
-    launchNotificationCallback(mediaController, onNotificationChangedCallback)
-    return notification
+    getItemBitmap(mediaController).let {
+      val channelId = NOTIFICATION_CHANNEL_ID
+      launchNotificationCallback(mediaController, onNotificationChangedCallback)
+      return MediaNotification(NOTIFICATION_ID, getNotificationFromPlayer(mediaController, it, channelId))
+    }
   }
 
   override fun handleCustomAction(
@@ -117,19 +228,17 @@ class MediaServiceNotification(
     extras: Bundle
   ) = Unit
 
-  fun updateNotification(session: MediaSession) {
-    if (session.player.currentMediaItem.idEqual(itemBitmap.first)) {
-      manager.notify(NOTIFICATION_ID, getNotification(session.player, itemBitmap.second))
-    } else {
-      notificationCallbackJob.cancel()
-      notificationCallbackJob = service.mainScope
-        .launch { manager.notify(NOTIFICATION_ID, getUpdatedNotification(session.player) ) }
-    }
-  }
+  /**
+   * @param player The [Player]
+   * @param icon The [Bitmap] for [Notification.Builder.setLargeIcon]
+   * @param channelId The CHANNEL_ID this [Notification] belong to
+   * @return [Notification] suitable for [MediaNotification]
+   */
 
-  private fun getNotification(
+  private fun getNotificationFromPlayer(
     player: Player,
-    icon: Bitmap? = null
+    icon: Bitmap? = null,
+    channelId: String
   ): Notification {
 
     val showPlayButton = if (player.playbackState.isStateBuffering()) {
@@ -140,13 +249,15 @@ class MediaServiceNotification(
 
     val item = player.currentMediaItem ?: MediaItem.EMPTY
 
-    Timber.d("getNotification ${item.mediaMetadata.displayTitle}")
+    Timber.d("getNotification for ${item.mediaMetadata.displayTitle}, " +
+      "\nshowPlayButton: $showPlayButton"
+    )
 
     return notificationBuilder
       .buildMediaNotification(
         session = mediaSession,
         largeIcon = icon,
-        channelId = NOTIFICATION_CHANNEL_ID,
+        channelId = channelId,
         currentItemIndex = player.currentMediaItemIndex,
         currentItem = item,
         playerState = player.playbackState,
@@ -155,68 +266,76 @@ class MediaServiceNotification(
         showNextButton = player.hasNextMediaItem(),
         showPlayButton = showPlayButton,
         subtitle = item.mediaMetadata.artist.toString(),
+        subtext = item.mediaMetadata.albumTitle.toString(),
         title = item.mediaMetadata.displayTitle.toString()
       )
   }
+
+  /**
+   * Job to make sure current [MediaNotification] is up-to-date and handle drop by [notificationManager]
+   * @param player The [Player]
+   * @param callback The [MediaNotification.Provider.Callback] to send the [MediaNotification]
+   */
 
   private fun launchNotificationCallback(
     player: Player,
     callback: MediaNotification.Provider.Callback
   ) {
-    notificationCallbackJob.cancel()
-    notificationCallbackJob = service.mainScope.launch {
-
-      val notification =
-        if (player.currentMediaItem.idEqual(itemBitmap.first)) {
-          getNotification(player, itemBitmap.second)
-        } else {
-          getUpdatedNotification(player)
-        }
-
-      if (!MediaService.isForeground) {
-        service.startServiceAsForeground(NOTIFICATION_ID, notification)
+    notificationUpdateJob.cancel()
+    notificationUpdateJob = service.mainScope.launch {
+      dispatchMediaNotificationValidator(NOTIFICATION_UPDATE_INTERVAL, player) {
+        callback.onNotificationChanged(it)
       }
-
-      val mediaNotification = MediaNotification(NOTIFICATION_ID, notification)
-
-      ensureActive()
-      callback.onNotificationChanged(mediaNotification)
-
-      Timber.d("Notification Updated for ${player.currentMediaItem?.mediaMetadata?.displayTitle}")
-
-      delay(750)
-
-      Timber.d("Notification re-Updated for ${player.currentMediaItem?.mediaMetadata?.displayTitle}")
-
-      ensureActive()
-      callback.onNotificationChanged(mediaNotification)
     }
   }
 
-  private suspend fun  getUpdatedNotification(player: Player): Notification =
+  private suspend fun dispatchMediaNotificationValidator(
+    eachDelay: Long,
+    player: Player,
+    onUpdate: (MediaNotification) -> Unit
+  ) = withContext(coroutineContext) {
+    checkMainThread()
+    repeat(2) {
+      delay(eachDelay)
+
+      ensureActive()
+      val channelId = NOTIFICATION_CHANNEL_ID
+      val mediaNotification =
+        MediaNotification(NOTIFICATION_ID, getNotificationFromPlayer(player, getItemBitmap(player), channelId))
+
+      ensureActive()
+      onUpdate(mediaNotification)
+      considerForegroundService(player, mediaNotification.notification)
+    }
+  }
+
+  @MainThread
+  private fun considerForegroundService(player: Player, notification: Notification) {
+    checkMainThread()
+    val isForeground = MediaService.isForeground
+    if (isForeground && player.playbackState.isOngoing()) return
+    if (player.playbackState.isOngoing()) {
+      service.startServiceAsForeground(NOTIFICATION_ID, notification)
+    }
+    if (!player.playbackState.isOngoing()) {
+      service.stopServiceFromForeground(false)
+    }
+    Timber.d("considerForegroundService changed," +
+      "\nonGoing: ${player.playbackState.isOngoing()}" +
+      "\nwasForeground: $isForeground" +
+      "\nisForeground: ${MediaService.isForeground}"
+    )
+  }
+
+  @WorkerThread
+  private suspend fun resizeBitmapForNotification(bitmap: Bitmap): Bitmap =
     withContext(coroutineContext) {
-      val item = player.currentMediaItem ?: MediaItem.EMPTY
-      val bitmap = withContext(dispatchers.io) { getSquaredBitmapFromItem(item) }
+      checkNotMainThread()
+      val size = if (VersionHelper.hasR()) 128 else 384
+      val resized = coiLHelper.squareBitmap(bitmap = bitmap, size = size, recycle = true)
       ensureActive()
-      itemBitmap = Pair(item, bitmap)
-      getNotification(player, itemBitmap.second)
-  }
-
-  private suspend fun getSquaredBitmapFromItem(item: MediaItem?): Bitmap? {
-    var toReturn: Bitmap? = null
-    val size = if (VersionHelper.hasR()) 256 else 1024
-    if (item != null) {
-      service.itemHelper.getEmbeddedPicture(item)
-        ?.let { array ->
-          toReturn = coiLHelper.squareBitmap(
-            bitmap = BitmapFactory.decodeByteArray(array, 0, array.size),
-            type = CoilHelper.CenterCropTransform.CENTER,
-            size = size,
-          )
-        }
+      resized
     }
-    return toReturn
-  }
 
   private fun MediaItem?.idEqual(that: MediaItem?): Boolean {
     return that != null && idEqual(that.mediaId)
@@ -228,16 +347,18 @@ class MediaServiceNotification(
 
   inner class NotificationBuilder() {
 
-    private val actionStopCancel = makeActionStopCancel()
-    private val actionPlay = makeActionPlay()
-    private val actionPause = makeActionPause()
-    private val actionPrev = makeActionPrev()
-    private val actionPrevDisabled = makeActionPrevDisabled()
-    private val actionNext = makeActionNext()
-    private val actionNextDisabled = makeActionNextDisabled()
-    private val actionRepeatOff = makeActionRepeatOffToOne()
-    private val actionRepeatOne = makeActionRepeatOneToAll()
-    private val actionRepeatAll = makeActionRepeatAllToOff()
+    private val actionStopCancel by lazy { makeActionStopCancel() }
+    private val actionPlay by lazy { makeActionPlay() }
+    private val actionPause by lazy { makeActionPause() }
+    private val actionPrev by lazy { makeActionPrev() }
+    private val actionPrevDisabled by lazy { makeActionPrevDisabled() }
+    private val actionNext by lazy { makeActionNext() }
+    private val actionNextDisabled by lazy { makeActionNextDisabled() }
+    private val actionRepeatOff by lazy { makeActionRepeatOffToOne() }
+    private val actionRepeatOne by lazy { makeActionRepeatOneToAll() }
+    private val actionRepeatAll by lazy { makeActionRepeatAllToOff() }
+
+    private val intentDismissNotification by lazy { makeDismissPendingIntent() }
 
     fun buildMediaNotification(
       session: MediaSession,
@@ -251,6 +372,7 @@ class MediaServiceNotification(
       showNextButton: Boolean,
       showPlayButton: Boolean,
       subtitle: String,
+      subtext: String,
       title: String,
     ): Notification {
 
@@ -263,16 +385,26 @@ class MediaServiceNotification(
               PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
-          val ongoing = playerState.isStateBuffering() or playerState.isStateReady()
-          val style = MediaStyleNotificationHelper.DecoratedMediaCustomViewStyle(session)
-          style.setShowActionsInCompactView(1, 2, 3)
+          val deleteIntent = intentDismissNotification
 
-          setSmallIcon(R.drawable.play_icon_theme3)
+          val onGoing = playerState.isOngoing()
+
+          val style = MediaStyleNotificationHelper
+            .DecoratedMediaCustomViewStyle(session)
+            .setShowActionsInCompactView(1,2,3)
+
+          setColorized(true)
           setContentIntent(contentIntent)
           setContentTitle(title)
           setContentText(subtitle)
           setChannelId(channelId)
-          setOngoing(ongoing)
+          setDeleteIntent(deleteIntent)
+          setShowWhen(false)
+          setSmallIcon(R.drawable.play_icon_theme3)
+
+          if (subtext.isNotBlank()) setSubText(subtext)
+
+          setOngoing(onGoing)
 
           when (repeatMode) {
             Player.REPEAT_MODE_OFF -> addAction(actionRepeatOff)
@@ -290,6 +422,16 @@ class MediaServiceNotification(
           setStyle(style)
         }
         .build()
+    }
+
+    private fun makeDismissPendingIntent(): PendingIntent {
+      val intent = Intent(PLAYBACK_CONTROL_INTENT)
+        .apply {
+          putExtra(PLAYBACK_CONTROL_ACTION, ACTION_DISMISS_NOTIFICATION)
+          setPackage(service.packageName)
+        }
+      val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+      return PendingIntent.getBroadcast(service, ACTION_DISMISS_NOTIFICATION_CODE, intent, flag)
     }
 
     private fun makeActionStopCancel(): NotificationCompat.Action {
@@ -442,6 +584,8 @@ class MediaServiceNotification(
     const val ACTION_REPEAT_ONE_TO_ALL = "ACTION_REPEAT_ONE_TO_ALL"
     const val ACTION_REPEAT_ALL_TO_OFF = "ACTION_REPEAT_ALL_TO_OFF"
 
+    const val ACTION_DISMISS_NOTIFICATION = "ACTION_DISMISS_NOTIFICATION"
+
     const val ACTION_STOP_CANCEL_CODE = 400
     const val ACTION_PLAY_CODE = 401
     const val ACTION_PAUSE_CODE = 402
@@ -452,5 +596,8 @@ class MediaServiceNotification(
     const val ACTION_REPEAT_OFF_TO_ONE_CODE = 407
     const val ACTION_REPEAT_ONE_TO_ALL_CODE = 408
     const val ACTION_REPEAT_ALL_TO_OFF_CODE = 409
+    const val ACTION_DISMISS_NOTIFICATION_CODE = 410
+
+    const val NOTIFICATION_UPDATE_INTERVAL = 1000L
   }
 }

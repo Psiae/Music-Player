@@ -1,5 +1,6 @@
 package com.kylentt.mediaplayer.domain.mediasession.service.connector
 
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.drawable.BitmapDrawable
 import android.os.Looper
@@ -12,6 +13,8 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
+import com.kylentt.mediaplayer.app.delegates.LockMainThread
+import com.kylentt.mediaplayer.app.delegates.Synchronize
 import com.kylentt.mediaplayer.core.exoplayer.PlayerConstants
 import com.kylentt.mediaplayer.core.exoplayer.PlayerHelper
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateBuffering
@@ -19,7 +22,8 @@ import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateEnded
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateIdle
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateReady
 import com.kylentt.mediaplayer.domain.mediasession.service.MediaService
-import com.kylentt.mediaplayer.helper.Preconditions.verifyMainThread
+import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
+import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.ui.activity.CollectionExtension.forEachClear
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,8 +32,7 @@ import timber.log.Timber
 /**
  * Class that handle [ControllerCommand] to control MediaPlayback using [MediaController]
  * [MediaService] is started from [connectController] Function
- * @throws [IllegalStateException] if accessed from other than [Looper.getMainLooper]
- * except its blocking internal work, e.g: [updateItemBitmapSF]
+ * @throws [IllegalStateException] if accessed from other than [Looper.getMainLooper
  * @author Kylentt
  * @since 2022/04/30
  */
@@ -38,10 +41,10 @@ class MediaServiceController(
   serviceConnector: MediaServiceConnector
 ) {
 
-  val itemBitmapSF = MutableStateFlow<Pair<MediaItem, BitmapDrawable?>>(Pair(MediaItem.EMPTY, null))
   val playbackStateSF = MutableStateFlow<PlaybackState>(PlaybackState.EMPTY)
   val serviceStateSF = MutableStateFlow<MediaServiceState>(MediaServiceState.NOTHING)
 
+  @Volatile
   @GuardedBy("controllerLock")
   private lateinit var futureMediaController: ListenableFuture<MediaController>
   private lateinit var mediaController: MediaController
@@ -52,17 +55,9 @@ class MediaServiceController(
   private val directExecutor = MoreExecutors.directExecutor()
 
   private val context = serviceConnector.baseContext
-  private val itemHelper = serviceConnector.itemHelper
 
-
-  private val ioScope = serviceConnector.appScope.ioScope
   private val mainScope = serviceConnector.appScope.mainScope
-  private val computationScope = serviceConnector.appScope.computationScope
-  private val mainImmediateScope = serviceConnector.appScope.immediateScope
-
-  private val ioDispatcher = serviceConnector.dispatchers.io
   private val mainDispatcher = serviceConnector.dispatchers.main
-  private val computationDispatcher = serviceConnector.dispatchers.computation
   private val mainImmediateDispatcher = serviceConnector.dispatchers.mainImmediate
 
   @GuardedBy("listenerLock")
@@ -112,7 +107,6 @@ class MediaServiceController(
       super.onMediaItemTransition(mediaItem, reason)
       val item = mediaItem ?: MediaItem.EMPTY
       playbackStateSF.value = playbackStateSF.value.copy(currentMediaItem = item)
-      updateItemBitmapSF(item)
     }
 
     override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -126,10 +120,11 @@ class MediaServiceController(
     }
   }
 
+  @MainThread
   fun connectController(
     onConnected: (MediaController) -> Unit
   ) = synchronized(controllerLock) {
-    verifyMainThread()
+    checkMainThread()
     if (isControllerConnected) {
       return onConnected(mediaController)
     }
@@ -146,7 +141,7 @@ class MediaServiceController(
         addListener(
           {
             try {
-              require(this.isDone)
+              checkState(this.isDone)
               mediaController = this.get()
               setupMediaController(mediaController)
               onConnected(mediaController)
@@ -160,13 +155,13 @@ class MediaServiceController(
   }
 
   private fun setupMediaController(controller: MediaController) {
-    verifyMainThread()
+    checkMainThread()
     controller.addListener(playerListener)
   }
 
   private val commandLock = Any()
   fun commandController(command: ControllerCommand): Unit = synchronized(commandLock) {
-    verifyMainThread()
+    checkMainThread()
     if (!isControllerConnected) {
       connectController { commandController(command) }
       return
@@ -261,12 +256,12 @@ class MediaServiceController(
     Timber.d("setPlayerVolume to $v or $fv")
   }
 
-  @GuardedBy("fadeOutLock")
-  private var fadingOut = false
+  private var fadingOut by LockMainThread(false)
 
-  suspend fun fadeOut(
+  private suspend fun fadeOut(
     command: ControllerCommand.WithFadeOut
   ) {
+
     synchronized(fadeOutLock) {
       if (command.flush) fadeOutListener.clear()
       fadeOutListener.add(command)
@@ -307,22 +302,12 @@ class MediaServiceController(
     }
   }
 
-  private var updateItemBitmapJob = Job().job
+  private fun MediaItem?.idEqual(that: MediaItem?): Boolean {
+    return that != null && idEqual(that.mediaId)
+  }
 
-  fun updateItemBitmapSF(item: MediaItem) {
-    updateItemBitmapJob.cancel()
-    updateItemBitmapJob = ioScope.launch {
-      val bitmap = withContext(ioDispatcher) {
-        itemHelper.getEmbeddedPicture(item)
-          ?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
-      }
-      val bitmapDrawable = bitmap?.let { BitmapDrawable(context.resources, it) }
-      withContext(mainDispatcher) {
-        ensureActive()
-        check(playbackStateSF.value.currentMediaItem.mediaId == item.mediaId)
-        itemBitmapSF.value = Pair(item, bitmapDrawable)
-      }
-    }
+  private fun MediaItem?.idEqual(that: String): Boolean {
+    return this != null && this.mediaId == that
   }
 }
 
@@ -367,16 +352,18 @@ sealed class ControllerCommand {
       flush: Boolean = false,
       duration: Long = 1000L,
       interval: Long = 50L,
-      to: Float = 0F
-    ) = wrapFadeOut(this, flush, duration, interval, to)
+      @FloatRange(from = 0.0, to = 1.0) to: Float = 0F,
+      afterFadeOut: () -> Unit = {}
+    ) = wrapFadeOut(this, flush, duration, interval, to, afterFadeOut)
 
     @JvmStatic fun wrapFadeOut(
       command: ControllerCommand,
       flush: Boolean = false,
       duration: Long = 1000L,
       interval: Long = 50L,
-      to: Float = 0F
-    ) = ControllerCommand.WithFadeOut(command, flush, duration, interval, to)
+      to: Float = 0F,
+      afterFadeOut: () -> Unit = {}
+    ) = WithFadeOut(command, flush, duration, interval, to, afterFadeOut)
   }
 }
 

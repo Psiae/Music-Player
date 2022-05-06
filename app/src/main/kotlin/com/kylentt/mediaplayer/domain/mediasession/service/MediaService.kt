@@ -13,7 +13,13 @@ import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import com.kylentt.mediaplayer.app.coroutines.AppDispatchers
 import com.kylentt.mediaplayer.app.coroutines.AppScope
+import com.kylentt.mediaplayer.app.delegates.Synchronize
+import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isOngoing
+import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isRepeatAll
+import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isRepeatOff
+import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isRepeatOne
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateEnded
+import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateIdle
 import com.kylentt.mediaplayer.data.repository.ProtoRepository
 import com.kylentt.mediaplayer.domain.mediasession.MediaSessionManager
 import com.kylentt.mediaplayer.domain.mediasession.service.MediaService.Companion.Constants.SESSION_ID
@@ -22,6 +28,7 @@ import com.kylentt.mediaplayer.domain.mediasession.service.MediaService.Companio
 import com.kylentt.mediaplayer.domain.mediasession.service.MediaService.Companion.Lifecycle.FOREGROUND
 import com.kylentt.mediaplayer.domain.mediasession.service.MediaService.Companion.Lifecycle.setCurrent
 import com.kylentt.mediaplayer.domain.mediasession.service.MediaService.Companion.Lifecycle.updateState
+import com.kylentt.mediaplayer.domain.mediasession.service.MediaServiceNotification.Companion.ACTION_DISMISS_NOTIFICATION
 import com.kylentt.mediaplayer.domain.mediasession.service.MediaServiceNotification.Companion.ACTION_NEXT
 import com.kylentt.mediaplayer.domain.mediasession.service.MediaServiceNotification.Companion.ACTION_PAUSE
 import com.kylentt.mediaplayer.domain.mediasession.service.MediaServiceNotification.Companion.ACTION_PLAY
@@ -30,28 +37,68 @@ import com.kylentt.mediaplayer.domain.mediasession.service.MediaServiceNotificat
 import com.kylentt.mediaplayer.domain.mediasession.service.MediaServiceNotification.Companion.ACTION_REPEAT_OFF_TO_ONE
 import com.kylentt.mediaplayer.domain.mediasession.service.MediaServiceNotification.Companion.ACTION_REPEAT_ONE_TO_ALL
 import com.kylentt.mediaplayer.domain.mediasession.service.MediaServiceNotification.Companion.ACTION_STOP_CANCEL
+import com.kylentt.mediaplayer.domain.mediasession.service.MediaServiceNotification.Companion.NOTIFICATION_ID
 import com.kylentt.mediaplayer.domain.mediasession.service.MediaServiceNotification.Companion.PLAYBACK_CONTROL_ACTION
 import com.kylentt.mediaplayer.domain.mediasession.service.MediaServiceNotification.Companion.PLAYBACK_CONTROL_INTENT
 import com.kylentt.mediaplayer.domain.mediasession.service.connector.ControllerCommand
-import com.kylentt.mediaplayer.helper.Preconditions.verifyMainThread
+import com.kylentt.mediaplayer.domain.mediasession.service.connector.ControllerCommand.Companion.wrapWithFadeOut
+import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
+import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
+import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.helper.VersionHelper
 import com.kylentt.mediaplayer.helper.image.CoilHelper
 import com.kylentt.mediaplayer.helper.media.MediaItemHelper
-import com.kylentt.mediaplayer.ui.activity.CollectionExtension.syncEachClear
+import com.kylentt.mediaplayer.ui.activity.CollectionExtension.forEachClear
 import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
+import timber.log.Timber
 import javax.inject.Inject
 import kotlin.system.exitProcess
 
 @AndroidEntryPoint
 class MediaService : MediaLibraryService() {
 
-  init {
+  /**
+   * Validate Initialization of this Service
+   * Internal Binder might launch this Service when it shouldn't for several reason
+   */
+
+  private fun validateCreation() {
     if (!MainActivity.wasLaunched) {
+      stopForeground(true)
       exitProcess(0)
     }
   }
+
+  /**
+   * [MediaSession] Manager for this Service
+   *
+   * Initialized on [MediaLibraryCallback.onConnect]
+   */
+
+  private var serviceSession by Synchronize(MediaServiceSession.EMPTY)
+  private val onSessionReady = mutableListOf<(MediaServiceSession) -> Unit>()
+
+  @MainThread
+  fun whenSessionReady(what: (MediaServiceSession) -> Unit) {
+    checkMainThread()
+    if (serviceSession != MediaServiceSession.EMPTY) {
+      return what(serviceSession)
+    }
+    onSessionReady.add { what(it) }
+  }
+
+  val currentMediaSession
+    get() = serviceSession.mediaSession
+
+  val sessionPlayer
+    get() = serviceSession.sessionPlayer
+
+  /**
+   * this Service Component Dependency
+   * initialized on [MediaService_MembersInjector]
+   */
 
   @Inject lateinit var appScope: AppScope
   @Inject lateinit var coilHelper: CoilHelper
@@ -61,7 +108,6 @@ class MediaService : MediaLibraryService() {
   @Inject lateinit var protoRepo: ProtoRepository
   @Inject lateinit var sessionManager: MediaSessionManager
 
-  lateinit var mediaSession: MediaSession
 
   private val librarySession by lazy {
     MediaLibrarySession
@@ -86,30 +132,33 @@ class MediaService : MediaLibraryService() {
 
   val onDestroyCallback = mutableListOf<() -> Unit>()
 
-
   override fun onCreate() {
+    validateCreation()
     super.onCreate()
+    registerReceiver(playbackReceiver, IntentFilter(PLAYBACK_CONTROL_INTENT))
+    setMediaNotificationProvider(notificationProvider)
     setCurrent()
     updateState(ALIVE)
-    setMediaNotificationProvider(notificationProvider)
-    registerReceiver(playbackReceiver, IntentFilter(PLAYBACK_CONTROL_INTENT))
   }
 
   override fun onGetSession(controllerInfo: MediaSession.ControllerInfo) = librarySession
 
   override fun onDestroy() {
-    onDestroyCallback.syncEachClear()
+    onDestroyCallback.forEachClear()
     librarySession.release()
-    exoPlayer.release()
     cancelServiceScope()
-    unregisterReceiver(playbackReceiver)
-    return run {
-      if (!MainActivity.isAlive) {
-        // MediaSessionStub could be Leaking this Service Context Internally
-        exitProcess(0)
-      }
-      super.onDestroy()
-      updateState(DESTROYED)
+    releaseAllPlayers()
+    unregisterReceivers()
+    updateState(DESTROYED)
+    super.onDestroy()
+    if (!MainActivity.isAlive) {
+      // MediaLibraryServiceImpl in MediaSessionStub could be Leaking this Service Context Internally
+      val msg =
+        "MediaService released because !MainActivity.isAlive, " +
+        "\ncurrent: ${MainActivity.stateString}, " +
+        "\nexiting Process with Status: 0"
+      Timber.d(msg)
+      exitProcess(0)
     }
   }
 
@@ -119,7 +168,20 @@ class MediaService : MediaLibraryService() {
     mainScope.cancel()
   }
 
+  private fun releaseAllPlayers() {
+    if (exoPlayer !== sessionPlayer) {
+      exoPlayer.release()
+    }
+    serviceSession.releaseSessionPlayer()
+  }
+
+  private fun unregisterReceivers() {
+    unregisterReceiver(playbackReceiver)
+  }
+
+  @MainThread
   fun startServiceAsForeground(id: Int, notification: Notification) {
+    checkMainThread()
     if (VersionHelper.hasQ()) {
       startForeground(id, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
     } else {
@@ -128,64 +190,146 @@ class MediaService : MediaLibraryService() {
     updateState(FOREGROUND)
   }
 
-  fun stopServiceAsForeground(removeNotification: Boolean) {
-    stopForeground(removeNotification)
+  @MainThread
+  fun stopServiceFromForeground(removeNotification: Boolean) {
+    checkMainThread()
+    stopForeground(false)
+    if (removeNotification) {
+      notificationProvider.notificationManager.cancel(NOTIFICATION_ID)
+    }
     updateState(ALIVE)
   }
 
-  inner class PlaybackActionReceiver : BroadcastReceiver() {
+  private inner class PlaybackActionReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context?, intent: Intent?) {
-      when (intent?.getStringExtra(PLAYBACK_CONTROL_ACTION)) {
-        ACTION_PLAY -> {
-          if (exoPlayer.playbackState.isStateEnded()) {
-            if (exoPlayer.hasNextMediaItem()) exoPlayer.seekToNextMediaItem()
-            exoPlayer.seekTo(0)
-          }
-          sessionManager.sendControllerCommand(ControllerCommand.PREPARE)
-          sessionManager.sendControllerCommand(ControllerCommand.SetPlayWhenReady(true))
-        }
-        ACTION_PAUSE -> {
-          sessionManager.sendControllerCommand(ControllerCommand.SetPlayWhenReady(false))
-        }
-        ACTION_NEXT -> {
-          sessionManager.sendControllerCommand(ControllerCommand.SeekToNextItem)
-        }
-        ACTION_PREV -> {
-          sessionManager.sendControllerCommand(ControllerCommand.SeekToPrevItem)
-        }
-        ACTION_REPEAT_OFF_TO_ONE -> {
-          val mode = Player.REPEAT_MODE_ONE
-          sessionManager.sendControllerCommand(ControllerCommand.SetRepeatMode(mode))
-        }
-        ACTION_REPEAT_ONE_TO_ALL -> {
-          val mode = Player.REPEAT_MODE_ALL
-          sessionManager.sendControllerCommand(ControllerCommand.SetRepeatMode(mode))
-        }
-        ACTION_REPEAT_ALL_TO_OFF -> {
-          val mode = Player.REPEAT_MODE_OFF
-          sessionManager.sendControllerCommand(ControllerCommand.SetRepeatMode(mode))
-        }
-        ACTION_STOP_CANCEL -> {
-          val duration = 1000L // App Settings
-          val command = ControllerCommand
-            .WithFadeOut(ControllerCommand.STOP,true, duration, 50L, 0F) {
-              stopServiceAsForeground(true)
-            }
-          sessionManager.sendControllerCommand(command)
+      val action = intent?.getStringExtra(PLAYBACK_CONTROL_ACTION)
 
-        }
+      Timber.d("onReceive, action: $action, playbackState: ${sessionPlayer.playbackState}")
 
+      when (action) {
+        ACTION_PLAY -> onReceiveActionPlay()
+        ACTION_PAUSE -> onReceiveActionPause()
+        ACTION_NEXT -> onReceiveActionNext()
+        ACTION_PREV -> onReceiveActionPrev()
+        ACTION_REPEAT_OFF_TO_ONE -> onReceiveRepeatOffToOne()
+        ACTION_REPEAT_ONE_TO_ALL -> onReceiveRepeatOneToAll()
+        ACTION_REPEAT_ALL_TO_OFF -> onReceiveRepeatAllToOff()
+        ACTION_STOP_CANCEL -> onReceiveStopCancel()
+        ACTION_DISMISS_NOTIFICATION -> stopServiceFromForeground(true)
       }
+    }
+
+    private fun onReceiveActionPlay() = with(sessionPlayer) {
+      when {
+        playbackState.isStateEnded() -> {
+          if (hasNextMediaItem()) seekToNextMediaItem()
+          seekTo(0L)
+        }
+        playbackState.isStateIdle() -> {
+          sessionPlayer.prepare()
+        }
+      }
+      if (playWhenReady) {
+        return notificationProvider.updateNotification(serviceSession.mediaSession)
+      }
+      playWhenReady = true
+    }
+
+    private fun onReceiveActionPause() = with(sessionPlayer) {
+      if (!playWhenReady) {
+        return notificationProvider.updateNotification(serviceSession.mediaSession)
+      }
+      try {
+        checkState(playbackState.isOngoing())
+        playWhenReady = false
+      } catch (e: IllegalStateException) {
+        val shown = true
+        val actual = playbackState.isOngoing()
+        Timber.e("$e, Inconsistent Notification ActionPause, shown as: $shown, actual: $actual")
+      }
+    }
+
+    private fun onReceiveActionNext() = with(sessionPlayer) {
+      try {
+        checkState(hasNextMediaItem())
+        seekToNextMediaItem()
+      } catch (e: IllegalStateException) {
+        notificationProvider.updateNotification(serviceSession.mediaSession)
+        val shown = true
+        val actual = hasNextMediaItem()
+        Timber.e("$e, Inconsistent Notification ActionNext, shown as: $shown, actual: $actual")
+      }
+    }
+
+    private fun onReceiveActionPrev() = with(sessionPlayer) {
+      if (hasPreviousMediaItem()) {
+        seekToPreviousMediaItem()
+      } else {
+        seekTo(0L)
+      }
+    }
+
+    private fun onReceiveRepeatOffToOne() = with(sessionPlayer) {
+      try {
+        checkState(repeatMode.isRepeatOff())
+        repeatMode = Player.REPEAT_MODE_ONE
+      } catch (e: IllegalStateException) {
+        notificationProvider.updateNotification(serviceSession.mediaSession)
+        val shown = Player.REPEAT_MODE_OFF
+        val actual = repeatMode
+        Timber.e("$e, Inconsistent Notification RepeatMode, shown as: $shown, actual: $actual")
+      }
+    }
+
+    private fun onReceiveRepeatOneToAll() = with(sessionPlayer) {
+      try {
+        checkState(repeatMode.isRepeatOne())
+        repeatMode = Player.REPEAT_MODE_ALL
+      } catch (e: IllegalStateException) {
+        notificationProvider.updateNotification(serviceSession.mediaSession)
+        val shown = Player.REPEAT_MODE_ONE
+        val actual = repeatMode
+        Timber.e("$e, Inconsistent Notification RepeatMode, shown as: $shown, actual: $actual")
+      }
+    }
+
+    private fun onReceiveRepeatAllToOff() = with(sessionPlayer) {
+      try {
+        checkState(repeatMode.isRepeatAll())
+        repeatMode = Player.REPEAT_MODE_OFF
+      } catch (e: IllegalStateException) {
+        notificationProvider.updateNotification(serviceSession.mediaSession)
+        val shown = Player.REPEAT_MODE_ALL
+        val actual = repeatMode
+        Timber.e("$e, Inconsistent Notification RepeatMode, shown as: $shown, actual: $actual")
+      }
+    }
+
+    private fun onReceiveStopCancel() = with(sessionPlayer) {
+      val duration = 1000L
+      val command = ControllerCommand.STOP.wrapWithFadeOut(flush = true, duration = duration) {
+        val foreground = isForeground
+        stopServiceFromForeground(true)
+        if (!foreground && !MainActivity.isAlive) {
+          // NPE in MediaControllerImplBase.java:3041 when calling librarySession.release()
+          onDestroy()
+        }
+      }
+      sessionManager.sendControllerCommand(command)
     }
   }
 
   inner class MediaLibraryCallback : MediaLibrarySession.MediaLibrarySessionCallback {
+
     override fun onConnect(
       session: MediaSession,
       controller: MediaSession.ControllerInfo
     ): MediaSession.ConnectionResult {
-      mediaSession = session
+      // Any Exception Here will not throw, Log.w is used internally
+      Timber.d("MediaLibraryCallback onConnect for $session")
+      serviceSession = MediaServiceSession.getInstance(this@MediaService)
+      onSessionReady.forEachClear { it(serviceSession) }
       return super.onConnect(session, controller)
     }
   }
@@ -243,18 +387,33 @@ class MediaService : MediaLibraryService() {
       val isForeground
         get() = currentServiceState == FOREGROUND
 
+      fun toServiceStateString(@ServiceState state: Int): String {
+        return when (state) {
+          NOTHING -> "Nothing"
+          DESTROYED -> "Destroyed"
+          ALIVE -> "Alive"
+          FOREGROUND -> "Foreground"
+          else -> "INVALID"
+        }
+      }
+
       @MainThread
       fun MediaService.setCurrent() {
-        verifyMainThread()
+        checkMainThread()
         currentServiceHash = this.hashCode()
       }
 
       @MainThread
       fun MediaService.updateState(@ServiceState state: Int) {
-        verifyMainThread()
-        require(state in (NOTHING + 1)..FOREGROUND)
-        require(currentHashEqual())
+        checkMainThread()
+        checkArgument(state in (NOTHING + 1)..FOREGROUND)
+        checkState(currentHashEqual())
+        val current = currentServiceState
         currentServiceState = state
+        Timber.d("currentServiceState changed " +
+          "\nfrom: ${toServiceStateString(current)}" +
+          "\nto: ${toServiceStateString(state)}"
+        )
       }
 
       private fun MediaService.currentHashEqual(): Boolean {

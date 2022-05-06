@@ -51,7 +51,7 @@
         </activity>
 
         <activity
-            android:name=".ui.external.ReceiverActivity"
+            android:name=".ui.external.activity.ReceiverActivity"
             android:exported="true"
             android:theme="@style/Theme.App.SplashScreen">
             <intent-filter>

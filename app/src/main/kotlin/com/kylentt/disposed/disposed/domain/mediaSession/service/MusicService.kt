@@ -279,7 +279,7 @@ internal class MusicService : MediaLibraryService() {
 
     // for whatever reason MediaLibrarySessionImpl is leaking this service context?
     if (!MainActivity.isAlive) {
-      Timber.d("MusicService ExitProcess, current Activity State: ${MainActivity.stateStr}")
+      Timber.d("MusicService ExitProcess, current Activity State: ${MainActivity.stateString}")
       exitProcess(0)
     }
   }

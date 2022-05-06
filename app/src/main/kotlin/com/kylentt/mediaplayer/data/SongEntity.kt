@@ -2,6 +2,7 @@ package com.kylentt.mediaplayer.data
 
 import android.net.Uri
 import androidx.media3.common.MediaItem
+import androidx.room.Entity
 
 /**
  * Interface of Song

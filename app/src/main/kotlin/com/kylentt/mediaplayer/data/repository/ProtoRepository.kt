@@ -6,9 +6,11 @@ import androidx.datastore.dataStore
 import com.kylentt.mediaplayer.app.coroutines.AppScope
 import com.kylentt.mediaplayer.app.settings.AppSettings
 import com.kylentt.mediaplayer.app.settings.AppSettingsSerializer
+import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import javax.inject.Singleton
 
 /**
  * Repository Containing Protobuf related data, e.g: AppSettings in Proto DataStore
@@ -28,6 +30,7 @@ interface ProtoRepository {
   suspend fun writeToSettings(data: suspend (AppSettings) -> AppSettings)
 }
 
+@Singleton
 class ProtoRepositoryImpl(
   private val context: Context,
   private val scope: AppScope
@@ -56,7 +59,9 @@ class ProtoRepositoryImpl(
   }
 
   init {
-    require(context is Application) { "Invalid Context" }
+    checkArgument(context is Application) {
+      "Singleton Context must be Application"
+    }
     scope.ioScope.launch {
       collectFromSettings().collect { _appSettings.value = it }
     }

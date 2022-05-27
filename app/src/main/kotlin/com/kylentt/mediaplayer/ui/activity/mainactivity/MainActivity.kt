@@ -12,9 +12,10 @@ import androidx.activity.viewModels
 import androidx.annotation.IntDef
 import androidx.annotation.MainThread
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import com.kylentt.mediaplayer.app.coroutines.AppDispatchers
-import com.kylentt.mediaplayer.app.coroutines.AppScope
-import com.kylentt.mediaplayer.app.delegates.LockMainThread
+import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
+import com.kylentt.mediaplayer.core.coroutines.AppScope
+import com.kylentt.mediaplayer.core.delegates.LateLazy
+import com.kylentt.mediaplayer.core.delegates.LockMainThread
 import com.kylentt.mediaplayer.app.delegates.device.StoragePermission
 import com.kylentt.mediaplayer.domain.viewmodels.MainViewModel
 import com.kylentt.mediaplayer.domain.viewmodels.MediaViewModel
@@ -213,7 +214,7 @@ class MainActivity : ComponentActivity() {
      * Starting after targeting Android 12, [Service] must not start any [Activity]
      *
      * @param launcher [Context] to Launch [MainActivity]
-     * @param intent [Intent] to Launch [MainActivity] after Launched
+     * @param intent [Intent] to send after [MainActivity] is Launched
      * @throws IllegalStateException Must be called from [MainThread]
      * @throws IllegalArgumentException [launcher] Must not be [Service]
      */
@@ -361,8 +362,10 @@ class MainActivity : ComponentActivity() {
 
     object Defaults {
       const val intentAction = Intent.ACTION_MAIN
+
       private val defClass = MainActivity::class.java
-      private lateinit var defIntent: Intent
+      private val defIntentInitializer = LateLazy<Intent>()
+      private val defIntent by defIntentInitializer
 
       /**
        * set @param [intent] action to [Defaults.intentAction]
@@ -370,8 +373,8 @@ class MainActivity : ComponentActivity() {
        * @return [Intent] with [Defaults.intentAction] set
        */
 
-      fun appendAction(intent: Intent) = intent
-        .apply { action = intentAction }
+      fun appendAction(intent: Intent) =
+        intent.apply { action = intentAction }
 
       /**
        * set @param [intent] class to [Defaults.defClass]
@@ -380,8 +383,8 @@ class MainActivity : ComponentActivity() {
        * @return [Intent] with [Defaults.defClass] set
        */
 
-      fun appendClass(context: Context, intent: Intent) = intent
-        .apply { setClass(context, defClass) }
+      fun appendClass(context: Context, intent: Intent) =
+        intent.apply { setClass(context, defClass) }
 
       /**
        * get The Default Launcher Intent for [MainActivity]
@@ -390,10 +393,11 @@ class MainActivity : ComponentActivity() {
        */
 
       fun getDefaultIntent(context: Context): Intent {
-        if (!::defIntent.isInitialized) {
-          defIntent = Intent()
+        if (!defIntentInitializer.isInitialized) {
+          val intent = Intent()
             .appendMainActivityAction()
             .appendMainActivityClass(context)
+          defIntentInitializer.initializeValue { intent }
         }
         return defIntent
       }

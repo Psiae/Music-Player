@@ -2,22 +2,22 @@ package com.kylentt.mediaplayer.domain.viewmodels
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.drawable.BitmapDrawable
 import androidx.annotation.MainThread
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
-import com.kylentt.mediaplayer.app.coroutines.AppDispatchers
+import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
+import com.kylentt.mediaplayer.core.exoplayer.MediaItemHelper.getDebugDescription
 import com.kylentt.mediaplayer.domain.mediasession.MediaSessionManager
 import com.kylentt.mediaplayer.domain.mediasession.service.connector.PlaybackState
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.helper.external.IntentWrapper
-import com.kylentt.mediaplayer.helper.image.CoilHelper
 import com.kylentt.mediaplayer.helper.media.MediaItemHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
+import timber.log.Timber
 import javax.inject.Inject
 import kotlin.coroutines.coroutineContext
 
@@ -42,21 +42,27 @@ class MediaViewModel @Inject constructor(
   }
 
   fun handleMediaIntent(intent: IntentWrapper) {
-    viewModelScope.launch { mediaSessionManager.handleMediaIntent(intent) }
+    viewModelScope.launch(dispatchers.computation) { mediaSessionManager.handleMediaIntent(intent) }
   }
 
   private suspend fun collectPlaybackState() {
+    Timber.d("MediaViewModel collectPlaybackState")
     mediaSessionManager.playbackState.collect { playbackState ->
+      Timber.d("MediaViewModel collectPlaybackState collected for: " +
+        "\n${playbackState.currentMediaItem.getDebugDescription()}"
+      )
       mediaPlaybackState.value = playbackState
-      if (playbackState.currentMediaItem != mediaItemBitmap.value.item) {
+      if (playbackState.currentMediaItem !== mediaItemBitmap.value.item) {
         dispatchUpdateItemBitmap(playbackState.currentMediaItem)
       }
     }
   }
 
+  @MainThread
   private suspend fun dispatchUpdateItemBitmap(item: MediaItem) {
     updateItemBitmapJob.cancel()
     updateItemBitmapJob = ioScope.launch {
+      Timber.d("UpdateItemBitmap Dispatched For ${item.getDebugDescription()}")
       val bitmap = itemHelper.getEmbeddedPicture(item)?.let { bytes: ByteArray ->
         BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
       }
@@ -64,6 +70,7 @@ class MediaViewModel @Inject constructor(
         if (!isActive) bitmap?.recycle()
         ensureValidCurrentItem(item) { "dispatchUpdateItemBitmap inconsistent" }
         mediaItemBitmap.value = MediaItemBitmap(item, bitmap)
+        Timber.d("UpdateItemBitmap Success For ${item.getDebugDescription()}")
       }
     }
   }
@@ -75,8 +82,8 @@ class MediaViewModel @Inject constructor(
     val current = mediaPlaybackState.value.currentMediaItem
     checkState(item === current) {
       "checkValidCurrentItem failed." +
-        "\nexpected : ${item.mediaMetadata.displayTitle}, id: ${item.mediaId}" +
-        "\ncurrent: $current, id: ${item.mediaId}" +
+        "\nexpected : ${item.getDebugDescription()}" +
+        "\ncurrent: ${current.getDebugDescription()}" +
         "\nmsg: ${msg()}"
     }
   }

@@ -2,8 +2,8 @@ package com.kylentt.mediaplayer.domain.mediasession.service.connector
 
 import android.content.Context
 import androidx.annotation.MainThread
-import com.kylentt.mediaplayer.app.coroutines.AppDispatchers
-import com.kylentt.mediaplayer.app.coroutines.AppScope
+import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
+import com.kylentt.mediaplayer.core.coroutines.AppScope
 import com.kylentt.mediaplayer.data.repository.ProtoRepository
 import com.kylentt.mediaplayer.domain.mediasession.MediaSessionManager
 import com.kylentt.mediaplayer.domain.mediasession.service.MediaService

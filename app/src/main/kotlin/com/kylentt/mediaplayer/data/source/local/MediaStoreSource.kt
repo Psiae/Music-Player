@@ -3,18 +3,24 @@ package com.kylentt.mediaplayer.data.source.local
 import android.content.ContentUris
 import android.content.Context
 import android.net.Uri
+import android.os.Bundle
 import android.provider.MediaStore
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
-import com.kylentt.mediaplayer.app.coroutines.AppDispatchers
+import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
+import com.kylentt.mediaplayer.core.exoplayer.MediaMetadataHelper.putDisplayTitle
+import com.kylentt.mediaplayer.core.exoplayer.MediaMetadataHelper.putFileName
+import com.kylentt.mediaplayer.core.exoplayer.MediaMetadataHelper.putStoragePath
 import com.kylentt.mediaplayer.helper.VersionHelper
 import com.kylentt.mediaplayer.data.SongEntity
+import com.kylentt.mediaplayer.helper.external.providers.DocumentProviderHelper
 import com.kylentt.mediaplayer.helper.media.MediaItemHelper
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.withContext
 import timber.log.Timber
+import java.io.File
 import javax.inject.Singleton
 
 /**
@@ -25,21 +31,21 @@ import javax.inject.Singleton
  */
 
 data class MediaStoreSong @JvmOverloads constructor(
-  @JvmField val album: String = "",
-  @JvmField val albumArtUri: Uri = Uri.EMPTY,
-  @JvmField val albumId: Long = -1,
-  @JvmField val artist: String = "",
-  @JvmField val artistId: Long = -1,
-  @JvmField val byteSize: Long = -1,
-  @JvmField val duration: Long = -1,
-  @JvmField val data: String? = null,
-  @JvmField val fileName: String = "",
-  @JvmField val fileBucket: String = "",
-  @JvmField val fileBuckedId: String = "",
-  @JvmField val lastModified: Long = -1,
-  @JvmField val mediaId: String = "",
-  @JvmField val mediaUri: Uri = Uri.EMPTY,
-  @JvmField val title: String = ""
+  val album: String = "",
+  val albumArtUri: Uri = Uri.EMPTY,
+  val albumId: Long = -1,
+  val artist: String = "",
+  val artistId: Long = -1,
+  val byteSize: Long = -1,
+  val duration: Long = -1,
+  val data: String? = null,
+  val fileName: String = "",
+  val fileBucket: String = "",
+  val fileBuckedId: String = "",
+  val lastModified: Long = -1,
+  val mediaId: String = "",
+  val mediaUri: Uri = Uri.EMPTY,
+  val title: String = ""
 ) : SongEntity {
 
   override val mediaIdPrefix: String
@@ -60,22 +66,30 @@ data class MediaStoreSong @JvmOverloads constructor(
 
   val mediaItem by lazy {
     val artworkUri = MediaItemHelper.hideArtUri(songMediaArtworkUri)
+		val bundle = Bundle()
+
+		val metadataBuilder = MediaMetadata
+			.Builder()
+			.putDisplayTitle(displayTitle)
+			.putFileName(fileName)
+			.setArtist(artistName)
+			.setAlbumArtist(artistName)
+			.setAlbumTitle(albumName)
+			.setArtworkUri(artworkUri) // MediaSession automatically use this one for Notification
+			.setMediaUri(songMediaUri)
+			.setSubtitle(artist)
+			.setTitle(displayTitle) // MediaSession automatically use this one for Notification
+			.setIsPlayable(duration > 0)
+
+		if (data != null && File(data).exists()) {
+			metadataBuilder.putStoragePath(data, bundle)
+		}
+
     MediaItem.Builder()
       .setMediaId(songMediaId)
       .setUri(songMediaUri)
-      .setMediaMetadata(
-        MediaMetadata.Builder()
-          .setArtist(artistName)
-          .setAlbumArtist(artistName)
-          .setAlbumTitle(albumName)
-          .setArtworkUri(artworkUri)
-          .setDisplayTitle(displayTitle)
-          .setDescription(fileName)
-          .setMediaUri(songMediaUri)
-          .setSubtitle(artist)
-          .setIsPlayable(duration > 0)
-          .build()
-      ).build()
+      .setMediaMetadata(metadataBuilder.build())
+		.build()
   }
 
   override val asMediaItem: MediaItem

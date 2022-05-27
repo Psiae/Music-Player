@@ -4,13 +4,14 @@ import android.app.Application
 import android.content.ContentUris
 import android.content.Context
 import android.net.Uri
+import android.os.Environment
 import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.widget.Toast
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
-import com.kylentt.mediaplayer.app.coroutines.AppDispatchers
+import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
 import com.kylentt.mediaplayer.data.repository.MediaRepository
 import com.kylentt.mediaplayer.data.repository.ProtoRepository
 import com.kylentt.mediaplayer.data.source.local.MediaStoreSong
@@ -21,7 +22,6 @@ import com.kylentt.mediaplayer.helper.external.providers.ContentProvidersHelper
 import com.kylentt.mediaplayer.helper.external.providers.DocumentProviderHelper
 import com.kylentt.mediaplayer.helper.media.MediaItemHelper
 import com.kylentt.mediaplayer.data.SongEntity
-import com.kylentt.disposed.musicplayer.domain.mediasession.ContentProviders
 import com.kylentt.mediaplayer.domain.mediasession.service.connector.ControllerCommand.Companion.wrapWithFadeOut
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
@@ -161,8 +161,8 @@ class MediaIntentHandlerImpl(
     ): String = withContext(dispatcher.computation) {
       try {
         require(intent.isSchemeContent())
-        val uriString = intent.data
-        val uri = Uri.parse(uriString)
+        val uri = Uri.parse(intent.data)
+				val uriString = ContentProvidersHelper.getDecodedContentUri(uri, context, null).toString()
         val decodedUriString = decodeUrl(uriString)
         val dDecodedUriString = decodeUrl(decodedUriString)
         val split2F = uriString
@@ -189,6 +189,13 @@ class MediaIntentHandlerImpl(
             name
           }
 
+				Timber.d("getAudioPathFromContentUri," +
+					"\n uri: $uriString" +
+					"\n dUri: $decodedUriString" +
+					"\n dDecodedUri: $dDecodedUriString" +
+					"\n fileName: $fileName"
+				)
+
         check(
           !fileName.isNullOrBlank()
             && !fileName.startsWith("/")
@@ -199,6 +206,8 @@ class MediaIntentHandlerImpl(
 
         if (DocumentsContract.isDocumentUri(context, uri)) {
           val a = DocumentProviderHelper.getAudioPathFromContentUri(context, uri)
+					Timber.d("MediaIntentHandler tried isDocumentUri," +
+						"\n result = $a")
           if (
             a.startsWith(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI.toString())
             || (a.endsWith(fileName) && File(a).exists())
@@ -211,6 +220,8 @@ class MediaIntentHandlerImpl(
           && (dSplit2F.last().endsWith(fileName) || ddSplit2F.last().endsWith(fileName))
         ) {
           val b = tryBuildPathFromFilePrefix(uri, fileName)
+					Timber.d("MediaIntentHandler tried hasFileUri," +
+						"\n result = $b")
           if (b.endsWith(fileName) && File(b).exists()) {
             return@withContext b
           }
@@ -218,13 +229,17 @@ class MediaIntentHandlerImpl(
 
         if (uriString.contains(extStorageString)) {
           val c = tryBuildPathContainsExtStorage(fileName, uri)
+					Timber.d("MediaIntentHandler tried contains extStorage," +
+						"\n result = $c")
           if (c.isNotBlank() && c.endsWith(fileName) && File(c).exists()) {
             return@withContext c
           }
         }
 
-        if (split2F.last() == fileName || decodeUrl(split2F.last()) == fileName) {
+        if (split2F.last() == fileName) {
           val d = tryBuildPathEndsWithFileName(fileName, uri)
+					Timber.d("MediaIntentHandler tried ends with fileName," +
+						"\n result = $d")
           if (d.isNotBlank() && d.endsWith(fileName) && File(d).exists()) {
             return@withContext d
           }
@@ -233,9 +248,10 @@ class MediaIntentHandlerImpl(
         if (
           split2F.last().last().isDigit()
           && intent.type.startsWith("audio/")
-          && (split2F.last() != fileName || decodeUrl(split2F.last()) != fileName)
+          && (split2F.last() != fileName)
         ) {
           val e = tryBuildPathFromUriWithAudioId(context, fileName, uri)
+					Timber.d("MediaIntentHandler tried has MediaStore Audio Id")
           if (e.isNotBlank() && e.endsWith(fileName) && File(e).exists()) {
             return@withContext e
           }
@@ -252,13 +268,13 @@ class MediaIntentHandlerImpl(
   private suspend fun contentHasFileUri(
     uri: Uri,
     checkStoragePrefix: Boolean
-  ): Boolean = withContext(Dispatchers.IO) {
+  ): Boolean = withContext(coroutineContext) {
     return@withContext try {
       val uriString = uri.toString()
       require(uriString.isNotEmpty())
-      require(uriString.startsWith(ContentProviders.contentScheme))
+      require(uriString.startsWith(ContentProvidersHelper.contentScheme))
       val decodedUriString = decodeUrl(uriString)
-      val file = ContentProviders.fileScheme
+      val file = ContentProvidersHelper.fileScheme
       val storage = DocumentProviderHelper.storagePath.filter(Char::isLetter)
       if (!uriString.containsAnyOf(listOf("/file", "/file:", "/file%3A"), true)) {
         return@withContext false
@@ -291,8 +307,8 @@ class MediaIntentHandlerImpl(
 
       val decodedUriString = decodeUrl(uriString)
       val dSplit2F = decodedUriString.split("/")
-      val externalStorage = ContentProviders.DocumentProviders.extStoragePathString
-      val storage = ContentProviders.DocumentProviders.storagePath
+      val externalStorage = DocumentProviderHelper.extStoragePathString
+      val storage = DocumentProviderHelper.storagePath
       val fileIndex = if (start > 2) {
         start
       } else {
@@ -393,24 +409,31 @@ class MediaIntentHandlerImpl(
         split2F.forEach { splitted2F.add(it) }
       }
 
+			val downloadDir = Environment.DIRECTORY_DOWNLOADS
+			val musicDir = Environment.DIRECTORY_MUSIC
       val externalStorageString = ContentProvidersHelper.externalStorageDirString
       val storage = ContentProvidersHelper.storageDirString
       val fStorage = storage.filter(Char::isLetterOrDigit)
 
-      var startIndex = 3
-      if (!stringUri.contains(externalStorageString)) {
-        if (splitted2F.any { it == fStorage }) {
-          stringBuilder.append(storage)
-          startIndex = splitted2F.indexOf(fStorage)
-        } else {
-          stringBuilder.append(externalStorageString)
-        }
-      }
+      var startIndex = splitted2F.lastIndex
+			when {
+				splitted2F.any { it == fStorage } -> {
+					stringBuilder.append(fStorage)
+					startIndex = splitted2F.indexOf(fStorage) + 1
+				}
+				with (splitted2F.indexOf(fileName)) { this >= 5 } -> {
+					val beforeLast = splitted2F[splitted2F.lastIndex - 1]
+					if (beforeLast.first().isUpperCase()) {
+						stringBuilder.append(externalStorageString)
+						startIndex = splitted2F.indexOf(beforeLast)
+					}
+				}
+			}
 
       splitted2F.forEachIndexed { i, s ->
-        if (i > startIndex) {
+        if (i >= startIndex) {
           when {
-            i == startIndex + 1 -> {
+            i == startIndex -> {
               stringBuilder.append("/$s/")
             }
             i != splitted2F.lastIndex -> {
@@ -464,6 +487,7 @@ class MediaIntentHandlerImpl(
             )
           context.contentResolver.query(mUri, null, null, null, null)
             ?.use { cursor ->
+							Timber.d("tryBuildPathFromUriWithAudioId querying $mUri")
               cursor.moveToFirst()
               val nName =
                 cursor.getString(cursor.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME))

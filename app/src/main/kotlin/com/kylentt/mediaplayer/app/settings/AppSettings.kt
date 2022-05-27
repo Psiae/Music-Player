@@ -1,7 +1,12 @@
 package com.kylentt.mediaplayer.app.settings
 
+import android.content.Context
+import androidx.compose.material.Button
+import androidx.compose.material.Scaffold
+import androidx.compose.runtime.Composable
+import androidx.datastore.core.DataStore
 import androidx.datastore.core.Serializer
-import com.kylentt.mediaplayer.app.coroutines.AppDispatchers
+import androidx.datastore.dataStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.InternalSerializationApi
@@ -31,14 +36,28 @@ data class AppSettings(
   val isValid: Boolean = true
 ) {
 
+	val defaultValue
+		get() = Companion.DEFAULT
+	val fileName
+		get() = Companion.fileName
+
+	fun getDataStore(context: Context): DataStore<AppSettings> = context.settingsDataStore
+
   companion object {
-    @JvmStatic val DEFAULT by lazy {
+    const val fileName = "app-settings.json"
+
+    @JvmStatic
+    val DEFAULT: AppSettings by lazy {
       val navigation = NavigationSettings.DEFAULT
       val wallpaper = WallpaperSettings.DEFAULT
       AppSettings(navigationSettings = navigation, wallpaperSettings = wallpaper)
     }
+
     @JvmStatic
     val INVALID = DEFAULT.copy(isValid = false)
+
+    @JvmStatic
+    val Context.settingsDataStore by dataStore(fileName, AppSettingsSerializer)
   }
 }
 
@@ -71,4 +90,14 @@ object AppSettingsSerializer : Serializer<AppSettings> {
         Timber.e(e)
       }
     }
+	
+	@Composable
+	fun idk() {
+		Button(onClick = { /*TODO*/ }) {
+			Scaffold() {
+				
+			}
+		}
+	}
+
 }

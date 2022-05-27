@@ -7,6 +7,7 @@ import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.net.Uri
+import android.text.format.Formatter
 import androidx.annotation.Px
 import androidx.annotation.WorkerThread
 import androidx.core.graphics.component1
@@ -29,6 +30,7 @@ import jp.wasabeef.transformers.coil.CenterBottomCropTransformation
 import jp.wasabeef.transformers.coil.CenterCropTransformation
 import jp.wasabeef.transformers.coil.CenterTopCropTransformation
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import javax.inject.Singleton
@@ -62,7 +64,7 @@ class CoilHelper(
     loader: ImageLoader = this.imageLoader,
     cache: CachePolicy = CachePolicy.DISABLED,
     placeHolder: Drawable? = null,
-    recycle: Boolean = false,
+    fastPath: Boolean = false,
     type: CenterCropTransform = CENTER,
     bitmap: Bitmap,
     @Px size: Int
@@ -88,30 +90,17 @@ class CoilHelper(
       .precision(Precision.EXACT)
       .build()
 
-    val result = executeBitmapRequest(loader, req, size, size, true)
-    if (recycle) checkState(result !== bitmap)
-    Timber.d("squaredBitmap with size: $size?${result.width}:${result.height}, alloc: ${result.allocationByteCount}")
-    result
-  }
-
-  private suspend fun executeBitmapRequest(
-    loader: ImageLoader,
-    request: ImageRequest,
-    @Px height: Int,
-    @Px width: Int,
-    recycle: Boolean
-  ): Bitmap = withContext(coroutineContext) {
-    checkArgument(request.data is Bitmap)
-    val drawable = loader.execute(request).drawable!!
-    val result =
-      if (recycle) {
-        val new = drawable.toNewBitmap(height, width)
-        (request.data as Bitmap).recycle()
-        new
-      } else {
-        drawable.toBitmap()
-      }
-    ensureActive()
+		val drawable = loader.execute(req).drawable!!
+		val result =
+			if (fastPath) {
+				drawable.toBitmap(size, size)
+			} else {
+				drawable.toNewBitmap(size, size)
+			}
+    Timber.d(
+			"squaredBitmap with size: $size? ${result.width}:${result.height}," +
+				"\nalloc: ${Formatter.formatFileSize(context, result.allocationByteCount.toLong())}"
+		)
     result
   }
 
@@ -120,8 +109,8 @@ class CoilHelper(
     @Px width: Int = intrinsicWidth,
     config: Bitmap.Config? = null,
   ): Bitmap {
+		val bitmap = Bitmap.createBitmap(width, height, config ?: Bitmap.Config.ARGB_8888)
     val (oldLeft, oldTop, oldRight, oldBottom) = bounds
-    val bitmap = Bitmap.createBitmap(width, height, config ?: Bitmap.Config.ARGB_8888)
     setBounds(0, 0, width, height)
     draw(Canvas(bitmap))
     setBounds(oldLeft, oldTop, oldRight, oldBottom)
@@ -163,5 +152,4 @@ class CoilHelper(
       .build()
     (loader.execute(req).drawable as BitmapDrawable).bitmap
   }
-
 }

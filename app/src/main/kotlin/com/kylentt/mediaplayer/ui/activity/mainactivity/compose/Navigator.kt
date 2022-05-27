@@ -10,8 +10,6 @@ import androidx.navigation.NavHostController
 import androidx.navigation.navigation
 import com.google.accompanist.navigation.animation.AnimatedNavHost
 import com.google.accompanist.navigation.animation.composable
-import com.kylentt.disposed.disposed.ui.mainactivity.disposed.compose.screen.library.LibraryScreen
-import com.kylentt.disposed.disposed.ui.mainactivity.disposed.compose.screen.search.SearchScreen
 import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.home.HomeScreen
 
 sealed class Screen(
@@ -93,7 +91,7 @@ private fun NavGraphBuilder.addSearchScreen(
     controller: NavHostController
 ) {
     composable(route = Screen.Search.route) {
-        SearchScreen()
+
     }
 }
 
@@ -113,7 +111,6 @@ private fun NavGraphBuilder.addLibraryScreen(
     controller: NavHostController
 ) {
     composable(route = Screen.Library.route) {
-        LibraryScreen()
+
     }
 }
-

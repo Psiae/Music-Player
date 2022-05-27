@@ -3,7 +3,7 @@ package com.kylentt.mediaplayer.domain.mediasession.service
 import androidx.media3.common.Player
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
-import com.kylentt.mediaplayer.app.delegates.Synchronize
+import com.kylentt.mediaplayer.core.delegates.LateLazy
 import timber.log.Timber
 import javax.inject.Singleton
 
@@ -24,7 +24,7 @@ class MediaServiceSession private constructor(
   private val listeners = mutableListOf<Pair<Player, Player.Listener>>()
 
   val mediaSession
-    get() = service.sessions.last()
+    get() = service.sessions.first()
 
   val sessionPlayer
     get() = mediaSession.player
@@ -97,13 +97,17 @@ class MediaServiceSession private constructor(
   }
 
   companion object {
-    val EMPTY = MediaServiceSession(MediaService())
-
-    private var instance by Synchronize(EMPTY)
+		private val initializer = LateLazy<MediaServiceSession>()
+    private val instance by initializer
 
     fun getInstance(service: MediaService): MediaServiceSession {
-      if (instance.service !== service) instance.release()
-      instance.service = service
+      if (!initializer.isInitialized) {
+				initializer.initializeValue { MediaServiceSession(service) }
+			}
+      if (instance.service !== service) {
+        instance.release()
+        instance.service = service
+      }
       return instance
     }
   }

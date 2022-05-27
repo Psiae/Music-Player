@@ -11,24 +11,28 @@ import timber.log.Timber
 /**
  * Initializer Interface from [Initializer], specified in AndroidManifest.xml
  * @see [AppDelegate]
- * @see [Timber]
  * @author Kylentt
  * @since 2022/04/30
  */
 
 class AppInitializer : Initializer<Unit> {
 
-  override fun create(context: Context) {
-    require(context is Application)
-    AppDelegate.provides(context)
-  }
+	override fun create(context: Context) {
+		require(context is Application) {
+			"AppInitializer Context Must be Application"
+		}
+		create(context)
+	}
 
-  override fun dependencies(): MutableList<Class<out Initializer<*>>> {
-    val dependencies = mutableListOf<Class<out Initializer<*>>>()
-    if (BuildConfig.DEBUG) dependencies.add(DebugInitializer::class.java)
-    return dependencies
-  }
+	override fun dependencies(): MutableList<Class<out Initializer<*>>> {
+		val dependencies = mutableListOf<Class<out Initializer<*>>>()
+		if (BuildConfig.DEBUG) dependencies.add(DebugInitializer::class.java)
+		return dependencies
+	}
 
+	private fun create(app: Application) {
+		AppDelegate.provides(app)
+	}
 }
 
 class DebugInitializer : Initializer<Unit> {

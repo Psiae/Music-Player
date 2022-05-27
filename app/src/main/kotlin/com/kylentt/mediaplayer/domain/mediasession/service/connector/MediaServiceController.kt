@@ -1,11 +1,7 @@
 package com.kylentt.mediaplayer.domain.mediasession.service.connector
 
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.drawable.BitmapDrawable
 import android.os.Looper
 import androidx.annotation.FloatRange
-import androidx.annotation.GuardedBy
 import androidx.annotation.MainThread
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
@@ -13,20 +9,19 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
-import com.kylentt.mediaplayer.app.delegates.LockMainThread
-import com.kylentt.mediaplayer.app.delegates.Synchronize
 import com.kylentt.mediaplayer.core.exoplayer.PlayerConstants
-import com.kylentt.mediaplayer.core.exoplayer.PlayerHelper
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateBuffering
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateEnded
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateIdle
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateReady
+import com.kylentt.mediaplayer.core.exoplayer.PlayerHelper
 import com.kylentt.mediaplayer.domain.mediasession.service.MediaService
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.ui.activity.CollectionExtension.forEachClear
-import kotlinx.coroutines.*
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import timber.log.Timber
 
 /**
@@ -37,6 +32,7 @@ import timber.log.Timber
  * @since 2022/04/30
  */
 
+@MainThread
 class MediaServiceController(
   serviceConnector: MediaServiceConnector
 ) {
@@ -44,56 +40,41 @@ class MediaServiceController(
   val playbackStateSF = MutableStateFlow<PlaybackState>(PlaybackState.EMPTY)
   val serviceStateSF = MutableStateFlow<MediaServiceState>(MediaServiceState.NOTHING)
 
-  @Volatile
-  @GuardedBy("controllerLock")
   private lateinit var futureMediaController: ListenableFuture<MediaController>
   private lateinit var mediaController: MediaController
   private lateinit var sessionToken: SessionToken
 
-  private val controllerLock = Any()
-  private val listenerLock: Any = Any()
-  private val directExecutor = MoreExecutors.directExecutor()
-
   private val context = serviceConnector.baseContext
+  private val directExecutor = MoreExecutors.directExecutor()
 
   private val mainScope = serviceConnector.appScope.mainScope
   private val mainDispatcher = serviceConnector.dispatchers.main
   private val mainImmediateDispatcher = serviceConnector.dispatchers.mainImmediate
 
-  @GuardedBy("listenerLock")
-  private val controlIdleListener = mutableListOf<(MediaController) -> Unit>()
-
-  @GuardedBy("listenerLock")
   private val controlBufferListener = mutableListOf<(MediaController) -> Unit>()
-
-  @GuardedBy("listenerLock")
+  private val controlEndedListener = mutableListOf<(MediaController) -> Unit>()
+  private val controlIdleListener = mutableListOf<(MediaController) -> Unit>()
   private val controlReadyListener = mutableListOf<(MediaController) -> Unit>()
 
-  @GuardedBy("listenerLock")
-  private val controlEndedListener = mutableListOf<(MediaController) -> Unit>()
-
   private val isControllerConnected
-    get() = if (::mediaController.isInitialized) mediaController.isConnected else false
+    get() = elseFalse(::mediaController.isInitialized) { mediaController.isConnected }
+
   private val isControllerConnecting
     get() = serviceStateSF.value is MediaServiceState.CONNECTING
+
+  private inline fun elseFalse(condition: Boolean, block: () -> Boolean): Boolean {
+    return if (condition) block() else false
+  }
 
   private val playerListener = object : Player.Listener {
 
     override fun onPlaybackStateChanged(playbackState: Int) {
       super.onPlaybackStateChanged(playbackState)
       when (playbackState) {
-        Player.STATE_BUFFERING -> {
-          controlBufferListener.forEachClear(listenerLock) { it(mediaController) }
-        }
-        Player.STATE_ENDED -> {
-          controlEndedListener.forEachClear(listenerLock) { it(mediaController) }
-        }
-        Player.STATE_IDLE -> {
-          controlIdleListener.forEachClear(listenerLock) { it(mediaController) }
-        }
-        Player.STATE_READY -> {
-          controlReadyListener.forEachClear(listenerLock) { it(mediaController) }
-        }
+        Player.STATE_BUFFERING -> controlBufferListener.forEachClear { it(mediaController) }
+        Player.STATE_ENDED -> controlEndedListener.forEachClear { it(mediaController) }
+        Player.STATE_IDLE -> controlIdleListener.forEachClear { it(mediaController) }
+        Player.STATE_READY -> controlReadyListener.forEachClear { it(mediaController) }
       }
       playbackStateSF.value = playbackStateSF.value.copy(playerState = playbackState)
     }
@@ -106,7 +87,12 @@ class MediaServiceController(
     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
       super.onMediaItemTransition(mediaItem, reason)
       val item = mediaItem ?: MediaItem.EMPTY
-      playbackStateSF.value = playbackStateSF.value.copy(currentMediaItem = item)
+      val config = item.localConfiguration
+      // not sure whether to take the mediaItem that has LocalConfiguration or Not but the later
+      // doesn't have it
+      if (config == null) {
+        playbackStateSF.value = playbackStateSF.value.copy(currentMediaItem = item)
+      }
     }
 
     override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -120,47 +106,43 @@ class MediaServiceController(
     }
   }
 
+  private val futureControllerListener = {
+    with(futureMediaController) {
+      try {
+        if (!this.isDone) {
+          val msg = "FutureControllerListener callback is called before its Done"
+          throw IllegalStateException(msg)
+        }
+        mediaController = this.get()
+        setupMediaController()
+      } catch (e: Exception) {
+        Timber.e(e)
+        serviceStateSF.value = MediaServiceState.ERROR("Error Controller Setup", e)
+      }
+    }
+  }
+
   @MainThread
   fun connectController(
     onConnected: (MediaController) -> Unit
-  ) = synchronized(controllerLock) {
+  ): Unit {
     checkMainThread()
     if (isControllerConnected) {
       return onConnected(mediaController)
     }
     if (isControllerConnecting) {
       check(::futureMediaController.isInitialized)
-      return futureMediaController.addListener({ onConnected(mediaController) }, directExecutor)
+      return futureMediaController.addListener( { onConnected(mediaController) }, directExecutor)
     }
     serviceStateSF.value = MediaServiceState.CONNECTING
     sessionToken = SessionToken(context, MediaService.getComponentName(context))
     futureMediaController = MediaController.Builder(context, sessionToken)
       .setApplicationLooper(Looper.myLooper()!!)
       .buildAsync()
-      .apply {
-        addListener(
-          {
-            try {
-              checkState(this.isDone)
-              mediaController = this.get()
-              setupMediaController(mediaController)
-              onConnected(mediaController)
-              serviceStateSF.value = MediaServiceState.CONNECTED
-            } catch (e: Exception) {
-              serviceStateSF.value = MediaServiceState.ERROR("${Timber.e(e)}", e)
-            }
-          }, directExecutor
-        )
-      }
+      .apply { addListener(futureControllerListener, directExecutor) }
   }
 
-  private fun setupMediaController(controller: MediaController) {
-    checkMainThread()
-    controller.addListener(playerListener)
-  }
-
-  private val commandLock = Any()
-  fun commandController(command: ControllerCommand): Unit = synchronized(commandLock) {
+  fun commandController(command: ControllerCommand): Unit {
     checkMainThread()
     if (!isControllerConnected) {
       connectController { commandController(command) }
@@ -207,18 +189,33 @@ class MediaServiceController(
    * assuming the entry point is the commandController function which already check for it
    */
 
-  private val fadeOutLock: Any = Any()
   private val maxVolume: Float = PlayerConstants.MAX_VOLUME
   private val minVolume: Float = PlayerConstants.MIN_VOLUME
-
-  @GuardedBy("fadeOutLock")
-  private val fadeOutListener = mutableListOf<ControllerCommand.WithFadeOut>()
 
   private val playerVolume: Float
     get() = mediaController.volume
 
   private val playerIsPlaying: Boolean
     get() = mediaController.isPlaying
+
+  private val fadeOutListener = mutableListOf<ControllerCommand.WithFadeOut>()
+
+  private fun setupMediaController() {
+    checkState(::mediaController.isInitialized) {
+      "setupMediaController failed, MediaController has Not been Initialized"
+    }
+    val controller = this.mediaController
+    controller.addListener(playerListener)
+    serviceStateSF.value = MediaServiceState.CONNECTED
+  }
+
+  private fun releaseMediaController() {
+    val controller = this.mediaController
+    if (!controller.isConnected) return
+    controller.release()
+    checkState(!controller.isConnected)
+    serviceStateSF.value = MediaServiceState.DISCONNECTED
+  }
 
   private fun whenReady(listener: (MediaController) -> Unit) {
     if (mediaController.playbackState.isStateReady()) {
@@ -256,26 +253,25 @@ class MediaServiceController(
     Timber.d("setPlayerVolume to $v or $fv")
   }
 
-  private var fadingOut by LockMainThread(false)
+  private var fadingOut = false
 
   private suspend fun fadeOut(
     command: ControllerCommand.WithFadeOut
   ) {
 
-    synchronized(fadeOutLock) {
-      if (command.flush) fadeOutListener.clear()
-      fadeOutListener.add(command)
+    if (command.flush) fadeOutListener.clear()
+    fadeOutListener.add(command)
 
-      if (fadingOut || !playerIsPlaying || playerVolume == minVolume) {
-        fadingOut = false
-        fadeOutListener.forEachClear(fadeOutLock) {
-          commandController(it.command)
-          it.afterFadeOut()
-        }
-        return whenReady { setPlayerVolume(maxVolume) }
+    if (fadingOut || !playerIsPlaying || playerVolume == minVolume) {
+      fadingOut = false
+      fadeOutListener.forEachClear {
+        commandController(it.command)
+        it.afterFadeOut()
       }
-      fadingOut = true
+      return whenReady { setPlayerVolume(maxVolume) }
     }
+
+    fadingOut = true
 
     val to = command.to
     val duration = command.duration.toFloat()
@@ -290,24 +286,22 @@ class MediaServiceController(
       delay(command.interval)
     }
 
-    synchronized(fadeOutLock) {
-      if (fadingOut) {
-        fadingOut = false
-        fadeOutListener.forEachClear(fadeOutLock) {
-          commandController(it.command)
-          it.afterFadeOut()
-        }
-        return whenReady { setPlayerVolume(maxVolume) }
+    if (fadingOut) {
+      fadingOut = false
+      fadeOutListener.forEachClear {
+        commandController(it.command)
+        it.afterFadeOut()
       }
+      return whenReady { setPlayerVolume(maxVolume) }
     }
   }
 
   private fun MediaItem?.idEqual(that: MediaItem?): Boolean {
-    return that != null && idEqual(that.mediaId)
+    return idEqual(that?.mediaId)
   }
 
-  private fun MediaItem?.idEqual(that: String): Boolean {
-    return this != null && this.mediaId == that
+  private fun MediaItem?.idEqual(that: String?): Boolean {
+    return this?.mediaId == that
   }
 }
 
@@ -375,7 +369,9 @@ data class PlaybackState(
   val repeatMode: @Player.RepeatMode Int
 ) {
   companion object {
-    @JvmStatic val EMPTY by lazy {
+
+    @JvmStatic
+    val EMPTY by lazy {
       PlaybackState(
         isPlaying = false,
         playWhenReady = false,
@@ -385,6 +381,7 @@ data class PlaybackState(
       )
     }
   }
+
 }
 
 sealed class MediaServiceState {

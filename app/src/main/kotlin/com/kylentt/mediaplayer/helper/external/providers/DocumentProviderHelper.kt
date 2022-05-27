@@ -8,15 +8,17 @@ import android.os.Environment
 import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.provider.OpenableColumns
+import androidx.core.net.toUri
+import androidx.media3.exoplayer.SimpleExoPlayer
 import com.kylentt.mediaplayer.helper.VersionHelper
-import com.kylentt.disposed.musicplayer.domain.mediasession.ContentProviders
-import com.kylentt.mediaplayer.app.coroutines.AppDispatchers
-import kotlinx.coroutines.Dispatchers
+import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
 import java.net.URLDecoder
 import kotlin.coroutines.coroutineContext
+
+// TODO: Organize This Better
 
 object DocumentProviderHelper {
   const val auth_provider_externalStorage = "com.android.externalstorage"
@@ -25,14 +27,16 @@ object DocumentProviderHelper {
   const val contentScheme = ContentResolver.SCHEME_CONTENT
   const val fileScheme = ContentResolver.SCHEME_FILE
 
-  @JvmStatic val extStoragePath: File?
+  @JvmStatic
+  val extStoragePath: File?
     get() = Environment.getExternalStorageDirectory()
 
-  @JvmStatic val extStoragePathString
-    get() = extStoragePath?.toString()
-      ?: "/storage/emulated/0"
+  @JvmStatic
+  val extStoragePathString
+    get() = extStoragePath?.toString() ?: "/storage/emulated/0"
 
-  @JvmStatic val storagePath
+  @JvmStatic
+  val storagePath
     get() = if (VersionHelper.hasR()) {
       Environment.getStorageDirectory().toString()
     } else {
@@ -52,20 +56,19 @@ object DocumentProviderHelper {
   ): String {
     return try {
       require(DocumentsContract.isDocumentUri(context, uri))
-      val fileName =
-        withContext(dispatchers.io) {
-          context.contentResolver.query(uri, null, null, null, null)
-            ?.use { cursor ->
-              cursor.moveToFirst()
-              val dataIndex = cursor.getColumnIndex(MediaStore.Audio.AudioColumns.DATA)
-              val nameIndex = cursor.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME)
-              if (dataIndex > -1) {
-                val data = cursor.getString(dataIndex)
-                if (File(data).exists()) return@withContext data
-              }
-              cursor.getString(nameIndex)
+      val fileName = withContext(dispatchers.io) {
+        context.contentResolver.query(uri, null, null, null, null)
+          ?.use { cursor ->
+            cursor.moveToFirst()
+            val dataIndex = cursor.getColumnIndex(MediaStore.Audio.AudioColumns.DATA)
+            val nameIndex = cursor.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME)
+            if (dataIndex > -1) {
+              val data = cursor.getString(dataIndex)
+              if (File(data).exists()) return@withContext data
             }
-        }
+            cursor.getString(nameIndex)
+          }
+      }
 
       requireNotNull(fileName)
 
@@ -136,11 +139,11 @@ object DocumentProviderHelper {
         val directory = dSplit3A[2]
         if (primPrefix == "primary") {
           if (directory.endsWith(fileName)) {
-            builder.append("${ContentProviders.DocumentProviders.extStoragePathString}/$directory")
+            builder.append("$extStoragePathString/$directory")
           }
         } else {
           if (directory.endsWith(fileName)) {
-            builder.append("${ContentProviders.DocumentProviders.storagePath}/$primPrefix/$directory")
+            builder.append("$storagePath/$primPrefix/$directory")
           }
         }
       }
@@ -154,26 +157,30 @@ object DocumentProviderHelper {
     val uriString = uri.toString()
     val decodedUriString = decodeUrl(uriString)
     val dSplit2F = decodedUriString.split("/")
-
-    val fUri = withContext(dispatchers.io) {
-      if (VersionHelper.hasQ() && dSplit2F.last().startsWith("msf")) {
-        val mime = context.contentResolver.query(uri, null, null, null, null)
-          ?.use { cursor ->
-            cursor.moveToFirst()
-            cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE))
-          }
-        if (mime?.startsWith("audio") == true) {
-          val extContentUri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
-          ContentUris.withAppendedId(extContentUri, dSplit2F.last().filter(Char::isDigit).toLong())
-        } else {
-          uri
-        }
-      } else {
-        uri
-      }
-    }
+		val dSplit3A = decodedUriString.split(":")
 
     return withContext(dispatchers.io) {
+			if (dSplit3A[2].startsWith(extStoragePathString) && dSplit2F.last() == fileName) {
+				return@withContext dSplit3A[2]
+			}
+
+			val fUri = when {
+				VersionHelper.hasQ() && dSplit2F.last().startsWith("msf") -> {
+					val mime = context.contentResolver.query(uri, null, null, null, null)
+						?.use { cursor ->
+							cursor.moveToFirst()
+							cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE))
+						}
+					if (mime?.startsWith("audio") == true) {
+						val extContentUri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+						ContentUris.withAppendedId(extContentUri, dSplit2F.last().filter(Char::isDigit).toLong())
+					} else {
+						uri
+					}
+				}
+				else -> uri
+			}
+
       context.contentResolver.query(fUri, null, null, null, null)
         ?.use { cursor ->
           cursor.moveToFirst()
@@ -217,4 +224,12 @@ object DocumentProviderHelper {
     }
     return stringBuilder.toString()
   }
+
+	@JvmStatic fun isStoragePath(path: String) = path.startsWith("$storagePath/")
+	@JvmStatic fun isStoragePathExist(path: String) = isStoragePath(path) && File(path).exists()
+
+	@JvmStatic
+	fun isExternalStoragePath(path: String) = path.startsWith("$extStoragePathString/")
+	@JvmStatic
+	fun isExternalStoragePathExist(path: String) = isExternalStoragePath(path) && File(path).exists()
 }

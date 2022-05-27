@@ -1,7 +1,7 @@
 package com.kylentt.mediaplayer.data.repository
 
 import android.content.Context
-import com.kylentt.mediaplayer.app.coroutines.AppScope
+import com.kylentt.mediaplayer.core.coroutines.AppScope
 import com.kylentt.mediaplayer.data.source.local.MediaStoreSource
 import dagger.Module
 import dagger.Provides
@@ -27,7 +27,7 @@ object RepoModule {
   fun provideProtoRepository(
     @ApplicationContext context: Context,
     coroutineScope: AppScope
-  ) = ProtoRepositoryImpl(context, coroutineScope)
+  ): ProtoRepository = ProtoRepositoryImpl(context, coroutineScope)
 
   @Provides
   @Singleton
@@ -35,6 +35,5 @@ object RepoModule {
     @ApplicationContext context: Context,
     coroutineScope: AppScope,
     mediaStoreSource: MediaStoreSource
-  ) = MediaRepositoryImpl(context, mediaStoreSource)
-
+  ): MediaRepository = MediaRepositoryImpl(context, mediaStoreSource)
 }

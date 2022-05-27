@@ -26,6 +26,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.ripple.LocalRippleTheme
+import androidx.compose.material.ripple.RippleAlpha
+import androidx.compose.material.ripple.RippleTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -51,8 +54,6 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionState
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.shouldShowRationale
-import com.kylentt.disposed.musicplayer.ui.activity.musicactivity.acompose.environtment.NoRipple
-import com.kylentt.disposed.musicplayer.ui.activity.musicactivity.acompose.theme.md3.AppTypography
 import com.kylentt.mediaplayer.R
 import com.kylentt.mediaplayer.app.delegates.AppDelegate
 import com.kylentt.mediaplayer.app.delegates.device.StoragePermission
@@ -61,8 +62,9 @@ import com.kylentt.mediaplayer.app.settings.WallpaperSettings
 import com.kylentt.mediaplayer.app.settings.WallpaperSettings.Source.*
 import com.kylentt.mediaplayer.domain.viewmodels.MainViewModel
 import com.kylentt.mediaplayer.domain.viewmodels.MediaViewModel
-import com.kylentt.mediaplayer.ui.activity.CollectionExtension.forEachClear
+import com.kylentt.mediaplayer.ui.activity.CollectionExtension.forEachClearSync
 import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.ComposableExtension.noPadding
+import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.theme.AppTypography
 import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.theme.MaterialDesign3Theme
 import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.theme.helper.ColorHelper
 import com.kylentt.mediaplayer.ui.compose.rememberWallpaperBitmapAsState
@@ -86,8 +88,8 @@ fun MainActivityContent(
                 "App Storage Permission is Not Granted"
             }
             with(mainViewModel) {
-                pendingStorageGranted.forEachClear()
-                pendingStorageIntent.forEachClear { mediaViewModel.handleMediaIntent(it) }
+                pendingStorageGranted.forEachClearSync()
+                pendingStorageIntent.forEachClearSync { mediaViewModel.handleMediaIntent(it) }
             }
             MainActivityRoot(appSettings.value)
         }
@@ -158,6 +160,26 @@ private fun RootScaffold(
             )
         }
         content(padding)
+    }
+}
+
+@Composable
+private fun NoRipple(content: @Composable () -> Unit) {
+
+    CompositionLocalProvider (
+
+        LocalRippleTheme provides object : RippleTheme {
+
+            @Composable
+            override fun defaultColor(): Color = Color.Transparent
+
+            @Composable
+            override fun rippleAlpha(): RippleAlpha {
+                return RippleAlpha(0F,0F,0F,0F)
+            }
+        }
+    ) {
+        content()
     }
 }
 
@@ -423,8 +445,8 @@ private val MainBottomNavItems = listOf(
     ),
     MainBottomNavItem.ImageVectorIcon(
         screen = Screen.Library,
-        imageVector = AppDelegate.getImageVector(R.drawable.ic_bookshelf),
-        selectedImageVector = AppDelegate.getImageVector(R.drawable.ic_bookshelf)
+        imageVector = AppDelegate.getImageVectorFromDrawableId(R.drawable.ic_bookshelf),
+        selectedImageVector = AppDelegate.getImageVectorFromDrawableId(R.drawable.ic_bookshelf)
     )
 )
 

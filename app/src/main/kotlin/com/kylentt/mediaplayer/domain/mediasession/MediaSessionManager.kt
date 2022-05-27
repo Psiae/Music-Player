@@ -4,8 +4,8 @@ import android.app.Application
 import android.content.Context
 import android.widget.Toast
 import androidx.annotation.MainThread
-import com.kylentt.mediaplayer.app.coroutines.AppDispatchers
-import com.kylentt.mediaplayer.app.coroutines.AppScope
+import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
+import com.kylentt.mediaplayer.core.coroutines.AppScope
 import com.kylentt.mediaplayer.data.repository.MediaRepository
 import com.kylentt.mediaplayer.data.repository.ProtoRepository
 import com.kylentt.mediaplayer.domain.mediasession.service.connector.ControllerCommand

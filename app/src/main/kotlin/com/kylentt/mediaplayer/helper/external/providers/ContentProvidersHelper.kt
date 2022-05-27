@@ -1,11 +1,17 @@
 package com.kylentt.mediaplayer.helper.external.providers
 
 import android.content.ContentResolver
+import android.content.Context
 import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
+import android.provider.OpenableColumns
+import androidx.core.net.toUri
+import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import com.kylentt.mediaplayer.helper.VersionHelper
+import timber.log.Timber
 import java.io.File
+import java.net.URLDecoder
 
 object ContentProvidersHelper {
   const val storagePath = "/storage"
@@ -57,7 +63,7 @@ object ContentProvidersHelper {
   }
 
   @JvmStatic
-  fun inSchemeContentUri(uri: Uri): Boolean {
+  fun isSchemeContentUri(uri: Uri): Boolean {
     return isSchemeContentUri(uri.toString())
   }
 
@@ -65,6 +71,46 @@ object ContentProvidersHelper {
   fun isSchemeContentUri(uri: String): Boolean {
     return uri.startsWith(contentScheme)
   }
+
+	@JvmStatic fun getDecodedContentUri(uri: Uri, context: Context, fileName: String?): Uri =
+		getDecodedContentUri(uri.toString(), context, fileName).toUri()
+
+	@JvmStatic
+	fun getDecodedContentUri(uriString: String, context: Context, fileName: String?): String {
+		checkArgument(isSchemeContentUri(uriString))
+		val uri = Uri.parse(uriString)
+		val nFilename = fileName
+			?: context.contentResolver.query(uri, null, null, null ,null)?.use { cursor ->
+				cursor.moveToFirst()
+				val index = cursor.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME)
+				cursor.getString(index)
+			}
+
+		var decodeTimes = 0
+		var decodedUriString: String = uriString
+
+		when {
+			nFilename == null -> {
+				throw IllegalStateException("Could not retrieve FileName ($fileName) for $uriString is null")
+			}
+			nFilename.contains("%") || nFilename.contains("%") -> {
+				var times = 0
+				if (nFilename.contains("%25") && !nFilename.contains("%25 ")) times++
+				decodeTimes += times
+			}
+			uriString.contains("%") -> {
+				var times = 1
+				if (nFilename.contains("%25") && !nFilename.contains("%25 ")) times++
+				decodeTimes += times
+			}
+		}
+		repeat(decodeTimes) { decodedUriString = decodeUri(decodedUriString) }
+
+		Timber.d("getDecodedContentUri returning $decodedUriString")
+		return decodedUriString
+	}
+
+	private fun decodeUri(uriString: String) = URLDecoder.decode(uriString, "UTF-8")
 
 }
 

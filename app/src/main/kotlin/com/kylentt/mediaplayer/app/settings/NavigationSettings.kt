@@ -17,8 +17,13 @@ data class NavigationSettings(
   val bnvSettings: BottomNavigationSettings
 ) {
 
+	val defaultValue
+		get() = Companion.DEFAULT
+
   companion object {
-    @JvmStatic val DEFAULT by lazy {
+
+    @JvmStatic
+    val DEFAULT: NavigationSettings by lazy {
       val bnvSettings = BottomNavigationSettings.DEFAULT
       NavigationSettings(bnvSettings = bnvSettings)
     }
@@ -32,6 +37,9 @@ data class BottomNavigationSettings(
   @FloatRange(from = 0.0, to = 100.0) val visibility: Float
 ) {
 
+	val defaultValue
+		get() = Companion.DEFAULT
+
   enum class ItemAlignment {
     VERTICAL,
     HORIZONTAL
@@ -43,11 +51,13 @@ data class BottomNavigationSettings(
   }
 
   companion object {
-    @JvmStatic val DEFAULT by lazy {
+    @JvmStatic
+    val DEFAULT: BottomNavigationSettings by lazy {
       val defAnimation = ItemAnimation.VISIBILITY
       val defAlignment = ItemAlignment.VERTICAL
       val defVisibility = 90f
       BottomNavigationSettings(defAnimation, defAlignment, defVisibility)
     }
   }
+
 }

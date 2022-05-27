@@ -1,13 +1,30 @@
 package com.kylentt.mediaplayer.app.delegates
 
 import android.app.Application
+import android.content.Context
+import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
 import androidx.annotation.DrawableRes
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
+import androidx.core.content.ContextCompat
+import com.kylentt.mediaplayer.BuildConfig
 import com.kylentt.mediaplayer.app.delegates.device.DeviceWallpaper
 import com.kylentt.mediaplayer.app.delegates.device.StoragePermission
+import com.kylentt.mediaplayer.core.annotation.Singleton
+import com.kylentt.mediaplayer.core.delegates.LateLazy
+import com.kylentt.mediaplayer.core.delegates.LateLazySample
+import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
+
+
+interface ApplicationDelegate {
+	val application: Application
+	fun hasPermission(permission: String): Boolean
+	fun hasStoragePermission(): Boolean
+	fun getDeviceWallpaper(): Drawable?
+	fun getImageVector(@DrawableRes id: Int): ImageVector
+}
 
 /**
  * Singleton to use if there's need to get the [Application] Context
@@ -15,35 +32,63 @@ import com.kylentt.mediaplayer.helper.Preconditions.checkState
  * @since 2022/04/30
  */
 
-class AppDelegate private constructor(app: Application) {
+@Singleton
+@javax.inject.Singleton
+class AppDelegate private constructor(app: Application) : ApplicationDelegate {
 
-  @JvmField
-  val base = app
+	private constructor(context: Context) : this(context.applicationContext as Application)
 
-  val deviceWallpaperDrawable: Drawable? by DeviceWallpaper
-  val storagePermission: Boolean by StoragePermission
+	private val base = app
+	private val storagePermission by StoragePermission
+	private val wallpaperDrawable by DeviceWallpaper
 
-  fun getImageVectorFromDrawable(@DrawableRes id: Int): ImageVector =
-    ImageVector.vectorResource(base.theme, base.resources, id)
+	override val application: Application
+		get() = base
+
+	override fun hasPermission(permission: String): Boolean {
+		checkArgument(isPermissionString(permission)) {
+			"Invalid Permission String: $permission"
+		}
+		return checkSelfPermission(permission)
+	}
+
+	override fun hasStoragePermission(): Boolean = storagePermission
+
+	override fun getDeviceWallpaper(): Drawable? = wallpaperDrawable
+	override fun getImageVector(@DrawableRes id: Int): ImageVector {
+		return ImageVector.vectorResource(application.theme, application.resources, id)
+	}
+
+	private fun checkSelfPermission(permission: String): Boolean {
+		checkArgument(isPermissionString(permission)) {
+			"Invalid Permission String: $permission"
+		}
+		val status = ContextCompat.checkSelfPermission(application, permission)
+		return isPermissionStatusGranted(status)
+	}
+
+	private fun isPermissionString(string: String): Boolean =
+		string.startsWith(ANDROID_PERMISSION_PREFIX)
+
+	private fun isPermissionStatusGranted(status: Int): Boolean =
+		status == PackageManager.PERMISSION_GRANTED
 
   companion object {
+		const val ANDROID_PERMISSION_PREFIX = "android.permission"
 
     private val initializer = LateLazy<AppDelegate>()
-
-    private val delegate: AppDelegate by initializer
+    private val delegate by initializer
 
     @JvmStatic
-    val deviceWallpaper
-       get() = delegate.deviceWallpaperDrawable
+    val deviceWallpaperDrawable
+       get() = delegate.getDeviceWallpaper()
 
     @JvmStatic
     val hasStoragePermission
-       get() = delegate.storagePermission
+       get() = delegate.hasStoragePermission()
 
     /**
-     * Bypass [androidx.annotation.RequiresPermission]
-     * anyOf [android.Manifest.permission.READ_EXTERNAL_STORAGE] and [android.Manifest.permission.WRITE_EXTERNAL_STORAGE] annotation,
-     * because the getter variable couldn't do so as it check the function name
+     * Bypass [androidx.annotation.RequiresPermission as it check the function name
      * @return [Boolean] from [StoragePermission]
      */
 
@@ -55,19 +100,22 @@ class AppDelegate private constructor(app: Application) {
      * @return [ImageVector] from [ImageVector.Companion.vectorResource]
      */
 
-    @JvmStatic fun getImageVector(@DrawableRes id: Int) = delegate.getImageVectorFromDrawable(id)
+    @JvmStatic
+		fun getImageVectorFromDrawableId(@DrawableRes id: Int) = delegate.getImageVector(id)
 
     /**
-     * Provide the Instance, should be done through One-Time Initializer, e.g: Androidx.startup
+     * Provide the Instance
      * @see [com.kylentt.mediaplayer.app.dependency.AppInitializer.create]
-     * @param [app] the base [Application] class to access resource from
+     * @param [context] the base [Application] class to access resource from
      */
 
     @JvmStatic
-    fun provides(app: Application) {
-      LateLazySample.runTestCase()
+    fun provides(context: Context): AppDelegate {
+      if (BuildConfig.DEBUG) {
+				LateLazySample.runTestCase()
+      }
       checkState(!initializer.isInitialized)
-      initializer.init { AppDelegate(app) }
+      return initializer.initializeValue { AppDelegate(context) }
     }
   }
 }

@@ -2,9 +2,8 @@ package com.kylentt.mediaplayer.app.dependency
 
 import android.content.Context
 import coil.Coil
-import coil.ImageLoader
-import com.kylentt.mediaplayer.app.coroutines.AppDispatchers
-import com.kylentt.mediaplayer.app.coroutines.AppScope
+import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
+import com.kylentt.mediaplayer.core.coroutines.AppScope
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -44,5 +43,4 @@ object AppModule {
         unconfinedScope = CoroutineScope(context = unconfined + SupervisorJob())
       )
   }
-
 }

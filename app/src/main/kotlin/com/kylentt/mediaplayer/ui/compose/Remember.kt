@@ -20,8 +20,7 @@ fun rememberWallpaperBitmapAsState(): State<Bitmap?> {
         onEvent = Lifecycle.Event.ON_START
     ) { _ ->
 
-        val drawable by DeviceWallpaper
-        val bitmap = drawable?.toBitmap()
+        val bitmap = DeviceWallpaper.getBitmap()
 
         LaunchedEffect(key1 = bitmap.hashCode()) {
             wallpaper.value = bitmap

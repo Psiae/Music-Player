@@ -1,8 +1,8 @@
 package com.kylentt.mediaplayer.domain.mediasession
 
 import android.content.Context
-import com.kylentt.mediaplayer.app.coroutines.AppDispatchers
-import com.kylentt.mediaplayer.app.coroutines.AppScope
+import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
+import com.kylentt.mediaplayer.core.coroutines.AppScope
 import com.kylentt.mediaplayer.data.repository.MediaRepository
 import com.kylentt.mediaplayer.data.repository.ProtoRepository
 import com.kylentt.mediaplayer.helper.image.CoilHelper

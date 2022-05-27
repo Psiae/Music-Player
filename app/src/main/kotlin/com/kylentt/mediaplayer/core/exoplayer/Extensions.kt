@@ -13,6 +13,7 @@ import androidx.media3.common.Player
 // TODO: Consider Removing Extension on Primitives Type
 
 object PlayerExtension {
+
   private const val STATE_IDLE_STRING = "STATE_IDLE"
   private const val STATE_BUFFERING_STRING = "STATE_BUFFERING"
   private const val STATE_READY_STRING = "STATE_READY"

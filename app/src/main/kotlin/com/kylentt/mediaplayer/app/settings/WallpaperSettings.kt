@@ -21,6 +21,9 @@ data class WallpaperSettings(
   val sourceALT: Source
 ) {
 
+	val defaultValue
+		get() = Companion.DEFAULT
+
   enum class Mode {
     NORMAL,
     NAVIGATION,
@@ -34,7 +37,7 @@ data class WallpaperSettings(
 
   companion object {
 
-    @JvmStatic val DEFAULT by lazy {
+    @JvmStatic val DEFAULT: WallpaperSettings by lazy {
       val mode = Mode.NAVIGATION
       val source = Source.MEDIA_ITEM
       val sourceAlt = Source.DEVICE_WALLPAPER

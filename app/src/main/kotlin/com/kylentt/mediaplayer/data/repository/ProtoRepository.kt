@@ -2,21 +2,21 @@ package com.kylentt.mediaplayer.data.repository
 
 import android.app.Application
 import android.content.Context
-import androidx.datastore.dataStore
-import com.kylentt.mediaplayer.app.coroutines.AppScope
+import com.kylentt.mediaplayer.core.coroutines.AppScope
 import com.kylentt.mediaplayer.app.settings.AppSettings
-import com.kylentt.mediaplayer.app.settings.AppSettingsSerializer
+import com.kylentt.mediaplayer.app.settings.AppSettings.Companion.settingsDataStore
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Singleton
 
 /**
- * Repository Containing Protobuf related data, e.g: AppSettings in Proto DataStore
- * @property [appSettingSF] @returns [StateFlow] of [AppSettings] from [collectFromSettings]
- * @property [collectFromSettings] @returns [Flow] of [AppSettings] from [androidx.datastore.core.DataStore]
- * @property [writeToSettings] Writes [AppSettings] to [androidx.datastore.core.DataStore]
+ * Proto Datastore Repository
+ *
  * @see ProtoRepositoryImpl
  * @author Kylentt
  * @since 2022/04/30
@@ -35,11 +35,6 @@ class ProtoRepositoryImpl(
   private val context: Context,
   private val scope: AppScope
 ): ProtoRepository {
-
-  companion object {
-    @JvmStatic
-    val Context.settingsDataStore by dataStore("app-settings.json", AppSettingsSerializer)
-  }
 
   private val _appSettings = MutableStateFlow(AppSettings.INVALID)
 

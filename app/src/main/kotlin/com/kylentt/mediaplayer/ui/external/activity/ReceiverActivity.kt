@@ -6,11 +6,12 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.kylentt.mediaplayer.R
+import com.kylentt.mediaplayer.ui.activity.IntentExtension.isActionView
 import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity
 import timber.log.Timber
 
 /**
- * [Activity] Class that filter any incoming [Intent] and launch its handler [Activity]
+ * [Activity] Class that filter incoming [Intent] and launch its handler [Activity]
  * @see [MainActivity]
  */
 
@@ -18,10 +19,11 @@ class ReceiverActivity: ComponentActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
-    if (intent != null) {
-      launchMainActivity(intent)
-      finishAfterTransition()
+    when {
+      intent == null -> Unit
+      intent.isActionView() -> launchMainActivity(intent)
     }
+    finishAfterTransition()
   }
 
   private fun launchMainActivity(withIntent: Intent) {

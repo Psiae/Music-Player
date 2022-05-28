@@ -59,8 +59,30 @@ import timber.log.Timber
 import javax.inject.Inject
 import kotlin.system.exitProcess
 
+interface MediaServiceInterface {
+	val currentMediaSession: MediaSession
+	val currentSessionPlayer: Player
+
+	val notificationManager: NotificationManager
+	val notificationProvider: MediaServiceNotificationProvider
+
+	val serviceListener: MediaServiceListener
+
+	@MainThread
+	fun whenSessionReady(what: (MediaServiceSession) -> Unit)
+
+	@MainThread
+	fun startServiceAsForeground(notification: Notification)
+
+	@MainThread
+	fun stopServiceAsForeground(removeNotification: Boolean)
+
+	@MainThread
+	fun registerOnDestroyCallback(what: () -> Unit)
+}
+
 @AndroidEntryPoint
-class MediaService : MediaLibraryService() {
+class MediaService : MediaLibraryService(), MediaServiceInterface {
 
   /**
    * [MediaSession] Manager for this Service
@@ -69,22 +91,34 @@ class MediaService : MediaLibraryService() {
    */
 
   private lateinit var serviceSession: MediaServiceSession
-  private val onSessionReady = mutableListOf<(MediaServiceSession) -> Unit>()
+  private val whenSessionReadyListener = mutableListOf<(MediaServiceSession) -> Unit>()
 
   @MainThread
-  fun whenSessionReady(what: (MediaServiceSession) -> Unit) {
+  override fun whenSessionReady(what: (MediaServiceSession) -> Unit) {
     checkMainThread()
     if (::serviceSession.isInitialized) {
       return what(serviceSession)
     }
-    onSessionReady.add { what(it) }
+    whenSessionReadyListener.add { what(it) }
   }
 
-  val currentMediaSession
+  override val currentMediaSession
     get() = serviceSession.mediaSession
 
-  val sessionPlayer
+  override val currentSessionPlayer
     get() = serviceSession.sessionPlayer
+
+	override val notificationProvider: MediaServiceNotificationProvider by lazy {
+		MediaServiceNotificationProviderImpl(service = this)
+	}
+
+	override val notificationManager by lazy {
+		getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+	}
+
+	override val serviceListener: MediaServiceListener by lazy {
+		MediaServiceListenerImpl(this)
+	}
 
   /**
    * this Service Component Dependency
@@ -117,18 +151,10 @@ class MediaService : MediaLibraryService() {
     PendingIntent.getActivity(this, 444, intent, flag)
   }
 
-	val onDestroyCallback = mutableListOf<() -> Unit>()
+	private val onDestroyCallback = mutableListOf<() -> Unit>()
 
-  val notificationProvider by lazy {
-    MediaServiceNotificationProviderImpl(service = this)
-  }
-
-  val notificationManager by lazy {
-    getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-  }
-
-	val sessionPlayerListener: MediaServiceListener by lazy {
-		MediaServiceListenerImpl(this)
+	val sessionEventHandler: MediaServiceEventHandler by lazy {
+		MediaServiceEventHandlerImpl(this)
 	}
 
   val computationScope by lazy { CoroutineScope(dispatchers.computation + SupervisorJob()) }
@@ -145,7 +171,11 @@ class MediaService : MediaLibraryService() {
     setCurrent()
     updateState(ALIVE)
 
-		whenSessionReady { it.registerListener(sessionPlayer, sessionPlayerListener.playerLister) }
+		whenSessionReady {
+			serviceListener.registerPlayerListener(it.sessionPlayer,
+				serviceListener.defaultPlayerLister
+			)
+		}
   }
 
   override fun onGetSession(controllerInfo: MediaSession.ControllerInfo) = librarySession
@@ -169,6 +199,10 @@ class MediaService : MediaLibraryService() {
     }
   }
 
+	override fun registerOnDestroyCallback(what: () -> Unit) {
+		onDestroyCallback.add(what)
+	}
+
   private fun cancelServiceScope() {
     computationScope.cancel()
     ioScope.cancel()
@@ -176,10 +210,11 @@ class MediaService : MediaLibraryService() {
   }
 
   private fun releaseAllPlayers() {
-    if (exoPlayer !== sessionPlayer) {
+    if (exoPlayer !== currentSessionPlayer) {
       exoPlayer.release()
     }
-    serviceSession.releaseSessionPlayer()
+		currentSessionPlayer.release()
+    serviceListener.unregisterAllListener(this)
   }
 
   private fun unregisterReceivers() {
@@ -187,18 +222,21 @@ class MediaService : MediaLibraryService() {
   }
 
   @MainThread
-  fun startServiceAsForeground(id: Int, notification: Notification) {
+  override fun startServiceAsForeground(notification: Notification) {
     checkMainThread()
     if (VersionHelper.hasQ()) {
-      startForeground(id, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
+      startForeground(notificationProvider.mediaNotificationId,
+				notification,
+				ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+			)
     } else {
-      startForeground(id, notification)
+      startForeground(notificationProvider.mediaNotificationId, notification)
     }
     updateState(FOREGROUND)
   }
 
   @MainThread
-  fun stopServiceFromForeground(removeNotification: Boolean) {
+  override fun stopServiceAsForeground(removeNotification: Boolean) {
     checkMainThread()
     stopForeground(false)
     if (removeNotification) {
@@ -212,9 +250,9 @@ class MediaService : MediaLibraryService() {
     override fun onReceive(context: Context?, intent: Intent?) {
       if (intent == null) return
       val action = intent.getStringExtra(PLAYBACK_CONTROL_ACTION) ?: return
-      Timber.d("onReceive, action: $action, playbackState: ${sessionPlayer.playbackState}")
+      Timber.d("onReceive, action: $action, playbackState: ${currentSessionPlayer.playbackState}")
 
-      if (sessionPlayer.currentMediaItem == null) {
+      if (currentSessionPlayer.currentMediaItem == null) {
         validateItem(intent)
         return
       }
@@ -228,12 +266,12 @@ class MediaService : MediaLibraryService() {
         ACTION_REPEAT_ONE_TO_ALL -> onReceiveRepeatOneToAll()
         ACTION_REPEAT_ALL_TO_OFF -> onReceiveRepeatAllToOff()
         ACTION_STOP_CANCEL -> onReceiveStopCancel()
-        ACTION_DISMISS_NOTIFICATION -> stopServiceFromForeground(true)
+        ACTION_DISMISS_NOTIFICATION -> stopServiceAsForeground(true)
       }
     }
 
     private var isValidating = false
-    private fun validateItem(intent: Intent?) = with(sessionPlayer) {
+    private fun validateItem(intent: Intent?) = with(currentSessionPlayer) {
       Timber.d("checkItem CurrentMediaItem: $currentMediaItem")
 
       if (currentMediaItem == null && !isValidating) {
@@ -253,7 +291,7 @@ class MediaService : MediaLibraryService() {
       }
     }
 
-    private fun onReceiveActionPlay(intent: Intent?): Unit = with(sessionPlayer) {
+    private fun onReceiveActionPlay(intent: Intent?): Unit = with(currentSessionPlayer) {
 			if (playWhenReady && playbackState.isOngoing()) {
 				return notificationProvider.updateSessionNotification(serviceSession.mediaSession)
 			}
@@ -264,14 +302,14 @@ class MediaService : MediaLibraryService() {
           seekTo(0L)
         }
         playbackState.isStateIdle() -> {
-          sessionPlayer.prepare()
+          currentSessionPlayer.prepare()
         }
       }
 
       playWhenReady = true
     }
 
-    private fun onReceiveActionPause() = with(sessionPlayer) {
+    private fun onReceiveActionPause() = with(currentSessionPlayer) {
       if (!playWhenReady && playbackState.isOngoing()) {
 				return notificationProvider.updateSessionNotification(serviceSession.mediaSession)
       }
@@ -284,7 +322,7 @@ class MediaService : MediaLibraryService() {
 			}
     }
 
-    private fun onReceiveActionNext() = with(sessionPlayer) {
+    private fun onReceiveActionNext() = with(currentSessionPlayer) {
 			if (!hasNextMediaItem() && playbackState.isOngoing()) {
 				return notificationProvider.updateSessionNotification(serviceSession.mediaSession)
 			}
@@ -297,7 +335,7 @@ class MediaService : MediaLibraryService() {
       }
     }
 
-    private fun onReceiveActionPrev() = with(sessionPlayer) {
+    private fun onReceiveActionPrev() = with(currentSessionPlayer) {
 			if (!hasPreviousMediaItem() && playbackState.isOngoing()) {
 				return notificationProvider.updateSessionNotification(serviceSession.mediaSession)
 			}
@@ -310,7 +348,7 @@ class MediaService : MediaLibraryService() {
 			}
     }
 
-    private fun onReceiveRepeatOffToOne() = with(sessionPlayer) {
+    private fun onReceiveRepeatOffToOne() = with(currentSessionPlayer) {
 			if (!repeatMode.isRepeatOff() && playbackState.isOngoing()) {
 				return notificationProvider.updateSessionNotification(serviceSession.mediaSession)
 			}
@@ -323,7 +361,7 @@ class MediaService : MediaLibraryService() {
       }
     }
 
-    private fun onReceiveRepeatOneToAll() = with(sessionPlayer) {
+    private fun onReceiveRepeatOneToAll() = with(currentSessionPlayer) {
 			if (!repeatMode.isRepeatOne() && playbackState.isOngoing()) {
 				return notificationProvider.updateSessionNotification(serviceSession.mediaSession)
 			}
@@ -336,7 +374,7 @@ class MediaService : MediaLibraryService() {
 			}
     }
 
-    private fun onReceiveRepeatAllToOff() = with(sessionPlayer) {
+    private fun onReceiveRepeatAllToOff() = with(currentSessionPlayer) {
 			if (!repeatMode.isRepeatAll() && playbackState.isOngoing()) {
 				return notificationProvider.updateSessionNotification(serviceSession.mediaSession)
 			}
@@ -349,12 +387,12 @@ class MediaService : MediaLibraryService() {
 			}
     }
 
-    private fun onReceiveStopCancel() = with(sessionPlayer) {
+    private fun onReceiveStopCancel() = with(currentSessionPlayer) {
       val duration = 1000L
 			val removeNotification = !playbackState.isOngoing()
       val command = ControllerCommand.STOP.wrapWithFadeOut(flush = true, duration = duration) {
         val foreground = isForeground
-        stopServiceFromForeground(removeNotification)
+				stopServiceAsForeground(removeNotification)
         if (!foreground && !MainActivity.isAlive) {
           // NPE in MediaControllerImplBase.java:3041 when calling librarySession.release()
           onDestroy()
@@ -373,7 +411,7 @@ class MediaService : MediaLibraryService() {
       // Any Exception Here will not throw, Log.w is used internally
       Timber.d("MediaLibraryCallback onConnect for $session")
       serviceSession = MediaServiceSession.getInstance(this@MediaService)
-      onSessionReady.forEachClear { it(serviceSession) }
+      whenSessionReadyListener.forEachClear { it(serviceSession) }
       return super.onConnect(session, controller)
     }
   }

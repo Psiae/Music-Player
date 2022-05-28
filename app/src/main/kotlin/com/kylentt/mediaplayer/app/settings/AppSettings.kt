@@ -90,14 +90,4 @@ object AppSettingsSerializer : Serializer<AppSettings> {
         Timber.e(e)
       }
     }
-	
-	@Composable
-	fun idk() {
-		Button(onClick = { /*TODO*/ }) {
-			Scaffold() {
-				
-			}
-		}
-	}
-
 }

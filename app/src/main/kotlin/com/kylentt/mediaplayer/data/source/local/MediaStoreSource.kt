@@ -9,12 +9,11 @@ import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
-import com.kylentt.mediaplayer.core.exoplayer.MediaMetadataHelper.putDisplayTitle
-import com.kylentt.mediaplayer.core.exoplayer.MediaMetadataHelper.putFileName
-import com.kylentt.mediaplayer.core.exoplayer.MediaMetadataHelper.putStoragePath
+import com.kylentt.mediaplayer.core.exoplayer.mediaItem.MediaMetadataHelper.putDisplayTitle
+import com.kylentt.mediaplayer.core.exoplayer.mediaItem.MediaMetadataHelper.putFileName
+import com.kylentt.mediaplayer.core.exoplayer.mediaItem.MediaMetadataHelper.putStoragePath
 import com.kylentt.mediaplayer.helper.VersionHelper
 import com.kylentt.mediaplayer.data.SongEntity
-import com.kylentt.mediaplayer.helper.external.providers.DocumentProviderHelper
 import com.kylentt.mediaplayer.helper.media.MediaItemHelper
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.*

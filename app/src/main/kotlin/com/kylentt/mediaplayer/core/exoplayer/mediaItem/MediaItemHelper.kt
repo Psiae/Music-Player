@@ -1,4 +1,4 @@
-package com.kylentt.mediaplayer.core.exoplayer
+package com.kylentt.mediaplayer.core.exoplayer.mediaItem
 
 import android.os.Bundle
 import androidx.media3.common.MediaItem

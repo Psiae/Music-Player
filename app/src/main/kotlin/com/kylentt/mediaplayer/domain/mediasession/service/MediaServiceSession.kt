@@ -4,8 +4,16 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import com.kylentt.mediaplayer.core.delegates.LateLazy
+import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import timber.log.Timber
 import javax.inject.Singleton
+
+
+
+interface MediaServiceSessionListener {
+	fun onMediaSessionChanged(mediaSession: MediaSession)
+	fun onPlayerSessionChanged(player: Player)
+}
 
 /**
  * Class To Manage [MediaSession] of [MediaLibraryService]
@@ -21,80 +29,34 @@ class MediaServiceSession private constructor(
   private var service: MediaService
 ) {
 
-  private val listeners = mutableListOf<Pair<Player, Player.Listener>>()
+	private val sessionChangedListener = mutableListOf<MediaServiceSessionListener>()
 
   val mediaSession
-    get() = service.sessions.first()
+    get() = service.sessions.last()
 
   val sessionPlayer
     get() = mediaSession.player
 
-  fun registerListener(player: Player, listener: Player.Listener) {
-    player.addListener(listener)
-    listeners.add(player to listener)
-  }
+	fun registerSessionChangeListener(listener: MediaServiceSessionListener) {
+		sessionChangedListener.add(listener)
+	}
 
-  fun unregisterListener(player: Player) {
-    var counter = 0
-    listeners.forEach {
-      if (it.first === player) {
-        it.first.removeListener(it.second)
-        val msg =
-          "MediaServiceSession unregisterListenerByPlayer," +
-          "\nremoved ${it.second} from ${it.first}, counter: ${++counter}"
-        Timber.d(msg)
-      }
-    }
-  }
+	fun unregisterSessionChangeListener(listener: MediaServiceSessionListener): Boolean {
+		return sessionChangedListener.remove(listener)
+	}
 
-  fun unregisterListener(listener: Player.Listener) {
-    var counter = 0
-    listeners.forEach {
-      if (it.second === listener) {
-        it.first.removeListener(it.second)
-        val msg =
-          "MediaServiceSession unregisterListenerByListener," +
-            "\nremoved ${it.second} from ${it.first}, counter: ${++counter}"
-        Timber.d(msg)
-      }
-    }
-  }
+	fun replaceMediaSession(session: MediaSession) {
+		if (service.sessions.isNotEmpty()) checkState(service.sessions.size == 1)
+		service.addSession(session)
+		service.removeSession(service.sessions.first())
+		sessionChangedListener.forEach { it.onMediaSessionChanged(mediaSession) }
+	}
 
-  fun unregisterListener(player: Player, listener: Player.Listener) {
-    var counter = 0
-    listeners.forEach {
-      if (it.first === player && it.second === listener) {
-        it.first.removeListener(it.second)
-        val msg =
-          "MediaServiceSession unregisterListenerByPair," +
-            "\nremoved ${it.second} from ${it.first}, counter: ${++counter}"
-        Timber.d(msg)
-      }
-    }
-  }
-
-  fun unregisterAllListener() {
-    listeners.forEach { it.first.removeListener(it.second) }
-  }
-
-  fun releaseSessionPlayer() {
-    unregisterListener(sessionPlayer)
-    sessionPlayer.release()
-  }
-
-  fun replaceSessionPlayer(player: Player, removeListener: Boolean, release: Boolean) {
-    if (removeListener) {
-      unregisterListener(sessionPlayer)
-    }
-    if (release) {
-      releaseSessionPlayer()
-    }
-    mediaSession.player = player
-  }
-
-  fun release() {
-    unregisterAllListener()
-  }
+	fun replaceSessionPlayer(player: Player) {
+		if (service.sessions.isNotEmpty()) checkState(service.sessions.size == 1)
+		mediaSession.player = player
+		sessionChangedListener.forEach { it.onPlayerSessionChanged(sessionPlayer) }
+	}
 
   companion object {
 		private val initializer = LateLazy<MediaServiceSession>()
@@ -105,7 +67,6 @@ class MediaServiceSession private constructor(
 				initializer.initializeValue { MediaServiceSession(service) }
 			}
       if (instance.service !== service) {
-        instance.release()
         instance.service = service
       }
       return instance

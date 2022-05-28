@@ -21,9 +21,11 @@ import androidx.media3.session.MediaNotification
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaStyleNotificationHelper
 import com.kylentt.mediaplayer.R
+import com.kylentt.mediaplayer.core.annotation.ThreadSafe
 import com.kylentt.mediaplayer.core.delegates.LockMainThread
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isOngoing
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateBuffering
+import com.kylentt.mediaplayer.core.exoplayer.mediaItem.MediaItemHelper.getDebugDescription
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkNotMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
@@ -46,24 +48,23 @@ interface MediaServiceNotificationProvider : MediaNotification.Provider {
 	val mediaNotificationName: String
 	val mediaNotificationId: Int
 
-	fun getSessionNotification(session: MediaSession): Notification
-	fun updateSessionNotification(session: MediaSession): Unit
-	fun considerForegroundService(player: Player, notification: Notification)
-	fun considerForegroundService(session: MediaSession)
+	@MainThread fun getSessionNotification(session: MediaSession): Notification
+	@MainThread fun updateSessionNotification(session: MediaSession): Unit
+	@MainThread fun considerForegroundService(player: Player, notification: Notification)
+	@MainThread fun considerForegroundService(session: MediaSession)
 
-	suspend fun suspendUpdateNotification(
-		session: MediaSession,
-		largeIcon: Bitmap?
+	@ThreadSafe suspend fun suspendUpdateNotification(
+		session: MediaSession
 	)
 
-	suspend fun suspendHandleMediaItemTransition(
+	@ThreadSafe suspend fun suspendHandleMediaItemTransition(
 		item: MediaItem,
 		@Player.MediaItemTransitionReason reason: Int
 	)
 
-	suspend fun suspendHandleRepeatModeChanged(@Player.RepeatMode mode: Int)
+	@ThreadSafe suspend fun suspendHandleRepeatModeChanged(@Player.RepeatMode mode: Int)
 
-	suspend fun dispatchSuspendNotificationValidator(times: Int, interval: Long, update: () -> Unit)
+	@ThreadSafe suspend fun dispatchSuspendNotificationValidator(times: Int, interval: Long, update: suspend () -> Unit)
 }
 
 class MediaServiceNotificationProviderImpl(
@@ -135,8 +136,8 @@ class MediaServiceNotificationProviderImpl(
 		actionFactory: MediaNotification.ActionFactory,
 		onNotificationChangedCallback: MediaNotification.Provider.Callback
 	): MediaNotification {
-		val notification = with(mediaController) {
-			getNotificationFromPlayer(this, getItemBitmap(this), mediaNotificationChannelName)
+		val notification = with(mediaSession) {
+			getNotificationForSession(this, mediaNotificationChannelName)
 		}
 		service.mainScope.launch {
 			suspendHandleMediaNotificationChangedCallback(onNotificationChangedCallback)
@@ -152,8 +153,7 @@ class MediaServiceNotificationProviderImpl(
 
 	@MainThread
 	override fun getSessionNotification(session: MediaSession): Notification {
-		val player = session.player
-		return getNotificationFromPlayer(player, getItemBitmap(player), NOTIFICATION_CHANNEL_NAME)
+		return getNotificationForSession(session, NOTIFICATION_CHANNEL_NAME)
 	}
 
 	@MainThread
@@ -167,35 +167,36 @@ class MediaServiceNotificationProviderImpl(
 	) {
 		launchSessionNotificationValidator(mediaSession) {
 			val mediaNotification = MediaNotification(mediaNotificationId, it)
+			coroutineContext.ensureActive()
 			callback.onNotificationChanged(mediaNotification)
 		}
 	}
 
-	@MainThread
+
 	private suspend fun launchSessionNotificationValidator(
 		session: MediaSession,
-		onUpdate: (Notification) -> Unit
-	) {
-		dispatchSuspendNotificationValidator(2, 500) {
+		onUpdate: suspend (Notification) -> Unit
+	) = withContext(dispatchers.main) {
+		dispatchSuspendNotificationValidator(2, 1000) {
 			val player = session.player
 			val notification =
-				getNotificationFromPlayer(player, getItemBitmap(player), mediaNotificationChannelName)
+				getNotificationForSession(session, mediaNotificationChannelName)
 			onUpdate(notification)
 			considerForegroundService(player, notification)
 		}
 	}
 
-	@MainThread
 	override suspend fun suspendUpdateNotification(
-		session: MediaSession,
-		largeIcon: Bitmap?
-	): Unit = withContext(coroutineContext) {
-		val updateBlock = {
+		session: MediaSession
+	): Unit = withContext(dispatchers.main) {
+		val updateBlock: suspend () -> Unit = {
 			val notification =
-				getNotificationFromPlayer(session.player, largeIcon, mediaNotificationChannelName)
+				getNotificationForSession(session, mediaNotificationChannelName)
 			ensureActive()
+			Timber.d("suspendUpdateNotification notify for ${session.player.currentMediaItem?.getDebugDescription()}")
 			notificationManager.notify(mediaNotificationId, notification)
 		}
+		ensureActive()
 		updateBlock()
 		launchSessionNotificationValidator(session) { updateBlock() }
 	}
@@ -204,7 +205,7 @@ class MediaServiceNotificationProviderImpl(
 	override suspend fun dispatchSuspendNotificationValidator(
 		times: Int,
 		interval: Long,
-		update: () -> Unit
+		update: suspend () -> Unit
 	) {
 		checkMainThread()
 		validatorJob.cancel()
@@ -238,14 +239,12 @@ class MediaServiceNotificationProviderImpl(
 		}
 
 		withContext(dispatchers.main) {
-			val player = mediaSession.player
-			suspendUpdateNotification(mediaSession, getItemBitmap(player))
+			suspendUpdateNotification(mediaSession)
 		}
 	}
 
 	override suspend fun suspendHandleRepeatModeChanged(mode: Int) {
-		val player = mediaSession.player
-		suspendUpdateNotification(mediaSession, getItemBitmap(player))
+		withContext(dispatchers.main) { suspendUpdateNotification(mediaSession) }
 	}
 
 	@WorkerThread
@@ -286,18 +285,19 @@ class MediaServiceNotificationProviderImpl(
 	}
 
   /**
-   * @param player The [Player]
+   * @param player The [MediaSession]
    * @param icon The [Bitmap] for [Notification.Builder.setLargeIcon]
    * @param channelName The Channel Name this [Notification] belong to
    * @return [Notification] suitable for [MediaNotification]
    */
 
 	@MainThread
-  private fun getNotificationFromPlayer(
-		player: Player,
-		icon: Bitmap? = null,
+  private fun getNotificationForSession(
+		session: MediaSession,
 		channelName: String
   ): Notification {
+		val player = session.player
+		val icon = getItemBitmap(player)
 
     val showPlayButton = if (player.playbackState.isStateBuffering()) {
       !player.playWhenReady
@@ -336,13 +336,13 @@ class MediaServiceNotificationProviderImpl(
 		when {
 			player.playbackState.isOngoing() -> {
 				if (!isForeground) {
-					service.startServiceAsForeground(NOTIFICATION_ID, notification)
+					service.startServiceAsForeground(notification)
 				} else {
 					return
 				}
 			}
 			!player.playbackState.isOngoing() -> {
-				service.stopServiceFromForeground(false)
+				service.stopServiceAsForeground(false)
 			}
 		}
     Timber.d("considerForegroundService changed," +
@@ -358,15 +358,15 @@ class MediaServiceNotificationProviderImpl(
 		val isForeground = MediaService.isForeground
 		val player = session.player
 		when {
+			!player.playbackState.isOngoing() -> {
+				service.stopServiceAsForeground(false)
+			}
 			player.playbackState.isOngoing() -> {
 				if (!isForeground) {
-					service.startServiceAsForeground(NOTIFICATION_ID, getSessionNotification(session))
+					service.startServiceAsForeground(getSessionNotification(session))
 				} else {
 					return
 				}
-			}
-			!player.playbackState.isOngoing() -> {
-				service.stopServiceFromForeground(false)
 			}
 		}
 		Timber.d("considerForegroundService changed," +

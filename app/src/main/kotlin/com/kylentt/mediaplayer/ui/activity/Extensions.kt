@@ -60,6 +60,8 @@ object CollectionExtension {
 		clear()
 	}
 
+
+
 	@JvmStatic
 	@Suppress("NOTHING_TO_INLINE")
 	inline fun <T> MutableList< () -> T >.forEachClearSync(lock: Any = this) {

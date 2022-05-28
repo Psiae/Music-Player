@@ -6,7 +6,7 @@ plugins {
     id 'org.jetbrains.kotlin.plugin.serialization'
 }
 
-static def Properties getProp(File file) {
+static Properties getProp(File file) {
     def prop = new Properties()
     if (!file.exists()) {
         throw new IllegalArgumentException("couldn't find $file, make sure File is correct")
@@ -15,7 +15,7 @@ static def Properties getProp(File file) {
     return prop
 }
 
-def Properties getRootProp(String propName) {
+Properties getRootProp(String propName) {
     def propFile = rootProject.file(propName)
     if (!propFile.exists()) {
         throw new IllegalStateException("couldn't find $propName in $rootProject")
@@ -24,12 +24,12 @@ def Properties getRootProp(String propName) {
     return prop
 }
 
-def Properties getLocalProp() {
+Properties getLocalProp() {
     def prop = getRootProp("local.properties")
     return prop
 }
 
-def Properties getKeystoreProp() {
+Properties getKeystoreProp() {
     def prop = getRootProp("keystore.properties")
     return prop
 }
@@ -107,7 +107,7 @@ dependencies {
         implementation "androidx.compose.ui:ui-tooling-preview:1.1.1"
         implementation "androidx.lifecycle:lifecycle-runtime-ktx:2.4.1"
         implementation "androidx.activity:activity-compose:1.4.0"
-        implementation 'com.google.android.material:material:1.5.0'
+        implementation 'com.google.android.material:material:1.6.0'
         testImplementation "junit:junit:4.13.2"
         androidTestImplementation "androidx.test.ext:junit:1.1.3"
         androidTestImplementation "androidx.test.espresso:espresso-core:3.4.0"
@@ -132,7 +132,7 @@ dependencies {
 
     // Androidx Extra
     dependencies {
-        def splashScreenVersion = "1.0.0-beta02"
+        def splashScreenVersion = "1.0.0-rc01"
         def startupVersion = "1.1.1"
 
         implementation "androidx.core:core-splashscreen:$splashScreenVersion"
@@ -141,10 +141,10 @@ dependencies {
 
     // Androidx.compose Extra
     dependencies {
-        def composeNavigation = "2.5.0-beta01"
+        def composeNavigation = "2.5.0-rc01"
         def composeMaterialVersion = "1.1.1"
-        def composeMaterialIconVersion = "1.2.0-alpha08"
-        def composeMaterial3Version = "1.0.0-alpha10"
+        def composeMaterialIconVersion = "1.2.0-beta02"
+        def composeMaterial3Version = "1.0.0-alpha12"
 
         implementation "androidx.compose.foundation:foundation:$composeMaterialVersion"
         implementation "androidx.compose.material:material-icons-core:$composeMaterialIconVersion"

@@ -243,7 +243,7 @@ class MediaStoreSourceImpl(
                 duration = duration,
                 data = data,
                 fileName = fileName,
-                fileBucket = folder,
+                fileBucket = folder ?: "",
                 fileBuckedId = folderId,
                 lastModified = dateModified,
                 mediaId = songId,

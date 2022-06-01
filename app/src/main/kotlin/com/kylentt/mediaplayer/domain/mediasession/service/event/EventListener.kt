@@ -13,6 +13,8 @@ import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateReady
 import com.kylentt.mediaplayer.domain.mediasession.service.MusicLibraryService
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.ui.activity.CollectionExtension.forEachClear
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -30,27 +32,32 @@ class MusicLibraryListener(
 
 	private val playerListenerImpl = object : Player.Listener {
 
+		override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+			super.onPlayWhenReadyChanged(playWhenReady, reason)
+			handlePlayWhenReadyChanged(currentMediaSession)
+		}
+
 		override fun onPlaybackStateChanged(playbackState: Int) {
 			super.onPlaybackStateChanged(playbackState)
 			if (!playbackState.isOngoing()) {
 				notificationProvider.considerForegroundService(currentMediaSession)
 			}
-			handlePlayerStateChanged(playbackState)
+			handlePlayerStateChanged(currentMediaSession, playbackState)
 		}
 
 		override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
 			super.onMediaItemTransition(mediaItem, reason)
-			handleMediaItemTransition(mediaItem ?: MediaItem.EMPTY, reason)
-		}
-
-		override fun onPlayerError(error: PlaybackException) {
-			super.onPlayerError(error)
-			handlePlayerError(error)
+			handleMediaItemTransition(currentMediaSession, reason)
 		}
 
 		override fun onRepeatModeChanged(repeatMode: Int) {
 			super.onRepeatModeChanged(repeatMode)
-			handleRepeatModeChanged(repeatMode)
+			handleRepeatModeChanged(currentMediaSession, repeatMode)
+		}
+
+		override fun onPlayerError(error: PlaybackException) {
+			super.onPlayerError(error)
+			handlePlayerError(currentMediaSession, error)
 		}
 	}
 
@@ -103,33 +110,50 @@ class MusicLibraryListener(
 		unregisterPlayerListener(currentMediaSession.player, defaultPlayerLister)
 	}
 
-	private fun handlePlayerError(error: PlaybackException) {
-		service.mainScope
-			.launch {
-				service.mediaEventHandler.handlePlayerError(currentMediaSession, error)
-			}
-	}
-
-	private fun handlePlayerStateChanged(playbackState: @Player.State Int) {
-		service.mainScope.launch {
-			service.mediaEventHandler.handlePlayerStateChanged(currentMediaSession)
-			when (playbackState) {
-				Player.STATE_READY -> playerStateReadyListener.forEachClear { it(currentPlayer) }
-				Player.STATE_BUFFERING -> playerStateReadyListener.forEachClear { it(currentPlayer) }
-				Player.STATE_IDLE -> playerStateReadyListener.forEachClear { it(currentPlayer) }
-				Player.STATE_ENDED -> playerStateEndedListener.forEachClear { it(currentPlayer) }
-			}
+	private var playWhenReadyChangedJob = Job().job
+	private fun handlePlayWhenReadyChanged(session: MediaSession) {
+		playerStateChangedJob.cancel()
+		playerStateChangedJob = service.mainScope.launch {
+			service.mediaEventHandler.handlePlayerPlayWhenReadyChanged(session)
 		}
 	}
 
-	private fun handleMediaItemTransition(item: MediaItem, reason: Int) {
-		service.mainScope
-			.launch { service.mediaEventHandler.handlePlayerMediaItemChanged(currentMediaSession, reason) }
+	private var itemTransitionJob = Job().job
+	private fun handleMediaItemTransition(session: MediaSession, reason: Int) {
+		itemTransitionJob.cancel()
+		itemTransitionJob = service.mainScope.launch {
+			service.mediaEventHandler.handlePlayerMediaItemChanged(currentMediaSession, reason)
+		}
 	}
 
-	private fun handleRepeatModeChanged(mode: Int) {
-		service.mainScope
-			.launch { service.mediaEventHandler.handlePlayerRepeatModeChanged(currentMediaSession) }
+	private var playerErrorJob = Job().job
+	private fun handlePlayerError(session: MediaSession, error: PlaybackException) {
+		playerErrorJob.cancel()
+		playerErrorJob = service.mainScope.launch {
+				service.mediaEventHandler.handlePlayerError(session, error)
+			}
+	}
+
+	private var playerStateChangedJob = Job().job
+	private fun handlePlayerStateChanged(session: MediaSession, playbackState: @Player.State Int) {
+		playerStateChangedJob.cancel()
+		playerStateChangedJob = service.mainScope.launch {
+			service.mediaEventHandler.handlePlayerStateChanged(session)
+		}
+		when (playbackState) {
+			Player.STATE_READY -> playerStateReadyListener.forEachClear { it(currentPlayer) }
+			Player.STATE_BUFFERING -> playerStateReadyListener.forEachClear { it(currentPlayer) }
+			Player.STATE_IDLE -> playerStateReadyListener.forEachClear { it(currentPlayer) }
+			Player.STATE_ENDED -> playerStateEndedListener.forEachClear { it(currentPlayer) }
+		}
+	}
+
+	private var repeatModeChangedJob = Job().job
+	private fun handleRepeatModeChanged(session: MediaSession, mode: Int) {
+		repeatModeChangedJob.cancel()
+		repeatModeChangedJob = service.mainScope.launch {
+			service.mediaEventHandler.handlePlayerRepeatModeChanged(session)
+		}
 	}
 
 	private inline fun elseFalse(condition: Boolean, block: () -> Unit): Boolean {

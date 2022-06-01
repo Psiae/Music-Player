@@ -59,7 +59,6 @@ class MusicLibraryNotificationProvider(
 	private val dispatchers: AppDispatchers = service.coroutineDispatchers
 
   private val notificationBuilder = NotificationBuilder()
-  private var notificationUpdateJob = Job().job
 
   private var itemBitmap = Pair<MediaItem, Bitmap?>(MediaItem.EMPTY, null)
 	private var validatorJob by LockMainThread(Job().job)
@@ -123,7 +122,6 @@ class MusicLibraryNotificationProvider(
 		onNotificationChangedCallback: MediaNotification.Provider.Callback
 	): MediaNotification {
 		val notification = getNotificationForSession(mediaSession, mediaNotificationChannelName)
-		service.mainScope.launch { suspendHandleMediaNotificationChangedCallback(onNotificationChangedCallback) }
 		return MediaNotification(mediaNotificationId, notification)
 	}
 
@@ -144,46 +142,43 @@ class MusicLibraryNotificationProvider(
 	}
 
 	@MainThread
-	private suspend fun suspendHandleMediaNotificationChangedCallback(
-		callback: MediaNotification.Provider.Callback
-	) {
-		launchSessionNotificationValidator(mediaSession) {
-			val mediaNotification = MediaNotification(mediaNotificationId, it)
-			coroutineContext.ensureActive()
-			callback.onNotificationChanged(mediaNotification)
-		}
+	fun updateSessionNotification(notification: Notification) {
+		notificationManager.notify(mediaNotificationId, notification)
 	}
 
-	private suspend fun launchSessionNotificationValidator(
+	suspend fun launchSessionNotificationValidator(
 		session: MediaSession,
 		onUpdate: suspend (Notification) -> Unit
 	) = withContext(dispatchers.main) {
-		val updateBlock: suspend () -> Unit = {
-			val notification = getNotificationForSession(session, mediaNotificationChannelName)
-			onUpdate(notification)
-			considerForegroundService(session.player, notification)
-		}
-		notificationUpdateJob.cancel()
-		notificationUpdateJob = launch {
-			dispatchSuspendNotificationValidator(2, 1000) { updateBlock() }
+		validatorJob.cancel()
+		validatorJob = launch {
+			dispatchSuspendNotificationValidator(2, 1000) {
+				val notification = getNotificationForSession(session, mediaNotificationChannelName)
+				onUpdate(notification)
+				considerForegroundService(session.player, notification)
+			}
 		}
 	}
 
-	suspend fun suspendUpdateNotification(
+	private suspend fun suspendUpdateNotification(
 		session: MediaSession
 	): Unit = withContext(dispatchers.main) {
-		val updateBlock: suspend () -> Unit = {
-			val notification = getNotificationForSession(session, mediaNotificationChannelName)
-			ensureActive()
+		val updateBlock: suspend (Notification) -> Unit = {
 			Timber.d("suspendUpdateNotification notify for ${session.player.currentMediaItem?.getDebugDescription()}")
-			notificationManager.notify(mediaNotificationId, notification)
+			notificationManager.notify(mediaNotificationId, it)
 		}
-		updateBlock()
-		launchSessionNotificationValidator(session) { updateBlock() }
+
+		ensureActive()
+		updateBlock(getSessionNotification(session))
+
+		launchSessionNotificationValidator(session) {
+			ensureActive()
+			updateBlock(it)
+		}
 	}
 
 	@MainThread
-	suspend fun dispatchSuspendNotificationValidator(
+	private suspend fun dispatchSuspendNotificationValidator(
 		times: Int,
 		interval: Long,
 		update: suspend () -> Unit
@@ -261,50 +256,52 @@ class MusicLibraryNotificationProvider(
 		return if (condition) block() else null
 	}
 
-  /**
-   * @param player The [MediaSession]
-   * @param icon The [Bitmap] for [Notification.Builder.setLargeIcon]
-   * @param channelName The Channel Name this [Notification] belong to
-   * @return [Notification] suitable for [MediaNotification]
-   */
+	/**
+	 * @param player The [MediaSession]
+	 * @param icon The [Bitmap] for [Notification.Builder.setLargeIcon]
+	 * @param channelName The Channel Name this [Notification] belong to
+	 * @return [Notification] suitable for [MediaNotification]
+	 */
 
 	@MainThread
-  private fun getNotificationForSession(
+	private fun getNotificationForSession(
 		session: MediaSession,
 		channelName: String
-  ): Notification {
+	): Notification {
+
 		val player = session.player
 		val icon = getItemBitmap(player)
 
-    val showPlayButton = if (player.playbackState.isStateBuffering()) {
-      !player.playWhenReady
-    } else {
-      !player.isPlaying
-    }
+		val showPlayButton = if (player.playbackState.isStateBuffering()) {
+			!player.playWhenReady
+		} else {
+			!player.isPlaying
+		}
 
-    val item = player.currentMediaItem ?: MediaItem.EMPTY
+		val item = player.currentMediaItem ?: MediaItem.EMPTY
 
-    Timber.d("getNotification for ${item.mediaMetadata.displayTitle}, " +
-      "\nshowPlayButton: $showPlayButton"
-    )
+		Timber.d(
+			"getNotification for ${item.mediaMetadata.displayTitle}, " +
+				"\nshowPlayButton: $showPlayButton"
+		)
 
-    return notificationBuilder
-      .buildMediaNotification(
-        session = mediaSession,
-        largeIcon = icon,
-        channelName = channelName,
-        currentItemIndex = player.currentMediaItemIndex,
-        currentItem = item,
-        playerState = player.playbackState,
-        repeatMode = player.repeatMode,
-        showPrevButton = player.hasPreviousMediaItem(),
-        showNextButton = player.hasNextMediaItem(),
-        showPlayButton = showPlayButton,
-        subtitle = item.mediaMetadata.artist.toString(),
-        subtext = item.mediaMetadata.albumTitle.toString(),
-        title = item.mediaMetadata.displayTitle.toString()
-      )
-  }
+		return notificationBuilder
+			.buildMediaNotification(
+				session = mediaSession,
+				largeIcon = icon,
+				channelName = channelName,
+				currentItemIndex = player.currentMediaItemIndex,
+				currentItem = item,
+				playerState = player.playbackState,
+				repeatMode = player.repeatMode,
+				showPrevButton = player.hasPreviousMediaItem(),
+				showNextButton = player.hasNextMediaItem(),
+				showPlayButton = showPlayButton,
+				subtitle = item.mediaMetadata.artist.toString(),
+				subtext = item.mediaMetadata.albumTitle.toString(),
+				title = item.mediaMetadata.displayTitle.toString()
+			)
+	}
 
   @MainThread
  	fun considerForegroundService(player: Player, notification: Notification) {
@@ -339,11 +336,8 @@ class MusicLibraryNotificationProvider(
 				service.stopForegroundService(mediaNotificationId, false)
 			}
 			player.playbackState.isOngoing() -> {
-				if (!isForeground) {
-					service.startForegroundService(mediaNotificationId, getSessionNotification(session))
-				} else {
-					return
-				}
+				if (isForeground) return
+				service.startForegroundService(mediaNotificationId, getSessionNotification(session))
 			}
 		}
 		Timber.d("considerForegroundService changed," +

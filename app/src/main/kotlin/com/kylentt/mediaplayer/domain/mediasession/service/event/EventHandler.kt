@@ -1,6 +1,7 @@
 package com.kylentt.mediaplayer.domain.mediasession.service.event
 
 import android.annotation.SuppressLint
+import android.app.ActivityManager
 import android.net.Uri
 import android.widget.Toast
 import androidx.annotation.MainThread
@@ -28,6 +29,13 @@ class MusicLibraryEventHandler(
 ) {
 
 	private val dispatcher = service.coroutineDispatchers
+
+	suspend fun handlePlayerPlayWhenReadyChanged(
+		session: MediaSession
+	) = withContext(dispatcher.main) {
+		ensureActive()
+		playWhenReadyChangedImpl(session).join()
+	}
 
 	suspend fun handlePlayerMediaItemChanged(
 		session: MediaSession,
@@ -57,6 +65,16 @@ class MusicLibraryEventHandler(
 	) = withContext(dispatcher.main) {
 		ensureActive()
 		playerErrorImpl(session.player, error).join()
+	}
+
+	private suspend fun playWhenReadyChangedImpl(
+		session: MediaSession
+	): Job = withContext(dispatcher.main) {
+		launch {
+			service.mediaNotificationProvider.launchSessionNotificationValidator(session) {
+				service.mediaNotificationProvider.updateSessionNotification(it)
+			}
+		}
 	}
 
 	private suspend fun mediaItemChangedImpl(
@@ -102,6 +120,8 @@ class MusicLibraryEventHandler(
 	): Job = withContext(dispatcher.main) {
 		launch {
 			checkArgument(error.errorCode == ERROR_CODE_IO_FILE_NOT_FOUND)
+
+			ActivityManager.isUserAMonkey()
 
 			val items = getPlayerMediaItems(player)
 

@@ -18,11 +18,12 @@ interface SongEntity {
   val albumName: String
   val artistName: String
   val displayTitle: String
+	val songFileName: String
   val songMediaId: String
   val songMediaArtworkUri: Uri
   val songMediaUri: Uri
 
-  fun equalMediaItem(item: MediaItem?): Boolean
+  fun equalMediaItem(item: MediaItem): Boolean
 }
 
 data class Artist(val name: String)

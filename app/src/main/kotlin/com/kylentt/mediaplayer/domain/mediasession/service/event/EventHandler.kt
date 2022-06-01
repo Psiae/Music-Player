@@ -1,4 +1,4 @@
-package com.kylentt.mediaplayer.domain.mediasession.service
+package com.kylentt.mediaplayer.domain.mediasession.service.event
 
 import android.annotation.SuppressLint
 import android.net.Uri
@@ -9,76 +9,74 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.PlaybackException.ERROR_CODE_DECODING_FAILED
 import androidx.media3.common.PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND
 import androidx.media3.common.Player
-import com.kylentt.mediaplayer.core.annotation.ThreadSafe
-import com.kylentt.mediaplayer.core.delegates.Synchronize
+import androidx.media3.session.MediaSession
 import com.kylentt.mediaplayer.core.exoplayer.mediaItem.MediaItemHelper.getDebugDescription
 import com.kylentt.mediaplayer.core.exoplayer.mediaItem.MediaMetadataHelper.getStoragePath
+import com.kylentt.mediaplayer.domain.mediasession.service.MusicLibraryService
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import com.kylentt.mediaplayer.helper.external.providers.ContentProvidersHelper
 import com.kylentt.mediaplayer.helper.external.providers.DocumentProviderHelper
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.job
-import kotlinx.coroutines.launch
+import com.kylentt.mediaplayer.helper.media.MediaItemHelper.Companion.orEmpty
+import kotlinx.coroutines.*
 import timber.log.Timber
 import java.io.File
+import kotlin.coroutines.coroutineContext
 
-interface MediaServiceEventHandler {
-	@ThreadSafe
-	fun handlePlayerMediaItemChanged(item: MediaItem, @Player.MediaItemTransitionReason reason: Int)
-	@ThreadSafe
-	fun handlePlayerStateChanged(state: @Player.State Int)
-	@ThreadSafe
-	fun handlePlayerRepeatModeChanged(@Player.RepeatMode mode: Int)
-	@ThreadSafe
-	fun handlePlayerError(player: Player, error: PlaybackException)
-}
+class MusicLibraryEventHandler(
+	private val service: MusicLibraryService
+) {
 
-class MediaServiceEventHandlerImpl(
-	private val service: MediaService
-): MediaServiceEventHandler {
+	private val dispatcher = service.coroutineDispatchers
 
-	val currentPlayer = service.currentSessionPlayer
-
-	override fun handlePlayerMediaItemChanged(
-		item: MediaItem,
+	suspend fun handlePlayerMediaItemChanged(
+		session: MediaSession,
 		@Player.MediaItemTransitionReason reason: Int
-	) {
-		mediaItemChangedImpl(item, reason)
+	) = withContext(dispatcher.main) {
+		ensureActive()
+		mediaItemChangedImpl(session.player.currentMediaItem.orEmpty(), reason)
 	}
 
-	override fun handlePlayerStateChanged(state: Int) {
-		playerStateChangedImpl(state)
+	suspend fun handlePlayerStateChanged(
+		session: MediaSession
+	) = withContext(dispatcher.main) {
+		ensureActive()
+		playerStateChangedImpl(session.player.playbackState)
 	}
 
-	override fun handlePlayerRepeatModeChanged(mode: Int) {
-		playerRepeatModeChangedImpl(mode)
+	suspend fun handlePlayerRepeatModeChanged(
+		session: MediaSession
+	) = withContext(dispatcher.main) {
+		ensureActive()
+		playerRepeatModeChangedImpl(session.player.playbackState)
 	}
 
-	override fun handlePlayerError(player: Player, error: PlaybackException) {
-		playerErrorImpl(player, error)
+	suspend fun handlePlayerError(
+		session: MediaSession,
+		error: PlaybackException
+	) = withContext(dispatcher.main) {
+		ensureActive()
+		playerErrorImpl(session.player, error)
 	}
 
-	private var handlePlayerMediaItemChangedJob by Synchronize(Job().job)
+	private var handlePlayerMediaItemChangedJob = Job().job
 	private fun mediaItemChangedImpl(item: MediaItem, reason: Int) {
-		service.mainScope.launch {
-			handlePlayerMediaItemChangedJob.cancel()
-			handlePlayerMediaItemChangedJob = service.mainScope.launch {
-				Timber.d("mediaItemChangedImpl ${item.getDebugDescription()}" +
-					"\nreason: $reason")
-				service.notificationProvider.suspendHandleMediaItemTransition(item, reason)
-			}
+		handlePlayerMediaItemChangedJob.cancel()
+		handlePlayerMediaItemChangedJob = service.mainScope.launch {
+			service.mediaNotificationProvider.suspendHandleMediaItemTransition(item, reason)
+			Timber.d("mediaItemChangedImpl ${item.getDebugDescription()}" +
+				"\nreason: $reason")
 		}
 	}
 
-	private var handlePlayerRepeatModeChanged by Synchronize(Job().job)
+	private var handlePlayerRepeatModeChanged = Job().job
 	private fun playerRepeatModeChangedImpl(mode: @Player.RepeatMode Int) {
 		handlePlayerRepeatModeChanged.cancel()
 		handlePlayerRepeatModeChanged = service.mainScope.launch {
-			service.notificationProvider.suspendHandleRepeatModeChanged(mode)
+			service.mediaNotificationProvider.suspendHandleRepeatModeChanged(mode)
 		}
 	}
 
-	private var handlePlayerErrorJob by Synchronize(Job().job)
+	private var handlePlayerErrorJob = Job().job
 	private fun playerErrorImpl(player: Player, error: PlaybackException) {
 		handlePlayerErrorJob.cancel()
 		handlePlayerErrorJob = service.mainScope.launch {
@@ -88,6 +86,7 @@ class MediaServiceEventHandlerImpl(
 			when (code) {
 				ERROR_CODE_IO_FILE_NOT_FOUND -> handleIOErrorFileNotFound(player, error)
 				ERROR_CODE_DECODING_FAILED -> {
+					player.pause()
 					val context = service.applicationContext
 					Toast.makeText(context, "Decoding Failed ($code), Paused", Toast.LENGTH_LONG).show()
 				}
@@ -95,7 +94,7 @@ class MediaServiceEventHandlerImpl(
 		}
 	}
 
-	private var handlePlayerStateChangedJob by Synchronize(Job().job)
+	private var handlePlayerStateChangedJob = Job().job
 	private fun playerStateChangedImpl(state: @Player.State Int) {
 		// TODO
 	}
@@ -147,4 +146,6 @@ class MediaServiceEventHandlerImpl(
 		}
 		return toReturn
 	}
+
+
 }

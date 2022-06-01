@@ -15,7 +15,7 @@ import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateEnded
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateIdle
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateReady
 import com.kylentt.mediaplayer.core.exoplayer.PlayerHelper
-import com.kylentt.mediaplayer.domain.mediasession.service.MediaService
+import com.kylentt.mediaplayer.domain.mediasession.service.MusicLibraryService
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.ui.activity.CollectionExtension.forEachClear
@@ -34,7 +34,7 @@ import timber.log.Timber
 
 @MainThread
 class MediaServiceController(
-  serviceConnector: MediaServiceConnector
+  serviceConnector: ServiceConnector
 ) {
 
   val playbackStateSF = MutableStateFlow<PlaybackState>(PlaybackState.EMPTY)
@@ -87,12 +87,11 @@ class MediaServiceController(
     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
       super.onMediaItemTransition(mediaItem, reason)
       val item = mediaItem ?: MediaItem.EMPTY
-      val config = item.localConfiguration
-      // not sure whether to take the mediaItem that has LocalConfiguration or Not but the later
-      // doesn't have it
-      if (config == null) {
-        playbackStateSF.value = playbackStateSF.value.copy(currentMediaItem = item)
-      }
+      // not sure whether to take the mediaItem that has LocalConfiguration or Not
+
+			if (!playbackStateSF.value.currentMediaItem.idEqual(mediaItem)) {
+				playbackStateSF.value = playbackStateSF.value.copy(currentMediaItem = item)
+			}
     }
 
     override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -135,7 +134,7 @@ class MediaServiceController(
       return futureMediaController.addListener( { onConnected(mediaController) }, directExecutor)
     }
     serviceStateSF.value = MediaServiceState.CONNECTING
-    sessionToken = SessionToken(context, MediaService.getComponentName(context))
+    sessionToken = SessionToken(context, MusicLibraryService.getComponentName(context))
     futureMediaController = MediaController.Builder(context, sessionToken)
       .setApplicationLooper(Looper.myLooper()!!)
       .buildAsync()

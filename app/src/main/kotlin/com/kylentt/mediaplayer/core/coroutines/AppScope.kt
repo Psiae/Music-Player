@@ -26,5 +26,3 @@ data class AppScope(
   val immediateScope: CoroutineScope,
   val unconfinedScope: CoroutineScope
 )
-
-

@@ -56,6 +56,8 @@ data class MediaStoreSong @JvmOverloads constructor(
     get() = this.artist
   override val displayTitle: String
     get() = this.title
+	override val songFileName: String
+		get() = this.fileName
   override val songMediaArtworkUri: Uri
     get() = this.albumArtUri
   override val songMediaId: String
@@ -94,10 +96,9 @@ data class MediaStoreSong @JvmOverloads constructor(
   override val asMediaItem: MediaItem
     get() = mediaItem
 
-  override fun equalMediaItem(item: MediaItem?): Boolean {
-    return item != null
-      && item.mediaId == this.songMediaId
-      && item.mediaMetadata.mediaUri == this.songMediaUri
+  override fun equalMediaItem(item: MediaItem): Boolean {
+    return item.mediaId == this.songMediaId
+			&& item.mediaMetadata.mediaUri == this.songMediaUri
   }
 
   override fun toString(): String {
@@ -117,7 +118,7 @@ data class MediaStoreSong @JvmOverloads constructor(
     const val MEDIA_ID_PREFIX = "MEDIASTORE_"
 
     @JvmStatic
-    val EMPTY = MediaStoreSong()
+		val EMPTY = MediaStoreSong()
 
     @JvmStatic fun MediaItem.isMediaStoreSong() = this.mediaId.startsWith(MEDIA_ID_PREFIX)
   }
@@ -154,8 +155,8 @@ class MediaStoreSourceImpl(
   private suspend fun queryAudioColumn(): List<MediaStoreSong> =
     withContext(dispatchers.io) {
       val songList = mutableListOf<MediaStoreSong>()
-      try {
 
+			try {
         val songFolderName = if (VersionHelper.hasQ()) {
           MediaStore.Audio.AudioColumns.BUCKET_DISPLAY_NAME
         } else {

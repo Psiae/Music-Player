@@ -15,7 +15,7 @@ import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
 import com.kylentt.mediaplayer.data.repository.MediaRepository
 import com.kylentt.mediaplayer.data.repository.ProtoRepository
 import com.kylentt.mediaplayer.data.source.local.MediaStoreSong
-import com.kylentt.mediaplayer.domain.mediasession.MediaSessionManager
+import com.kylentt.mediaplayer.domain.mediasession.MediaSessionConnector
 import com.kylentt.mediaplayer.domain.mediasession.service.connector.ControllerCommand
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.external.providers.ContentProvidersHelper
@@ -23,6 +23,7 @@ import com.kylentt.mediaplayer.helper.external.providers.DocumentProviderHelper
 import com.kylentt.mediaplayer.helper.media.MediaItemHelper
 import com.kylentt.mediaplayer.data.SongEntity
 import com.kylentt.mediaplayer.domain.mediasession.service.connector.ControllerCommand.Companion.wrapWithFadeOut
+import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
 import timber.log.Timber
@@ -56,7 +57,7 @@ class MediaIntentHandlerImpl(
   private val itemHelper: MediaItemHelper,
   private val protoRepo: ProtoRepository,
   private val mediaRepo: MediaRepository,
-  private val sessionManager: MediaSessionManager
+  private val sessionManager: MediaSessionConnector
 ) : MediaIntentHandler {
 
   private val actionViewHandler = ActionViewHandler()
@@ -77,22 +78,22 @@ class MediaIntentHandlerImpl(
 
     private var actionViewJob = Job().job
 
-    suspend fun handleIntentActionView(intent: IntentWrapper): Unit =
-      withContext(coroutineContext) {
-        require(intent.isActionView())
+    suspend fun handleIntentActionView(intent: IntentWrapper): Unit = withContext(coroutineContext) {
+			checkArgument(intent.isActionView())
 
-        val job: suspend () -> Unit = when {
-          intent.isSchemeContent() -> { { intentSchemeContent(intent) } }
-          else -> { { Unit } }
-        }
+			val job: suspend () -> Unit = when {
+				intent.isSchemeContent() -> { { intentSchemeContent(intent) } }
+				else -> { { Unit } }
+			}
 
-        actionViewJob.cancel()
+			actionViewJob.cancel()
 
-        if (intent.isCancellable) {
-          actionViewJob = launch { job() }
-        } else {
-          job()
-        }
+			if (intent.isCancellable) {
+				actionViewJob = launch { job() }
+			} else {
+				job()
+			}
+
     }
 
     private suspend fun intentSchemeContent(intent: IntentWrapper) {

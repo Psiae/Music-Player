@@ -37,7 +37,3 @@ class LockMainThread<T>(value: T): ReadWriteProperty<Any,T> {
     current = value
   }
 }
-
-
-
-

@@ -4,15 +4,13 @@ import android.app.Application
 import android.content.Context
 import android.widget.Toast
 import androidx.annotation.MainThread
+import androidx.media3.session.MediaController
 import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
 import com.kylentt.mediaplayer.core.coroutines.AppScope
 import com.kylentt.mediaplayer.data.repository.MediaRepository
 import com.kylentt.mediaplayer.data.repository.ProtoRepository
 import com.kylentt.mediaplayer.domain.mediasession.service.connector.ControllerCommand
-import com.kylentt.mediaplayer.domain.mediasession.service.connector.MediaServiceController
-import com.kylentt.mediaplayer.domain.mediasession.service.connector.MediaServiceConnector
-import com.kylentt.mediaplayer.domain.mediasession.service.connector.PlaybackState
-import com.kylentt.mediaplayer.domain.mediasession.service.MediaService
+import com.kylentt.mediaplayer.domain.mediasession.service.connector.ServiceConnector
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import com.kylentt.mediaplayer.helper.external.IntentWrapper
 import com.kylentt.mediaplayer.helper.external.MediaIntentHandlerImpl
@@ -24,25 +22,8 @@ import javax.inject.Singleton
 import kotlin.time.ExperimentalTime
 import kotlin.time.measureTimedValue
 
-/**
- * Singleton that Handles [androidx.media3.session.MediaSession] and Expose necessary Information,
- * e.g: [PlaybackState] of [androidx.media3.common.Player] Interface
- * @constructor [appScope] [AppScope] for Async Task
- * @constructor [baseContext] [Context] to access App Resources
- * @constructor [coilHelper] [CoilHelper] for ImageLoading Task
- * @constructor [dispatchers] [AppDispatchers] for Async Task
- * @constructor [itemHelper] [MediaItemHelper] for MediaItem Task
- * @constructor [mediaRepo] [MediaRepository] for [com.kylentt.mediaplayer.data.SongEntity] Task
- * @constructor [protoRepo] [ProtoRepository] for [androidx.datastore.core.DataStore] Task
- * @see [MediaServiceConnector]
- * @see [MediaServiceController]
- * @see [MediaService]
- * @author Kylentt
- * @since 2022/04/30
- */
-
 @Singleton
-class MediaSessionManager(
+class MediaSessionConnector(
   private val appScope: AppScope,
   private val baseContext: Context,
   private val coilHelper: CoilHelper,
@@ -55,7 +36,7 @@ class MediaSessionManager(
   private val context = baseContext
 
   private val serviceConnector by lazy {
-    MediaServiceConnector(
+    ServiceConnector(
       appScope = appScope,
       baseContext = baseContext,
       coilHelper = coilHelper,
@@ -83,8 +64,8 @@ class MediaSessionManager(
     get() = serviceConnector.serviceState
 
   @MainThread
-  fun connectService() {
-    serviceConnector.connectService()
+  fun connectService(onConnected: (MediaController) -> Unit = {}) {
+    serviceConnector.connectService(onConnected)
   }
 
   @MainThread

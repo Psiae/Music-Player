@@ -56,7 +56,8 @@ class MediaItemHelper(
     }
   }
 
-  fun rebuildMediaItem(item: MediaItem): MediaItem {
+	@Suppress("NOTHING_TO_INLINE")
+	inline fun rebuildMediaItem(item: MediaItem): MediaItem {
     return MediaItem
       .Builder()
       .setMediaId(item.mediaId)
@@ -86,19 +87,22 @@ class MediaItemHelper(
   }
 
   companion object {
-    private const val ART_URI_PREFIX = "ART"
 
-    /**
-     * In case of [MediaItem] some devices might override [NotificationCompat.Builder.mLargeIcon]
-     * with [android.graphics.Bitmap] from [MediaMetadata.artworkUri] of the current [MediaItem]
-     * of the [androidx.media3.session.MediaSession] that is set to the [NotificationCompat].
-     * In e.g: Pixel Android 12 it will always try to maintain the aspect-ratio
-     * so it might came out bad, so the ArtworkUri is Hidden to be properly scaled as 1:1 later
-     */
+		/**
+		 * In case of [MediaItem] some devices might override [NotificationCompat.Builder.mLargeIcon]
+		 * with [android.graphics.Bitmap] from [MediaMetadata.artworkUri] of the current [MediaItem]
+		 * of the [androidx.media3.session.MediaSession] that is set to the [NotificationCompat].
+		 * In e.g: Pixel Android 12 it will always try to maintain the aspect-ratio
+		 * so it might came out bad, so the ArtworkUri is Hidden to be properly scaled as 1:1 later
+		 */
+
+    private const val ART_URI_PREFIX = "ART"
 
     @JvmStatic fun hideArtUri(uri: Uri): Uri = hideArtUri(uri.toString()).toUri()
     @JvmStatic fun showArtUri(uri: Uri): Uri = showArtUri(uri.toString()).toUri()
     @JvmStatic fun hideArtUri(uri: String): String = uri.setPrefix(ART_URI_PREFIX)
     @JvmStatic fun showArtUri(uri: String): String = uri.removePrefix(ART_URI_PREFIX)
+
+		@JvmStatic fun MediaItem?.orEmpty() = this ?: MediaItem.EMPTY
   }
 }

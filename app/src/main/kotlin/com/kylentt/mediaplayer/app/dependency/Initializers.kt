@@ -6,6 +6,7 @@ import androidx.startup.Initializer
 import com.kylentt.mediaplayer.BuildConfig
 import com.kylentt.mediaplayer.app.MediaPlayerApp
 import com.kylentt.mediaplayer.app.delegates.AppDelegate
+import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import timber.log.Timber
 
 /**
@@ -18,10 +19,10 @@ import timber.log.Timber
 class AppInitializer : Initializer<Unit> {
 
 	override fun create(context: Context) {
-		require(context is Application) {
-			"AppInitializer Context Must be Application"
+		checkArgument(context is Application) {
+			"AppInitializer Did Not Provide Application as Context"
 		}
-		create(context)
+		create(context as Application)
 	}
 
 	override fun dependencies(): MutableList<Class<out Initializer<*>>> {
@@ -31,7 +32,7 @@ class AppInitializer : Initializer<Unit> {
 	}
 
 	private fun create(app: Application) {
-		AppDelegate.provides(app)
+		AppDelegate provides app
 	}
 }
 

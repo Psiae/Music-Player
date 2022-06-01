@@ -1,10 +1,13 @@
-package com.kylentt.mediaplayer.domain.mediasession.service
+package com.kylentt.mediaplayer.domain.mediasession.service.notification
 
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
@@ -15,17 +18,22 @@ import androidx.annotation.WorkerThread
 import androidx.core.app.NotificationCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
-import androidx.media3.session.MediaController
-import androidx.media3.session.MediaLibraryService
-import androidx.media3.session.MediaNotification
-import androidx.media3.session.MediaSession
-import androidx.media3.session.MediaStyleNotificationHelper
+import androidx.media3.session.*
 import com.kylentt.mediaplayer.R
-import com.kylentt.mediaplayer.core.annotation.ThreadSafe
+import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
 import com.kylentt.mediaplayer.core.delegates.LockMainThread
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isOngoing
+import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isRepeatAll
+import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isRepeatOff
+import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isRepeatOne
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateBuffering
+import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateEnded
+import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateIdle
 import com.kylentt.mediaplayer.core.exoplayer.mediaItem.MediaItemHelper.getDebugDescription
+import com.kylentt.mediaplayer.data.source.local.MediaStoreSong
+import com.kylentt.mediaplayer.domain.mediasession.service.MusicLibraryService
+import com.kylentt.mediaplayer.domain.mediasession.service.connector.ControllerCommand
+import com.kylentt.mediaplayer.domain.mediasession.service.connector.ControllerCommand.Companion.wrapWithFadeOut
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkNotMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
@@ -35,47 +43,19 @@ import timber.log.Timber
 import kotlin.coroutines.coroutineContext
 
 /**
- * [MediaNotification.Provider] Implementation for [MediaService]
+ * [MediaNotification.Provider] Implementation for [MusicLibraryService]
  * must be Initialized after [MediaLibraryService] Super.onCreate()
  * @throws [IllegalStateException] if [MediaLibraryService] baseContext is null
  * @author Kylentt
  * @since 2022/04/30
  */
 
-interface MediaServiceNotificationProvider : MediaNotification.Provider {
-	val notificationManager: NotificationManager
-	val mediaNotificationChannelName: String
-	val mediaNotificationName: String
-	val mediaNotificationId: Int
+class MusicLibraryNotificationProvider(
+	private val service: MusicLibraryService
+) : MediaNotification.Provider {
 
-	@MainThread fun getSessionNotification(session: MediaSession): Notification
-	@MainThread fun updateSessionNotification(session: MediaSession): Unit
-	@MainThread fun considerForegroundService(player: Player, notification: Notification)
-	@MainThread fun considerForegroundService(session: MediaSession)
-
-	@ThreadSafe suspend fun suspendUpdateNotification(
-		session: MediaSession
-	)
-
-	@ThreadSafe suspend fun suspendHandleMediaItemTransition(
-		item: MediaItem,
-		@Player.MediaItemTransitionReason reason: Int
-	)
-
-	@ThreadSafe suspend fun suspendHandleRepeatModeChanged(@Player.RepeatMode mode: Int)
-
-	@ThreadSafe suspend fun dispatchSuspendNotificationValidator(times: Int, interval: Long, update: suspend () -> Unit)
-}
-
-class MediaServiceNotificationProviderImpl(
-  private val service: MediaService
-) : MediaServiceNotificationProvider {
-
-	private val mediaService = service
-
-  private val coiLHelper = service.coilHelper
-  private val dispatchers = service.dispatchers
-  private val itemHelper = service.itemHelper
+	private val serviceState by MusicLibraryService.LifecycleState
+	private val dispatchers: AppDispatchers = service.coroutineDispatchers
 
   private val notificationBuilder = NotificationBuilder()
   private var notificationUpdateJob = Job().job
@@ -84,18 +64,21 @@ class MediaServiceNotificationProviderImpl(
 	private var validatorJob by LockMainThread(Job().job)
 
 	private val mediaSession
-		get() = mediaService.currentMediaSession
+		get() = service.currentMediaSession
 
-	override val notificationManager
-		get() = mediaService.notificationManager
+	val notificationManager: NotificationManager by lazy {
+		service.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+	}
 
-	override val mediaNotificationChannelName: String
+	val notificationActionReceiver = NotificationActionReceiver()
+
+	val mediaNotificationChannelName: String
 		get() = NOTIFICATION_CHANNEL_NAME
 
-	override val mediaNotificationName: String
+	val mediaNotificationName: String
 		get() = NOTIFICATION_NAME
 
-	override val mediaNotificationId: Int
+	val mediaNotificationId: Int
 		get() = NOTIFICATION_ID
 
 	init {
@@ -108,6 +91,8 @@ class MediaServiceNotificationProviderImpl(
 		if (VersionHelper.hasOreo()) {
 			createNotificationChannel(notificationManager)
 		}
+		service.registerReceiver(notificationActionReceiver, IntentFilter(PLAYBACK_CONTROL_INTENT))
+		service.registerOnDestroyCallback { service.unregisterReceiver(notificationActionReceiver) }
 	}
 
 	/**
@@ -136,12 +121,8 @@ class MediaServiceNotificationProviderImpl(
 		actionFactory: MediaNotification.ActionFactory,
 		onNotificationChangedCallback: MediaNotification.Provider.Callback
 	): MediaNotification {
-		val notification = with(mediaSession) {
-			getNotificationForSession(this, mediaNotificationChannelName)
-		}
-		service.mainScope.launch {
-			suspendHandleMediaNotificationChangedCallback(onNotificationChangedCallback)
-		}
+		val notification = getNotificationForSession(mediaSession, mediaNotificationChannelName)
+		service.mainScope.launch { suspendHandleMediaNotificationChangedCallback(onNotificationChangedCallback) }
 		return MediaNotification(mediaNotificationId, notification)
 	}
 
@@ -152,13 +133,13 @@ class MediaServiceNotificationProviderImpl(
 	) = Unit
 
 	@MainThread
-	override fun getSessionNotification(session: MediaSession): Notification {
+	fun getSessionNotification(session: MediaSession): Notification {
 		return getNotificationForSession(session, NOTIFICATION_CHANNEL_NAME)
 	}
 
 	@MainThread
-	override fun updateSessionNotification(session: MediaSession) {
-		service.notificationManager.notify(mediaNotificationId, getSessionNotification(session))
+	fun updateSessionNotification(session: MediaSession) {
+		notificationManager.notify(mediaNotificationId, getSessionNotification(session))
 	}
 
 	@MainThread
@@ -186,7 +167,7 @@ class MediaServiceNotificationProviderImpl(
 		}
 	}
 
-	override suspend fun suspendUpdateNotification(
+	suspend fun suspendUpdateNotification(
 		session: MediaSession
 	): Unit = withContext(dispatchers.main) {
 		val updateBlock: suspend () -> Unit = {
@@ -202,7 +183,7 @@ class MediaServiceNotificationProviderImpl(
 	}
 
 	@MainThread
-	override suspend fun dispatchSuspendNotificationValidator(
+	suspend fun dispatchSuspendNotificationValidator(
 		times: Int,
 		interval: Long,
 		update: suspend () -> Unit
@@ -220,7 +201,7 @@ class MediaServiceNotificationProviderImpl(
 		}
 	}
 
-	override suspend fun suspendHandleMediaItemTransition(
+	suspend fun suspendHandleMediaItemTransition(
 		item: MediaItem,
 		reason: Int
 	): Unit {
@@ -243,14 +224,14 @@ class MediaServiceNotificationProviderImpl(
 		}
 	}
 
-	override suspend fun suspendHandleRepeatModeChanged(mode: Int) {
+	suspend fun suspendHandleRepeatModeChanged(mode: Int) {
 		withContext(dispatchers.main) { suspendUpdateNotification(mediaSession) }
 	}
 
 	@WorkerThread
 	private fun getMediaItemEmbeddedPicture(item: MediaItem): ByteArray? {
 		checkNotMainThread()
-		return itemHelper.getEmbeddedPicture(item)
+		return service.mediaItemHelper.getEmbeddedPicture(item)
 	}
 
 	@WorkerThread
@@ -330,40 +311,40 @@ class MediaServiceNotificationProviderImpl(
   }
 
   @MainThread
- 	override fun considerForegroundService(player: Player, notification: Notification) {
+ 	fun considerForegroundService(player: Player, notification: Notification) {
     checkMainThread()
-    val isForeground = MediaService.isForeground
+    val isForeground = MusicLibraryService.LifecycleState.isForeground()
 		when {
 			player.playbackState.isOngoing() -> {
 				if (!isForeground) {
-					service.startServiceAsForeground(notification)
+					service.startForegroundService(mediaNotificationId, notification)
 				} else {
 					return
 				}
 			}
 			!player.playbackState.isOngoing() -> {
-				service.stopServiceAsForeground(false)
+				service.stopForegroundService(mediaNotificationId, false)
 			}
 		}
     Timber.d("considerForegroundService changed," +
       "\nonGoing: ${player.playbackState.isOngoing()}" +
       "\nwasForeground: $isForeground" +
-      "\nisForeground: ${MediaService.isForeground}"
+      "\nisForeground: ${MusicLibraryService.LifecycleState.isForeground()}"
     )
   }
 
 	@MainThread
-	override fun considerForegroundService(session: MediaSession) {
+	fun considerForegroundService(session: MediaSession) {
 		checkMainThread()
-		val isForeground = MediaService.isForeground
+		val isForeground = MusicLibraryService.LifecycleState.isForeground()
 		val player = session.player
 		when {
 			!player.playbackState.isOngoing() -> {
-				service.stopServiceAsForeground(false)
+				service.stopForegroundService(mediaNotificationId, false)
 			}
 			player.playbackState.isOngoing() -> {
 				if (!isForeground) {
-					service.startServiceAsForeground(getSessionNotification(session))
+					service.startForegroundService(mediaNotificationId, getSessionNotification(session))
 				} else {
 					return
 				}
@@ -372,14 +353,172 @@ class MediaServiceNotificationProviderImpl(
 		Timber.d("considerForegroundService changed," +
 			"\nonGoing: ${player.playbackState.isOngoing()}" +
 			"\nwasForeground: $isForeground" +
-			"\nisForeground: ${MediaService.isForeground}"
+			"\nisForeground: ${MusicLibraryService.LifecycleState.isForeground()}"
 		)
+	}
+
+	inner class NotificationActionReceiver : BroadcastReceiver() {
+
+		override fun onReceive(p0: Context?, p1: Intent?) {
+			p1?.let { handleNotificationActionImpl(it) }
+		}
+
+		@MainThread
+		fun handleNotificationActionImpl(intent: Intent) {
+			val action = intent.getStringExtra(PLAYBACK_CONTROL_ACTION) ?: return
+			if (mediaSession.player.currentMediaItem == null) {
+				return validateItem(intent)
+			}
+			when (action) {
+				ACTION_PLAY -> onReceiveActionPlay()
+				ACTION_PAUSE -> onReceiveActionPause()
+				ACTION_NEXT -> onReceiveActionNext()
+				ACTION_PREV -> onReceiveActionPrev()
+				ACTION_REPEAT_OFF_TO_ONE -> onReceiveRepeatOffToOne()
+				ACTION_REPEAT_ONE_TO_ALL -> onReceiveRepeatOneToAll()
+				ACTION_REPEAT_ALL_TO_OFF -> onReceiveRepeatAllToOff()
+				ACTION_STOP_CANCEL -> onReceiveStopCancel()
+				ACTION_DISMISS_NOTIFICATION -> service.stopForegroundService(mediaNotificationId, true)
+			}
+		}
+
+		private var isValidating = false
+		private fun validateItem(intent: Intent) = with(mediaSession.player) {
+			Timber.d("checkItem CurrentMediaItem: $currentMediaItem")
+
+			if (currentMediaItem == null && !isValidating) {
+				isValidating = true
+
+				val mediaId = intent.getStringExtra(PLAYBACK_ITEM_ID)
+				when {
+					mediaId == null -> Unit
+					mediaId.startsWith(MediaStoreSong.MEDIA_ID_PREFIX) -> {
+						service.mainScope
+							.launch {
+								val item = service.mediaRepository.getMediaStoreSongById(mediaId)
+								item?.let { setMediaItem(it.asMediaItem) }
+								isValidating = false
+							}
+					}
+				}
+			}
+		}
+
+		private fun onReceiveActionPlay(): Unit = with(mediaSession.player) {
+			if (playWhenReady && playbackState.isOngoing()) {
+				return updateSessionNotification(mediaSession)
+			}
+
+			when {
+				playbackState.isStateEnded() -> {
+					if (hasNextMediaItem()) seekToNextMediaItem()
+					seekTo(0L)
+				}
+				playbackState.isStateIdle() -> {
+					prepare()
+				}
+			}
+
+			playWhenReady = true
+		}
+
+		private fun onReceiveActionPause() = with(mediaSession.player) {
+			if (!playWhenReady && playbackState.isOngoing()) {
+				return updateSessionNotification(mediaSession)
+			}
+			try {
+				checkState(playbackState.isOngoing())
+			} catch (e: IllegalStateException) {
+				Timber.e("$e: Notification Pause received when $this is Idle / Ended")
+			} finally {
+				playWhenReady = false
+			}
+		}
+
+		private fun onReceiveActionNext() = with(mediaSession.player) {
+			if (!hasNextMediaItem() && playbackState.isOngoing()) {
+				return updateSessionNotification(mediaSession)
+			}
+			try {
+				com.kylentt.mediaplayer.helper.Preconditions.checkState(hasNextMediaItem())
+			} catch (e: IllegalStateException) {
+				timber.log.Timber.e("$e: Notification Next received when $this has no Next Item")
+			} finally {
+				seekToNextMediaItem()
+			}
+		}
+
+		private fun onReceiveActionPrev() = with(mediaSession.player) {
+			if (!hasPreviousMediaItem() && playbackState.isOngoing()) {
+				return updateSessionNotification(mediaSession)
+			}
+			try {
+				checkState(hasPreviousMediaItem())
+			} catch (e: IllegalStateException) {
+				Timber.e("$e: Notification Previous received when $this has no Previous Item")
+			} finally {
+				seekToPreviousMediaItem()
+			}
+		}
+
+		private fun onReceiveRepeatOffToOne() = with(mediaSession.player) {
+			if (!repeatMode.isRepeatOff() && playbackState.isOngoing()) {
+				return updateSessionNotification(mediaSession)
+			}
+			try {
+				checkState(repeatMode.isRepeatOff())
+			} catch (e: IllegalStateException) {
+				Timber.e("$e: Notification RepeatToOne received when $this Repeat is not Off")
+			} finally {
+				repeatMode = Player.REPEAT_MODE_ONE
+			}
+		}
+
+		private fun onReceiveRepeatOneToAll() = with(mediaSession.player) {
+			if (!repeatMode.isRepeatOne() && playbackState.isOngoing()) {
+				return updateSessionNotification(mediaSession)
+			}
+			try {
+				checkState(repeatMode.isRepeatOne())
+			} catch (e: IllegalStateException) {
+				Timber.e("$e: Notification RepeatToAll received when $this Repeat is not One")
+			} finally {
+				repeatMode = Player.REPEAT_MODE_ALL
+			}
+		}
+
+		private fun onReceiveRepeatAllToOff() = with(mediaSession.player) {
+			if (!repeatMode.isRepeatAll() && playbackState.isOngoing()) {
+				return updateSessionNotification(mediaSession)
+			}
+			try {
+				checkState(repeatMode.isRepeatAll())
+			} catch (e: IllegalStateException) {
+				Timber.e("$e: Notification RepeatToOff received when $this Repeat is not All")
+			} finally {
+				repeatMode = Player.REPEAT_MODE_OFF
+			}
+		}
+
+		private fun onReceiveStopCancel() = with(mediaSession.player) {
+			val duration = 1000L
+			val removeNotification = !playbackState.isOngoing()
+			val command = ControllerCommand.STOP.wrapWithFadeOut(flush = true, duration = duration) {
+				val foreground = MusicLibraryService.LifecycleState.isForeground()
+				service.stopForegroundService(mediaNotificationId, removeNotification)
+				if (!foreground && !com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity.isAlive) {
+					// NPE in MediaControllerImplBase.java:3041 when calling librarySession.release()
+					service.onDestroy()
+				}
+			}
+			service.sessionConnector.sendControllerCommand(command)
+		}
 	}
 
 	@WorkerThread
 	private suspend fun resizeBitmapForNotification(bitmap: Bitmap): Bitmap {
 		val size = if (VersionHelper.hasR()) 256 else 512
-		return coiLHelper.squareBitmap(bitmap = bitmap, size = size, fastPath = true)
+		return service.coilHelper.squareBitmap(bitmap = bitmap, size = size, fastPath = true)
 	}
 
   private fun MediaItem?.idEqual(that: MediaItem?): Boolean {

@@ -2,8 +2,10 @@ package com.kylentt.mediaplayer.core.delegates
 
 import androidx.annotation.GuardedBy
 import com.kylentt.mediaplayer.BuildConfig
+import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import kotlinx.coroutines.*
+import timber.log.Timber
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 
@@ -84,25 +86,25 @@ object LateLazySample {
 
     val jobs = mutableListOf<String>()
 
-    val scope = CoroutineScope(Dispatchers.IO)
+    val scope = CoroutineScope(AppDispatchers.DEFAULT.io)
     scope.launch {
+			val c = async {
+				val key = "c"
+				delay(100)
+				jobs.add(key)
+				initializer.initializeValue { key }
+			}
+			val b = async {
+				val key = "b"
+				delay(100)
+				jobs.add(key)
+				initializer.initializeValue { key }
+			}
       val a = async {
         val key = "a"
-        delay(200)
+        delay(100)
+				jobs.add(key)
         initializer.initializeValue { key }
-        jobs.add(key)
-      }
-      val b = async {
-        val key = "b"
-        delay(200)
-        initializer.initializeValue { key }
-        jobs.add(key)
-      }
-      val c = async {
-        val key = "c"
-        delay(200)
-        initializer.initializeValue { key }
-        jobs.add(key)
       }
 
       a.await()
@@ -113,8 +115,11 @@ object LateLazySample {
         "LateLazy validCase3 failed." +
           "\nresult: $myObject" +
           "\nexpected ${jobs.first()}" +
-          "\nactual: $jobs"
+          "\nlist: $jobs"
       }
+			Timber.d("LateLazy validCase3 Success" +
+				"\nresult: $myObject" +
+				"\nlist: $jobs")
       scope.cancel()
     }
   }

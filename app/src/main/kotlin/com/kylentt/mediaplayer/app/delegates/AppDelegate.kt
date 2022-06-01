@@ -12,6 +12,7 @@ import com.kylentt.mediaplayer.BuildConfig
 import com.kylentt.mediaplayer.app.delegates.device.DeviceWallpaper
 import com.kylentt.mediaplayer.app.delegates.device.StoragePermission
 import com.kylentt.mediaplayer.core.annotation.Singleton
+import com.kylentt.mediaplayer.core.delegates.LateInitializerDelegate
 import com.kylentt.mediaplayer.core.delegates.LateLazy
 import com.kylentt.mediaplayer.core.delegates.LateLazySample
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
@@ -27,23 +28,25 @@ interface ApplicationDelegate {
 }
 
 /**
- * Singleton to use if there's need to get the [Application] Context
+ * Singleton to use the [Application] Context when there's no [Context] available,
+ *
+ * UI related Object returned by this class will use the Application class Theme
+ *
+ * @sample com.kylentt.mediaplayer.ui.activity.mainactivity.compose.MainBottomNavItems[2]
  * @author Kylentt
  * @since 2022/04/30
  */
 
 @Singleton
-@javax.inject.Singleton
-class AppDelegate private constructor(app: Application) : ApplicationDelegate {
+class AppDelegate private constructor(private val app: Application) : ApplicationDelegate {
 
 	private constructor(context: Context) : this(context.applicationContext as Application)
 
-	private val base = app
 	private val storagePermission by StoragePermission
 	private val wallpaperDrawable by DeviceWallpaper
 
 	override val application: Application
-		get() = base
+		get() = app
 
 	override fun hasPermission(permission: String): Boolean {
 		checkArgument(isPermissionString(permission)) {
@@ -55,14 +58,12 @@ class AppDelegate private constructor(app: Application) : ApplicationDelegate {
 	override fun hasStoragePermission(): Boolean = storagePermission
 
 	override fun getDeviceWallpaper(): Drawable? = wallpaperDrawable
+
 	override fun getImageVector(@DrawableRes id: Int): ImageVector {
 		return ImageVector.vectorResource(application.theme, application.resources, id)
 	}
 
 	private fun checkSelfPermission(permission: String): Boolean {
-		checkArgument(isPermissionString(permission)) {
-			"Invalid Permission String: $permission"
-		}
 		val status = ContextCompat.checkSelfPermission(application, permission)
 		return isPermissionStatusGranted(status)
 	}
@@ -74,9 +75,9 @@ class AppDelegate private constructor(app: Application) : ApplicationDelegate {
 		status == PackageManager.PERMISSION_GRANTED
 
   companion object {
-		const val ANDROID_PERMISSION_PREFIX = "android.permission"
+		const val ANDROID_PERMISSION_PREFIX = "android.permission."
 
-    private val initializer = LateLazy<AppDelegate>()
+    private val initializer: LateInitializerDelegate<AppDelegate> = LateLazy()
     private val delegate by initializer
 
     @JvmStatic
@@ -87,33 +88,12 @@ class AppDelegate private constructor(app: Application) : ApplicationDelegate {
     val hasStoragePermission
        get() = delegate.hasStoragePermission()
 
-    /**
-     * Bypass [androidx.annotation.RequiresPermission as it check the function name
-     * @return [Boolean] from [StoragePermission]
-     */
-
     @JvmStatic fun checkStoragePermission() = hasStoragePermission
 
-    /**
-     * In case there's need to get ImageVector of a Drawable when context isn't available, e.g: Sealed Class
-     * @param [id] the Int id of [DrawableRes]
-     * @return [ImageVector] from [ImageVector.Companion.vectorResource]
-     */
+    @JvmStatic fun getImageVectorFromDrawableId(@DrawableRes id: Int) = delegate.getImageVector(id)
 
     @JvmStatic
-		fun getImageVectorFromDrawableId(@DrawableRes id: Int) = delegate.getImageVector(id)
-
-    /**
-     * Provide the Instance
-     * @see [com.kylentt.mediaplayer.app.dependency.AppInitializer.create]
-     * @param [context] the base [Application] class to access resource from
-     */
-
-    @JvmStatic
-    fun provides(context: Context): AppDelegate {
-      if (BuildConfig.DEBUG) {
-				LateLazySample.runTestCase()
-      }
+		infix fun provides(context: Context): AppDelegate {
       checkState(!initializer.isInitialized)
       return initializer.initializeValue { AppDelegate(context) }
     }

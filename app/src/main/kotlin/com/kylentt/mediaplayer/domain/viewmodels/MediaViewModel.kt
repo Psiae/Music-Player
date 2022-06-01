@@ -2,13 +2,14 @@ package com.kylentt.mediaplayer.domain.viewmodels
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.os.Handler
 import androidx.annotation.MainThread
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
 import com.kylentt.mediaplayer.core.exoplayer.mediaItem.MediaItemHelper.getDebugDescription
-import com.kylentt.mediaplayer.domain.mediasession.MediaSessionManager
+import com.kylentt.mediaplayer.domain.mediasession.MediaSessionConnector
 import com.kylentt.mediaplayer.domain.mediasession.service.connector.PlaybackState
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
@@ -16,6 +17,7 @@ import com.kylentt.mediaplayer.helper.external.IntentWrapper
 import com.kylentt.mediaplayer.helper.media.MediaItemHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.*
+import kotlinx.coroutines.android.asCoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import timber.log.Timber
 import javax.inject.Inject
@@ -25,7 +27,7 @@ import kotlin.coroutines.coroutineContext
 class MediaViewModel @Inject constructor(
   private val dispatchers: AppDispatchers,
   private val itemHelper: MediaItemHelper,
-  private val mediaSessionManager: MediaSessionManager
+  private val mediaSessionConnector: MediaSessionConnector
 ) : ViewModel() {
 
   private val ioScope = viewModelScope + dispatchers.io
@@ -38,16 +40,20 @@ class MediaViewModel @Inject constructor(
   @MainThread
   fun connectService() {
     checkMainThread()
-    mediaSessionManager.connectService()
+    mediaSessionConnector.connectService()
   }
 
   fun handleMediaIntent(intent: IntentWrapper) {
-    viewModelScope.launch(dispatchers.computation) { mediaSessionManager.handleMediaIntent(intent) }
+    viewModelScope.launch(dispatchers.computation) { mediaSessionConnector.handleMediaIntent(intent) }
+
+		CoroutineScope(Dispatchers.Main).launch {
+			delay(400)
+		}
   }
 
   private suspend fun collectPlaybackState() {
     Timber.d("MediaViewModel collectPlaybackState")
-    mediaSessionManager.playbackState.collect { playbackState ->
+    mediaSessionConnector.playbackState.collect { playbackState ->
       Timber.d("MediaViewModel collectPlaybackState collected for: " +
         "\n${playbackState.currentMediaItem.getDebugDescription()}"
       )

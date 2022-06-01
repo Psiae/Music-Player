@@ -23,7 +23,6 @@ import javax.inject.Singleton
  */
 
 
-
 interface ProtoRepository {
   val appSettingSF: StateFlow<AppSettings>
   suspend fun collectFromSettings(): Flow<AppSettings>

@@ -16,7 +16,7 @@ import javax.inject.Singleton
 
 /**
  * Hilt Module Providing MediaSession Component
- * @see [MediaSessionManager]
+ * @see [MediaSessionConnector]
  * @author Kylentt
  * @since 2022/04/03
  */
@@ -27,7 +27,7 @@ object MediaSessionModule {
 
   @Provides
   @Singleton
-  fun provideMediaSessionManager(
+  fun provideMediaSessionConnector(
     @ApplicationContext context: Context,
     coroutineScope: AppScope,
     coilHelper: CoilHelper,
@@ -35,15 +35,15 @@ object MediaSessionModule {
     itemHelper: MediaItemHelper,
     mediaRepo: MediaRepository,
     protoRepo: ProtoRepository
-  ): MediaSessionManager {
-    return MediaSessionManager(
-      appScope = coroutineScope,
-      baseContext = context,
-      coilHelper = coilHelper,
-      dispatchers = dispatchers,
-      itemHelper = itemHelper,
-      mediaRepo = mediaRepo,
-      protoRepo = protoRepo
+  ): MediaSessionConnector {
+    return MediaSessionConnector(
+			appScope = coroutineScope,
+			baseContext = context,
+			coilHelper = coilHelper,
+			dispatchers = dispatchers,
+			itemHelper = itemHelper,
+			mediaRepo = mediaRepo,
+			protoRepo = protoRepo
     )
   }
 

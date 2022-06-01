@@ -44,5 +44,4 @@ object MediaServiceModule {
       .setLooper(Looper.getMainLooper())
       .build()
   }
-
 }

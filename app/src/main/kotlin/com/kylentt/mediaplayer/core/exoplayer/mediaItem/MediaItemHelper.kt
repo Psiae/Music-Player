@@ -9,14 +9,14 @@ import com.kylentt.mediaplayer.helper.external.providers.DocumentProviderHelper
 object MediaItemHelper {
 
   inline val MediaItem.fileName
-    get() = mediaMetadata.description
+    @JvmStatic get() = mediaMetadata.description
 
   inline val MediaItem.displayTitle
-    get() = mediaMetadata.displayTitle
+    @JvmStatic get() = mediaMetadata.displayTitle
 
   @JvmStatic
   fun MediaItem.getDebugDescription(): String {
-    return "MediaItem@${this.hashCode()} Description:" +
+    return "$this Description:" +
       "\n fileName: $fileName" +
       "\n mediaId: $mediaId" +
       "\n displayTitle: $displayTitle"

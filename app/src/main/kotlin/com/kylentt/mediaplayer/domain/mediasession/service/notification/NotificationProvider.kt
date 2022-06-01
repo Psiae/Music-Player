@@ -32,6 +32,7 @@ import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateIdle
 import com.kylentt.mediaplayer.core.exoplayer.mediaItem.MediaItemHelper.getDebugDescription
 import com.kylentt.mediaplayer.data.source.local.MediaStoreSong
 import com.kylentt.mediaplayer.domain.mediasession.service.MusicLibraryService
+import com.kylentt.mediaplayer.domain.mediasession.service.ServiceLifecycleState.Companion.isForeground
 import com.kylentt.mediaplayer.domain.mediasession.service.connector.ControllerCommand
 import com.kylentt.mediaplayer.domain.mediasession.service.connector.ControllerCommand.Companion.wrapWithFadeOut
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
@@ -153,17 +154,18 @@ class MusicLibraryNotificationProvider(
 		}
 	}
 
-
 	private suspend fun launchSessionNotificationValidator(
 		session: MediaSession,
 		onUpdate: suspend (Notification) -> Unit
 	) = withContext(dispatchers.main) {
-		dispatchSuspendNotificationValidator(2, 1000) {
-			val player = session.player
-			val notification =
-				getNotificationForSession(session, mediaNotificationChannelName)
+		val updateBlock: suspend () -> Unit = {
+			val notification = getNotificationForSession(session, mediaNotificationChannelName)
 			onUpdate(notification)
-			considerForegroundService(player, notification)
+			considerForegroundService(session.player, notification)
+		}
+		notificationUpdateJob.cancel()
+		notificationUpdateJob = launch {
+			dispatchSuspendNotificationValidator(2, 1000) { updateBlock() }
 		}
 	}
 
@@ -171,13 +173,11 @@ class MusicLibraryNotificationProvider(
 		session: MediaSession
 	): Unit = withContext(dispatchers.main) {
 		val updateBlock: suspend () -> Unit = {
-			val notification =
-				getNotificationForSession(session, mediaNotificationChannelName)
+			val notification = getNotificationForSession(session, mediaNotificationChannelName)
 			ensureActive()
 			Timber.d("suspendUpdateNotification notify for ${session.player.currentMediaItem?.getDebugDescription()}")
 			notificationManager.notify(mediaNotificationId, notification)
 		}
-		ensureActive()
 		updateBlock()
 		launchSessionNotificationValidator(session) { updateBlock() }
 	}
@@ -187,17 +187,12 @@ class MusicLibraryNotificationProvider(
 		times: Int,
 		interval: Long,
 		update: suspend () -> Unit
-	) {
-		checkMainThread()
-		validatorJob.cancel()
-		validatorJob = withContext(coroutineContext) {
-			launch {
-				repeat(times) {
-					delay(interval)
-					ensureActive()
-					update()
-				}
-			}
+	) = withContext(dispatchers.main) {
+		ensureActive()
+		repeat(times) {
+			delay(interval)
+			ensureActive()
+			update()
 		}
 	}
 
@@ -205,6 +200,7 @@ class MusicLibraryNotificationProvider(
 		item: MediaItem,
 		reason: Int
 	): Unit {
+		coroutineContext.ensureActive()
 		withContext(dispatchers.io) {
 			val bitmap = getMediaItemEmbeddedPicture(item)?.let { byteArray ->
 				getBitmapFromByteArray(byteArray)
@@ -313,7 +309,7 @@ class MusicLibraryNotificationProvider(
   @MainThread
  	fun considerForegroundService(player: Player, notification: Notification) {
     checkMainThread()
-    val isForeground = MusicLibraryService.LifecycleState.isForeground()
+    val isForeground = serviceState.isForeground()
 		when {
 			player.playbackState.isOngoing() -> {
 				if (!isForeground) {
@@ -336,7 +332,7 @@ class MusicLibraryNotificationProvider(
 	@MainThread
 	fun considerForegroundService(session: MediaSession) {
 		checkMainThread()
-		val isForeground = MusicLibraryService.LifecycleState.isForeground()
+		val isForeground = serviceState.isForeground()
 		val player = session.player
 		when {
 			!player.playbackState.isOngoing() -> {
@@ -440,9 +436,9 @@ class MusicLibraryNotificationProvider(
 				return updateSessionNotification(mediaSession)
 			}
 			try {
-				com.kylentt.mediaplayer.helper.Preconditions.checkState(hasNextMediaItem())
+				checkState(hasNextMediaItem())
 			} catch (e: IllegalStateException) {
-				timber.log.Timber.e("$e: Notification Next received when $this has no Next Item")
+				Timber.e("$e: Notification Next received when $this has no Next Item")
 			} finally {
 				seekToNextMediaItem()
 			}
@@ -504,7 +500,7 @@ class MusicLibraryNotificationProvider(
 			val duration = 1000L
 			val removeNotification = !playbackState.isOngoing()
 			val command = ControllerCommand.STOP.wrapWithFadeOut(flush = true, duration = duration) {
-				val foreground = MusicLibraryService.LifecycleState.isForeground()
+				val foreground = serviceState.isForeground()
 				service.stopForegroundService(mediaNotificationId, removeNotification)
 				if (!foreground && !com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity.isAlive) {
 					// NPE in MediaControllerImplBase.java:3041 when calling librarySession.release()

@@ -40,11 +40,18 @@ fun interface OnChanged <T> {
 	fun onChanged(old: T, new: T)
 }
 
-enum class ServiceLifecycleState {
-	NOTHING,
-	DESTROYED,
-	ALIVE,
-	FOREGROUND
+sealed class ServiceLifecycleState {
+	object NOTHING : ServiceLifecycleState()
+	object DESTROYED : ServiceLifecycleState()
+	object ALIVE : ServiceLifecycleState()
+	object FOREGROUND : ServiceLifecycleState()
+
+	companion object {
+		@JvmStatic fun ServiceLifecycleState.wasLaunched() = this is NOTHING
+		@JvmStatic fun ServiceLifecycleState.isAlive() = this is ALIVE || isForeground()
+		@JvmStatic fun ServiceLifecycleState.isForeground() = this is FOREGROUND
+		@JvmStatic fun ServiceLifecycleState.isDestroyed() = this is DESTROYED
+	}
 }
 
 @AndroidEntryPoint

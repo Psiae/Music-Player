@@ -60,6 +60,7 @@ class MediaSessionConnector(
 
   val playbackState
     get() = serviceConnector.playbackState
+
   val serviceState
     get() = serviceConnector.serviceState
 

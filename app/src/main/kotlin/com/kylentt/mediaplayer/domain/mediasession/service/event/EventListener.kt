@@ -5,7 +5,6 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.session.MediaSession
-import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isOngoing
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateBuffering
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateEnded
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateIdle
@@ -39,9 +38,6 @@ class MusicLibraryListener(
 
 		override fun onPlaybackStateChanged(playbackState: Int) {
 			super.onPlaybackStateChanged(playbackState)
-			if (!playbackState.isOngoing()) {
-				notificationProvider.considerForegroundService(currentMediaSession)
-			}
 			handlePlayerStateChanged(currentMediaSession, playbackState)
 		}
 
@@ -61,8 +57,7 @@ class MusicLibraryListener(
 		}
 	}
 
-	val notificationProvider
-		get() = service.mediaNotificationProvider
+	private var isRegistered: Boolean = false
 
 	val currentMediaSession: MediaSession
 		get() = service.currentMediaSession
@@ -97,23 +92,29 @@ class MusicLibraryListener(
 		}
 	}
 
-	fun init() {
-		startListener()
-		service.registerOnDestroyCallback { stopListener() }
+	@MainThread
+	fun init(stopSelf: Boolean) {
+		checkMainThread()
+		if (!isRegistered) {
+			startListener()
+			if (stopSelf) service.registerOnDestroyCallback { stopListener() }
+		}
 	}
 
 	private fun startListener() {
 		registerPlayerListener(currentMediaSession.player, defaultPlayerLister)
+		isRegistered = true
 	}
 
 	private fun stopListener() {
 		unregisterPlayerListener(currentMediaSession.player, defaultPlayerLister)
+		isRegistered = false
 	}
 
 	private var playWhenReadyChangedJob = Job().job
 	private fun handlePlayWhenReadyChanged(session: MediaSession) {
-		playerStateChangedJob.cancel()
-		playerStateChangedJob = service.mainScope.launch {
+		playWhenReadyChangedJob.cancel()
+		playWhenReadyChangedJob = service.mainScope.launch {
 			service.mediaEventHandler.handlePlayerPlayWhenReadyChanged(session)
 		}
 	}
@@ -159,7 +160,7 @@ class MusicLibraryListener(
 	private inline fun elseFalse(condition: Boolean, block: () -> Unit): Boolean {
 		return if (condition) {
 			block()
-			true
+			condition
 		} else {
 			false
 		}

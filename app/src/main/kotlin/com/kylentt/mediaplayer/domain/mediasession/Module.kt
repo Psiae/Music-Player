@@ -25,18 +25,18 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object MediaSessionModule {
 
-  @Provides
-  @Singleton
-  fun provideMediaSessionConnector(
-    @ApplicationContext context: Context,
-    coroutineScope: AppScope,
-    coilHelper: CoilHelper,
-    dispatchers: AppDispatchers,
-    itemHelper: MediaItemHelper,
-    mediaRepo: MediaRepository,
-    protoRepo: ProtoRepository
-  ): MediaSessionConnector {
-    return MediaSessionConnector(
+	@Provides
+	@Singleton
+	fun provideMediaSessionConnector(
+		@ApplicationContext context: Context,
+		coroutineScope: AppScope,
+		coilHelper: CoilHelper,
+		dispatchers: AppDispatchers,
+		itemHelper: MediaItemHelper,
+		mediaRepo: MediaRepository,
+		protoRepo: ProtoRepository
+	): MediaSessionConnector {
+		return MediaSessionConnector(
 			appScope = coroutineScope,
 			baseContext = context,
 			coilHelper = coilHelper,
@@ -44,7 +44,6 @@ object MediaSessionModule {
 			itemHelper = itemHelper,
 			mediaRepo = mediaRepo,
 			protoRepo = protoRepo
-    )
-  }
-
+		)
+	}
 }

@@ -92,6 +92,7 @@ class MediaItemHelper(
 		 * In case of [MediaItem] some devices might override [NotificationCompat.Builder.mLargeIcon]
 		 * with [android.graphics.Bitmap] from [MediaMetadata.artworkUri] of the current [MediaItem]
 		 * of the [androidx.media3.session.MediaSession] that is set to the [NotificationCompat].
+		 *
 		 * In e.g: Pixel Android 12 it will always try to maintain the aspect-ratio
 		 * so it might came out bad, so the ArtworkUri is Hidden to be properly scaled as 1:1 later
 		 */

@@ -1,7 +1,6 @@
 package com.kylentt.mediaplayer.domain.mediasession.service.event
 
 import android.annotation.SuppressLint
-import android.app.ActivityManager
 import android.net.Uri
 import android.widget.Toast
 import androidx.annotation.MainThread
@@ -11,7 +10,7 @@ import androidx.media3.common.PlaybackException.ERROR_CODE_DECODING_FAILED
 import androidx.media3.common.PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND
 import androidx.media3.common.Player
 import androidx.media3.session.MediaSession
-import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.toPlayerRepeatModeString
+import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isOngoing
 import com.kylentt.mediaplayer.core.exoplayer.mediaItem.MediaItemHelper.getDebugDescription
 import com.kylentt.mediaplayer.core.exoplayer.mediaItem.MediaMetadataHelper.getStoragePath
 import com.kylentt.mediaplayer.domain.mediasession.service.MusicLibraryService
@@ -19,10 +18,13 @@ import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import com.kylentt.mediaplayer.helper.external.providers.ContentProvidersHelper
 import com.kylentt.mediaplayer.helper.external.providers.DocumentProviderHelper
 import com.kylentt.mediaplayer.helper.media.MediaItemHelper.Companion.orEmpty
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
-import kotlin.coroutines.coroutineContext
+import java.io.IOException
 
 class MusicLibraryEventHandler(
 	private val service: MusicLibraryService
@@ -42,21 +44,21 @@ class MusicLibraryEventHandler(
 		@Player.MediaItemTransitionReason reason: Int
 	) = withContext(dispatcher.main) {
 		ensureActive()
-		mediaItemChangedImpl(session.player.currentMediaItem.orEmpty(), reason).join()
+		mediaItemChangedImpl(session, reason).join()
 	}
 
 	suspend fun handlePlayerStateChanged(
 		session: MediaSession
 	) = withContext(dispatcher.main) {
 		ensureActive()
-		playerStateChangedImpl(session.player.playbackState).join()
+		playerStateChangedImpl(session).join()
 	}
 
 	suspend fun handlePlayerRepeatModeChanged(
 		session: MediaSession
 	) = withContext(dispatcher.main) {
 		ensureActive()
-		playerRepeatModeChangedImpl(session.player.playbackState).join()
+		playerRepeatModeChangedImpl(session).join()
 	}
 
 	suspend fun handlePlayerError(
@@ -64,7 +66,7 @@ class MusicLibraryEventHandler(
 		error: PlaybackException
 	) = withContext(dispatcher.main) {
 		ensureActive()
-		playerErrorImpl(session.player, error).join()
+		playerErrorImpl(session, error).join()
 	}
 
 	private suspend fun playWhenReadyChangedImpl(
@@ -78,20 +80,25 @@ class MusicLibraryEventHandler(
 	}
 
 	private suspend fun mediaItemChangedImpl(
-		item: MediaItem,
+		session: MediaSession,
 		reason: @Player.MediaItemTransitionReason Int
 	): Job = withContext(dispatcher.main) {
-		launch { service.mediaNotificationProvider.suspendHandleMediaItemTransition(item, reason) }
+		launch {
+			val item = session.player.currentMediaItem.orEmpty()
+			service.mediaNotificationProvider.suspendHandleMediaItemTransition(item, reason)
+		}
 	}
 
 	private suspend fun playerRepeatModeChangedImpl(
-		mode: @Player.RepeatMode Int
+		session: MediaSession
 	): Job = withContext(dispatcher.main) {
-		launch { service.mediaNotificationProvider.suspendHandleRepeatModeChanged(mode) }
+		launch {
+			service.mediaNotificationProvider.suspendHandleRepeatModeChanged(session.player.repeatMode)
+		}
 	}
 
 	private suspend fun playerErrorImpl(
-		player: Player,
+		session: MediaSession,
 		error: PlaybackException
 	): Job = withContext(dispatcher.main) {
 		launch {
@@ -99,9 +106,9 @@ class MusicLibraryEventHandler(
 
 			@SuppressLint("SwitchIntDef")
 			when (code) {
-				ERROR_CODE_IO_FILE_NOT_FOUND -> handleIOErrorFileNotFound(player, error)
+				ERROR_CODE_IO_FILE_NOT_FOUND -> handleIOErrorFileNotFound(session, error).join()
 				ERROR_CODE_DECODING_FAILED -> {
-					player.pause()
+					session.player.pause()
 					val context = service.applicationContext
 					Toast.makeText(context, "Decoding Failed ($code), Paused", Toast.LENGTH_LONG).show()
 				}
@@ -110,24 +117,29 @@ class MusicLibraryEventHandler(
 	}
 
 	private suspend fun playerStateChangedImpl(
-		state: @Player.State Int
-	): Job = withContext(dispatcher.main) { launch { /*TODO*/ } }
+		session: MediaSession
+	): Job = withContext(dispatcher.main) {
+		launch {
+			if (!session.player.playbackState.isOngoing()) {
+				service.mediaNotificationProvider.launchSessionNotificationValidator(session) {}
+			}
+		}
+	}
 
 	@MainThread
 	private suspend fun handleIOErrorFileNotFound(
-		player: Player,
+		session: MediaSession,
 		error: PlaybackException
 	): Job = withContext(dispatcher.main) {
 		launch {
 			checkArgument(error.errorCode == ERROR_CODE_IO_FILE_NOT_FOUND)
 
-			ActivityManager.isUserAMonkey()
-
-			val items = getPlayerMediaItems(player)
+			val items = getPlayerMediaItems(session.player)
 
 			var count = 0
 			items.forEachIndexed { index: Int, item: MediaItem ->
-				val uri = item.mediaMetadata.mediaUri ?: Uri.parse(item.mediaMetadata.getStoragePath() ?: "")
+				val uri = item.mediaMetadata.mediaUri
+					?: Uri.parse(item.mediaMetadata.getStoragePath() ?: "")
 				val uriString = uri.toString()
 				val isExist = when {
 					uriString.startsWith(DocumentProviderHelper.storagePath) -> File(uriString).exists()
@@ -136,19 +148,20 @@ class MusicLibraryEventHandler(
 							val iStream = service.applicationContext.contentResolver.openInputStream(uri)
 							iStream!!.close()
 							true
-						} catch (e: Exception) {
-							Timber.d("$e: Couldn't use Input Stream on $uri")
+						} catch (e: IOException) {
+							Timber.e("$e: Couldn't use Input Stream on $uri")
 							false
 						}
 					}
 					else -> false
 				}
+
 				if (!isExist) {
-					val fixedIndex = index - count
+					val fIndex = index - count
 					Timber.d("$uriString doesn't Exist, removing ${item.getDebugDescription()}, " +
-						"\nindex: was $index current $fixedIndex"
+						"\nindex: was $index current $fIndex"
 					)
-					player.removeMediaItem(fixedIndex)
+					session.player.removeMediaItem(fIndex)
 					count++
 				}
 			}

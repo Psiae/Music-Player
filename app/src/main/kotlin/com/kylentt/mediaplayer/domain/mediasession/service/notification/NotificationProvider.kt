@@ -39,6 +39,7 @@ import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkNotMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.helper.VersionHelper
+import com.kylentt.mediaplayer.helper.media.MediaItemHelper.Companion.orEmpty
 import kotlinx.coroutines.*
 import timber.log.Timber
 import kotlin.coroutines.coroutineContext
@@ -55,6 +56,8 @@ class MusicLibraryNotificationProvider(
 	private val service: MusicLibraryService
 ) : MediaNotification.Provider {
 
+	private var itemBitmap = Pair<MediaItem, Bitmap?>(MediaItem.EMPTY, null)
+
 	private val serviceState: ServiceLifecycleState by MusicLibraryService.LifecycleState
 	private val dispatchers: AppDispatchers = service.coroutineDispatchers
 
@@ -62,9 +65,6 @@ class MusicLibraryNotificationProvider(
 
 	private val mediaSession
 		get() = service.currentMediaSession
-
-  private var itemBitmap = Pair<MediaItem, Bitmap?>(MediaItem.EMPTY, null)
-	private var validatorJob = Job().job
 
 	val notificationManager: NotificationManager by lazy {
 		service.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -83,7 +83,7 @@ class MusicLibraryNotificationProvider(
 
 	init {
 		checkNotNull(service.baseContext) {
-			"Service Context must Not be null, try Initializing lazily after Super.onCreate()"
+			"Service Context must Not be null, try Initializing lazily at least onCreate()"
 		}
 		checkState(service.sessions.isEmpty()) {
 			"This Provider must be initialized before MediaLibraryService.onGetSession()"
@@ -152,16 +152,17 @@ class MusicLibraryNotificationProvider(
 		notificationManager.notify(mediaNotificationId, notification)
 	}
 
+	private var validatorJob = Job().job
 	suspend fun launchSessionNotificationValidator(
 		session: MediaSession,
 		onUpdate: suspend (Notification) -> Unit
 	) = withContext(dispatchers.main) {
 		validatorJob.cancel()
 		validatorJob = launch {
-			dispatchSuspendNotificationValidator(2, 1000) {
+			dispatchSuspendNotificationValidator(2, NOTIFICATION_UPDATE_INTERVAL) {
 				val notification = getNotificationForSession(session, mediaNotificationChannelName)
-				onUpdate(notification)
 				considerForegroundService(session.player, notification)
+				onUpdate(notification)
 			}
 		}
 	}
@@ -169,17 +170,10 @@ class MusicLibraryNotificationProvider(
 	private suspend fun suspendUpdateNotification(
 		session: MediaSession
 	): Unit = withContext(dispatchers.main) {
-		val updateBlock: suspend (Notification) -> Unit = {
-			Timber.d("suspendUpdateNotification notify for ${session.player.currentMediaItem?.getDebugDescription()}")
-			notificationManager.notify(mediaNotificationId, it)
-		}
-
-		ensureActive()
-		updateBlock(getSessionNotification(session))
-
+		updateSessionNotification(session)
 		launchSessionNotificationValidator(session) {
 			ensureActive()
-			updateBlock(it)
+			updateSessionNotification(it)
 		}
 	}
 
@@ -189,7 +183,6 @@ class MusicLibraryNotificationProvider(
 		interval: Long,
 		update: suspend () -> Unit
 	) = withContext(dispatchers.main) {
-		ensureActive()
 		repeat(times) {
 			delay(interval)
 			ensureActive()
@@ -199,22 +192,26 @@ class MusicLibraryNotificationProvider(
 
 	suspend fun suspendHandleMediaItemTransition(
 		item: MediaItem,
-		reason: Int
-	): Unit {
-		coroutineContext.ensureActive()
+		reason: Int // TODO
+	) = withContext(dispatchers.main) {
+		ensureActive()
+
 		withContext(dispatchers.io) {
 			val bitmap = getMediaItemEmbeddedPicture(item)?.let { byteArray ->
 				getBitmapFromByteArray(byteArray)
 			}
+
 			checkCancellation { bitmap?.recycle() }
 			val squaredBitmap = bitmap?.let { resizeBitmapForNotification(it) }
-			checkCancellation { bitmap?.recycle() }
+
+			checkCancellation {
+				// Coil might give the same instance so squaredBitmap is not recycled
+				bitmap?.recycle()
+			}
 			itemBitmap = item to squaredBitmap
 		}
 
-		withContext(dispatchers.main) {
-			suspendUpdateNotification(mediaSession)
-		}
+		suspendUpdateNotification(mediaSession)
 	}
 
 	suspend fun suspendHandleRepeatModeChanged(mode: Int) {
@@ -279,7 +276,7 @@ class MusicLibraryNotificationProvider(
 			!player.isPlaying
 		}
 
-		val item = player.currentMediaItem ?: MediaItem.EMPTY
+		val item = player.currentMediaItem.orEmpty()
 
 		Timber.d("getNotification for ${item.mediaMetadata.displayTitle}, " +
 			"\nshowPlayButton: $showPlayButton"
@@ -306,10 +303,9 @@ class MusicLibraryNotificationProvider(
   @MainThread
  	fun considerForegroundService(player: Player, notification: Notification) {
     checkMainThread()
-    val isForeground = serviceState.isForeground()
 		when {
 			player.playbackState.isOngoing() -> {
-				if (isForeground) return
+				if (serviceState.isForeground()) return
 				service.startForegroundService(mediaNotificationId, notification)
 			}
 			!player.playbackState.isOngoing() -> {
@@ -318,7 +314,6 @@ class MusicLibraryNotificationProvider(
 		}
     Timber.d("considerForegroundService changed," +
       "\nonGoing: ${player.playbackState.isOngoing()}" +
-      "\nwasForeground: $isForeground" +
       "\nisForeground: ${MusicLibraryService.LifecycleState.isForeground()}"
     )
   }
@@ -326,20 +321,18 @@ class MusicLibraryNotificationProvider(
 	@MainThread
 	fun considerForegroundService(session: MediaSession) {
 		checkMainThread()
-		val isForeground = serviceState.isForeground()
 		val player = session.player
 		when {
+			player.playbackState.isOngoing() -> {
+				if (serviceState.isForeground()) return
+				service.startForegroundService(mediaNotificationId, getSessionNotification(session))
+			}
 			!player.playbackState.isOngoing() -> {
 				service.stopForegroundService(mediaNotificationId, false)
-			}
-			player.playbackState.isOngoing() -> {
-				if (isForeground) return
-				service.startForegroundService(mediaNotificationId, getSessionNotification(session))
 			}
 		}
 		Timber.d("considerForegroundService changed," +
 			"\nonGoing: ${player.playbackState.isOngoing()}" +
-			"\nwasForeground: $isForeground" +
 			"\nisForeground: ${MusicLibraryService.LifecycleState.isForeground()}"
 		)
 	}
@@ -517,19 +510,6 @@ class MusicLibraryNotificationProvider(
   }
 
   inner class NotificationBuilder() {
-
-    private val actionStopCancel by lazy { makeActionStopCancel(MediaItem.EMPTY) }
-    private val actionPlay by lazy { makeActionPlay(MediaItem.EMPTY) }
-    private val actionPause by lazy { makeActionPause(MediaItem.EMPTY) }
-    private val actionPrev by lazy { makeActionPrev(MediaItem.EMPTY) }
-    private val actionPrevDisabled by lazy { makeActionPrevDisabled(MediaItem.EMPTY) }
-    private val actionNext by lazy { makeActionNext(MediaItem.EMPTY) }
-    private val actionNextDisabled by lazy { makeActionNextDisabled(MediaItem.EMPTY) }
-    private val actionRepeatOff by lazy { makeActionRepeatOffToOne(MediaItem.EMPTY) }
-    private val actionRepeatOne by lazy { makeActionRepeatOneToAll(MediaItem.EMPTY) }
-    private val actionRepeatAll by lazy { makeActionRepeatAllToOff(MediaItem.EMPTY) }
-
-    private val intentDismissNotification by lazy { makeDismissPendingIntent(MediaItem.EMPTY) }
 
     fun buildMediaNotification(
 			session: MediaSession,

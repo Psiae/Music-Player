@@ -15,7 +15,7 @@ import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
 import com.kylentt.mediaplayer.data.repository.MediaRepository
 import com.kylentt.mediaplayer.domain.mediasession.MediaSessionConnector
 import com.kylentt.mediaplayer.domain.mediasession.service.event.MusicLibraryEventHandler
-import com.kylentt.mediaplayer.domain.mediasession.service.event.MusicLibraryListener
+import com.kylentt.mediaplayer.domain.mediasession.service.event.MusicLibraryServiceListener
 import com.kylentt.mediaplayer.domain.mediasession.service.notification.MusicLibraryNotificationProvider
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
@@ -23,6 +23,7 @@ import com.kylentt.mediaplayer.helper.VersionHelper
 import com.kylentt.mediaplayer.helper.image.CoilHelper
 import com.kylentt.mediaplayer.helper.media.MediaItemHelper
 import com.kylentt.mediaplayer.ui.activity.CollectionExtension.forEachClear
+import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -31,10 +32,6 @@ import timber.log.Timber
 import javax.inject.Inject
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
-
-fun interface WhenReady <T> {
-	fun whenReady(ready: T)
-}
 
 fun interface OnChanged <T> {
 	fun onChanged(old: T, new: T)
@@ -73,7 +70,8 @@ class MusicLibraryService : MediaLibraryService() {
 		checkNotNull(baseContext)
 		val intent = packageManager.getLaunchIntentForPackage(packageName)
 		val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-		val sessionActivity = PendingIntent.getActivity(this, 444, intent, flag)
+		val requestCode = MainActivity.Constants.LAUNCH_REQUEST_CODE
+		val sessionActivity = PendingIntent.getActivity(this, requestCode, intent, flag)
 		val builder = MediaLibrarySession.Builder(this, injectedPlayer, sessionCallbackImpl)
 		with(builder) {
 			setId(Constants.SESSION_ID)
@@ -88,25 +86,22 @@ class MusicLibraryService : MediaLibraryService() {
 			session: MediaSession,
 			controller: MediaSession.ControllerInfo,
 			mediaItem: MediaItem
-		) = mediaItemHelper.rebuildMediaItem(mediaItem)
+		): MediaItem {
+			return mediaItemHelper.rebuildMediaItem(mediaItem)
+		}
 	}
 
 	private val sessionCallbackImpl = object : MediaLibrarySession.MediaLibrarySessionCallback {
-		override fun onPostConnect(session: MediaSession, controller: MediaSession.ControllerInfo) {
-			// TODO
-			super.onPostConnect(session, controller)
-		}
+		/* TODO */
 	}
 
 	val currentMediaSession: MediaSession
 		get() = mediaLibrarySession
 
-	val mediaEventHandler: MusicLibraryEventHandler by lazy {
-		MusicLibraryEventHandler(this)
-	}
+	val mediaEventHandler: MusicLibraryEventHandler = MusicLibraryEventHandler(this)
 
-	val mediaEventListener: MusicLibraryListener by lazy {
-		MusicLibraryListener(this)
+	val mediaEventListener: MusicLibraryServiceListener by lazy {
+		MusicLibraryServiceListener(this)
 	}
 
 	val mediaNotificationProvider: MusicLibraryNotificationProvider by lazy {
@@ -139,51 +134,27 @@ class MusicLibraryService : MediaLibraryService() {
 	}
 
 	@MainThread
-	private fun cancelServiceScope() {
-		ioScope.cancel()
-		mainScope.cancel()
-	}
-
-	@MainThread
-	private fun releaseComponent() {
-		if (injectedPlayer !== mediaLibrarySession.player) {
-			injectedPlayer.release()
-		}
-		mediaLibrarySession.player.release()
-		stopForegroundService(mediaNotificationProvider.mediaNotificationId, true)
-	}
-
-	@MainThread
-	private fun releaseSession() {
-		mediaLibrarySession.release()
-	}
-
-	@MainThread
-	private fun changeSessionPlayer(player: Player) {
-		checkMainThread()
-		val get = currentMediaSession.player
-		currentMediaSession.player = player
-		onSessionPlayerChangedListener.forEach { it.onChanged(get, currentMediaSession.player) }
-	}
-
-	@MainThread
 	fun startForegroundService(id: Int, notification: Notification) {
 		checkMainThread()
+		checkState(!LifecycleState.isForeground())
 		if (VersionHelper.hasQ()) {
 			startForeground(id, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
 		} else {
 			startForeground(id, notification)
 		}
+		Timber.d("MusicLibraryService StartForegroundService called")
 		LifecycleState.updateState(this, ServiceLifecycleState.FOREGROUND)
 	}
 
 	@MainThread
 	fun stopForegroundService(id: Int, removeNotification: Boolean) {
 		checkMainThread()
+		checkState(LifecycleState.isForeground())
 		stopForeground(removeNotification)
 		if (removeNotification) {
 			mediaNotificationProvider.notificationManager.cancel(id)
 		}
+		Timber.d("MusicLibraryService StopForegroundService called")
 		LifecycleState.updateState(this, ServiceLifecycleState.ALIVE)
 	}
 
@@ -196,14 +167,7 @@ class MusicLibraryService : MediaLibraryService() {
 	@MainThread
 	fun unregisterOnPlayerChangedListener(listener: OnChanged<Player>): Boolean {
 		checkMainThread()
-		var removed = false
-		onSessionPlayerChangedListener.removeAll {
-			elseFalse(it === listener) {
-				removed = true
-				removed
-			}
-		}
-		return removed
+		return onSessionPlayerChangedListener.removeAll { it === listener }
 	}
 
 	@MainThread
@@ -214,8 +178,35 @@ class MusicLibraryService : MediaLibraryService() {
 		onDestroyCallback.add(callback)
 	}
 
-	private inline fun elseFalse(condition: Boolean, block: () -> Boolean): Boolean {
-		return if (condition) block.invoke() else false
+	@MainThread
+	private fun cancelServiceScope() {
+		ioScope.cancel()
+		mainScope.cancel()
+	}
+
+	@MainThread
+	private fun releaseComponent() {
+		if (injectedPlayer !== mediaLibrarySession.player) {
+			injectedPlayer.release()
+		}
+		mediaLibrarySession.player.release()
+		mediaEventListener.release()
+	}
+
+	@MainThread
+	private fun releaseSession() {
+		if (LifecycleState.isForeground()) {
+			stopForegroundService(mediaNotificationProvider.mediaNotificationId, true)
+		}
+		mediaLibrarySession.release()
+	}
+
+	@MainThread
+	private fun changeSessionPlayer(player: Player) {
+		checkMainThread()
+		val get = currentMediaSession.player
+		currentMediaSession.player = player
+		onSessionPlayerChangedListener.forEach { it.onChanged(get, currentMediaSession.player) }
 	}
 
 	@MainThread
@@ -225,6 +216,7 @@ class MusicLibraryService : MediaLibraryService() {
 		private var currentHashCode: Int? = null
 
 		fun updateState(service: MediaLibraryService, state: ServiceLifecycleState) {
+			checkMainThread()
 			when (state) {
 				ServiceLifecycleState.ALIVE -> {
 					currentHashCode = service.hashCode()
@@ -260,9 +252,9 @@ class MusicLibraryService : MediaLibraryService() {
 		fun getComponentName(packageName: Context): ComponentName {
 			return ComponentName(packageName, MusicLibraryService::class.java)
 		}
+	}
 
-		object Constants {
-			const val SESSION_ID = "FLAMM"
-		}
+	object Constants {
+		const val SESSION_ID = "FLAMM"
 	}
 }

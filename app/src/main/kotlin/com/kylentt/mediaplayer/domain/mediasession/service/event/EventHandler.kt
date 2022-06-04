@@ -30,99 +30,76 @@ class MusicLibraryEventHandler(
 	private val service: MusicLibraryService
 ) {
 
-	private val dispatcher = service.coroutineDispatchers
+	private val dispatchers
+		get() = service.coroutineDispatchers
 
 	suspend fun handlePlayerPlayWhenReadyChanged(
 		session: MediaSession
-	) = withContext(dispatcher.main) {
-		ensureActive()
-		playWhenReadyChangedImpl(session).join()
-	}
+	): Unit = playWhenReadyChangedImpl(session)
 
 	suspend fun handlePlayerMediaItemChanged(
 		session: MediaSession,
 		@Player.MediaItemTransitionReason reason: Int
-	) = withContext(dispatcher.main) {
-		ensureActive()
-		mediaItemChangedImpl(session, reason).join()
-	}
+	): Unit = mediaItemChangedImpl(session, reason)
 
 	suspend fun handlePlayerStateChanged(
 		session: MediaSession
-	) = withContext(dispatcher.main) {
-		ensureActive()
-		playerStateChangedImpl(session).join()
-	}
+	): Unit = playerStateChangedImpl(session)
 
 	suspend fun handlePlayerRepeatModeChanged(
 		session: MediaSession
-	) = withContext(dispatcher.main) {
-		ensureActive()
-		playerRepeatModeChangedImpl(session).join()
-	}
+	): Unit = playerRepeatModeChangedImpl(session)
 
 	suspend fun handlePlayerError(
 		session: MediaSession,
 		error: PlaybackException
-	) = withContext(dispatcher.main) {
-		ensureActive()
-		playerErrorImpl(session, error).join()
-	}
+	): Unit = playerErrorImpl(session, error)
 
 	private suspend fun playWhenReadyChangedImpl(
 		session: MediaSession
-	): Job = withContext(dispatcher.main) {
-		launch {
-			service.mediaNotificationProvider.launchSessionNotificationValidator(session) {
-				service.mediaNotificationProvider.updateSessionNotification(it)
-			}
+	): Unit = withContext(dispatchers.main) {
+		service.mediaNotificationProvider.launchSessionNotificationValidator(session) { notification ->
+			ensureActive()
+			service.mediaNotificationProvider.updateSessionNotification(notification)
 		}
 	}
 
 	private suspend fun mediaItemChangedImpl(
 		session: MediaSession,
 		reason: @Player.MediaItemTransitionReason Int
-	): Job = withContext(dispatcher.main) {
-		launch {
-			val item = session.player.currentMediaItem.orEmpty()
-			service.mediaNotificationProvider.suspendHandleMediaItemTransition(item, reason)
-		}
+	) = withContext(dispatchers.main) {
+		val item = session.player.currentMediaItem.orEmpty()
+		service.mediaNotificationProvider.suspendHandleMediaItemTransition(item, reason)
 	}
 
 	private suspend fun playerRepeatModeChangedImpl(
 		session: MediaSession
-	): Job = withContext(dispatcher.main) {
-		launch {
-			service.mediaNotificationProvider.suspendHandleRepeatModeChanged(session.player.repeatMode)
-		}
+	) = withContext(dispatchers.main) {
+		service.mediaNotificationProvider.suspendHandleRepeatModeChanged(session.player.repeatMode)
 	}
 
 	private suspend fun playerErrorImpl(
 		session: MediaSession,
 		error: PlaybackException
-	): Job = withContext(dispatcher.main) {
-		launch {
-			val code = error.errorCode
+	) = withContext(dispatchers.main) {
+		val code = error.errorCode
 
-			@SuppressLint("SwitchIntDef")
-			when (code) {
-				ERROR_CODE_IO_FILE_NOT_FOUND -> handleIOErrorFileNotFound(session, error).join()
-				ERROR_CODE_DECODING_FAILED -> {
-					session.player.pause()
-					val context = service.applicationContext
-					Toast.makeText(context, "Decoding Failed ($code), Paused", Toast.LENGTH_LONG).show()
-				}
+		@SuppressLint("SwitchIntDef")
+		when (code) {
+			ERROR_CODE_IO_FILE_NOT_FOUND -> handleIOErrorFileNotFound(session, error)
+			ERROR_CODE_DECODING_FAILED -> {
+				session.player.pause()
+				val context = service.applicationContext
+				Toast.makeText(context, "Decoding Failed ($code), Paused", Toast.LENGTH_LONG).show()
 			}
 		}
 	}
 
 	private suspend fun playerStateChangedImpl(
 		session: MediaSession
-	): Job = withContext(dispatcher.main) {
-		launch {
-			if (!session.player.playbackState.isOngoing()) {
-				service.mediaNotificationProvider.launchSessionNotificationValidator(session) {}
-			}
+	) = withContext(dispatchers.main) {
+		if (!session.player.playbackState.isOngoing()) {
+			service.mediaNotificationProvider.launchSessionNotificationValidator(session) {}
 		}
 	}
 
@@ -130,47 +107,45 @@ class MusicLibraryEventHandler(
 	private suspend fun handleIOErrorFileNotFound(
 		session: MediaSession,
 		error: PlaybackException
-	): Job = withContext(dispatcher.main) {
-		launch {
-			checkArgument(error.errorCode == ERROR_CODE_IO_FILE_NOT_FOUND)
+	) = withContext(dispatchers.main) {
+		checkArgument(error.errorCode == ERROR_CODE_IO_FILE_NOT_FOUND)
 
-			val items = getPlayerMediaItems(session.player)
+		val items = getPlayerMediaItems(session.player)
 
-			var count = 0
-			items.forEachIndexed { index: Int, item: MediaItem ->
-				val uri = item.mediaMetadata.mediaUri
-					?: Uri.parse(item.mediaMetadata.getStoragePath() ?: "")
-				val uriString = uri.toString()
-				val isExist = when {
-					uriString.startsWith(DocumentProviderHelper.storagePath) -> File(uriString).exists()
-					uriString.startsWith(ContentProvidersHelper.contentScheme) -> {
-						try {
-							val iStream = service.applicationContext.contentResolver.openInputStream(uri)
-							iStream!!.close()
-							true
-						} catch (e: IOException) {
-							Timber.e("$e: Couldn't use Input Stream on $uri")
-							false
-						}
+		var count = 0
+		items.forEachIndexed { index: Int, item: MediaItem ->
+			val uri = item.mediaMetadata.mediaUri
+				?: Uri.parse(item.mediaMetadata.getStoragePath() ?: "")
+			val uriString = uri.toString()
+			val isExist = when {
+				uriString.startsWith(DocumentProviderHelper.storagePath) -> File(uriString).exists()
+				uriString.startsWith(ContentProvidersHelper.contentScheme) -> {
+					try {
+						val iStream = service.applicationContext.contentResolver.openInputStream(uri)
+						iStream!!.close()
+						true
+					} catch (e: IOException) {
+						Timber.e("$e: Couldn't use Input Stream on $uri")
+						false
 					}
-					else -> false
 				}
-
-				if (!isExist) {
-					val fIndex = index - count
-					Timber.d("$uriString doesn't Exist, removing ${item.getDebugDescription()}, " +
-						"\nindex: was $index current $fIndex"
-					)
-					session.player.removeMediaItem(fIndex)
-					count++
-				}
+				else -> false
 			}
-			val toast = Toast.makeText(service.applicationContext,
-				"Could Not Find Media ${ if (count > 1) "Files ($count)" else "File" }",
-				Toast.LENGTH_LONG
-			)
-			toast.show()
+
+			if (!isExist) {
+				val fIndex = index - count
+				Timber.d("$uriString doesn't Exist, removing ${item.getDebugDescription()}, " +
+					"\nindex: was $index current $fIndex"
+				)
+				session.player.removeMediaItem(fIndex)
+				count++
+			}
 		}
+		val toast = Toast.makeText(service.applicationContext,
+			"Could Not Find Media ${ if (count > 1) "Files ($count)" else "File" }",
+			Toast.LENGTH_LONG
+		)
+		toast.show()
 	}
 
 	private fun getPlayerMediaItems(player: Player): List<MediaItem> {

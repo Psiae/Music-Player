@@ -406,4 +406,8 @@ class MainActivity : ComponentActivity() {
     }
 
   }
+
+	object Constants {
+		const val LAUNCH_REQUEST_CODE = 444
+	}
 }

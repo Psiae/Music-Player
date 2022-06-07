@@ -89,16 +89,15 @@ class MusicLibraryServiceListener(
 	val isPlayerPlayWhenReady: Boolean
 		get() = currentPlayer.playWhenReady
 
-	init {
-		checkNotNull(service.baseContext) {
-			"Make Sure to Initialize MusicLibraryService EventListener at least service.onCreate()"
-		}
-	}
-
 	@MainThread
 	fun init(stopSelf: Boolean) {
 		checkMainThread()
 		checkState(!isRegistered)
+
+		checkNotNull(service.baseContext) {
+			"Make Sure to Initialize MusicLibraryService EventListener at least service.onCreate()"
+		}
+
 		startListener()
 		if (stopSelf) {
 			// TODO: listen to player changes if for whatever reason it does happen

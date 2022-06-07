@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Context
 import android.content.pm.ServiceInfo
+import android.view.View
 import androidx.annotation.MainThread
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
@@ -53,6 +54,21 @@ sealed class ServiceLifecycleState {
 	fun isDestroyed() = this is DESTROYED
 }
 
+/*
+Injected Dependencies
+Private val's
+Private backed val's
+Private anon object val's
+Private vars
+Private backed vars
+Private anon object vars
+Public's
+
+Override fun's
+Private fun's
+Public fun's
+*/
+
 @AndroidEntryPoint
 class MusicLibraryService : MediaLibraryService() {
 
@@ -95,14 +111,9 @@ class MusicLibraryService : MediaLibraryService() {
 		/* TODO */
 	}
 
-	val currentMediaSession: MediaSession
-		get() = mediaLibrarySession
-
 	val mediaEventHandler: MusicLibraryEventHandler = MusicLibraryEventHandler(this)
 
-	val mediaEventListener: MusicLibraryServiceListener by lazy {
-		MusicLibraryServiceListener(this)
-	}
+	val mediaEventListener: MusicLibraryServiceListener = MusicLibraryServiceListener(this)
 
 	val mediaNotificationProvider: MusicLibraryNotificationProvider by lazy {
 		MusicLibraryNotificationProvider(this)
@@ -110,6 +121,9 @@ class MusicLibraryService : MediaLibraryService() {
 
 	val mainScope by lazy { CoroutineScope(coroutineDispatchers.main + SupervisorJob()) }
 	val ioScope by lazy { CoroutineScope(coroutineDispatchers.main + SupervisorJob())  }
+
+	val currentMediaSession: MediaSession
+		get() = mediaLibrarySession
 
 	override fun onCreate() {
 		super.onCreate()
@@ -124,7 +138,6 @@ class MusicLibraryService : MediaLibraryService() {
 
 	override fun onDestroy() {
 		Timber.d("MusicLibraryService onDestroy() is called")
-
 		onDestroyCallback.forEachClear { it.onDestroy() }
 		cancelServiceScope()
 		releaseComponent()
@@ -147,9 +160,9 @@ class MusicLibraryService : MediaLibraryService() {
 	}
 
 	@MainThread
-	fun stopForegroundService(id: Int, removeNotification: Boolean) {
+	fun stopForegroundService(id: Int, removeNotification: Boolean, ignoreCheck: Boolean = false) {
 		checkMainThread()
-		checkState(LifecycleState.isForeground())
+		if (!ignoreCheck) checkState(LifecycleState.isForeground())
 		stopForeground(removeNotification)
 		if (removeNotification) {
 			mediaNotificationProvider.notificationManager.cancel(id)
@@ -198,7 +211,11 @@ class MusicLibraryService : MediaLibraryService() {
 		if (LifecycleState.isForeground()) {
 			stopForegroundService(mediaNotificationProvider.mediaNotificationId, true)
 		}
-		mediaLibrarySession.release()
+		try {
+			mediaLibrarySession.release()
+		} catch (e: NullPointerException) {
+			// NPE in MediaControllerImplBase.java:3041 when calling librarySession.release()
+		}
 	}
 
 	@MainThread
@@ -236,6 +253,7 @@ class MusicLibraryService : MediaLibraryService() {
 				}
 				ServiceLifecycleState.NOTHING -> throw IllegalArgumentException()
 			}
+			Timber.d("ServiceLifecycleState updated to $state")
 		}
 
 		@JvmStatic fun wasLaunched() = currentState != ServiceLifecycleState.NOTHING

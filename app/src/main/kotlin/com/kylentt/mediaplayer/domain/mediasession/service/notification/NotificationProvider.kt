@@ -19,6 +19,7 @@ import androidx.core.app.NotificationCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.*
+import androidx.media3.session.MediaLibraryService.MediaLibrarySession
 import com.kylentt.mediaplayer.R
 import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
 import com.kylentt.mediaplayer.core.delegates.LockMainThread
@@ -40,9 +41,11 @@ import com.kylentt.mediaplayer.helper.Preconditions.checkNotMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.helper.VersionHelper
 import com.kylentt.mediaplayer.helper.media.MediaItemHelper.Companion.orEmpty
+import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity
 import kotlinx.coroutines.*
 import timber.log.Timber
 import kotlin.coroutines.coroutineContext
+import kotlin.system.exitProcess
 
 /**
  * [MediaNotification.Provider] Implementation for [MusicLibraryService]
@@ -59,18 +62,19 @@ class MusicLibraryNotificationProvider(
 	private var itemBitmap = Pair<MediaItem, Bitmap?>(MediaItem.EMPTY, null)
 
 	private val serviceState: ServiceLifecycleState by MusicLibraryService.LifecycleState
-	private val dispatchers: AppDispatchers = service.coroutineDispatchers
 
-  private val notificationBuilder = NotificationBuilder()
-
-	private val mediaSession
-		get() = service.currentMediaSession
+	private val notificationBuilder = NotificationBuilder()
+	private val notificationActionReceiver = NotificationActionReceiver()
 
 	val notificationManager: NotificationManager by lazy {
 		service.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 	}
 
-	val notificationActionReceiver = NotificationActionReceiver()
+	private val dispatchers: AppDispatchers
+		get() = service.coroutineDispatchers
+
+	private val mediaSession
+		get() = service.currentMediaSession
 
 	val mediaNotificationChannelName: String
 		get() = NOTIFICATION_CHANNEL_NAME
@@ -83,7 +87,7 @@ class MusicLibraryNotificationProvider(
 
 	init {
 		checkNotNull(service.baseContext) {
-			"Service Context must Not be null, try Initializing lazily at least onCreate()"
+			"Service Context must Not be null, try Initializing when or after service.OnCreate()"
 		}
 		checkState(service.sessions.isEmpty()) {
 			"This Provider must be initialized before MediaLibraryService.onGetSession()"
@@ -309,7 +313,7 @@ class MusicLibraryNotificationProvider(
 				service.startForegroundService(mediaNotificationId, notification)
 			}
 			!player.playbackState.isOngoing() -> {
-				service.stopForegroundService(mediaNotificationId, false)
+				service.stopForegroundService(mediaNotificationId, false, true)
 			}
 		}
     Timber.d("considerForegroundService changed," +
@@ -317,25 +321,6 @@ class MusicLibraryNotificationProvider(
       "\nisForeground: ${MusicLibraryService.LifecycleState.isForeground()}"
     )
   }
-
-	@MainThread
-	fun considerForegroundService(session: MediaSession) {
-		checkMainThread()
-		val player = session.player
-		when {
-			player.playbackState.isOngoing() -> {
-				if (serviceState.isForeground()) return
-				service.startForegroundService(mediaNotificationId, getSessionNotification(session))
-			}
-			!player.playbackState.isOngoing() -> {
-				service.stopForegroundService(mediaNotificationId, false)
-			}
-		}
-		Timber.d("considerForegroundService changed," +
-			"\nonGoing: ${player.playbackState.isOngoing()}" +
-			"\nisForeground: ${MusicLibraryService.LifecycleState.isForeground()}"
-		)
-	}
 
 	inner class NotificationActionReceiver : BroadcastReceiver() {
 
@@ -482,13 +467,13 @@ class MusicLibraryNotificationProvider(
 
 		private fun onReceiveStopCancel() = with(mediaSession.player) {
 			val duration = 1000L
-			val removeNotification = !playbackState.isOngoing()
+			val rem = !playbackState.isOngoing()
 			val command = ControllerCommand.STOP.wrapWithFadeOut(flush = true, duration = duration) {
-				val foreground = serviceState.isForeground()
-				service.stopForegroundService(mediaNotificationId, removeNotification)
-				if (!foreground && !com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity.isAlive) {
-					// NPE in MediaControllerImplBase.java:3041 when calling librarySession.release()
-					service.onDestroy()
+				if (serviceState.isForeground()) {
+					service.stopForegroundService(mediaNotificationId, rem)
+					if (!MainActivity.isAlive) {
+						service.onDestroy()
+					}
 				}
 			}
 			service.sessionConnector.sendControllerCommand(command)

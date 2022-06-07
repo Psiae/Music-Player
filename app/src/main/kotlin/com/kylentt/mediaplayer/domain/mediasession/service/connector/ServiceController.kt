@@ -197,6 +197,12 @@ class MediaServiceController(
   private val playerIsPlaying: Boolean
     get() = mediaController.isPlaying
 
+	private val playerMediaItem
+		get() = mediaController.currentMediaItem
+
+	private val playerPlayWhenReady
+		get() = mediaController.playWhenReady
+
   private val fadeOutListener = mutableListOf<ControllerCommand.WithFadeOut>()
 
   private fun setupMediaController() {
@@ -252,25 +258,24 @@ class MediaServiceController(
     Timber.d("setPlayerVolume to $v or $fv")
   }
 
-  private var fadingOut = false
+  private var shouldFadeOut: Boolean = true
 
   private suspend fun fadeOut(
     command: ControllerCommand.WithFadeOut
   ) {
 
+		val pwr = playerPlayWhenReady
+		val item = playerMediaItem
+
+		val shouldLoop = { shouldFadeOut && playerIsPlaying && playerVolume > command.to }
+		val shouldCancel = { playerPlayWhenReady != pwr || !item.idEqual(playerMediaItem) }
+		val whenReady = {
+			whenReady { setPlayerVolume(maxVolume) }
+			shouldFadeOut = true
+		}
+
     if (command.flush) fadeOutListener.clear()
     fadeOutListener.add(command)
-
-    if (fadingOut || !playerIsPlaying || playerVolume == minVolume) {
-      fadingOut = false
-      fadeOutListener.forEachClear {
-        commandController(it.command)
-        it.afterFadeOut()
-      }
-      return whenReady { setPlayerVolume(maxVolume) }
-    }
-
-    fadingOut = true
 
     val to = command.to
     val duration = command.duration.toFloat()
@@ -278,21 +283,20 @@ class MediaServiceController(
     val step = duration / interval
     val deltaVol = playerVolume / step
 
-    while (playerVolume > to
-      && fadingOut
-    ) {
+    while (shouldLoop() && !shouldCancel()) {
       setPlayerVolume(playerVolume - deltaVol)
       delay(command.interval)
     }
 
-    if (fadingOut) {
-      fadingOut = false
-      fadeOutListener.forEachClear {
-        commandController(it.command)
-        it.afterFadeOut()
-      }
-      return whenReady { setPlayerVolume(maxVolume) }
-    }
+		if (shouldCancel()) {
+			return whenReady()
+		}
+
+		fadeOutListener.forEachClear {
+			commandController(it.command)
+			it.afterFadeOut()
+		}
+		whenReady()
   }
 
   private fun MediaItem?.idEqual(that: MediaItem?): Boolean {

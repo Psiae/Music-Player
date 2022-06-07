@@ -16,13 +16,12 @@ import androidx.annotation.MainThread
 import androidx.annotation.RequiresApi
 import androidx.annotation.WorkerThread
 import androidx.core.app.NotificationCompat
+import androidx.lifecycle.Lifecycle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.*
-import androidx.media3.session.MediaLibraryService.MediaLibrarySession
 import com.kylentt.mediaplayer.R
 import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
-import com.kylentt.mediaplayer.core.delegates.LockMainThread
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isOngoing
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isRepeatAll
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isRepeatOff
@@ -33,7 +32,6 @@ import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateIdle
 import com.kylentt.mediaplayer.core.exoplayer.mediaItem.MediaItemHelper.getDebugDescription
 import com.kylentt.mediaplayer.data.source.local.MediaStoreSong
 import com.kylentt.mediaplayer.domain.mediasession.service.MusicLibraryService
-import com.kylentt.mediaplayer.domain.mediasession.service.ServiceLifecycleState
 import com.kylentt.mediaplayer.domain.mediasession.service.connector.ControllerCommand
 import com.kylentt.mediaplayer.domain.mediasession.service.connector.ControllerCommand.Companion.wrapWithFadeOut
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
@@ -44,8 +42,6 @@ import com.kylentt.mediaplayer.helper.media.MediaItemHelper.Companion.orEmpty
 import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity
 import kotlinx.coroutines.*
 import timber.log.Timber
-import kotlin.coroutines.coroutineContext
-import kotlin.system.exitProcess
 
 /**
  * [MediaNotification.Provider] Implementation for [MusicLibraryService]
@@ -61,7 +57,7 @@ class MusicLibraryNotificationProvider(
 
 	private var itemBitmap = Pair<MediaItem, Bitmap?>(MediaItem.EMPTY, null)
 
-	private val serviceState: ServiceLifecycleState by MusicLibraryService.LifecycleState
+	private val serviceState by MusicLibraryService.LifecycleStateDelegate
 
 	private val notificationBuilder = NotificationBuilder()
 	private val notificationActionReceiver = NotificationActionReceiver()
@@ -96,7 +92,6 @@ class MusicLibraryNotificationProvider(
 			createNotificationChannel(notificationManager)
 		}
 		service.registerReceiver(notificationActionReceiver, IntentFilter(PLAYBACK_CONTROL_INTENT))
-		service.registerOnDestroyCallback { service.unregisterReceiver(notificationActionReceiver) }
 	}
 
 	/**
@@ -159,11 +154,12 @@ class MusicLibraryNotificationProvider(
 	private var validatorJob = Job().job
 	suspend fun launchSessionNotificationValidator(
 		session: MediaSession,
+		interval: Long = NOTIFICATION_UPDATE_INTERVAL,
 		onUpdate: suspend (Notification) -> Unit
 	) = withContext(dispatchers.main) {
 		validatorJob.cancel()
 		validatorJob = launch {
-			dispatchSuspendNotificationValidator(2, NOTIFICATION_UPDATE_INTERVAL) {
+			dispatchSuspendNotificationValidator(2, interval) {
 				val notification = getNotificationForSession(session, mediaNotificationChannelName)
 				considerForegroundService(session.player, notification)
 				onUpdate(notification)
@@ -307,20 +303,24 @@ class MusicLibraryNotificationProvider(
   @MainThread
  	fun considerForegroundService(player: Player, notification: Notification) {
     checkMainThread()
+		Timber.d("considerForegroundService, isForeground: ${serviceState.isForegroundService()}")
 		when {
 			player.playbackState.isOngoing() -> {
-				if (serviceState.isForeground()) return
-				service.startForegroundService(mediaNotificationId, notification)
+				if (serviceState.isForegroundService()) return
+				service.startForegroundService(mediaNotificationId, notification, true)
 			}
 			!player.playbackState.isOngoing() -> {
 				service.stopForegroundService(mediaNotificationId, false, true)
 			}
 		}
-    Timber.d("considerForegroundService changed," +
-      "\nonGoing: ${player.playbackState.isOngoing()}" +
-      "\nisForeground: ${MusicLibraryService.LifecycleState.isForeground()}"
-    )
   }
+
+	@MainThread
+	fun release() {
+		checkMainThread()
+		checkState(service.lifecycle.currentState == Lifecycle.State.DESTROYED)
+		service.unregisterReceiver(notificationActionReceiver)
+	}
 
 	inner class NotificationActionReceiver : BroadcastReceiver() {
 
@@ -466,17 +466,18 @@ class MusicLibraryNotificationProvider(
 		}
 
 		private fun onReceiveStopCancel() = with(mediaSession.player) {
-			val duration = 1000L
-			val rem = !playbackState.isOngoing()
-			val command = ControllerCommand.STOP.wrapWithFadeOut(flush = true, duration = duration) {
-				if (serviceState.isForeground()) {
-					service.stopForegroundService(mediaNotificationId, rem)
+			when {
+				playbackState.isOngoing() -> {
+					val command = ControllerCommand.STOP.wrapWithFadeOut(true, 1000L)
+					service.sessionConnector.sendControllerCommand(command)
+				}
+				else -> {
+					service.stopForegroundService(mediaNotificationId, true, true)
 					if (!MainActivity.isAlive) {
 						service.onDestroy()
 					}
 				}
 			}
-			service.sessionConnector.sendControllerCommand(command)
 		}
 	}
 

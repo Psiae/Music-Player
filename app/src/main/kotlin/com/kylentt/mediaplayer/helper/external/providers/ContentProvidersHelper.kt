@@ -7,8 +7,10 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import androidx.core.net.toUri
+import com.kylentt.mediaplayer.BuildConfig
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import com.kylentt.mediaplayer.helper.VersionHelper
+import okio.IOException
 import timber.log.Timber
 import java.io.File
 import java.net.URLDecoder
@@ -21,15 +23,7 @@ object ContentProvidersHelper {
 
   @JvmStatic
   val storageDir
-    get() = if (VersionHelper.hasR()){
-      Environment.getStorageDirectory()
-    } else {
-      if (File(storagePath).exists()) {
-        File(storagePath)
-      } else {
-        null
-      }
-    }
+    get() = getDeviceStorage()
 
   @JvmStatic
   val externalStorageDir
@@ -42,7 +36,7 @@ object ContentProvidersHelper {
 
   @JvmStatic
   val storageDirString
-     get() = (storageDir ?: storagePath).toString()
+     get() = storageDir.toString()
 
   @JvmStatic
   val externalStorageDirString
@@ -51,6 +45,42 @@ object ContentProvidersHelper {
   @JvmStatic
   val mediaAudioContentUriPrefix
     get() = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI ?: "content://media/external/audio/media"
+
+	private fun getDeviceStorage(): File? {
+		if (VersionHelper.hasR()) return Environment.getStorageDirectory()
+
+		val storage = File(storagePath)
+		if (storage.exists()) return storage
+
+		val extStorage = Environment.getExternalStorageDirectory() ?: File(exteralStoragePath)
+		return if (extStorage.exists()) {
+			val split = extStorage.toString().split("/")
+			val f = File("/${split.first()}")
+			if (f.exists()) f else null
+		} else {
+			null
+		}
+	}
+
+	@JvmStatic
+	fun isContentUriExist(context: Context, uri: Uri): Boolean {
+		return try {
+			context.contentResolver.openInputStream(uri)!!.close()
+			true
+		} catch (e: Exception) {
+			when (e) {
+				is IOException -> false
+				is NullPointerException -> {
+					Timber.e("NPE is thrown instead of IOException")
+					false
+				}
+				else -> {
+					if (BuildConfig.DEBUG) throw IllegalStateException("Uncaught Exception: \n${e}")
+					false
+				}
+			}
+		}
+	}
 
   @JvmStatic
   fun isMediaAudioUri(uri: Uri): Boolean {

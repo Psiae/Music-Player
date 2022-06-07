@@ -1,6 +1,7 @@
 package com.kylentt.mediaplayer.domain.mediasession.service.event
 
 import androidx.annotation.MainThread
+import androidx.lifecycle.*
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -19,23 +20,32 @@ import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
+
+/*
+	Responsibility: Listen to Service Event and dispatch it to EventHandler
+
+ */
+
 @MainThread
 class MusicLibraryServiceListener(
-	private val service: MusicLibraryService
+	private val service: MusicLibraryService,
+	private val mediaEventHandler: MusicLibraryEventHandler
 ) {
-
-	private var isRegistered: Boolean = false
 
 	private val playerListeners = mutableListOf<Pair<Player, Player.Listener>>()
 
 	private val playerListenerImpl = object : Player.Listener {
 
 		override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+			Timber.d("EventListener onPlayWhenReadyChanged")
+
 			super.onPlayWhenReadyChanged(playWhenReady, reason)
 			playWhenReadyChangedImpl(currentMediaSession)
 		}
 
 		override fun onPlaybackStateChanged(playbackState: Int) {
+			Timber.d("EventListener onPlaybackStateChanged")
+
 			super.onPlaybackStateChanged(playbackState)
 			playerStateChangedImpl(currentMediaSession, playbackState)
 		}
@@ -89,10 +99,12 @@ class MusicLibraryServiceListener(
 	val isPlayerPlayWhenReady: Boolean
 		get() = currentPlayer.playWhenReady
 
+	private var isRegistered: Boolean = false
+	var isReleased: Boolean = false
+
 	@MainThread
-	fun init(stopSelf: Boolean) {
+	fun start(stopSelf: Boolean) {
 		checkMainThread()
-		checkState(!isRegistered)
 
 		checkNotNull(service.baseContext) {
 			"Make Sure to Initialize MusicLibraryService EventListener at least service.onCreate()"
@@ -100,15 +112,23 @@ class MusicLibraryServiceListener(
 
 		startListener()
 		if (stopSelf) {
-			// TODO: listen to player changes if for whatever reason it does happen
-			service.registerOnDestroyCallback { stopListener() }
+			// TODO: listen to Player / MediaSession changes if for whatever reason it does happen
+			val unReg = LifecycleEventObserver { _, event ->
+				if (event == Lifecycle.Event.ON_DESTROY) {
+					stopListener()
+					release()
+				}
+			}
+			service.lifecycle.addObserver(unReg)
 		}
 	}
 
 	@MainThread
 	fun release() {
 		checkMainThread()
-		playerListeners.forEachClear { it.first.removeListener(it.second) }
+		if (!isReleased) {
+			playerListeners.forEachClear { it.first.removeListener(it.second) }
+		}
 	}
 
 	fun registerPlayerListener(player: Player, listener: Player.Listener) {
@@ -162,7 +182,7 @@ class MusicLibraryServiceListener(
 	private fun playWhenReadyChangedImpl(session: MediaSession) {
 		playWhenReadyChangedJob.cancel()
 		playWhenReadyChangedJob = service.mainScope.launch {
-			service.mediaEventHandler.handlePlayerPlayWhenReadyChanged(session)
+			mediaEventHandler.handlePlayerPlayWhenReadyChanged(session)
 		}
 	}
 
@@ -170,7 +190,7 @@ class MusicLibraryServiceListener(
 	private fun mediaItemTransitionImpl(session: MediaSession, reason: Int) {
 		mediaItemTransitionJob.cancel()
 		mediaItemTransitionJob = service.mainScope.launch {
-			service.mediaEventHandler.handlePlayerMediaItemChanged(currentMediaSession, reason)
+			mediaEventHandler.handlePlayerMediaItemChanged(currentMediaSession, reason)
 		}
 	}
 
@@ -178,7 +198,7 @@ class MusicLibraryServiceListener(
 	private fun playerErrorImpl(session: MediaSession, error: PlaybackException) {
 		playerErrorJob.cancel()
 		playerErrorJob = service.mainScope.launch {
-			service.mediaEventHandler.handlePlayerError(session, error)
+			mediaEventHandler.handlePlayerError(session, error)
 		}
 	}
 
@@ -186,7 +206,7 @@ class MusicLibraryServiceListener(
 	private fun playerStateChangedImpl(session: MediaSession, playbackState: @Player.State Int) {
 		playerStateChangedJob.cancel()
 		playerStateChangedJob = service.mainScope.launch {
-			service.mediaEventHandler.handlePlayerStateChanged(session)
+			mediaEventHandler.handlePlayerStateChanged(session)
 		}
 	}
 
@@ -194,7 +214,7 @@ class MusicLibraryServiceListener(
 	private fun repeatModeChangedImpl(session: MediaSession, mode: Int) {
 		repeatModeChangedJob.cancel()
 		repeatModeChangedJob = service.mainScope.launch {
-			service.mediaEventHandler.handlePlayerRepeatModeChanged(session)
+			mediaEventHandler.handlePlayerRepeatModeChanged(session)
 		}
 	}
 

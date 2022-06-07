@@ -10,27 +10,27 @@ import androidx.media3.common.PlaybackException.ERROR_CODE_DECODING_FAILED
 import androidx.media3.common.PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND
 import androidx.media3.common.Player
 import androidx.media3.session.MediaSession
+import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isOngoing
 import com.kylentt.mediaplayer.core.exoplayer.mediaItem.MediaItemHelper.getDebugDescription
 import com.kylentt.mediaplayer.core.exoplayer.mediaItem.MediaMetadataHelper.getStoragePath
 import com.kylentt.mediaplayer.domain.mediasession.service.MusicLibraryService
+import com.kylentt.mediaplayer.domain.mediasession.service.notification.MusicLibraryNotificationProvider
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import com.kylentt.mediaplayer.helper.external.providers.ContentProvidersHelper
 import com.kylentt.mediaplayer.helper.external.providers.DocumentProviderHelper
 import com.kylentt.mediaplayer.helper.media.MediaItemHelper.Companion.orEmpty
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import timber.log.Timber
 import java.io.File
 import java.io.IOException
 
 class MusicLibraryEventHandler(
-	private val service: MusicLibraryService
+	private val service: MusicLibraryService,
+	private val mediaNotificationProvider: MusicLibraryNotificationProvider
 ) {
 
-	private val dispatchers
+	private val dispatchers: AppDispatchers
 		get() = service.coroutineDispatchers
 
 	suspend fun handlePlayerPlayWhenReadyChanged(
@@ -58,9 +58,9 @@ class MusicLibraryEventHandler(
 	private suspend fun playWhenReadyChangedImpl(
 		session: MediaSession
 	): Unit = withContext(dispatchers.main) {
-		service.mediaNotificationProvider.launchSessionNotificationValidator(session) { notification ->
+		mediaNotificationProvider.launchSessionNotificationValidator(session) { notification ->
 			ensureActive()
-			service.mediaNotificationProvider.updateSessionNotification(notification)
+			mediaNotificationProvider.updateSessionNotification(notification)
 		}
 	}
 
@@ -69,13 +69,13 @@ class MusicLibraryEventHandler(
 		reason: @Player.MediaItemTransitionReason Int
 	) = withContext(dispatchers.main) {
 		val item = session.player.currentMediaItem.orEmpty()
-		service.mediaNotificationProvider.suspendHandleMediaItemTransition(item, reason)
+		mediaNotificationProvider.suspendHandleMediaItemTransition(item, reason)
 	}
 
 	private suspend fun playerRepeatModeChangedImpl(
 		session: MediaSession
 	) = withContext(dispatchers.main) {
-		service.mediaNotificationProvider.suspendHandleRepeatModeChanged(session.player.repeatMode)
+		mediaNotificationProvider.suspendHandleRepeatModeChanged(session.player.repeatMode)
 	}
 
 	private suspend fun playerErrorImpl(
@@ -98,9 +98,7 @@ class MusicLibraryEventHandler(
 	private suspend fun playerStateChangedImpl(
 		session: MediaSession
 	) = withContext(dispatchers.main) {
-		if (!session.player.playbackState.isOngoing()) {
-			service.mediaNotificationProvider.launchSessionNotificationValidator(session) {}
-		}
+		mediaNotificationProvider.launchSessionNotificationValidator(session, 500) {}
 	}
 
 	@MainThread
@@ -119,15 +117,8 @@ class MusicLibraryEventHandler(
 			val uriString = uri.toString()
 			val isExist = when {
 				uriString.startsWith(DocumentProviderHelper.storagePath) -> File(uriString).exists()
-				uriString.startsWith(ContentProvidersHelper.contentScheme) -> {
-					try {
-						val iStream = service.applicationContext.contentResolver.openInputStream(uri)
-						iStream!!.close()
-						true
-					} catch (e: IOException) {
-						Timber.e("$e: Couldn't use Input Stream on $uri")
-						false
-					}
+				ContentProvidersHelper.isSchemeContentUri(uri) -> {
+					ContentProvidersHelper.isContentUriExist(service.applicationContext, uri)
 				}
 				else -> false
 			}

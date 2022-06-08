@@ -303,10 +303,10 @@ class MusicLibraryNotificationProvider(
   @MainThread
  	fun considerForegroundService(player: Player, notification: Notification) {
     checkMainThread()
-		Timber.d("considerForegroundService, isForeground: ${serviceState.isForegroundService()}")
+		Timber.d("considerForegroundService, isForeground: ${serviceState.isForeground()}")
 		when {
 			player.playbackState.isOngoing() -> {
-				if (serviceState.isForegroundService()) return
+				if (serviceState.isForeground()) return
 				service.startForegroundService(mediaNotificationId, notification, true)
 			}
 			!player.playbackState.isOngoing() -> {
@@ -318,7 +318,6 @@ class MusicLibraryNotificationProvider(
 	@MainThread
 	fun release() {
 		checkMainThread()
-		checkState(service.lifecycle.currentState == Lifecycle.State.DESTROYED)
 		service.unregisterReceiver(notificationActionReceiver)
 	}
 

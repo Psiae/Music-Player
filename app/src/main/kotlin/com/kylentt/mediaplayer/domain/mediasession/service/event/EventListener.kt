@@ -29,7 +29,8 @@ import timber.log.Timber
 @MainThread
 class MusicLibraryServiceListener(
 	private val service: MusicLibraryService,
-	private val mediaEventHandler: MusicLibraryEventHandler
+	private val mediaEventHandler: MusicLibraryEventHandler,
+	private val lifecycle: LifecycleOwner
 ) {
 
 	private val playerListeners = mutableListOf<Pair<Player, Player.Listener>>()
@@ -115,11 +116,12 @@ class MusicLibraryServiceListener(
 			// TODO: listen to Player / MediaSession changes if for whatever reason it does happen
 			val unReg = LifecycleEventObserver { _, event ->
 				if (event == Lifecycle.Event.ON_DESTROY) {
+					Timber.d("EventListener received ON_DESTROY callback, releasing Self")
 					stopListener()
 					release()
 				}
 			}
-			service.lifecycle.addObserver(unReg)
+			lifecycle.lifecycle.addObserver(unReg)
 		}
 	}
 

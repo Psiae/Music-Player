@@ -8,12 +8,9 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.IBinder
 import androidx.annotation.MainThread
-import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.Lifecycle.Event.*
 import androidx.lifecycle.Lifecycle.State.*
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.LifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import androidx.media3.common.MediaItem
@@ -47,23 +44,8 @@ fun interface OnChanged <T> {
 	fun onChanged(old: T, new: T)
 }
 
-/*
-lateinit
-Private val's
-Private vars
-Private backed val's
-Private backed vars
-Private anon object val's
-Private anon object vars
-Public's
-
-Override fun's
-Private fun's
-Public fun's
-*/
-
 @AndroidEntryPoint
-class MusicLibraryService : MediaLibraryService(), LifecycleOwner {
+class MusicLibraryService : MediaLibraryService() {
 
 	@Inject lateinit var coilHelper: CoilHelper
 	@Inject lateinit var coroutineDispatchers: AppDispatchers
@@ -75,7 +57,7 @@ class MusicLibraryService : MediaLibraryService(), LifecycleOwner {
 	private val onPlayerChangedListener: MutableList<OnChanged<Player>> = mutableListOf()
 	private val onMediaSessionChangedListener: MutableList<OnChanged<MediaSession>> = mutableListOf()
 
-	private val lifecycleRegistry: LifecycleRegistry = LifecycleRegistry(this)
+	private val stateRegistry = StateRegistry()
 
 	private val mediaLibrarySession: MediaLibrarySession by lazy {
 		checkNotNull(baseContext)
@@ -92,17 +74,15 @@ class MusicLibraryService : MediaLibraryService(), LifecycleOwner {
 		}
 	}
 
-	private val mediaNotificationProvider: MusicLibraryNotificationProvider by lazy {
+	private val mediaNotificationProvider by lazy {
 		MusicLibraryNotificationProvider(this)
 	}
 	private val mediaEventHandler by lazy {
 		MusicLibraryEventHandler(this, mediaNotificationProvider)
 	}
 	private val mediaEventListener by lazy {
-		MusicLibraryServiceListener(this, mediaEventHandler)
+		MusicLibraryServiceListener(this, mediaEventHandler, stateRegistry)
 	}
-
-	private var isForegroundService = false
 
 	val mainScope by lazy { CoroutineScope(coroutineDispatchers.main + SupervisorJob()) }
 	val ioScope by lazy { CoroutineScope(coroutineDispatchers.main + SupervisorJob())  }
@@ -111,13 +91,13 @@ class MusicLibraryService : MediaLibraryService(), LifecycleOwner {
 		get() = mediaLibrarySession
 
 	init {
-		dispatchLifecycleStateObjectUpdater()
+		stateRegistry.updateState(STATE.INITIALIZED)
 	}
 
 	override fun onCreate() {
 		Timber.d("Service onCreate()")
 
-		lifecycleRegistry.handleLifecycleEvent(ON_CREATE)
+		stateRegistry.updateState(STATE.CREATED)
 		super.onCreate()
 
 		setupNotificationProvider()
@@ -126,7 +106,7 @@ class MusicLibraryService : MediaLibraryService(), LifecycleOwner {
 
 	override fun onBind(intent: Intent?): IBinder? {
 		Timber.d("Service onBind()")
-		lifecycleRegistry.handleLifecycleEvent(ON_START)
+		stateRegistry.updateState(STATE.BIND)
 		return super.onBind(intent)
 	}
 
@@ -137,46 +117,17 @@ class MusicLibraryService : MediaLibraryService(), LifecycleOwner {
 
 	override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession {
 		Timber.d("Service onGetSession()")
+		stateRegistry.updateState(MediaState.INITIALIZED)
 		return mediaLibrarySession
 	}
 
 	override fun onDestroy() {
 		Timber.d("MusicLibraryService onDestroy() is called")
-		lifecycleRegistry.handleLifecycleEvent(ON_DESTROY)
+		stateRegistry.updateState(STATE.DESTROYED)
 		cancelServiceScope()
 		releaseComponent()
 		releaseSession()
 		super.onDestroy()
-	}
-
-	override fun getLifecycle(): Lifecycle {
-		return lifecycleRegistry
-	}
-
-	@MainThread
-	private fun dispatchLifecycleStateObjectUpdater() {
-		val registry = lifecycleRegistry
-		checkState(registry.currentState == INITIALIZED)
-		LifecycleStateDelegate.updateState(this, LifecycleState.INITIALIZED)
-
-		val eventObserver = LifecycleEventObserver { _, event ->
-			when (event) {
-				ON_CREATE -> LifecycleStateDelegate.updateState(this, LifecycleState.CREATED)
-				ON_START -> LifecycleStateDelegate.updateState(this, LifecycleState.STARTED)
-				ON_RESUME -> {
-					checkState(isForegroundService)
-					LifecycleStateDelegate.updateState(this, LifecycleState.RESUMED(true))
-				}
-				ON_PAUSE -> {
-					checkState(!isForegroundService)
-					LifecycleStateDelegate.updateState(this, LifecycleState.RESUMED(false))
-				}
-				ON_DESTROY -> LifecycleStateDelegate.updateState(this, LifecycleState.DESTROYED)
-				else -> Unit
-			}
-		}
-
-		lifecycleRegistry.addObserver(eventObserver)
 	}
 
 	private fun setupNotificationProvider() {
@@ -185,62 +136,6 @@ class MusicLibraryService : MediaLibraryService(), LifecycleOwner {
 
 	private fun setupEventListener() {
 		mediaEventListener.start(true)
-	}
-
-	@MainThread
-	fun startForegroundService(id: Int, notification: Notification, ignoreCheck: Boolean = false) {
-		checkMainThread()
-		if (!ignoreCheck) {
-			checkState(!LifecycleStateDelegate.isForeground())
-		}
-		if (VersionHelper.hasQ()) {
-			startForeground(id, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
-		} else {
-			startForeground(id, notification)
-		}
-		Timber.d("MusicLibraryService StartForegroundService called")
-		isForegroundService = true
-		lifecycleRegistry.handleLifecycleEvent(ON_RESUME)
-	}
-
-	@MainThread
-	fun stopForegroundService(id: Int, removeNotification: Boolean, ignoreCheck: Boolean = false) {
-		checkMainThread()
-		if (!ignoreCheck) {
-			// should be called by Notification Validator in case the foreground is started internally
-			checkState(LifecycleStateDelegate.isForeground())
-		}
-		stopForeground(removeNotification)
-		if (removeNotification) {
-			mediaNotificationProvider.notificationManager.cancel(id)
-		}
-		Timber.d("MusicLibraryService StopForegroundService called")
-		isForegroundService = false
-		lifecycleRegistry.handleLifecycleEvent(ON_PAUSE)
-	}
-
-	@MainThread
-	fun registerOnPlayerChangedListener(listener: OnChanged<Player>) {
-		checkMainThread()
-		onPlayerChangedListener.add(listener)
-	}
-
-	@MainThread
-	fun unRegisterOnPlayerChangedListener(listener: OnChanged<Player>): Boolean {
-		checkMainThread()
-		return onPlayerChangedListener.removeAll { it === listener }
-	}
-
-	@MainThread
-	fun registerOnMediaSessionChangedListener(listener: OnChanged<MediaSession>): Boolean {
-		checkMainThread()
-		return onMediaSessionChangedListener.add(listener)
-	}
-
-	@MainThread
-	fun unRegisterOnMediaSessionChangedListener(listener: OnChanged<MediaSession>): Boolean {
-		checkMainThread()
-		return onMediaSessionChangedListener.removeAll { it === listener }
 	}
 
 	@MainThread
@@ -278,23 +173,108 @@ class MusicLibraryService : MediaLibraryService(), LifecycleOwner {
 		onPlayerChangedListener.forEach { it.onChanged(get, currentMediaSession.player) }
 	}
 
+	private fun startForegroundServiceImpl(id: Int, notification: Notification) {
+		if (VersionHelper.hasQ()) {
+			startForeground(id, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
+		} else {
+			startForeground(id, notification)
+		}
+		stateRegistry.updateState(STATE.FOREGROUND)
+	}
+
+	private fun stopForegroundServiceImpl(id: Int, removeNotification: Boolean) {
+		stopForeground(removeNotification)
+		if (removeNotification) {
+			val manager = mediaNotificationProvider.notificationManager
+			if (manager.activeNotifications.isNotEmpty()) {
+				val get = manager.activeNotifications.find { it.id == id }
+				if (get != null) {
+					Timber.d("stopForeground did not remove Notification, " +
+						"\n size: ${manager.activeNotifications.size}" +
+						"\n removing id:$id Manually")
+					manager.cancel(id)
+				}
+			}
+		}
+		stateRegistry.updateState(STATE.PAUSED)
+	}
+
+	@MainThread
+	fun startForegroundService(id: Int, notification: Notification, ignoreCheck: Boolean = false) {
+		checkMainThread()
+		if (!ignoreCheck) {
+			// shouldn't be called by Notification Validator
+			checkState(!LifecycleStateDelegate.isForeground())
+		}
+		startForegroundServiceImpl(id, notification)
+	}
+
+	@MainThread
+	fun stopForegroundService(id: Int, removeNotification: Boolean, ignoreCheck: Boolean = false) {
+		checkMainThread()
+		if (!ignoreCheck) {
+			// shouldn't be called by Notification Validator
+			checkState(LifecycleStateDelegate.isForeground())
+		}
+		stopForegroundServiceImpl(id, removeNotification)
+	}
+
+	@MainThread
+	fun registerOnPlayerChangedListener(listener: OnChanged<Player>) {
+		checkMainThread()
+		onPlayerChangedListener.add(listener)
+	}
+
+	@MainThread
+	fun unRegisterOnPlayerChangedListener(listener: OnChanged<Player>): Boolean {
+		checkMainThread()
+		return onPlayerChangedListener.removeAll { it === listener }
+	}
+
+	@MainThread
+	fun registerOnMediaSessionChangedListener(listener: OnChanged<MediaSession>): Boolean {
+		checkMainThread()
+		return onMediaSessionChangedListener.add(listener)
+	}
+
+	@MainThread
+	fun unRegisterOnMediaSessionChangedListener(listener: OnChanged<MediaSession>): Boolean {
+		checkMainThread()
+		return onMediaSessionChangedListener.removeAll { it === listener }
+	}
+
 	inner class SessionCallbackImpl : MediaLibrarySessionCallback {
 		override fun onConnect(
 			session: MediaSession,
 			controller: MediaSession.ControllerInfo
 		): MediaSession.ConnectionResult {
-			Timber.i("SessionCallbackImpl onConnect pre Super")
-			return super.onConnect(session, controller)
+			val result =
+				try {
+					stateRegistry.updateState(MediaState.CONNECTING)
+					super.onConnect(session, controller)
+				} catch (e: Exception) {
+					stateRegistry.updateState(MediaState.ERROR(e, "onConnect Failed, rejecting..."))
+					MediaSession.ConnectionResult.reject()
+				}
+			return result
 		}
 
 		override fun onPostConnect(session: MediaSession, controller: MediaSession.ControllerInfo) {
-			super.onPostConnect(session, controller)
-			Timber.i("SessionCallbackImpl onPostConnect post Super")
+			try {
+				stateRegistry.updateState(MediaState.CONNECTED)
+				super.onPostConnect(session, controller)
+			} catch (e: Exception) {
+				stateRegistry.updateState(MediaState.ERROR(e, "onPostConnect Failed"))
+			}
 		}
 
 		override fun onDisconnected(session: MediaSession, controller: MediaSession.ControllerInfo) {
-			super.onDisconnected(session, controller)
-			Timber.i("SessionCallbackImpl onDisconnected post Super")
+			try {
+				stateRegistry.updateState(MediaState.DISCONNECTED)
+				super.onDisconnected(session, controller)
+			} catch (e: Exception) {
+				stateRegistry.updateState(MediaState.ERROR(e, "onDisconnected Failed"))
+			}
 		}
 	}
 
@@ -308,10 +288,46 @@ class MusicLibraryService : MediaLibraryService(), LifecycleOwner {
 		}
 	}
 
-	inner class StateRegistry {
+	@MainThread
+	inner class StateRegistry : LifecycleOwner {
+		private val lifecycleRegistry = LifecycleRegistry(this)
 
+		private var serviceState: STATE = STATE.NOTHING
+			set(value) {
+				field = value
+				LifecycleStateDelegate.updateState(this, value)
+			}
 
+		private var mediaState: MediaState = MediaState.NOTHING
 
+		@MainThread
+		fun updateState(state: STATE) {
+
+			when (state) {
+				STATE.NOTHING -> throw IllegalArgumentException()
+				STATE.INITIALIZED -> checkState(lifecycleRegistry.currentState == INITIALIZED)
+				else -> triggerEvent(state.asLifecycleEvent())
+			}
+
+			this.serviceState = state
+		}
+
+		@MainThread
+		fun updateState(state: MediaState) {
+
+			when (state) {
+				MediaState.NOTHING -> throw IllegalArgumentException()
+				else -> Unit
+			}
+
+			this.mediaState = state
+		}
+
+		private fun triggerEvent(event: Lifecycle.Event) {
+			lifecycleRegistry.handleLifecycleEvent(event)
+		}
+
+		override fun getLifecycle(): Lifecycle = lifecycleRegistry
 	}
 
 	companion object {
@@ -321,46 +337,110 @@ class MusicLibraryService : MediaLibraryService(), LifecycleOwner {
 		}
 	}
 
-	sealed class LifecycleState {
-		object NOTHING : LifecycleState()
+	sealed class STATE {
+		object NOTHING : STATE()
 		// Init
-		object INITIALIZED : LifecycleState()
+		object INITIALIZED : STATE()
 		// OnCreate pre-Super
-		object CREATED : LifecycleState()
+		object CREATED : STATE()
 		// OnBind pre-Super
-		object STARTED : LifecycleState()
-		// ForegroundService
-		data class RESUMED(val isForeground: Boolean = false) : LifecycleState()
+		object BIND : STATE()
+		// StartForeground
+		object FOREGROUND : STATE()
+		// StopForeground
+		object PAUSED : STATE()
+		// StopSelf
+		// TODO after Media3 beta Update
+		object STOPPED : STATE()
+		// OnDestroy pre-super
+		object DESTROYED: STATE()
 
-		object DESTROYED: LifecycleState()
+		fun isAtLeast(that: STATE): Boolean = Int.get(this) >= Int.get(that)
+		fun isAtMost(that: STATE): Boolean = Int.get(this) <= Int.get(that)
+		fun isMoreThan(that: STATE): Boolean = Int.get(this) > Int.get(that)
+		fun isLessThan(that: STATE): Boolean = Int.get(this) < Int.get(that)
 
-		fun isForegroundService() = this is RESUMED && isForeground
+		fun isForeground(): Boolean = this == FOREGROUND
+
+		fun asLifecycleState(): Lifecycle.State {
+			return when(this) {
+				NOTHING -> throw IllegalArgumentException()
+				INITIALIZED -> Lifecycle.State.INITIALIZED
+				CREATED -> Lifecycle.State.CREATED
+				BIND -> STARTED
+				FOREGROUND -> RESUMED
+				PAUSED -> STARTED
+				STOPPED -> Lifecycle.State.CREATED
+				DESTROYED -> Lifecycle.State.DESTROYED
+			}
+		}
+
+		fun asLifecycleEvent(): Lifecycle.Event {
+			return when(this) {
+				NOTHING -> throw IllegalArgumentException()
+				INITIALIZED -> throw IllegalArgumentException()
+				CREATED -> ON_CREATE
+				BIND -> ON_START
+				FOREGROUND -> ON_RESUME
+				PAUSED -> ON_PAUSE
+				STOPPED -> ON_STOP
+				DESTROYED -> ON_DESTROY
+			}
+		}
+
+		private object Int {
+			const val Nothing = -1
+			const val Destroyed = 0
+			const val Initialized = 1
+			const val Created = 2
+			const val Bind = 3
+			const val Foreground = 4
+			const val Paused = 3
+			const val Stopped = 2
+
+			fun get(state: STATE): kotlin.Int {
+				return when (state) {
+					NOTHING -> Nothing
+					INITIALIZED -> Initialized
+					CREATED -> Created
+					BIND -> Bind
+					FOREGROUND -> Foreground
+					PAUSED -> Paused
+					STOPPED -> Stopped
+					DESTROYED -> Destroyed
+				}
+			}
+		}
 	}
 
 	sealed class MediaState {
-		object UNINITIALIZED : MediaState()
+		object NOTHING : MediaState()
+		// OnGetSession
 		object INITIALIZED : MediaState()
+		// OnConnect
 		object CONNECTING : MediaState()
+		// OnPostConnect
 		object CONNECTED : MediaState()
+		// OnDisconnected
 		object DISCONNECTED : MediaState()
-		data class ERROR (val e: Exception, val msg: String)
+		// TODO
+		data class ERROR (val e: Exception, val msg: String) : MediaState()
 	}
 
 	@MainThread
-	object LifecycleStateDelegate : ReadOnlyProperty<Any?, LifecycleState> {
+	object LifecycleStateDelegate : ReadOnlyProperty<Any?, STATE> {
 
-		private var currentState: LifecycleState = LifecycleState.NOTHING
+		private var currentState: STATE = STATE.NOTHING
 		private var currentHashCode: Int? = null
 
-		fun updateState(service: MediaLibraryService, state: LifecycleState) {
-			checkMainThread()
+		fun updateState(registry: MusicLibraryService.StateRegistry, state: STATE) {
 			when (state) {
-				LifecycleState.INITIALIZED -> currentHashCode = service.hashCode()
-				LifecycleState.NOTHING -> throw IllegalArgumentException()
+				STATE.INITIALIZED -> currentHashCode = registry.hashCode()
+				STATE.NOTHING -> throw IllegalArgumentException()
 				else -> Unit
 			}
-			checkState(service.hashCode() == currentHashCode) {
-				"ServiceLifecycleState Failed, currentHash: $currentHashCode, attempt: ${service.hashCode()}"
+			checkState(registry.hashCode() == currentHashCode) {
+				"ServiceLifecycleState Failed, currentHash: $currentHashCode, attempt: ${registry.hashCode()}"
 			}
 			if (currentState != state) {
 				currentState = state
@@ -368,15 +448,12 @@ class MusicLibraryService : MediaLibraryService(), LifecycleOwner {
 			}
 		}
 
-		@JvmStatic fun wasLaunched() = currentState != LifecycleState.NOTHING
-		@JvmStatic fun isDestroyed() = currentState == LifecycleState.DESTROYED
-		@JvmStatic fun isAlive() = wasLaunched() && !isDestroyed()
-		@JvmStatic fun isForeground(): Boolean {
-			val state = currentState
-			return (state is LifecycleState.RESUMED) && state.isForeground
-		}
+		@JvmStatic fun wasLaunched() = currentState != STATE.NOTHING
+		@JvmStatic fun isDestroyed() = currentState == STATE.DESTROYED
+		@JvmStatic fun isAlive() = currentState.isAtLeast(STATE.INITIALIZED)
+		@JvmStatic fun isForeground(): Boolean = currentState.isForeground()
 
-		override fun getValue(thisRef: Any?, property: KProperty<*>): LifecycleState = currentState
+		override fun getValue(thisRef: Any?, property: KProperty<*>): STATE = currentState
 	}
 
 	object Constants {

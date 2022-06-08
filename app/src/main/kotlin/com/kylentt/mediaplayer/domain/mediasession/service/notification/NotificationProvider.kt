@@ -42,6 +42,7 @@ import com.kylentt.mediaplayer.helper.media.MediaItemHelper.Companion.orEmpty
 import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity
 import kotlinx.coroutines.*
 import timber.log.Timber
+import kotlin.system.exitProcess
 
 /**
  * [MediaNotification.Provider] Implementation for [MusicLibraryService]
@@ -161,7 +162,7 @@ class MusicLibraryNotificationProvider(
 		validatorJob = launch {
 			dispatchSuspendNotificationValidator(2, interval) {
 				val notification = getNotificationForSession(session, mediaNotificationChannelName)
-				considerForegroundService(session.player, notification)
+				considerForegroundService(session.player, notification, true)
 				onUpdate(notification)
 			}
 		}
@@ -301,16 +302,16 @@ class MusicLibraryNotificationProvider(
 	}
 
   @MainThread
- 	fun considerForegroundService(player: Player, notification: Notification) {
+ 	fun considerForegroundService(player: Player, notification: Notification, isValidator: Boolean) {
     checkMainThread()
 		Timber.d("considerForegroundService, isForeground: ${serviceState.isForeground()}")
 		when {
 			player.playbackState.isOngoing() -> {
 				if (serviceState.isForeground()) return
-				service.startForegroundService(mediaNotificationId, notification, true)
+				service.startForegroundService(mediaNotificationId, notification, isValidator)
 			}
 			!player.playbackState.isOngoing() -> {
-				service.stopForegroundService(mediaNotificationId, false, true)
+				service.stopForegroundService(mediaNotificationId, false, isValidator)
 			}
 		}
   }
@@ -319,6 +320,8 @@ class MusicLibraryNotificationProvider(
 	fun release() {
 		checkMainThread()
 		service.unregisterReceiver(notificationActionReceiver)
+
+		Timber.d("NotificationProvider receiver UnRegistered")
 	}
 
 	inner class NotificationActionReceiver : BroadcastReceiver() {
@@ -471,9 +474,11 @@ class MusicLibraryNotificationProvider(
 					service.sessionConnector.sendControllerCommand(command)
 				}
 				else -> {
+					Timber.d("onReceiveStopCancel $this not OnGoing")
 					service.stopForegroundService(mediaNotificationId, true, true)
 					if (!MainActivity.isAlive) {
-						service.onDestroy()
+						service.stopSelf()
+						service.sessions.forEach { it.release() }
 					}
 				}
 			}

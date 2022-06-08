@@ -55,6 +55,10 @@ class MusicLibraryEventHandler(
 		error: PlaybackException
 	): Unit = playerErrorImpl(session, error)
 
+	suspend fun handleServiceRelease(): Unit {
+		mediaNotificationProvider.release()
+	}
+
 	private suspend fun playWhenReadyChangedImpl(
 		session: MediaSession
 	): Unit = withContext(dispatchers.main) {
@@ -98,6 +102,8 @@ class MusicLibraryEventHandler(
 	private suspend fun playerStateChangedImpl(
 		session: MediaSession
 	) = withContext(dispatchers.main) {
+		val notification = mediaNotificationProvider.getSessionNotification(session)
+		mediaNotificationProvider.considerForegroundService(session.player, notification, false)
 		mediaNotificationProvider.launchSessionNotificationValidator(session, 500) {}
 	}
 

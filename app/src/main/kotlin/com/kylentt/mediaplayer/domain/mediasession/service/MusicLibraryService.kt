@@ -84,11 +84,8 @@ class MusicLibraryService : MediaLibraryService() {
 		MusicLibraryServiceListener(this, mediaEventHandler)
 	}
 
-	private val _serviceStateSF: MutableStateFlow<STATE> = MutableStateFlow(STATE.NOTHING)
-	private val _mediaStateSF: MutableStateFlow<MediaState> = MutableStateFlow(MediaState.NOTHING)
-
-	val serviceStateSF = _serviceStateSF.asStateFlow()
-	val mediaStateSF = _mediaStateSF.asStateFlow()
+	val serviceStateSF = stateRegistry.serviceStateSF
+	val mediaStateSF = stateRegistry.mediaStateSF
 
 	val mainScope by lazy { CoroutineScope(coroutineDispatchers.main + SupervisorJob()) }
 	val ioScope by lazy { CoroutineScope(coroutineDispatchers.main + SupervisorJob())  }
@@ -161,7 +158,6 @@ class MusicLibraryService : MediaLibraryService() {
 		if (LifecycleStateDelegate.isForeground()) {
 			stopForegroundService(mediaNotificationProvider.mediaNotificationId, true)
 		}
-		// NPE in MediaControllerImplBase.java:3041 when calling librarySession.release()
 		mediaLibrarySession.release()
 	}
 
@@ -295,9 +291,12 @@ class MusicLibraryService : MediaLibraryService() {
 	}
 
 	@MainThread
-	inner class StateRegistry : LifecycleOwner {
+	private inner class StateRegistry : LifecycleOwner {
 
 		private val lifecycleRegistry = LifecycleRegistry(this)
+
+		private val _serviceStateSF: MutableStateFlow<STATE> = MutableStateFlow(STATE.NOTHING)
+		private val _mediaStateSF: MutableStateFlow<MediaState> = MutableStateFlow(MediaState.NOTHING)
 
 		private var serviceState: STATE = STATE.NOTHING
 			set(value) {
@@ -307,6 +306,13 @@ class MusicLibraryService : MediaLibraryService() {
 			}
 
 		private var mediaState: MediaState = MediaState.NOTHING
+			set(value) {
+				field = value
+				_mediaStateSF.value = field
+			}
+
+		val serviceStateSF = _serviceStateSF.asStateFlow()
+		val mediaStateSF = _mediaStateSF.asStateFlow()
 
 		@MainThread
 		fun triggerEvent(event: EVENT) {
@@ -484,19 +490,24 @@ class MusicLibraryService : MediaLibraryService() {
 		private var currentState: STATE = STATE.NOTHING
 		private var currentHashCode: Int? = null
 
-		fun updateState(registry: MusicLibraryService.StateRegistry, state: STATE) {
+		fun updateState(holder: Any, state: STATE) {
+
 			when (state) {
 				STATE.NOTHING -> throw IllegalArgumentException()
-				STATE.INITIALIZED, STATE.CREATED -> currentHashCode = registry.hashCode()
-				else -> Unit
+				STATE.INITIALIZED, STATE.CREATED -> currentHashCode = holder.hashCode()
+				else -> {
+					checkState(holder.hashCode() == currentHashCode) {
+						"ServiceLifecycleState Failed," +
+							"\ncurrentHash: $currentHashCode, attempt: ${holder.hashCode()}"
+					}
+					checkState(state != currentState) {
+						"ServiceLifecycleState Failed," +
+							"\ncurrentState: $currentState, attempt: $state"
+					}
+				}
 			}
-			checkState(registry.hashCode() == currentHashCode) {
-				"ServiceLifecycleState Failed, currentHash: $currentHashCode, attempt: ${registry.hashCode()}"
-			}
-			if (currentState != state) {
-				currentState = state
-				Timber.d("ServiceLifecycleState updated to $state")
-			}
+			currentState = state
+			Timber.d("ServiceLifecycleState updated to $state")
 		}
 
 		@JvmStatic fun wasLaunched() = currentState != STATE.NOTHING

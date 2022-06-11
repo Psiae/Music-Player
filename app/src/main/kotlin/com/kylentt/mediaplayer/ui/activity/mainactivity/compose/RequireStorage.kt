@@ -2,7 +2,7 @@ package com.kylentt.mediaplayer.ui.activity.mainactivity.compose
 
 import androidx.compose.runtime.*
 import com.google.accompanist.permissions.*
-import com.kylentt.mediaplayer.app.delegates.device.StoragePermission
+import com.kylentt.mediaplayer.app.delegates.device.StoragePermissionHelper
 import timber.log.Timber
 
 @OptIn(ExperimentalPermissionsApi::class)
@@ -12,14 +12,14 @@ inline fun RequireStorage(
     whenShowRationale: @Composable (state: PermissionState) -> Unit,
     whenGranted: @Composable (state: PermissionState) -> Unit,
 ) {
-    val hasStoragePermission by StoragePermission
+    val hasStoragePermission by StoragePermissionHelper
 
     val permissionResult = remember {
         mutableStateOf(hasStoragePermission, policy = neverEqualPolicy())
     }
 
     val permission = rememberPermissionState(
-        permission = StoragePermission.Write_External_Storage
+        permission = StoragePermissionHelper.Write_External_Storage
     ) { result ->
         permissionResult.value = result
     }

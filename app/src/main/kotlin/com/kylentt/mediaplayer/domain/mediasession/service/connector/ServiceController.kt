@@ -86,8 +86,8 @@ class MediaServiceController(
 
     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
       super.onMediaItemTransition(mediaItem, reason)
-      val item = mediaItem ?: MediaItem.EMPTY
-      // not sure whether to take the mediaItem that has LocalConfiguration or Not
+			val item = mediaItem ?: MediaItem.EMPTY
+			// not sure whether to take the mediaItem that has LocalConfiguration or Not
 
 			if (!playbackStateSF.value.currentMediaItem.idEqual(mediaItem)) {
 				playbackStateSF.value = playbackStateSF.value.copy(currentMediaItem = item)
@@ -134,7 +134,7 @@ class MediaServiceController(
       return futureMediaController.addListener( { onConnected(mediaController) }, directExecutor)
     }
     serviceStateSF.value = MediaServiceState.CONNECTING
-    sessionToken = SessionToken(context, MusicLibraryService.getComponentName(context))
+    sessionToken = SessionToken(context, MusicLibraryService.getComponentName())
     futureMediaController = MediaController.Builder(context, sessionToken)
       .setApplicationLooper(Looper.myLooper()!!)
       .buildAsync()

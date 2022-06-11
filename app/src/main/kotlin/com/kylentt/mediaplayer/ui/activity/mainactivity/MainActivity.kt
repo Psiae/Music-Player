@@ -16,7 +16,7 @@ import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
 import com.kylentt.mediaplayer.core.coroutines.AppScope
 import com.kylentt.mediaplayer.core.delegates.LateLazy
 import com.kylentt.mediaplayer.core.delegates.LockMainThread
-import com.kylentt.mediaplayer.app.delegates.device.StoragePermission
+import com.kylentt.mediaplayer.app.delegates.device.StoragePermissionHelper
 import com.kylentt.mediaplayer.domain.viewmodels.MainViewModel
 import com.kylentt.mediaplayer.domain.viewmodels.MediaViewModel
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
@@ -43,7 +43,7 @@ class MainActivity : ComponentActivity() {
 
   private val mainViewModel: MainViewModel by viewModels()
   private val mediaViewModel: MediaViewModel by viewModels()
-  private val storagePermission: Boolean by StoragePermission
+  private val storagePermission: Boolean by StoragePermissionHelper
 
   private val storagePermToast: Toast? by lazy {
     Toast.makeText(this, "Storage Permission Needed", Toast.LENGTH_LONG)

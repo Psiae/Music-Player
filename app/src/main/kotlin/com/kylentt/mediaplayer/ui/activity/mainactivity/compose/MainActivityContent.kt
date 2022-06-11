@@ -56,7 +56,7 @@ import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.shouldShowRationale
 import com.kylentt.mediaplayer.R
 import com.kylentt.mediaplayer.app.delegates.AppDelegate
-import com.kylentt.mediaplayer.app.delegates.device.StoragePermission
+import com.kylentt.mediaplayer.app.delegates.device.StoragePermissionHelper
 import com.kylentt.mediaplayer.app.settings.AppSettings
 import com.kylentt.mediaplayer.app.settings.WallpaperSettings
 import com.kylentt.mediaplayer.app.settings.WallpaperSettings.Source.*
@@ -84,21 +84,25 @@ fun MainActivityContent(
             whenDenied = { StorageDenied(it) },
             whenShowRationale = { ShowStorageRationale(it) },
         ) {
-            require(AppDelegate.checkStoragePermission()) {
-                "App Storage Permission is Not Granted"
-            }
+
+			val permisssion =
+				StoragePermissionHelper.checkReadWriteStoragePermission(LocalContext.current)
+
+			require(permisssion) { "App Storage Permission is Not Granted" }
+
             with(mainViewModel) {
                 pendingStorageGranted.forEachClearSync()
                 pendingStorageIntent.forEachClearSync { mediaViewModel.handleMediaIntent(it) }
             }
+
             MainActivityRoot(appSettings.value)
         }
     }
 }
 
 @RequiresPermission(anyOf = [
-    StoragePermission.Read_External_Storage,
-    StoragePermission.Write_External_Storage
+    StoragePermissionHelper.Read_External_Storage,
+    StoragePermissionHelper.Write_External_Storage
 ])
 @Composable
 private fun MainActivityRoot(
@@ -280,8 +284,13 @@ private inline fun StorageDenied(
 ) {
     require(!state.status.isGranted)
     require(!state.status.shouldShowRationale)
-    check(!AppDelegate.hasStoragePermission)
-    val localContext = LocalContext.current
+
+	val localContext = LocalContext.current
+
+	val permission = StoragePermissionHelper.checkReadWriteStoragePermission(localContext)
+
+    check(!permission)
+
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult(),
         onResult = {}
@@ -303,9 +312,12 @@ private inline fun ShowStorageRationale(
     state: PermissionState
 ) {
     require(state.status.shouldShowRationale)
-    check(!AppDelegate.hasStoragePermission)
-    SideEffect {
-        state.launchPermissionRequest()
+
+	val permission = StoragePermissionHelper.checkReadWriteStoragePermission(LocalContext.current)
+    check(!permission)
+
+	SideEffect {
+		state.launchPermissionRequest()
     }
 }
 
@@ -445,8 +457,8 @@ private val MainBottomNavItems = listOf(
     ),
     MainBottomNavItem.ImageVectorIcon(
         screen = Screen.Library,
-        imageVector = AppDelegate.getImageVectorFromDrawableId(R.drawable.ic_bookshelf),
-        selectedImageVector = AppDelegate.getImageVectorFromDrawableId(R.drawable.ic_bookshelf)
+        imageVector = AppDelegate.imageVectorFromDrawableId(R.drawable.ic_bookshelf),
+        selectedImageVector = AppDelegate.imageVectorFromDrawableId(R.drawable.ic_bookshelf)
     )
 )
 

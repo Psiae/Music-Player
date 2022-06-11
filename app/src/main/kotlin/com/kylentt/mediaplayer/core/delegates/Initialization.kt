@@ -37,18 +37,17 @@ class LateLazy<T>(lock: Any? = null) : LateInitializerDelegate<T> {
     get() = value !== EMPTY
 
   override fun initializeValue(lazyValue: () -> T): T = synchronized(lock) {
-    if (!isInitialized) {
-      value = lazyValue()
-    }
-    castValue()
-  }
+		if (!isInitialized) {
+			value = lazyValue()
+		}
+		castValue()
+	}
 
   override fun getValue(thisRef: Any?, property: KProperty<*>): T {
-		return if (!isInitialized) {
-			synchronized(lock) { castValue() }
-		} else {
-			castValue()
+		if (!isInitialized) {
+			synchronized(lock) { /* wait */ }
 		}
+		return castValue()
 	}
 
 	@Suppress("UNCHECKED_CAST")

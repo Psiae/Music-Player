@@ -2,6 +2,7 @@ package com.kylentt.mediaplayer.domain.mediasession.service.event
 
 import androidx.annotation.MainThread
 import androidx.lifecycle.*
+import androidx.lifecycle.Lifecycle.Event.*
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -16,26 +17,35 @@ import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.ui.activity.CollectionExtension.forEachClear
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-
-/*
-	Responsibility: Listen to Service Event and dispatch it to EventHandler
-
- */
-
-@MainThread
 class MusicLibraryServiceListener(
 	private val service: MusicLibraryService,
-	private val mediaEventHandler: MusicLibraryEventHandler
+	private val mediaEventHandler: MusicLibraryEventHandler,
+	private val lifecycleOwner: LifecycleOwner
 ) {
 
 	private val playerListeners = mutableListOf<Pair<Player, Player.Listener>>()
 
 	private val playerListenerImpl = PlayerListenerImpl()
+	private val lifecycleObserverImpl = LifecycleObserverImpl()
+
+	private var stopSelf: Boolean = false
+	private var releaseSelf: Boolean = false
+
+	private val immediateScope
+		get() = service.mainImmediateScope
+
+	private val mainScope
+		get() = service.mainScope
+
+	private val ioScope
+		get() = service.mainScope
+
+	var state: STATE = STATE.INITIALIZED
+		private set
 
 	val defaultPlayerLister: Player.Listener
 		get() = playerListenerImpl
@@ -70,48 +80,77 @@ class MusicLibraryServiceListener(
 	val isPlayerPlayWhenReady: Boolean
 		get() = currentPlayer.playWhenReady
 
-	private var stopSelf: Boolean = false
+	private fun startDefaultListener() {
+		startServiceEventListener()
 
-	private var isRegistered: Boolean = false
-	var isReleased: Boolean = false
+		service.registerOnPlayerChanged { old: Player?, new: Player ->
+			val isChanged = old !== new
 
-	private fun startListener() {
-		checkState(!isRegistered)
-		registerPlayerListener(currentMediaSession.player, defaultPlayerLister)
-		isRegistered = true
-
-		startStateListener()
-	}
-
-	private fun startStateListener() {
-		service.mainScope.launch {
-
-			service.serviceStateSF.collect {
-				serviceStateChanged(it)
+			checkState(isChanged) {
+				"received onPlayerChanged callback when there is no change"
 			}
 
+			if (old == null) {
+				return@registerOnPlayerChanged registerPlayerListener(new, playerListenerImpl)
+			}
+
+			val rem = unregisterPlayerListener(old, playerListenerImpl)
+
+			checkState(rem) {
+				"playerListenerImpl was not registered for $old, possible inconsistency"
+			}
+
+			val rem2 = playerListeners.find { it.second === playerListenerImpl} == null
+
+			checkState(rem2) {
+				"playerListenerImpl was not unRegistered, possible inconsistency" +
+					"\n${playerListeners}"
+			}
+
+			registerPlayerListener(new, playerListenerImpl)
 		}
 	}
 
-	private fun stopListener() {
-		checkState(isRegistered)
+	private fun startServiceEventListener() {
+		lifecycleOwner.lifecycle.addObserver(lifecycleObserverImpl)
+	}
+
+	private var eventCollectorJob = Job().job
+	private fun launchEventCollector() {
+		eventCollectorJob.cancel()
+		eventCollectorJob = service.mainImmediateScope.launch {
+			service.serviceEventSF.collect {
+				serviceEventChanged(it)
+			}
+		}
+	}
+
+	private fun stopDefaultListener() {
 		unregisterPlayerListener(currentMediaSession.player, defaultPlayerLister)
-		isRegistered = false
+		eventCollectorJob.cancel()
 	}
 
-	private fun serviceStateChanged(state: MusicLibraryService.STATE) {
-		Timber.i("EventListener ServiceStateChanged to $state")
-		// TODO
+	private fun serviceEventChanged(event: Lifecycle.Event) {
+		val get = MusicLibraryService.ServiceEvent.fromLifecycleEvent(event)
+		serviceEventChanged(get)
+	}
 
-		when (state) {
-			MusicLibraryService.STATE.DESTROYED -> serviceStateDestroyedImpl()
-			else -> Unit
+	private fun serviceEventChanged(event: MusicLibraryService.ServiceEvent) {
+		Timber.i("EventListener ServiceEvent Changed to $event")
+
+		when (event) {
+			MusicLibraryService.ServiceEvent.ON_START_COMMAND -> serviceStateStartCommandImpl()
+			MusicLibraryService.ServiceEvent.ON_DESTROY -> serviceStateDestroyedImpl()
+			else -> Unit // TODO
 		}
 	}
 
+	private fun serviceStateStartCommandImpl() {
+		service.mainScope.launch { mediaEventHandler.handleServiceStartCommand() }
+	}
 
 	private fun serviceStateDestroyedImpl() {
-		if (stopSelf) stopListener()
+		if (releaseSelf) release()
 		service.mainScope.launch { mediaEventHandler.handleServiceRelease() }
 	}
 
@@ -164,30 +203,46 @@ class MusicLibraryServiceListener(
 		}
 	}
 
+	/**
+	 * start listening to [MusicLibraryService events]
+	 *
+	 * @param stopSelf stop itself automatically
+	 *
+	 * @throws IllegalStateException if not called from [Main Thread]
+	 */
+
 	@MainThread
-	fun start(stopSelf: Boolean) {
+	fun start(stopSelf: Boolean, releaseSelf: Boolean) {
 		checkMainThread()
 
-		checkNotNull(service.baseContext) {
-			"Make Sure to Initialize MusicLibraryService EventListener at least service.onCreate()"
-		}
-
-		startListener()
+		startDefaultListener()
 		if (stopSelf) {
-			// TODO: listen to Player / MediaSession changes if for whatever reason it does happen
 			this.stopSelf = true
+		}
+		if (releaseSelf) {
+			this.releaseSelf = true
 		}
 	}
 
-	@MainThread
+	fun stop() {
+		stopDefaultListener()
+	}
+
 	fun release() {
 		checkMainThread()
-		if (!isReleased) {
-			playerListeners.forEachClear { it.first.removeListener(it.second) }
+		if (!state.isReleased()) {
+			stopDefaultListener()
+			unregisterAllListener(this)
+			state = STATE.RELEASED
 		}
 	}
 
 	fun registerPlayerListener(player: Player, listener: Player.Listener) {
+		if (state.isReleased()) {
+			Timber.e("EventListener tried to registerPlayerListener on RELEASED state")
+			return
+		}
+
 		player.addListener(listener)
 		this.playerListeners.add(player to listener)
 	}
@@ -222,7 +277,18 @@ class MusicLibraryServiceListener(
 		Timber.d("$obj made call to unregisterAllListener")
 	}
 
-	inner class PlayerListenerImpl : Player.Listener {
+	private inner class LifecycleObserverImpl : LifecycleEventObserver {
+		override fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event) {
+			when (event) {
+				ON_CREATE -> serviceEventChanged(MusicLibraryService.ServiceEvent.ON_CREATE)
+				ON_START -> launchEventCollector()
+				else -> Unit
+			}
+		}
+	}
+
+	private inner class PlayerListenerImpl : Player.Listener {
+
 		override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
 			Timber.d("EventListener onPlayWhenReadyChanged")
 
@@ -251,5 +317,16 @@ class MusicLibraryServiceListener(
 			super.onPlayerError(error)
 			playerErrorImpl(currentMediaSession, error)
 		}
+	}
+
+	sealed class STATE {
+		object INITIALIZED : STATE()
+		object IDLE : STATE()
+		object STARTED : STATE()
+		object STOPPED : STATE()
+		object RELEASED : STATE()
+
+		fun isListening() = this == STARTED
+		fun isReleased() = this == RELEASED
 	}
 }

@@ -11,7 +11,6 @@ import androidx.core.graphics.component3
 import androidx.core.graphics.component4
 import androidx.core.graphics.drawable.toBitmap
 import com.kylentt.mediaplayer.app.delegates.AppDelegate
-import com.kylentt.mediaplayer.app.delegates.ApplicationDelegate
 import com.kylentt.mediaplayer.core.delegates.LateLazy
 import com.kylentt.mediaplayer.core.delegates.LateInitializerDelegate
 import kotlin.properties.ReadOnlyProperty
@@ -26,7 +25,7 @@ import kotlin.reflect.KProperty
  *
  * @author Kylentt
  * @since 2022/04/30
- * @see StoragePermission
+ * @see StoragePermissionHelper
  * @sample [com.kylentt.mediaplayer.ui.compose.rememberWallpaperBitmapAsState]
  */
 
@@ -37,14 +36,13 @@ object DeviceWallpaper : ReadOnlyProperty<Any?, Drawable?> {
 
   override fun getValue(thisRef: Any?, property: KProperty<*>): Drawable? {
 		return when (thisRef) {
-			is ApplicationDelegate -> getDeviceWallpaper(thisRef.application)
 			is Context -> getDeviceWallpaper(thisRef)
 			else -> AppDelegate.deviceWallpaperDrawable
 		}
   }
 
 	private fun getDeviceWallpaper(accessor: Context): Drawable? {
-		return elseNull(AppDelegate.checkStoragePermission()) {
+		return elseNull(StoragePermissionHelper.checkReadStoragePermission(accessor)) {
 			if (!initializer.isInitialized) {
 				val context = accessor.applicationContext
 				initializer.initializeValue { WallpaperManager.getInstance(context) }

@@ -12,11 +12,9 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
 import android.os.Bundle
-import androidx.annotation.MainThread
 import androidx.annotation.RequiresApi
 import androidx.annotation.WorkerThread
 import androidx.core.app.NotificationCompat
-import androidx.lifecycle.Lifecycle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.*
@@ -42,7 +40,6 @@ import com.kylentt.mediaplayer.helper.media.MediaItemHelper.Companion.orEmpty
 import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity
 import kotlinx.coroutines.*
 import timber.log.Timber
-import kotlin.system.exitProcess
 
 /**
  * [MediaNotification.Provider] Implementation for [MusicLibraryService]
@@ -100,13 +97,14 @@ class MusicLibraryNotificationProvider(
 	 * @param manager The Notification Manager
 	 */
 
-	@MainThread
 	@RequiresApi(Build.VERSION_CODES.O)
 	private fun createNotificationChannel(manager: NotificationManager) {
 		val importance = NotificationManager.IMPORTANCE_LOW
 		val channel = NotificationChannel(NOTIFICATION_CHANNEL_NAME, NOTIFICATION_NAME, importance)
 		manager.createNotificationChannel(channel)
 	}
+
+	private var possibleForeground = false
 
 	/**
 	 * Update Notification Callback from [androidx.media3.session.MediaNotificationManager.MediaControllerListener]
@@ -115,12 +113,13 @@ class MusicLibraryNotificationProvider(
 	 * @param onNotificationChangedCallback Callback Method for Async Task
 	 */
 
-	@MainThread
 	override fun createNotification(
 		mediaController: MediaController,
 		actionFactory: MediaNotification.ActionFactory,
 		onNotificationChangedCallback: MediaNotification.Provider.Callback
 	): MediaNotification {
+
+		possibleForeground = true
 
 		Timber.d("createNotification request for " +
 			"${mediaController.currentMediaItem?.getDebugDescription()}"
@@ -130,24 +129,20 @@ class MusicLibraryNotificationProvider(
 		return MediaNotification(mediaNotificationId, notification)
 	}
 
-	@MainThread
 	override fun handleCustomAction(
 		mediaController: MediaController,
 		action: String,
 		extras: Bundle
 	) = Unit
 
-	@MainThread
 	fun getSessionNotification(session: MediaSession): Notification {
 		return getNotificationForSession(session, NOTIFICATION_CHANNEL_NAME)
 	}
 
-	@MainThread
 	fun updateSessionNotification(session: MediaSession) {
 		notificationManager.notify(mediaNotificationId, getSessionNotification(session))
 	}
 
-	@MainThread
 	fun updateSessionNotification(notification: Notification) {
 		notificationManager.notify(mediaNotificationId, notification)
 	}
@@ -178,7 +173,6 @@ class MusicLibraryNotificationProvider(
 		}
 	}
 
-	@MainThread
 	private suspend fun dispatchSuspendNotificationValidator(
 		times: Int,
 		interval: Long,
@@ -231,12 +225,12 @@ class MusicLibraryNotificationProvider(
 		return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
 	}
 
-	private inline fun CoroutineScope.checkCancellation(cleanUp: () -> Unit) {
-		ifCancelled { cleanUp() }
+	private inline fun CoroutineScope.checkCancellation(ifCancelled: () -> Unit) {
+		ifNotActive { ifCancelled() }
 		ensureActive()
 	}
 
-	private inline fun CoroutineScope.ifCancelled(block: () -> Unit) {
+	private inline fun CoroutineScope.ifNotActive(block: () -> Unit) {
 		if (!isActive) block()
 	}
 
@@ -246,7 +240,6 @@ class MusicLibraryNotificationProvider(
    * @see itemBitmap
    */
 
-	@MainThread
   private fun getItemBitmap(player: Player): Bitmap? {
 		val equal = player.currentMediaItem.idEqual(itemBitmap.first)
 		return elseNull(equal) { itemBitmap.second }
@@ -262,7 +255,6 @@ class MusicLibraryNotificationProvider(
 	 * @return [Notification] suitable for [MediaNotification]
 	 */
 
-	@MainThread
 	private fun getNotificationForSession(
 		session: MediaSession,
 		channelName: String
@@ -301,22 +293,25 @@ class MusicLibraryNotificationProvider(
 			)
 	}
 
-  @MainThread
  	fun considerForegroundService(player: Player, notification: Notification, isValidator: Boolean) {
-    checkMainThread()
-		Timber.d("considerForegroundService, isForeground: ${serviceState.isForeground()}")
+
+	/*	if (possibleForeground && !serviceState.isForeground()) {
+			service.startForegroundService(mediaNotificationId, notification, true)
+		}*/
+
 		when {
 			player.playbackState.isOngoing() -> {
 				if (serviceState.isForeground()) return
-				service.startForegroundService(mediaNotificationId, notification, isValidator)
+					service.startForegroundService(mediaNotificationId, notification, true)
 			}
 			!player.playbackState.isOngoing() -> {
-				service.stopForegroundService(mediaNotificationId, false, isValidator)
+				if (!serviceState.isForeground()) return
+				service.stopForegroundService(mediaNotificationId, false, true )
+				/*possibleForeground = false*/
 			}
 		}
   }
 
-	@MainThread
 	fun release() {
 		checkMainThread()
 		service.unregisterReceiver(notificationActionReceiver)
@@ -330,8 +325,7 @@ class MusicLibraryNotificationProvider(
 			p1?.let { handleNotificationActionImpl(it) }
 		}
 
-		@MainThread
-		fun handleNotificationActionImpl(intent: Intent) {
+		private fun handleNotificationActionImpl(intent: Intent) {
 			val action = intent.getStringExtra(PLAYBACK_CONTROL_ACTION) ?: return
 			if (mediaSession.player.currentMediaItem == null) {
 				return validateItem(intent)
@@ -358,7 +352,7 @@ class MusicLibraryNotificationProvider(
 
 				val mediaId = intent.getStringExtra(PLAYBACK_ITEM_ID)
 				when {
-					mediaId == null -> Unit
+					mediaId == null -> service.stopService(true)
 					mediaId.startsWith(MediaStoreSong.MEDIA_ID_PREFIX) -> {
 						service.mainScope
 							.launch {

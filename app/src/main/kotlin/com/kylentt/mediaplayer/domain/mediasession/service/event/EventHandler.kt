@@ -33,6 +33,12 @@ class MusicLibraryEventHandler(
 	private val dispatchers: AppDispatchers
 		get() = service.coroutineDispatchers
 
+	private val mediaSession: MediaSession
+		get() = service.currentMediaSession
+
+	private val player: Player
+		get() = mediaSession.player
+
 	suspend fun handlePlayerPlayWhenReadyChanged(
 		session: MediaSession
 	): Unit = playWhenReadyChangedImpl(session)
@@ -55,7 +61,18 @@ class MusicLibraryEventHandler(
 		error: PlaybackException
 	): Unit = playerErrorImpl(session, error)
 
-	suspend fun handleServiceRelease(): Unit {
+	suspend fun handleServiceStartCommand(): Unit = serviceStateCommandImpl()
+	suspend fun handleServiceRelease(): Unit = serviceStateReleaseImpl()
+
+	private suspend fun serviceStateCommandImpl(): Unit {
+		if (!service.isServiceForeground && player.playWhenReady) {
+			val notification = mediaNotificationProvider.getSessionNotification(mediaSession)
+			val id = mediaNotificationProvider.mediaNotificationId
+			service.startForegroundService(id, notification, true)
+		}
+	}
+
+	private suspend fun serviceStateReleaseImpl(): Unit {
 		mediaNotificationProvider.release()
 	}
 
@@ -107,7 +124,6 @@ class MusicLibraryEventHandler(
 		mediaNotificationProvider.launchSessionNotificationValidator(session, 500) {}
 	}
 
-	@MainThread
 	private suspend fun handleIOErrorFileNotFound(
 		session: MediaSession,
 		error: PlaybackException

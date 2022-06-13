@@ -42,6 +42,9 @@ class ServiceConnector(
 		}
   }
 
+	@MainThread
+	fun disconnectService() = serviceController.disconnectController()
+
   @MainThread
   fun commandController(command: ControllerCommand) {
     serviceController.commandController(command)

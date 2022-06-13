@@ -141,6 +141,12 @@ class MediaServiceController(
       .apply { addListener(futureControllerListener, directExecutor) }
   }
 
+	@MainThread
+	fun disconnectController() {
+		if (!isControllerConnected) return
+		mediaController.release()
+	}
+
   fun commandController(command: ControllerCommand): Unit {
     checkMainThread()
     if (!isControllerConnected) {

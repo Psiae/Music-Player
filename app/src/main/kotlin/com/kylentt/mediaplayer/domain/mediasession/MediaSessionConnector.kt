@@ -69,6 +69,11 @@ class MediaSessionConnector(
     serviceConnector.connectService(onConnected)
   }
 
+	@MainThread
+	fun disconnectService() {
+		serviceConnector.disconnectService()
+	}
+
   @MainThread
   fun sendControllerCommand(command: ControllerCommand) {
     serviceConnector.commandController(command)

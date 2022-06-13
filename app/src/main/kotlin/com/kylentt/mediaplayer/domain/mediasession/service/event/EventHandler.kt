@@ -3,7 +3,6 @@ package com.kylentt.mediaplayer.domain.mediasession.service.event
 import android.annotation.SuppressLint
 import android.net.Uri
 import android.widget.Toast
-import androidx.annotation.MainThread
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.PlaybackException.ERROR_CODE_DECODING_FAILED
@@ -11,10 +10,8 @@ import androidx.media3.common.PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND
 import androidx.media3.common.Player
 import androidx.media3.session.MediaSession
 import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
-import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isOngoing
 import com.kylentt.mediaplayer.core.exoplayer.mediaItem.MediaItemHelper.getDebugDescription
 import com.kylentt.mediaplayer.core.exoplayer.mediaItem.MediaMetadataHelper.getStoragePath
-import com.kylentt.mediaplayer.domain.mediasession.service.MusicLibraryService
 import com.kylentt.mediaplayer.domain.mediasession.service.notification.MusicLibraryNotificationProvider
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import com.kylentt.mediaplayer.helper.external.providers.ContentProvidersHelper
@@ -23,21 +20,16 @@ import com.kylentt.mediaplayer.helper.media.MediaItemHelper.Companion.orEmpty
 import kotlinx.coroutines.*
 import timber.log.Timber
 import java.io.File
-import java.io.IOException
 
 class MusicLibraryEventHandler(
-	private val service: MusicLibraryService,
+	private val manager: MusicLibraryEventManager,
 	private val mediaNotificationProvider: MusicLibraryNotificationProvider
 ) {
 
-	private val dispatchers: AppDispatchers
-		get() = service.coroutineDispatchers
+	private var coroutineDispatchers = manager.coroutineDispatchers
 
 	private val mediaSession: MediaSession
-		get() = service.currentMediaSession
-
-	private val player: Player
-		get() = mediaSession.player
+		get() = manager.mediaSession
 
 	suspend fun handlePlayerPlayWhenReadyChanged(
 		session: MediaSession
@@ -64,13 +56,7 @@ class MusicLibraryEventHandler(
 	suspend fun handleServiceStartCommand(): Unit = serviceStateCommandImpl()
 	suspend fun handleServiceRelease(): Unit = serviceStateReleaseImpl()
 
-	private suspend fun serviceStateCommandImpl(): Unit {
-		if (!service.isServiceForeground && player.playWhenReady) {
-			val notification = mediaNotificationProvider.getSessionNotification(mediaSession)
-			val id = mediaNotificationProvider.mediaNotificationId
-			service.startForegroundService(id, notification, true)
-		}
-	}
+	private suspend fun serviceStateCommandImpl(): Unit { /* TODO */ }
 
 	private suspend fun serviceStateReleaseImpl(): Unit {
 		mediaNotificationProvider.release()
@@ -78,7 +64,7 @@ class MusicLibraryEventHandler(
 
 	private suspend fun playWhenReadyChangedImpl(
 		session: MediaSession
-	): Unit = withContext(dispatchers.main) {
+	): Unit = withContext(coroutineDispatchers.main) {
 		mediaNotificationProvider.launchSessionNotificationValidator(session) { notification ->
 			ensureActive()
 			mediaNotificationProvider.updateSessionNotification(notification)
@@ -88,21 +74,21 @@ class MusicLibraryEventHandler(
 	private suspend fun mediaItemChangedImpl(
 		session: MediaSession,
 		reason: @Player.MediaItemTransitionReason Int
-	) = withContext(dispatchers.main) {
+	) = withContext(coroutineDispatchers.main) {
 		val item = session.player.currentMediaItem.orEmpty()
 		mediaNotificationProvider.suspendHandleMediaItemTransition(item, reason)
 	}
 
 	private suspend fun playerRepeatModeChangedImpl(
 		session: MediaSession
-	) = withContext(dispatchers.main) {
+	) = withContext(coroutineDispatchers.main) {
 		mediaNotificationProvider.suspendHandleRepeatModeChanged(session.player.repeatMode)
 	}
 
 	private suspend fun playerErrorImpl(
 		session: MediaSession,
 		error: PlaybackException
-	) = withContext(dispatchers.main) {
+	) = withContext(coroutineDispatchers.main) {
 		val code = error.errorCode
 
 		@SuppressLint("SwitchIntDef")
@@ -110,7 +96,7 @@ class MusicLibraryEventHandler(
 			ERROR_CODE_IO_FILE_NOT_FOUND -> handleIOErrorFileNotFound(session, error)
 			ERROR_CODE_DECODING_FAILED -> {
 				session.player.pause()
-				val context = service.applicationContext
+				val context = manager.baseContext.applicationContext
 				Toast.makeText(context, "Decoding Failed ($code), Paused", Toast.LENGTH_LONG).show()
 			}
 		}
@@ -118,16 +104,16 @@ class MusicLibraryEventHandler(
 
 	private suspend fun playerStateChangedImpl(
 		session: MediaSession
-	) = withContext(dispatchers.main) {
-		val notification = mediaNotificationProvider.getSessionNotification(session)
-		mediaNotificationProvider.considerForegroundService(session.player, notification, false)
-		mediaNotificationProvider.launchSessionNotificationValidator(session, 500) {}
+	) = withContext(coroutineDispatchers.main) {
+		mediaNotificationProvider.launchSessionNotificationValidator(session, 500) {
+			mediaNotificationProvider.updateSessionNotification(it)
+		}
 	}
 
 	private suspend fun handleIOErrorFileNotFound(
 		session: MediaSession,
 		error: PlaybackException
-	) = withContext(dispatchers.main) {
+	) = withContext(coroutineDispatchers.main) {
 		checkArgument(error.errorCode == ERROR_CODE_IO_FILE_NOT_FOUND)
 
 		val items = getPlayerMediaItems(session.player)
@@ -140,7 +126,7 @@ class MusicLibraryEventHandler(
 			val isExist = when {
 				uriString.startsWith(DocumentProviderHelper.storagePath) -> File(uriString).exists()
 				ContentProvidersHelper.isSchemeContentUri(uri) -> {
-					ContentProvidersHelper.isContentUriExist(service.applicationContext, uri)
+					ContentProvidersHelper.isContentUriExist(manager.baseContext.applicationContext, uri)
 				}
 				else -> false
 			}
@@ -154,7 +140,7 @@ class MusicLibraryEventHandler(
 				count++
 			}
 		}
-		val toast = Toast.makeText(service.applicationContext,
+		val toast = Toast.makeText(manager.baseContext.applicationContext,
 			"Could Not Find Media ${ if (count > 1) "Files ($count)" else "File" }",
 			Toast.LENGTH_LONG
 		)

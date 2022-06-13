@@ -282,8 +282,8 @@ private fun showBottomNav(stack: NavBackStackEntry?): Boolean =
 private inline fun StorageDenied(
     state: PermissionState
 ) {
-    require(!state.status.isGranted)
-    require(!state.status.shouldShowRationale)
+	require(!state.status.isGranted)
+	require(!state.status.shouldShowRationale)
 
 	val localContext = LocalContext.current
 

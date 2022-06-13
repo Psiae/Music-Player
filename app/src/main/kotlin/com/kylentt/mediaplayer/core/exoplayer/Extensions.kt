@@ -1,6 +1,13 @@
 package com.kylentt.mediaplayer.core.exoplayer
 
+import android.content.Context
+import android.media.AudioManager
+import android.os.Looper
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
 import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
+import com.kylentt.mediaplayer.domain.mediasession.service.MusicLibraryServiceModule
 
 /**
  * Extension Functions for [Player] Interface related property
@@ -66,4 +73,55 @@ object PlayerExtension {
       else -> throw IllegalArgumentException("Invalid Player.RepeatMode $mode")
     }
   }
+
+	@JvmStatic
+	fun copyPlayer(
+		context: Context,
+		from: Player,
+		handleAudioFocus: Boolean,
+		copyPosition: Boolean
+	): Player {
+		return when (from) {
+			is ExoPlayer -> copyExoPlayer(context, from, handleAudioFocus, copyPosition)
+			else -> throw IllegalArgumentException("Unsupported")
+		}
+	}
+
+	@JvmStatic
+	fun copyExoPlayer(
+		context: Context,
+		from: ExoPlayer,
+		handleAudioFocus: Boolean,
+		copyPosition: Boolean
+	): ExoPlayer {
+		val new = ExoPlayer.Builder(context)
+
+		return with(new) {
+
+			setAudioAttributes(from.audioAttributes, handleAudioFocus)
+			setHandleAudioBecomingNoisy(handleAudioFocus)
+			setLooper(Looper.myLooper()!!)
+
+			with(build()) {
+
+				repeatMode = from.repeatMode
+				playWhenReady = from.playWhenReady
+
+				for (i in 0 until from.mediaItemCount) {
+					addMediaItem(from.getMediaItemAt(i))
+				}
+
+				if (copyPosition) {
+					seekTo(from.currentMediaItemIndex, from.currentPosition)
+				}
+
+				if (!from.playbackState.isStateIdle()) {
+					prepare()
+				}
+
+				this
+			}
+		}
+
+	}
 }

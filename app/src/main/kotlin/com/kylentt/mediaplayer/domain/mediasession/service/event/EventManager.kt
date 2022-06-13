@@ -29,7 +29,8 @@ class MusicLibraryEventManager(
 	var isRunning = false
 		private set
 
-	val baseContext = musicService.baseContext
+	val baseContext
+		get() = musicService.baseContext
 
 	val coroutineDispatchers: AppDispatchers = AppModule.provideAppDispatchers()
 

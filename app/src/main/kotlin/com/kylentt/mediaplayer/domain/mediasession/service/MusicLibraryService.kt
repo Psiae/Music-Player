@@ -84,7 +84,7 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 	 *
 	 * [onPlayerChangedListener] is called after if any
 	 *
-	 * might change when there's multiple MediaSession use case, for now restrict to only one session
+	 * might change when there's multiple MediaSession use case
 	 *
 	 * @see [Companion.MAX_SESSION]
 	 */
@@ -296,7 +296,6 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 		Timber.d("startForegroundService, isEvent: $isEvent")
 
 		if (isEvent) {
-			// shouldn't be called by Notification Validator
 			checkState(!serviceStateSF.value.isForeground())
 		}
 		startForegroundServiceImpl(id, notification, isEvent)
@@ -306,7 +305,6 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 		Timber.d("stopForegroundService, isEvent: $isEvent")
 
 		if (isEvent) {
-			// shouldn't be called by Notification Validator
 			checkState(serviceStateSF.value.isForeground())
 		}
 		stopForegroundServiceImpl(id, removeNotification, isEvent)
@@ -433,19 +431,19 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 
 				ServiceEvent.ON_CREATE -> updateState(STATE.CREATED)
 
-				ServiceEvent.ON_DESTROY -> updateState(STATE.DESTROYED)
-
 				ServiceEvent.ON_START_COMMAND -> {
 					if (serviceState sameAs STATE.CREATED) updateState(STATE.STARTED)
 				}
 
 				ServiceEvent.ON_BIND -> updateState(STATE.STARTED)
 
+				ServiceEvent.ON_FOREGROUND -> updateState(STATE.FOREGROUND)
+
 				ServiceEvent.ON_PAUSE -> updateState(STATE.PAUSED)
 
 				ServiceEvent.ON_STOP -> updateState(STATE.STOPPED)
 
-				ServiceEvent.ON_FOREGROUND -> updateState(STATE.FOREGROUND)
+				ServiceEvent.ON_DESTROY -> updateState(STATE.DESTROYED)
 			}
 		}
 

@@ -113,21 +113,22 @@ class MusicLibraryEventHandler(
 	private suspend fun handleIOErrorFileNotFound(
 		session: MediaSession,
 		error: PlaybackException
-	) = withContext(coroutineDispatchers.main) {
+	) = withContext(coroutineDispatchers.mainImmediate) {
 		checkArgument(error.errorCode == ERROR_CODE_IO_FILE_NOT_FOUND)
 
 		val items = getPlayerMediaItems(session.player)
 
 		var count = 0
 		items.forEachIndexed { index: Int, item: MediaItem ->
+
 			val uri = item.mediaMetadata.mediaUri
 				?: Uri.parse(item.mediaMetadata.getStoragePath() ?: "")
+
 			val uriString = uri.toString()
+
 			val isExist = when {
 				uriString.startsWith(DocumentProviderHelper.storagePath) -> File(uriString).exists()
-				ContentProvidersHelper.isSchemeContentUri(uri) -> {
-					ContentProvidersHelper.isContentUriExist(manager.baseContext.applicationContext, uri)
-				}
+				ContentProvidersHelper.isSchemeContentUri(uri) -> ContentProvidersHelper.isContentUriExist(manager.baseContext.applicationContext, uri)
 				else -> false
 			}
 

@@ -203,7 +203,7 @@ class MusicLibraryServiceListener(
 
 	private var playerErrorJob by AutoCancelJob()
 	private fun playerErrorImpl(session: MediaSession, error: PlaybackException) {
-		playerErrorJob = mainScope.launch {
+		playerErrorJob = immediateScope.launch {
 			mediaEventHandler.handlePlayerError(session, error)
 		}
 	}

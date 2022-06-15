@@ -1,6 +1,9 @@
 package com.kylentt.mediaplayer.domain.mediasession.service.event
 
+import android.app.Activity
+import android.widget.Toolbar
 import androidx.annotation.MainThread
+import androidx.appcompat.app.AppCompatActivity
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -10,21 +13,22 @@ import com.kylentt.mediaplayer.core.coroutines.safeCollect
 import com.kylentt.mediaplayer.core.delegates.AutoCancelJob
 import com.kylentt.mediaplayer.domain.mediasession.service.MusicLibraryService
 import com.kylentt.mediaplayer.domain.mediasession.service.OnChanged
+import com.kylentt.mediaplayer.domain.mediasession.service.sessions.MusicLibrarySessionManager
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.ui.activity.CollectionExtension.forEachClear
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import timber.log.Timber
 
-class MusicLibraryServiceListener(
+class MusicLibraryEventListener(
 	private val manager: MusicLibraryEventManager,
+	private val sessionManager: MusicLibrarySessionManager,
 	private val mediaEventHandler: MusicLibraryEventHandler
 ) {
 
-	private var coroutineDispatchers: AppDispatchers
-	private var immediateScope: CoroutineScope
-	private var mainScope: CoroutineScope
+	private val listenerJob: Job
+	private val immediateScope: CoroutineScope
+	private val mainScope: CoroutineScope
 
 	private val playerListenerImpl = PlayerListenerImpl()
 	private val onPlayerChangedImpl = OnPlayerChangedImpl()
@@ -37,12 +41,10 @@ class MusicLibraryServiceListener(
 	private var stopSelf: Boolean = false
 	private var releaseSelf: Boolean = false
 
-	private var isPlayerChangeRegistered = false
-
 	private var eventCollectorJob by AutoCancelJob()
 
-	val mediaSession: MediaSession
-		get() = manager.mediaSession
+	private val mediaSession
+		get() = sessionManager.mediaSession
 
 	val isListening: Boolean
 		get() = state.isListening()
@@ -53,16 +55,16 @@ class MusicLibraryServiceListener(
 	init {
 		onInternalEvent(EVENT.INITIALIZING)
 
-		coroutineDispatchers = manager.coroutineDispatchers
-		immediateScope = manager.mainImmediateScope
-		mainScope = manager.mainScope
+		listenerJob = SupervisorJob(manager.eventJob)
+
+		immediateScope = CoroutineScope(manager.appDispatchers.mainImmediate + listenerJob)
+		mainScope = CoroutineScope(manager.appDispatchers.main + listenerJob)
 
 		onInternalEvent(EVENT.INITIALIZED)
 	}
 
 	@MainThread
 	private fun startImpl(stopSelf: Boolean, releaseSelf: Boolean) {
-		checkMainThread()
 
 		if (isListening) {
 			return Timber.w("EventListener start called when already started")
@@ -92,8 +94,6 @@ class MusicLibraryServiceListener(
 
 		onInternalEvent(EVENT.STOPPING)
 
-		checkMainThread()
-
 		stopDefaultListener()
 
 		onInternalEvent(EVENT.STOPPED)
@@ -113,32 +113,39 @@ class MusicLibraryServiceListener(
 			stopImpl()
 		}
 
-		unregisterAllListener(this)
+		sessionManager.unregisterPlayerChangedListener(onPlayerChangedImpl)
 
-		manager.unregisterPlayerChangedListener(onPlayerChangedImpl)
+		unregisterAllListener(this)
 
 		onInternalEvent(EVENT.RELEASED(obj))
 	}
 
 	private fun startDefaultListener() {
-
 		launchEventCollector()
 
-		if (!isPlayerChangeRegistered) {
-			manager.registerPlayerChangedListener(onPlayerChangedImpl)
-			isPlayerChangeRegistered = true
+		val get = manager.sessionPlayer
+
+		if (get != null) {
+			registerPlayerListener(get, playerListenerImpl)
 		}
+
+		manager.registerOnPlayerChangedListener(onPlayerChangedImpl)
 	}
 
 	private fun stopDefaultListener() {
-		unregisterPlayerListener(mediaSession.player, playerListenerImpl)
 		stopEventCollector()
+
+		val get = manager.sessionPlayer
+
+		if (get != null) {
+			unregisterPlayerListener(get, playerListenerImpl)
+		}
 	}
 
 
 	private fun launchEventCollector() {
 		eventCollectorJob = immediateScope.launch {
-			manager.serviceEventSF.safeCollect { if (it != serviceLastEvent) serviceEventChanged(it) }
+			manager.eventSF.safeCollect { if (it != serviceLastEvent) serviceEventChanged(it) }
 		}
 	}
 
@@ -197,7 +204,7 @@ class MusicLibraryServiceListener(
 	private var mediaItemTransitionJob by AutoCancelJob()
 	private fun mediaItemTransitionImpl(session: MediaSession, reason: Int) {
 		mediaItemTransitionJob = mainScope.launch {
-			mediaEventHandler.handlePlayerMediaItemChanged(mediaSession, reason)
+			mediaEventHandler.handlePlayerMediaItemChanged(session, reason)
 		}
 	}
 
@@ -240,8 +247,15 @@ class MusicLibraryServiceListener(
 	 * @throws IllegalStateException if not called from [Main Thread]
 	 */
 
-	@MainThread fun start(stopSelf: Boolean, releaseSelf: Boolean) {
-		if (!isListening && !isReleased) {
+	@MainThread
+	fun start(stopSelf: Boolean, releaseSelf: Boolean) {
+		checkMainThread()
+
+		if (isReleased) {
+			return Timber.e("Tried to start listener on released state")
+		}
+
+		if (!isListening) {
 			startImpl(stopSelf, releaseSelf)
 		}
 	}
@@ -252,8 +266,15 @@ class MusicLibraryServiceListener(
 	 * @throws IllegalStateException if not called from [Main Thread]
 	 */
 
-	@MainThread fun stop() {
-		if (isListening && !isReleased) {
+	@MainThread
+	fun stop() {
+		checkMainThread()
+
+		if (isReleased) {
+			return Timber.e("Tried to stop on released state")
+		}
+
+		if (isListening) {
 			stopImpl()
 		}
 	}
@@ -265,7 +286,14 @@ class MusicLibraryServiceListener(
 	 * @throws IllegalStateException if not called from [Main Thread]
 	 */
 
-	@MainThread fun release(obj: Any) {
+	@MainThread
+	fun release(obj: Any) {
+		checkMainThread()
+
+		if (isReleased) {
+			return Timber.e("Tried to release on released state")
+		}
+
 		if (!isReleased) {
 			releaseImpl(obj)
 		}

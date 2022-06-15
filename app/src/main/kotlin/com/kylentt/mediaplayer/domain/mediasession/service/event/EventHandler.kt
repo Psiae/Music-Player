@@ -13,6 +13,7 @@ import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
 import com.kylentt.mediaplayer.core.exoplayer.mediaItem.MediaItemHelper.getDebugDescription
 import com.kylentt.mediaplayer.core.exoplayer.mediaItem.MediaMetadataHelper.getStoragePath
 import com.kylentt.mediaplayer.domain.mediasession.service.notification.MusicLibraryNotificationProvider
+import com.kylentt.mediaplayer.domain.mediasession.service.sessions.MusicLibrarySessionManager
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import com.kylentt.mediaplayer.helper.external.providers.ContentProvidersHelper
 import com.kylentt.mediaplayer.helper.external.providers.DocumentProviderHelper
@@ -26,10 +27,8 @@ class MusicLibraryEventHandler(
 	private val mediaNotificationProvider: MusicLibraryNotificationProvider
 ) {
 
-	private var coroutineDispatchers = manager.coroutineDispatchers
-
-	private val mediaSession: MediaSession
-		get() = manager.mediaSession
+	private val coroutineDispatchers
+		get() = manager.appDispatchers
 
 	suspend fun handlePlayerPlayWhenReadyChanged(
 		session: MediaSession
@@ -76,13 +75,13 @@ class MusicLibraryEventHandler(
 		reason: @Player.MediaItemTransitionReason Int
 	) = withContext(coroutineDispatchers.main) {
 		val item = session.player.currentMediaItem.orEmpty()
-		mediaNotificationProvider.suspendHandleMediaItemTransition(item, reason)
+		mediaNotificationProvider.suspendHandleMediaItemTransition(session, item, reason)
 	}
 
 	private suspend fun playerRepeatModeChangedImpl(
 		session: MediaSession
 	) = withContext(coroutineDispatchers.main) {
-		mediaNotificationProvider.suspendHandleRepeatModeChanged(session.player.repeatMode)
+		mediaNotificationProvider.suspendHandleRepeatModeChanged(session, session.player.repeatMode)
 	}
 
 	private suspend fun playerErrorImpl(

@@ -8,6 +8,7 @@ import android.provider.MediaStore
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.recyclerview.widget.RecyclerView
 import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
 import com.kylentt.mediaplayer.core.exoplayer.mediaItem.MediaMetadataHelper.putDisplayTitle
 import com.kylentt.mediaplayer.core.exoplayer.mediaItem.MediaMetadataHelper.putFileName
@@ -55,7 +56,7 @@ data class MediaStoreSong @JvmOverloads constructor(
   override val artistName: String
     get() = this.artist
   override val displayTitle: String
-    get() = this.title
+    get() = this.fileName
 	override val songFileName: String
 		get() = this.fileName
   override val songMediaArtworkUri: Uri
@@ -79,7 +80,7 @@ data class MediaStoreSong @JvmOverloads constructor(
 			.setArtworkUri(artworkUri) // MediaSession automatically use this one for Notification
 			.setMediaUri(songMediaUri)
 			.setSubtitle(artist)
-			.setTitle(displayTitle) // MediaSession automatically use this one for Notification
+			.setTitle(title) // MediaSession automatically use this one for Notification
 			.setIsPlayable(duration > 0)
 
 		if (data != null && File(data).exists()) {
@@ -157,17 +158,19 @@ class MediaStoreSourceImpl(
       val songList = mutableListOf<MediaStoreSong>()
 
 			try {
-        val songFolderName = if (VersionHelper.hasQ()) {
-          MediaStore.Audio.AudioColumns.BUCKET_DISPLAY_NAME
-        } else {
-          MediaStore.Audio.AudioColumns.DATA
-        }
+        val songFolderName =
+					if (VersionHelper.hasQ()) {
+						MediaStore.Audio.AudioColumns.BUCKET_DISPLAY_NAME
+        	} else {
+         	 MediaStore.Audio.AudioColumns.DATA
+        	}
 
-        val songFolderId = if (VersionHelper.hasQ()) {
+        val songFolderId =
+					if (VersionHelper.hasQ()) {
           MediaStore.Audio.AudioColumns.BUCKET_ID
-        } else {
-          MediaStore.Audio.AudioColumns.DATA
-        }
+        	} else {
+						MediaStore.Audio.AudioColumns.DATA
+					}
 
         val projector = arrayOf(
           MediaStore.Audio.AudioColumns._ID,

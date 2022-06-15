@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.ComponentName
 import android.content.Context
 import android.content.ContextWrapper
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
 import androidx.annotation.DrawableRes
@@ -25,6 +26,7 @@ interface ApplicationDelegate {
 	fun hasStoragePermission(): Boolean
 	fun getDeviceWallpaper(): Drawable?
 	fun getImageVector(@DrawableRes id: Int): ImageVector
+	fun getLauncherIntent(): Intent
 	fun getComponentName(cls: Class<*>): ComponentName
 }
 
@@ -46,6 +48,17 @@ class AppDelegate private constructor(app: Application) : ApplicationDelegate, C
 	private val storagePermission by StoragePermissionHelper
 	private val wallpaperDrawable by DeviceWallpaper
 
+	private fun checkPermission(permission: String): Boolean {
+		val status = ContextCompat.checkSelfPermission(this, permission)
+		return isPermissionStatusGranted(status)
+	}
+
+	private fun isPermissionString(string: String): Boolean =
+		string.startsWith(ANDROID_PERMISSION_PREFIX)
+
+	private fun isPermissionStatusGranted(status: Int): Boolean =
+		status == PackageManager.PERMISSION_GRANTED
+
 	override fun hasPermission(permission: String): Boolean {
 		checkArgument(isPermissionString(permission)) {
 			"Invalid Permission String: $permission"
@@ -65,16 +78,9 @@ class AppDelegate private constructor(app: Application) : ApplicationDelegate, C
 		return ComponentName(this, cls)
 	}
 
-	private fun checkPermission(permission: String): Boolean {
-		val status = ContextCompat.checkSelfPermission(this, permission)
-		return isPermissionStatusGranted(status)
+	override fun getLauncherIntent(): Intent {
+		return packageManager.getLaunchIntentForPackage(this.packageName)!!
 	}
-
-	private fun isPermissionString(string: String): Boolean =
-		string.startsWith(ANDROID_PERMISSION_PREFIX)
-
-	private fun isPermissionStatusGranted(status: Int): Boolean =
-		status == PackageManager.PERMISSION_GRANTED
 
 	object Constants {
 		const val ANDROID_PERMISSION_PREFIX = "android.permission."
@@ -97,9 +103,9 @@ class AppDelegate private constructor(app: Application) : ApplicationDelegate, C
 
     @JvmStatic fun imageVectorFromDrawableId(@DrawableRes id: Int) = delegate.getImageVector(id)
 
-		@JvmStatic fun componentName(cls: Class<*>): ComponentName {
-			return delegate.getComponentName(cls)
-		}
+		@JvmStatic fun componentName(cls: Class<*>): ComponentName = delegate.getComponentName(cls)
+
+		@JvmStatic fun launcherIntent(): Intent = delegate.getLauncherIntent()
 
     @JvmStatic
 		infix fun provides(context: Context): ApplicationDelegate {

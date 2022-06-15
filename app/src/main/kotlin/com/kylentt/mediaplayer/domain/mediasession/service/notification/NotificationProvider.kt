@@ -17,11 +17,11 @@ import androidx.annotation.WorkerThread
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.LiveData
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.*
 import com.kylentt.mediaplayer.R
+import com.kylentt.mediaplayer.app.delegates.AppDelegate
 import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
 import com.kylentt.mediaplayer.core.delegates.AutoCancelJob
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isOngoing
@@ -31,12 +31,12 @@ import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isRepeatOne
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateBuffering
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateEnded
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateIdle
-import com.kylentt.mediaplayer.core.exoplayer.mediaItem.MediaItemHelper.getDebugDescription
 import com.kylentt.mediaplayer.data.source.local.MediaStoreSong
 import com.kylentt.mediaplayer.domain.mediasession.service.LifecycleService
 import com.kylentt.mediaplayer.domain.mediasession.service.MusicLibraryService
 import com.kylentt.mediaplayer.domain.mediasession.service.connector.ControllerCommand
 import com.kylentt.mediaplayer.domain.mediasession.service.connector.ControllerCommand.Companion.wrapWithFadeOut
+import com.kylentt.mediaplayer.domain.mediasession.service.sessions.MusicLibrarySessionManager
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkNotMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
@@ -45,7 +45,6 @@ import com.kylentt.mediaplayer.helper.media.MediaItemHelper.Companion.orEmpty
 import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity
 import kotlinx.coroutines.*
 import timber.log.Timber
-import androidx.lifecycle.LifecycleEventObserver as LifecycleEventObserver1
 
 /**
  * [MediaNotification.Provider] Implementation for [MusicLibraryService]
@@ -56,7 +55,8 @@ import androidx.lifecycle.LifecycleEventObserver as LifecycleEventObserver1
  */
 
 class MusicLibraryNotificationProvider(
-	private val service: MusicLibraryService
+	private val musicService: MusicLibraryService,
+	private val sessionManager: MusicLibrarySessionManager
 ) : MediaNotification.Provider {
 
 	private var itemBitmap = Pair<MediaItem, Bitmap?>(MediaItem.EMPTY, null)
@@ -67,14 +67,14 @@ class MusicLibraryNotificationProvider(
 	private val notificationActionReceiver = NotificationActionReceiver()
 
 	val notificationManager: NotificationManager by lazy {
-		service.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+		musicService.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 	}
 
 	private val dispatchers: AppDispatchers
-		get() = service.coroutineDispatchers
+		get() = musicService.coroutineDispatchers
 
-	private val mediaSession
-		get() = service.currentMediaSession
+	private val currentMediaSession
+		get() = sessionManager.getCurrentMediaSession()
 
 	val mediaNotificationChannelName: String
 		get() = NOTIFICATION_CHANNEL_NAME
@@ -86,15 +86,15 @@ class MusicLibraryNotificationProvider(
 		get() = NOTIFICATION_ID
 
 	init {
-		checkState(service.sessions.isEmpty()) {
+		checkState(musicService.sessions.isEmpty()) {
 			"This Provider must be initialized before MediaLibraryService.onGetSession()"
 		}
 
-		if (service.baseContext != null) {
+		if (musicService.baseContext != null) {
 			initializeProvider()
 		} else {
 
-			val owner = service as LifecycleService
+			val owner = musicService as LifecycleService
 
 			val obs = object : androidx.lifecycle.LifecycleEventObserver {
 
@@ -112,15 +112,14 @@ class MusicLibraryNotificationProvider(
 	}
 
 	private fun initializeProvider() {
-		checkState(service.baseContext != null) {
-			// using AppDelegate is also an option but no
+		checkState(musicService.baseContext != null) {
 			"Cannot Initialize NotificationProvider without Context, Initialize it in or after onCreate()"
 		}
 
 		if (VersionHelper.hasOreo()) {
 			createNotificationChannel(notificationManager)
 		}
-		service.registerReceiver(notificationActionReceiver, IntentFilter(PLAYBACK_CONTROL_INTENT))
+		musicService.registerReceiver(notificationActionReceiver, IntentFilter(PLAYBACK_CONTROL_INTENT))
 	}
 
 	/**
@@ -147,22 +146,9 @@ class MusicLibraryNotificationProvider(
 		actionFactory: MediaNotification.ActionFactory,
 		onNotificationChangedCallback: MediaNotification.Provider.Callback
 	): MediaNotification {
-
-		Timber.d("createNotification request for " +
-			"${mediaController.currentMediaItem?.getDebugDescription()}"
+		return createNotificationInternalImpl(
+			mediaController, actionFactory, onNotificationChangedCallback
 		)
-
-		val notification = getNotificationForSession(mediaSession, mediaNotificationChannelName)
-
-		if (mediaController.playWhenReady) {
-			val isEvent = !serviceState.isForeground()
-			service.startForegroundService(mediaNotificationId, notification, isEvent)
-		} else {
-			val isEvent = serviceState.isForeground()
-			service.stopForegroundService(mediaNotificationId,  false, isEvent)
-		}
-
-		return MediaNotification(mediaNotificationId, notification)
 	}
 
 	override fun handleCustomAction(
@@ -221,6 +207,7 @@ class MusicLibraryNotificationProvider(
 	}
 
 	suspend fun suspendHandleMediaItemTransition(
+		session: MediaSession,
 		item: MediaItem,
 		reason: Int // TODO
 	) = withContext(dispatchers.main) {
@@ -241,17 +228,17 @@ class MusicLibraryNotificationProvider(
 			itemBitmap = item to squaredBitmap
 		}
 
-		suspendUpdateNotification(mediaSession)
+		suspendUpdateNotification(session)
 	}
 
-	suspend fun suspendHandleRepeatModeChanged(mode: Int) {
-		withContext(dispatchers.main) { suspendUpdateNotification(mediaSession) }
+	suspend fun suspendHandleRepeatModeChanged(session: MediaSession, mode: Int) {
+		withContext(dispatchers.main) { suspendUpdateNotification(session) }
 	}
 
 	@WorkerThread
 	private fun getMediaItemEmbeddedPicture(item: MediaItem): ByteArray? {
 		checkNotMainThread()
-		return service.mediaItemHelper.getEmbeddedPicture(item)
+		return musicService.mediaItemHelper.getEmbeddedPicture(item)
 	}
 
 	@WorkerThread
@@ -284,6 +271,37 @@ class MusicLibraryNotificationProvider(
 		return if (condition) block() else null
 	}
 
+	private val internalForegroundCondition: (Player) -> Boolean = { it.playWhenReady }
+
+	private fun createNotificationInternalImpl(
+		controller: MediaController,
+		actionFactory: MediaNotification.ActionFactory,
+		callback: MediaNotification.Provider.Callback
+	): MediaNotification {
+
+		val notification = getNotificationFromPlayer(controller, mediaNotificationChannelName)
+
+		val shouldForeground = internalForegroundCondition(controller)
+
+		if (serviceState.isForeground() != shouldForeground) {
+			musicService.updateForegroundState(shouldForeground)
+		}
+
+		return MediaNotification(mediaNotificationId, notification)
+	}
+
+
+	private fun getNotificationFromPlayer(
+		player: Player,
+		channelName: String
+	): Notification {
+
+		val icon = getItemBitmap(player)
+
+		return notificationBuilder.buildMediaStyleNotification(player, icon, channelName)
+	}
+
+
 	/**
 	 * @param session The [MediaSession]
 	 * @param channelName The Channel Name this [Notification] belong to
@@ -294,38 +312,8 @@ class MusicLibraryNotificationProvider(
 		session: MediaSession,
 		channelName: String
 	): Notification {
-
-		val player = session.player
-		val icon = getItemBitmap(player)
-
-		val showPlayButton = if (player.playbackState.isStateBuffering()) {
-			!player.playWhenReady
-		} else {
-			!player.isPlaying
-		}
-
-		val item = player.currentMediaItem.orEmpty()
-
-		Timber.d("getNotification for ${item.mediaMetadata.displayTitle}, " +
-			"\nshowPlayButton: $showPlayButton"
-		)
-
-		return notificationBuilder
-			.buildMediaNotification(
-				session = mediaSession,
-				largeIcon = icon,
-				channelName = channelName,
-				currentItemIndex = player.currentMediaItemIndex,
-				currentItem = item,
-				playerState = player.playbackState,
-				repeatMode = player.repeatMode,
-				showPrevButton = player.hasPreviousMediaItem(),
-				showNextButton = player.hasNextMediaItem(),
-				showPlayButton = showPlayButton,
-				subtitle = item.mediaMetadata.artist.toString(),
-				subtext = item.mediaMetadata.albumTitle.toString(),
-				title = item.mediaMetadata.displayTitle.toString()
-			)
+		val icon = getItemBitmap(session.player)
+		return notificationBuilder.buildMediaStyleNotification(session, icon, channelName)
 	}
 
 	val foregroundServiceCondition: (Player) -> Boolean = { it.playbackState.isOngoing() }
@@ -334,18 +322,18 @@ class MusicLibraryNotificationProvider(
 		when {
 			foregroundServiceCondition(player) -> {
 				if (serviceState.isForeground()) return
-				service.startForegroundService(mediaNotificationId, notification, true)
+				musicService.startForegroundService(mediaNotificationId, notification, true)
 			}
 			else -> {
 				if (!serviceState.isForeground()) return
-				service.stopForegroundService(mediaNotificationId, false, true )
+				musicService.stopForegroundService(mediaNotificationId, false, true )
 			}
 		}
   }
 
 	fun release() {
 		checkMainThread()
-		service.unregisterReceiver(notificationActionReceiver)
+		musicService.unregisterReceiver(notificationActionReceiver)
 
 		Timber.d("NotificationProvider receiver UnRegistered")
 	}
@@ -357,25 +345,27 @@ class MusicLibraryNotificationProvider(
 		}
 
 		private fun handleNotificationActionImpl(intent: Intent) {
+			val get = currentMediaSession ?: return
+
 			val action = intent.getStringExtra(PLAYBACK_CONTROL_ACTION) ?: return
-			if (mediaSession.player.currentMediaItem == null) {
-				return validateItem(intent)
+			if (get.player.currentMediaItem == null) {
+				return validateItem(get, intent)
 			}
 			when (action) {
-				ACTION_PLAY -> onReceiveActionPlay()
-				ACTION_PAUSE -> onReceiveActionPause()
-				ACTION_NEXT -> onReceiveActionNext()
-				ACTION_PREV -> onReceiveActionPrev()
-				ACTION_REPEAT_OFF_TO_ONE -> onReceiveRepeatOffToOne()
-				ACTION_REPEAT_ONE_TO_ALL -> onReceiveRepeatOneToAll()
-				ACTION_REPEAT_ALL_TO_OFF -> onReceiveRepeatAllToOff()
-				ACTION_STOP_CANCEL -> onReceiveStopCancel()
-				ACTION_DISMISS_NOTIFICATION -> service.stopForegroundService(mediaNotificationId, true)
+				ACTION_PLAY -> onReceiveActionPlay(get)
+				ACTION_PAUSE -> onReceiveActionPause(get)
+				ACTION_NEXT -> onReceiveActionNext(get)
+				ACTION_PREV -> onReceiveActionPrev(get)
+				ACTION_REPEAT_OFF_TO_ONE -> onReceiveRepeatOffToOne(get)
+				ACTION_REPEAT_ONE_TO_ALL -> onReceiveRepeatOneToAll(get)
+				ACTION_REPEAT_ALL_TO_OFF -> onReceiveRepeatAllToOff(get)
+				ACTION_STOP_CANCEL -> onReceiveStopCancel(get)
+				ACTION_DISMISS_NOTIFICATION -> musicService.stopForegroundService(mediaNotificationId, true)
 			}
 		}
 
 		private var isValidating = false
-		private fun validateItem(intent: Intent) = with(mediaSession.player) {
+		private fun validateItem(session: MediaSession, intent: Intent) = with(session.player) {
 			Timber.d("checkItem CurrentMediaItem: $currentMediaItem")
 
 			if (currentMediaItem == null && !isValidating) {
@@ -383,11 +373,11 @@ class MusicLibraryNotificationProvider(
 
 				val mediaId = intent.getStringExtra(PLAYBACK_ITEM_ID)
 				when {
-					mediaId == null -> service.stopService(true)
+					mediaId == null -> musicService.stopService(true)
 					mediaId.startsWith(MediaStoreSong.MEDIA_ID_PREFIX) -> {
-						service.mainScope
+						musicService.mainScope
 							.launch {
-								val item = service.mediaRepository.getMediaStoreSongById(mediaId)
+								val item = musicService.mediaRepository.getMediaStoreSongById(mediaId)
 								item?.let { setMediaItem(it.asMediaItem) }
 								isValidating = false
 							}
@@ -396,9 +386,9 @@ class MusicLibraryNotificationProvider(
 			}
 		}
 
-		private fun onReceiveActionPlay(): Unit = with(mediaSession.player) {
+		private fun onReceiveActionPlay(session: MediaSession): Unit = with(session.player) {
 			if (playWhenReady && playbackState.isOngoing()) {
-				return updateSessionNotification(mediaSession)
+				return updateSessionNotification(session)
 			}
 
 			when {
@@ -414,9 +404,9 @@ class MusicLibraryNotificationProvider(
 			playWhenReady = true
 		}
 
-		private fun onReceiveActionPause() = with(mediaSession.player) {
+		private fun onReceiveActionPause(session: MediaSession) = with(session.player) {
 			if (!playWhenReady && playbackState.isOngoing()) {
-				return updateSessionNotification(mediaSession)
+				return updateSessionNotification(session)
 			}
 			try {
 				checkState(playbackState.isOngoing())
@@ -427,9 +417,9 @@ class MusicLibraryNotificationProvider(
 			}
 		}
 
-		private fun onReceiveActionNext() = with(mediaSession.player) {
+		private fun onReceiveActionNext(session: MediaSession) = with(session.player) {
 			if (!hasNextMediaItem() && playbackState.isOngoing()) {
-				return updateSessionNotification(mediaSession)
+				return updateSessionNotification(session)
 			}
 			try {
 				checkState(hasNextMediaItem())
@@ -440,9 +430,9 @@ class MusicLibraryNotificationProvider(
 			}
 		}
 
-		private fun onReceiveActionPrev() = with(mediaSession.player) {
+		private fun onReceiveActionPrev(session: MediaSession) = with(session.player) {
 			if (!hasPreviousMediaItem() && playbackState.isOngoing()) {
-				return updateSessionNotification(mediaSession)
+				return updateSessionNotification(session)
 			}
 			try {
 				checkState(hasPreviousMediaItem())
@@ -453,9 +443,9 @@ class MusicLibraryNotificationProvider(
 			}
 		}
 
-		private fun onReceiveRepeatOffToOne() = with(mediaSession.player) {
+		private fun onReceiveRepeatOffToOne(session: MediaSession) = with(session.player) {
 			if (!repeatMode.isRepeatOff() && playbackState.isOngoing()) {
-				return updateSessionNotification(mediaSession)
+				return updateSessionNotification(session)
 			}
 			try {
 				checkState(repeatMode.isRepeatOff())
@@ -466,9 +456,9 @@ class MusicLibraryNotificationProvider(
 			}
 		}
 
-		private fun onReceiveRepeatOneToAll() = with(mediaSession.player) {
+		private fun onReceiveRepeatOneToAll(session: MediaSession) = with(session.player) {
 			if (!repeatMode.isRepeatOne() && playbackState.isOngoing()) {
-				return updateSessionNotification(mediaSession)
+				return updateSessionNotification(session)
 			}
 			try {
 				checkState(repeatMode.isRepeatOne())
@@ -479,9 +469,9 @@ class MusicLibraryNotificationProvider(
 			}
 		}
 
-		private fun onReceiveRepeatAllToOff() = with(mediaSession.player) {
+		private fun onReceiveRepeatAllToOff(session: MediaSession) = with(session.player) {
 			if (!repeatMode.isRepeatAll() && playbackState.isOngoing()) {
-				return updateSessionNotification(mediaSession)
+				return updateSessionNotification(session)
 			}
 			try {
 				checkState(repeatMode.isRepeatAll())
@@ -492,21 +482,21 @@ class MusicLibraryNotificationProvider(
 			}
 		}
 
-		private fun onReceiveStopCancel() = with(mediaSession.player) {
+		private fun onReceiveStopCancel(session: MediaSession) = with(session.player) {
 			when {
 				playbackState.isOngoing() -> {
 					val command = ControllerCommand.STOP.wrapWithFadeOut(true, 1000L)
-					service.sessionConnector.sendControllerCommand(command)
+					musicService.sessionConnector.sendControllerCommand(command)
 				}
 				else -> {
 					Timber.d("onReceiveStopCancel $this not OnGoing")
-					if (service.isServiceForeground) {
-						service.stopForegroundService(mediaNotificationId,
-							removeNotification = true, isEvent = true
-						)
-					}
+
+					musicService.stopForegroundService(mediaNotificationId,
+						removeNotification = true, isEvent = musicService.isServiceForeground
+					)
+
 					if (!MainActivity.isAlive) {
-						service.stopService(true)
+						musicService.stopService(true)
 					}
 				}
 			}
@@ -516,7 +506,7 @@ class MusicLibraryNotificationProvider(
 	@WorkerThread
 	private suspend fun resizeBitmapForNotification(bitmap: Bitmap): Bitmap {
 		val size = if (VersionHelper.hasR()) 256 else 512
-		return service.coilHelper.squareBitmap(bitmap = bitmap, size = size, fastPath = true)
+		return musicService.coilHelper.squareBitmap(bitmap = bitmap, size = size, fastPath = true)
 	}
 
   private fun MediaItem?.idEqual(that: MediaItem?): Boolean {
@@ -529,8 +519,178 @@ class MusicLibraryNotificationProvider(
 
   inner class NotificationBuilder() {
 
+		fun buildMediaStyleNotification(
+			mediaSession: MediaSession,
+			largeIcon: Bitmap?,
+			channelId: String,
+		): Notification {
+			return NotificationCompat.Builder(musicService, channelId)
+				.apply {
+
+					val player = mediaSession.player
+
+					val contentIntent = PendingIntent
+						.getActivity(musicService, 445, AppDelegate.launcherIntent(),
+							PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+						)
+
+					val mediaItem = player.currentMediaItem.orEmpty()
+
+					setChannelId(channelId)
+					setContentIntent(contentIntent)
+					setContentTitle(mediaItem.mediaMetadata.title)
+					setContentText(mediaItem.mediaMetadata.artist)
+					setSmallIcon(R.drawable.play_icon_theme3_notification)
+
+					setColorized(true)
+					setOngoing(false)
+					setShowWhen(false)
+
+					val subText = mediaItem.mediaMetadata.albumTitle
+					if (!subText.isNullOrEmpty()) setSubText(subText)
+
+					val repeatAction = when (player.repeatMode) {
+						Player.REPEAT_MODE_OFF -> makeActionRepeatOffToOne(mediaItem)
+						Player.REPEAT_MODE_ONE -> makeActionRepeatOneToAll(mediaItem)
+						Player.REPEAT_MODE_ALL -> makeActionRepeatAllToOff(mediaItem)
+						else -> throw IllegalStateException()
+					}
+
+					val prevAction =
+						if (player.hasPreviousMediaItem()) {
+							makeActionPrev(mediaItem)
+						} else {
+							makeActionPrevDisabled(mediaItem)
+						}
+
+					val showPlayAction =
+						if (player.playbackState.isStateBuffering()) {
+							!player.playWhenReady
+						} else {
+							!player.isPlaying
+						}
+
+					val playAction =
+						if (showPlayAction) {
+							makeActionPlay(mediaItem)
+						} else {
+							makeActionPause(mediaItem)
+						}
+
+					val nextAction =
+						if (player.hasNextMediaItem()) {
+							makeActionNext(mediaItem)
+						} else {
+							makeActionNextDisabled(mediaItem)
+						}
+
+					addAction(repeatAction)
+					addAction(prevAction)
+					addAction(playAction)
+					addAction(nextAction)
+					addAction(makeActionStopCancel(mediaItem))
+
+					setLargeIcon(largeIcon)
+
+					val dismissIntent = makeDismissPendingIntent(mediaItem)
+					setDeleteIntent(dismissIntent)
+
+					val style = MediaStyleNotificationHelper
+						.DecoratedMediaCustomViewStyle(mediaSession)
+						.setCancelButtonIntent(dismissIntent)
+						.setShowCancelButton(true)
+						.setShowActionsInCompactView(1,2,3)
+					setStyle(style)
+
+				}.build()
+		}
+
+		fun buildMediaStyleNotification(
+			player: Player,
+			largeIcon: Bitmap?,
+			channelId: String,
+		): Notification {
+			return NotificationCompat.Builder(musicService, channelId)
+				.apply {
+
+					val contentIntent = PendingIntent
+						.getActivity(musicService, 445, AppDelegate.launcherIntent(),
+							PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+						)
+
+					val mediaItem = player.currentMediaItem.orEmpty()
+
+					setChannelId(channelId)
+					setContentIntent(contentIntent)
+					setContentTitle(mediaItem.mediaMetadata.title)
+					setContentText(mediaItem.mediaMetadata.artist)
+					setSmallIcon(R.drawable.play_icon_theme3_notification)
+
+					setColorized(true)
+					setOngoing(player.playbackState.isOngoing())
+					setShowWhen(false)
+
+					val subText = mediaItem.mediaMetadata.albumTitle
+					if (!subText.isNullOrEmpty()) setSubText(subText)
+
+					val repeatAction = when (player.repeatMode) {
+						Player.REPEAT_MODE_OFF -> makeActionRepeatOffToOne(mediaItem)
+						Player.REPEAT_MODE_ONE -> makeActionRepeatOneToAll(mediaItem)
+						Player.REPEAT_MODE_ALL -> makeActionRepeatAllToOff(mediaItem)
+						else -> throw IllegalStateException()
+					}
+
+					val prevAction =
+						if (player.hasPreviousMediaItem()) {
+							makeActionPrev(mediaItem)
+						} else {
+							makeActionPrevDisabled(mediaItem)
+						}
+
+					val showPlayAction =
+						if (player.playbackState.isStateBuffering()) {
+							!player.playWhenReady
+						} else {
+							!player.isPlaying
+						}
+
+					val playAction =
+						if (showPlayAction) {
+							makeActionPlay(mediaItem)
+						} else {
+							makeActionPause(mediaItem)
+						}
+
+					val nextAction =
+						if (player.hasNextMediaItem()) {
+							makeActionNext(mediaItem)
+						} else {
+							makeActionNextDisabled(mediaItem)
+						}
+
+					addAction(repeatAction)
+					addAction(prevAction)
+					addAction(playAction)
+					addAction(nextAction)
+					addAction(makeActionStopCancel(mediaItem))
+
+					setLargeIcon(largeIcon)
+
+					val dismissIntent = makeDismissPendingIntent(mediaItem)
+					setDeleteIntent(dismissIntent)
+
+					val style = androidx.media.app.NotificationCompat.MediaStyle()
+						.setCancelButtonIntent(dismissIntent)
+						.setShowCancelButton(true)
+						.setShowActionsInCompactView(1,2,3)
+					setStyle(style)
+
+				}.build()
+		}
+
     fun buildMediaNotification(
-			session: MediaSession,
+			mediaSession: MediaSession? = null,
+			player: Player,
 			largeIcon: Bitmap?,
 			channelName: String,
 			currentItemIndex: Int,
@@ -545,22 +705,18 @@ class MusicLibraryNotificationProvider(
 			title: String,
     ): Notification {
 
-      return NotificationCompat.Builder(service, channelName)
+      return NotificationCompat.Builder(musicService, channelName)
         .apply {
 
           val contentIntent = PendingIntent
-            .getActivity(service, 445,
-              service.packageManager.getLaunchIntentForPackage(service.packageName),
+            .getActivity(musicService, 445,
+              musicService.packageManager.getLaunchIntentForPackage(musicService.packageName),
               PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
           val deleteIntent = makeDismissPendingIntent(currentItem)
 
           val onGoing = playerState.isOngoing()
-
-          val style = MediaStyleNotificationHelper
-            .DecoratedMediaCustomViewStyle(session)
-            .setShowActionsInCompactView(1,2,3)
 
           setColorized(true)
           setContentIntent(contentIntent)
@@ -569,22 +725,19 @@ class MusicLibraryNotificationProvider(
           setChannelId(channelName)
           setDeleteIntent(deleteIntent)
           setShowWhen(false)
-          setSmallIcon(R.drawable.play_icon_theme3)
+          setSmallIcon(R.drawable.play_icon_theme3_notification)
 
           if (subtext.isNotBlank()) setSubText(subtext)
 
-          setOngoing(onGoing)
+          setOngoing(player.playbackState.isOngoing())
 
           val repeatAction = when (repeatMode) {
             Player.REPEAT_MODE_OFF -> makeActionRepeatOffToOne(currentItem)
             Player.REPEAT_MODE_ONE -> makeActionRepeatOneToAll(currentItem)
             Player.REPEAT_MODE_ALL -> makeActionRepeatAllToOff(currentItem)
-            else -> throw IllegalArgumentException("invalid repeat Mode, " +
-              "\n current = $repeatMode" +
-              "\n actual = ${session.player.repeatMode}" +
-              "should never reach here"
-            )
+            else -> throw IllegalStateException()
           }
+
           val prevAction = if (showPrevButton) {
             makeActionPrev(currentItem)
           } else {
@@ -608,7 +761,21 @@ class MusicLibraryNotificationProvider(
           addAction(makeActionStopCancel(currentItem))
 
           setLargeIcon(largeIcon)
-          setStyle(style)
+
+					val style =
+						if (mediaSession != null) {
+							MediaStyleNotificationHelper.MediaStyle(mediaSession)
+								.setShowCancelButton(true)
+								.setCancelButtonIntent(deleteIntent)
+								.setShowActionsInCompactView(1,2,3)
+						} else {
+							androidx.media.app.NotificationCompat.MediaStyle()
+								.setShowCancelButton(true)
+								.setCancelButtonIntent(deleteIntent)
+								.setShowActionsInCompactView(1,2,3)
+						}
+
+					setStyle(style)
         }
         .build()
     }
@@ -618,10 +785,10 @@ class MusicLibraryNotificationProvider(
         .apply {
           putExtra(PLAYBACK_CONTROL_ACTION, ACTION_DISMISS_NOTIFICATION)
 					putExtra(PLAYBACK_ITEM_ID, item.mediaId)
-          setPackage(service.packageName)
+          setPackage(musicService.packageName)
         }
       val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-      return PendingIntent.getBroadcast(service, ACTION_DISMISS_NOTIFICATION_CODE, intent, flag)
+      return PendingIntent.getBroadcast(musicService, ACTION_DISMISS_NOTIFICATION_CODE, intent, flag)
     }
 
     private fun makeActionStopCancel(item: MediaItem): NotificationCompat.Action {
@@ -631,10 +798,10 @@ class MusicLibraryNotificationProvider(
         .apply {
           putExtra(PLAYBACK_CONTROL_ACTION, ACTION_STOP_CANCEL)
           putExtra(PLAYBACK_ITEM_ID, item.mediaId)
-          setPackage(service.packageName)
+          setPackage(musicService.packageName)
         }
       val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-      val pIntent = PendingIntent.getBroadcast(service, ACTION_STOP_CANCEL_CODE, intent, flag)
+      val pIntent = PendingIntent.getBroadcast(musicService, ACTION_STOP_CANCEL_CODE, intent, flag)
       return NotificationCompat.Action.Builder(resId, title, pIntent).build()
     }
 
@@ -645,10 +812,10 @@ class MusicLibraryNotificationProvider(
         .apply {
           putExtra(PLAYBACK_CONTROL_ACTION, ACTION_REPEAT_ONE_TO_ALL)
           putExtra(PLAYBACK_ITEM_ID, item.mediaId)
-          setPackage(service.packageName)
+          setPackage(musicService.packageName)
         }
       val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-      val pIntent = PendingIntent.getBroadcast(service, ACTION_REPEAT_ONE_TO_ALL_CODE, intent, flag)
+      val pIntent = PendingIntent.getBroadcast(musicService, ACTION_REPEAT_ONE_TO_ALL_CODE, intent, flag)
       return NotificationCompat.Action.Builder(resId, title, pIntent).build()
     }
 
@@ -659,10 +826,10 @@ class MusicLibraryNotificationProvider(
         .apply {
           putExtra(PLAYBACK_CONTROL_ACTION, ACTION_REPEAT_OFF_TO_ONE)
           putExtra(PLAYBACK_ITEM_ID, item.mediaId)
-          setPackage(service.packageName)
+          setPackage(musicService.packageName)
         }
       val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-      val pIntent = PendingIntent.getBroadcast(service, ACTION_REPEAT_OFF_TO_ONE_CODE, intent, flag)
+      val pIntent = PendingIntent.getBroadcast(musicService, ACTION_REPEAT_OFF_TO_ONE_CODE, intent, flag)
       return NotificationCompat.Action.Builder(resId, title, pIntent).build()
     }
 
@@ -673,10 +840,10 @@ class MusicLibraryNotificationProvider(
         .apply {
           putExtra(PLAYBACK_CONTROL_ACTION, ACTION_REPEAT_ALL_TO_OFF)
           putExtra(PLAYBACK_ITEM_ID, item.mediaId)
-          setPackage(service.packageName)
+          setPackage(musicService.packageName)
         }
       val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-      val pIntent = PendingIntent.getBroadcast(service, ACTION_REPEAT_ALL_TO_OFF_CODE, intent, flag)
+      val pIntent = PendingIntent.getBroadcast(musicService, ACTION_REPEAT_ALL_TO_OFF_CODE, intent, flag)
       return NotificationCompat.Action.Builder(resId, title, pIntent).build()
     }
 
@@ -687,10 +854,10 @@ class MusicLibraryNotificationProvider(
         .apply {
           putExtra(PLAYBACK_CONTROL_ACTION, ACTION_PLAY)
           putExtra(PLAYBACK_ITEM_ID, item.mediaId)
-          setPackage(service.packageName)
+          setPackage(musicService.packageName)
         }
       val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-      val pIntent = PendingIntent.getBroadcast(service, ACTION_PLAY_CODE, intent, flag)
+      val pIntent = PendingIntent.getBroadcast(musicService, ACTION_PLAY_CODE, intent, flag)
       return NotificationCompat.Action.Builder(resId, title, pIntent).build()
     }
 
@@ -701,10 +868,10 @@ class MusicLibraryNotificationProvider(
         .apply {
           putExtra(PLAYBACK_CONTROL_ACTION, ACTION_PAUSE)
           putExtra(PLAYBACK_ITEM_ID, item.mediaId)
-          setPackage(service.packageName)
+          setPackage(musicService.packageName)
         }
       val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-      val pIntent = PendingIntent.getBroadcast(service, ACTION_PAUSE_CODE, intent, flag)
+      val pIntent = PendingIntent.getBroadcast(musicService, ACTION_PAUSE_CODE, intent, flag)
       return NotificationCompat.Action.Builder(resId, title, pIntent).build()
     }
 
@@ -715,10 +882,10 @@ class MusicLibraryNotificationProvider(
         .apply {
           putExtra(PLAYBACK_CONTROL_ACTION, ACTION_NEXT)
           putExtra(PLAYBACK_ITEM_ID, item.mediaId)
-          setPackage(service.packageName)
+          setPackage(musicService.packageName)
         }
       val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-      val pIntent = PendingIntent.getBroadcast(service, ACTION_NEXT_CODE, intent, flag)
+      val pIntent = PendingIntent.getBroadcast(musicService, ACTION_NEXT_CODE, intent, flag)
       return NotificationCompat.Action.Builder(resId, title, pIntent).build()
     }
 
@@ -729,10 +896,10 @@ class MusicLibraryNotificationProvider(
         .apply {
           putExtra(PLAYBACK_CONTROL_ACTION, ACTION_NEXT_DISABLED)
           putExtra(PLAYBACK_ITEM_ID, item.mediaId)
-          setPackage(service.packageName)
+          setPackage(musicService.packageName)
         }
       val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-      val pIntent = PendingIntent.getBroadcast(service, ACTION_NEXT_DISABLED_CODE, intent, flag)
+      val pIntent = PendingIntent.getBroadcast(musicService, ACTION_NEXT_DISABLED_CODE, intent, flag)
       return NotificationCompat.Action.Builder(resId, title, pIntent).build()
     }
 
@@ -743,10 +910,10 @@ class MusicLibraryNotificationProvider(
         .apply {
           putExtra(PLAYBACK_CONTROL_ACTION, ACTION_PREV)
           putExtra(PLAYBACK_ITEM_ID, item.mediaId)
-          setPackage(service.packageName)
+          setPackage(musicService.packageName)
         }
       val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-      val pIntent = PendingIntent.getBroadcast(service, ACTION_PREV_CODE, intent, flag)
+      val pIntent = PendingIntent.getBroadcast(musicService, ACTION_PREV_CODE, intent, flag)
       return NotificationCompat.Action.Builder(resId, title, pIntent).build()
     }
 
@@ -757,10 +924,10 @@ class MusicLibraryNotificationProvider(
         .apply {
           putExtra(PLAYBACK_CONTROL_ACTION, ACTION_PREV_DISABLED)
           putExtra(PLAYBACK_ITEM_ID, item.mediaId)
-          setPackage(service.packageName)
+          setPackage(musicService.packageName)
         }
       val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-      val pIntent = PendingIntent.getBroadcast(service, ACTION_PREV_DISABLED_CODE, intent, flag)
+      val pIntent = PendingIntent.getBroadcast(musicService, ACTION_PREV_DISABLED_CODE, intent, flag)
       return NotificationCompat.Action.Builder(resId, title, pIntent).build()
     }
   }

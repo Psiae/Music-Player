@@ -101,6 +101,7 @@ class MediaItemHelper(
 
     @JvmStatic fun hideArtUri(uri: Uri): Uri = hideArtUri(uri.toString()).toUri()
     @JvmStatic fun showArtUri(uri: Uri): Uri = showArtUri(uri.toString()).toUri()
+
     @JvmStatic fun hideArtUri(uri: String): String = uri.setPrefix(ART_URI_PREFIX)
     @JvmStatic fun showArtUri(uri: String): String = uri.removePrefix(ART_URI_PREFIX)
 

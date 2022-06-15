@@ -137,14 +137,17 @@ class MediaServiceController(
     sessionToken = SessionToken(context, MusicLibraryService.getComponentName())
     futureMediaController = MediaController.Builder(context, sessionToken)
       .setApplicationLooper(Looper.myLooper()!!)
-      .buildAsync()
-      .apply { addListener(futureControllerListener, directExecutor) }
+      .buildAsync().apply { addListener(futureControllerListener, directExecutor) }
   }
 
 	@MainThread
 	fun disconnectController() {
-		if (!isControllerConnected) return
-		mediaController.release()
+		checkMainThread()
+
+		when {
+			isControllerConnected -> mediaController.release()
+			isControllerConnecting -> connectController { mediaController.release() }
+		}
 	}
 
   fun commandController(command: ControllerCommand): Unit {

@@ -5,13 +5,29 @@ import android.os.Looper
 @Suppress("NOTHING_TO_INLINE")
 object Preconditions {
 
-  @JvmStatic inline fun checkState(state: Boolean): Unit = check(state)
+  @JvmStatic inline fun checkState(state: Boolean): Boolean {
+		checkState(state) {
+			"CheckState Failed"
+		}
+		return state
+	}
 
-  @JvmStatic inline fun checkState(state: Boolean, msg: () -> Any): Unit = check(state, msg)
+  @JvmStatic inline fun checkState(state: Boolean, msg: () -> Any): Boolean {
+		check(state, msg)
+		return state
+	}
 
-  @JvmStatic inline fun checkArgument(argument: Boolean): Unit = require(argument)
+  @JvmStatic inline fun checkArgument(argument: Boolean): Boolean {
+		checkArgument(argument) {
+			"CheckArgument Failed"
+		}
+		return argument
+	}
 
-  @JvmStatic inline fun checkArgument(argument: Boolean, msg: () -> Any) = require(argument, msg)
+  @JvmStatic inline fun checkArgument(argument: Boolean, msg: () -> Any): Boolean {
+		require(argument, msg)
+		return argument
+	}
 
   @JvmStatic inline fun checkMainThread() {
 		checkMainThread { "Check Failed, Must be called from Main Thread" }
@@ -37,5 +53,5 @@ object Preconditions {
     }
   }
 
-	inline fun isMainThread() = Looper.myLooper() == Looper.getMainLooper()
+	@JvmStatic inline fun isMainThread() = Looper.myLooper() == Looper.getMainLooper()
 }

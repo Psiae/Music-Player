@@ -57,7 +57,8 @@ data class IntentWrapper @JvmOverloads constructor(
   companion object {
     @JvmStatic
     val EMPTY = fromIntent(Intent())
-    @JvmStatic
+
+		@JvmStatic
     val typeAudioPrefix = "audio/"
 
     @JvmStatic

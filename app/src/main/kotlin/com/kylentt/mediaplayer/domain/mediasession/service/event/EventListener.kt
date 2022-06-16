@@ -1,14 +1,10 @@
 package com.kylentt.mediaplayer.domain.mediasession.service.event
 
-import android.app.Activity
-import android.widget.Toolbar
 import androidx.annotation.MainThread
-import androidx.appcompat.app.AppCompatActivity
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.session.MediaSession
-import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
 import com.kylentt.mediaplayer.core.coroutines.safeCollect
 import com.kylentt.mediaplayer.core.delegates.AutoCancelJob
 import com.kylentt.mediaplayer.domain.mediasession.service.MusicLibraryService
@@ -102,7 +98,7 @@ class MusicLibraryEventListener(
 	private fun releaseImpl(obj: Any) {
 
 		if (isReleased) {
-			return Timber.w("EventListener release called when already released")
+			throw IllegalStateException("EventListener releaseImpl called when already released")
 		}
 
 		onInternalEvent(EVENT.RELEASING(obj))
@@ -116,6 +112,8 @@ class MusicLibraryEventListener(
 		sessionManager.unregisterPlayerChangedListener(onPlayerChangedImpl)
 
 		unregisterAllListener(this)
+
+		listenerJob.cancel()
 
 		onInternalEvent(EVENT.RELEASED(obj))
 	}
@@ -177,21 +175,19 @@ class MusicLibraryEventListener(
 		Timber.i("EventListener ServiceEvent Changed to $event")
 
 		when (event) {
-			MusicLibraryService.ServiceEvent.ON_START_COMMAND -> serviceStateStartCommandImpl()
-			MusicLibraryService.ServiceEvent.ON_DESTROY -> serviceStateDestroyedImpl()
+			MusicLibraryService.ServiceEvent.Destroy -> serviceStateDestroyedImpl()
 			else -> Unit // TODO
 		}
 
 		this.serviceLastEvent = event
 	}
 
-	private fun serviceStateStartCommandImpl() {
-		immediateScope.launch { mediaEventHandler.handleServiceStartCommand() }
-	}
-
 	private fun serviceStateDestroyedImpl() {
-		if (releaseSelf) release(this)
 		immediateScope.launch { mediaEventHandler.handleServiceRelease() }
+
+		if (releaseSelf) {
+			release(this)
+		}
 	}
 
 	private var playWhenReadyChangedJob by AutoCancelJob()
@@ -290,12 +286,10 @@ class MusicLibraryEventListener(
 	fun release(obj: Any) {
 		checkMainThread()
 
-		if (isReleased) {
-			return Timber.e("Tried to release on released state")
-		}
-
 		if (!isReleased) {
 			releaseImpl(obj)
+		} else {
+			Timber.e("Tried to release on released state")
 		}
 	}
 

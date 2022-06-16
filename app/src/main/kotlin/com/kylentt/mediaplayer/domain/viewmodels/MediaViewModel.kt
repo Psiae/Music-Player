@@ -45,10 +45,6 @@ class MediaViewModel @Inject constructor(
 
   fun handleMediaIntent(intent: IntentWrapper) {
     viewModelScope.launch(dispatchers.computation) { mediaSessionConnector.handleMediaIntent(intent) }
-
-		CoroutineScope(Dispatchers.Main).launch {
-			delay(400)
-		}
   }
 
   private suspend fun collectPlaybackState() {

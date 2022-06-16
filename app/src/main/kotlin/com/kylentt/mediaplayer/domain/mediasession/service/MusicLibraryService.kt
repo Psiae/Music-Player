@@ -11,15 +11,12 @@ import androidx.lifecycle.Lifecycle.State.INITIALIZED
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import androidx.media3.common.MediaItem
-import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaLibraryService.MediaLibrarySession.MediaLibrarySessionCallback
 import androidx.media3.session.MediaSession
-import androidx.recyclerview.widget.RecyclerView
 import com.kylentt.mediaplayer.app.delegates.AppDelegate
 import com.kylentt.mediaplayer.app.dependency.AppModule
-import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
 import com.kylentt.mediaplayer.data.repository.MediaRepository
 import com.kylentt.mediaplayer.domain.mediasession.MediaSessionConnector
 import com.kylentt.mediaplayer.domain.mediasession.service.event.MusicLibraryEventManager
@@ -40,6 +37,8 @@ import javax.inject.Inject
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 import kotlin.system.exitProcess
+import kotlin.time.ExperimentalTime
+import kotlin.time.measureTimedValue
 
 fun interface OnChanged <T> {
 	fun onChanged(old: T?, new: T)
@@ -75,6 +74,8 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 	private val mediaSessionManager: MusicLibrarySessionManager
 	private val mediaEventManager: MusicLibraryEventManager
 
+	override val service: Service = this
+
 	val coroutineDispatchers = AppModule.provideAppDispatchers()
 
 	val serviceJob = SupervisorJob()
@@ -92,8 +93,6 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 	val serviceEventSF = stateRegistry.serviceEventSF
 	val mediaStateSF = stateRegistry.mediaStateSF
 
-	override val service: Service = this
-
 	val isServiceForeground
 		get() = serviceStateSF.value.isForeground()
 
@@ -101,7 +100,9 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 		get() = ::sessionConnector.isInitialized
 
 	init {
-		stateRegistry.onEvent(ServiceEvent.ON_INITIALIZE)
+		Timber.i("MusicLibraryService Initializing")
+
+		stateRegistry.onEvent(ServiceEvent.Initialize)
 
 		mediaSessionManager = MusicLibrarySessionManager(musicService = this,
 			mediaItemFiller = mediaItemFillerImpl,
@@ -119,51 +120,100 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 		)
 
 		mediaEventManager.startListener()
+
+		postInitialize()
+	}
+
+	private fun postInitialize() {
+		stateRegistry.onEvent(ServiceEvent.PostInitialize)
+
+		Timber.i("MusicLibraryService Initialized")
 	}
 
 	override fun onCreate() {
-		Timber.i("Service onCreate()")
+		Timber.i("MusicLibraryService onCreate()")
 
-		stateRegistry.onEvent(ServiceEvent.ON_CREATE)
+		stateRegistry.onEvent(ServiceEvent.Create)
+
 		super.onCreate()
 
 		setupNotificationProvider()
+
+		onPostCreate()
+	}
+
+	private fun onPostCreate() {
+		stateRegistry.onEvent(ServiceEvent.PostCreate)
+
+		Timber.i("MusicLibraryService Created")
 	}
 
 	override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-		Timber.i("Service onStartCommand(), ${intent}\n${flags}\n${startId}")
+		if (serviceStateSF.value sameAs STATE.CREATED) {
+			onStart()
+		}
 
-		stateRegistry.onEvent(ServiceEvent.ON_START_COMMAND)
+		Timber.i("MusicLibraryService onStartCommand(), ${intent}\n${flags}\n${startId}")
+		stateRegistry.onEvent(ServiceEvent.StartCommand)
 
 		try {
 			super.onStartCommand(intent, flags, startId)
 		} catch (e: IllegalStateException) {
-			Timber.e("onStartCommand Failed, \n${e}")
+			Timber.e("super.onStartCommand Failed, \n${e}")
 		}
 
-		return START_NOT_STICKY
+		val startMode =
+			if (isServiceForeground) {
+				START_STICKY
+			} else {
+				START_NOT_STICKY
+			}
+
+		return startMode
+	}
+
+	private fun onStart() {
+		Timber.i("MusicLibraryService onStart()")
+		stateRegistry.onEvent(ServiceEvent.Start)
+
+		postStart()
+	}
+
+	private fun postStart() {
+		stateRegistry.onEvent(ServiceEvent.PostStart)
+
+		Timber.i("MusicLibraryService onPostStart()")
 	}
 
 	override fun onBind(intent: Intent?): IBinder? {
-		Timber.i("Service onBind()")
-		stateRegistry.onEvent(ServiceEvent.ON_BIND)
+		if (serviceStateSF.value sameAs STATE.CREATED) {
+			onStart()
+		}
+
+		Timber.i("MusicLibraryService onBind()")
+		stateRegistry.onEvent(ServiceEvent.Binding)
+
 		return super.onBind(intent)
 	}
 
 	override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession {
-		Timber.i("Service onGetSession()")
-		stateRegistry.updateState(MediaState.INITIALIZED)
+		Timber.i("MusicLibraryService onGetSession()")
 		return mediaSessionManager.onGetSession(controllerInfo)
 	}
 
 	override fun onDestroy() {
-		Timber.i("MusicLibraryService onDestroy() is called")
-		stateRegistry.onEvent(ServiceEvent.ON_DESTROY)
+		Timber.i("MusicLibraryService onDestroy()")
+		stateRegistry.onEvent(ServiceEvent.Destroy)
 		cancelServiceScope()
 		releaseComponent()
 		releaseSession()
 
 		super.onDestroy()
+		onPostDestroy()
+	}
+
+	private fun onPostDestroy() {
+		stateRegistry.onEvent(ServiceEvent.PostDestroy)
 
 		if (!MainActivity.isAlive) {
 			// could Leak
@@ -199,16 +249,24 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 	}
 
 	private fun startForegroundServiceImpl(id: Int, notification: Notification, isEvent: Boolean) {
+		stateRegistry.onEvent(ServiceEvent.StartForeground)
+
 		if (VersionHelper.hasQ()) {
 			startForeground(id, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
 		} else {
 			startForeground(id, notification)
 		}
 
-		if (isEvent) stateRegistry.onEvent(ServiceEvent.ON_FOREGROUND)
+		postStartForegroundService(isEvent)
+	}
+
+	private fun postStartForegroundService(isEvent: Boolean) {
+		if (isEvent) stateRegistry.onEvent(ServiceEvent.PostForeground)
 	}
 
 	private fun stopForegroundServiceImpl(id: Int, removeNotification: Boolean, isEvent: Boolean) {
+		stateRegistry.onEvent(ServiceEvent.Pause)
+
 		stopForeground(removeNotification)
 
 		if (removeNotification) {
@@ -222,13 +280,26 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 				}
 			}
 		}
-		if (isEvent) stateRegistry.onEvent(ServiceEvent.ON_PAUSE)
+
+		postStopForegroundService(isEvent)
+	}
+
+	private fun postStopForegroundService(isEvent: Boolean) {
+		if (isEvent) stateRegistry.onEvent(ServiceEvent.PostPause)
 	}
 
 	private fun stopServiceImpl(releaseSession: Boolean) {
-		stateRegistry.onEvent(ServiceEvent.ON_STOP)
+		stateRegistry.onEvent(ServiceEvent.Stop)
 		stopSelf()
-		if (releaseSession) this.sessions.forEach { it.release() }
+
+		postStopService(releaseSession)
+	}
+
+	private fun postStopService(releaseSession: Boolean) {
+		stateRegistry.onEvent(ServiceEvent.PostStop)
+		if (releaseSession) {
+			this.sessions.forEach { it.release() }
+		}
 	}
 
 	fun startForegroundService(id: Int, notification: Notification, isEvent: Boolean = false) {
@@ -263,6 +334,7 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 				removeNotification = true, isEvent = true
 			)
 		}
+
 		stopServiceImpl(releaseSession)
 	}
 
@@ -321,9 +393,13 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 
 		private val lifecycleRegistry = LifecycleRegistry(this)
 
-		private val _serviceEventSF = MutableStateFlow<ServiceEvent>(ServiceEvent.ON_INITIALIZE)
+		private val _serviceEventSF = MutableStateFlow<ServiceEvent>(ServiceEvent.Initialize)
 		private val _serviceStateSF = MutableStateFlow<STATE>(STATE.NOTHING)
 		private val _mediaStateSF = MutableStateFlow<MediaState>(MediaState.NOTHING)
+
+		val serviceEventSF =  _serviceEventSF.asStateFlow()
+		val serviceStateSF = _serviceStateSF.asStateFlow()
+		val mediaStateSF = _mediaStateSF.asStateFlow()
 
 		private var serviceState: STATE = STATE.NOTHING
 			set(value) {
@@ -337,10 +413,6 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 				field = value
 				_mediaStateSF.value = field
 			}
-
-		val serviceEventSF =  _serviceEventSF.asStateFlow()
-		val serviceStateSF = _serviceStateSF.asStateFlow()
-		val mediaStateSF = _mediaStateSF.asStateFlow()
 
 		fun setState(state: STATE) {
 			updateState(state)
@@ -358,23 +430,37 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 
 		private fun updateState(event: ServiceEvent) {
 			when (event) {
-				ServiceEvent.ON_INITIALIZE -> updateState(STATE.INITIALIZED)
+				ServiceEvent.Initialize -> Unit
 
-				ServiceEvent.ON_CREATE -> updateState(STATE.CREATED)
+				ServiceEvent.PostInitialize -> updateState(STATE.INITIALIZED)
 
-				ServiceEvent.ON_START_COMMAND -> {
-					if (serviceState sameAs STATE.CREATED) updateState(STATE.STARTED)
-				}
+				ServiceEvent.Create -> Unit
 
-				ServiceEvent.ON_BIND -> updateState(STATE.STARTED)
+				ServiceEvent.PostCreate -> updateState(STATE.CREATED)
 
-				ServiceEvent.ON_FOREGROUND -> updateState(STATE.FOREGROUND)
+				ServiceEvent.Start -> Unit
 
-				ServiceEvent.ON_PAUSE -> updateState(STATE.PAUSED)
+				ServiceEvent.PostStart -> updateState(STATE.STARTED)
 
-				ServiceEvent.ON_STOP -> updateState(STATE.STOPPED)
+				ServiceEvent.StartCommand -> Unit
 
-				ServiceEvent.ON_DESTROY -> updateState(STATE.DESTROYED)
+				ServiceEvent.Binding -> Unit
+
+				ServiceEvent.StartForeground -> Unit
+
+				ServiceEvent.PostForeground -> updateState(STATE.FOREGROUND)
+
+				ServiceEvent.Pause -> Unit
+
+				ServiceEvent.PostPause -> updateState(STATE.PAUSED)
+
+				ServiceEvent.Stop -> Unit
+
+				ServiceEvent.PostStop -> updateState(STATE.STOPPED)
+
+				ServiceEvent.Destroy -> Unit
+
+				ServiceEvent.PostDestroy -> updateState(STATE.DESTROYED)
 			}
 		}
 
@@ -417,43 +503,59 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 
 	sealed class ServiceEvent {
 
-		object ON_INITIALIZE : ServiceEvent()
+		object Initialize : ServiceEvent()
 
-		object ON_CREATE : ServiceEvent(), LifecycleEvent {
+		object PostInitialize : ServiceEvent()
+
+		object Create : ServiceEvent(), LifecycleEvent {
 			override fun asLifecycleEvent(): Event = Lifecycle.Event.ON_CREATE
 		}
 
-		object ON_START_COMMAND : ServiceEvent(), LifecycleEvent {
+		object PostCreate : ServiceEvent()
+
+		object Start : ServiceEvent(), LifecycleEvent {
 			override fun asLifecycleEvent(): Event = Lifecycle.Event.ON_START
 		}
 
-		object ON_BIND : ServiceEvent()
+		object PostStart : ServiceEvent()
 
-		object ON_FOREGROUND : ServiceEvent(), LifecycleEvent {
-			override fun asLifecycleEvent(): Event = Lifecycle.Event.ON_START
+		object StartCommand : ServiceEvent()
+
+		object Binding : ServiceEvent()
+
+		object StartForeground : ServiceEvent(), LifecycleEvent {
+			override fun asLifecycleEvent(): Event = Lifecycle.Event.ON_RESUME
 		}
 
-		object ON_PAUSE : ServiceEvent(), LifecycleEvent {
+		object PostForeground : ServiceEvent()
+
+		object Pause : ServiceEvent(), LifecycleEvent {
 			override fun asLifecycleEvent(): Event = Lifecycle.Event.ON_PAUSE
 		}
 
-		object ON_STOP : ServiceEvent(), LifecycleEvent {
+		object PostPause : ServiceEvent()
+
+		object Stop : ServiceEvent(), LifecycleEvent {
 			override fun asLifecycleEvent(): Event = Lifecycle.Event.ON_STOP
 		}
 
-		object ON_DESTROY : ServiceEvent(), LifecycleEvent {
+		object PostStop : ServiceEvent()
+
+		object Destroy : ServiceEvent(), LifecycleEvent {
 			override fun asLifecycleEvent(): Event = Lifecycle.Event.ON_DESTROY
 		}
+
+		object PostDestroy : ServiceEvent()
 
 		companion object {
 			@JvmStatic fun fromLifecycleEvent(event: Lifecycle.Event): ServiceEvent {
 				return when (event) {
-					Lifecycle.Event.ON_CREATE -> ON_CREATE
-					Lifecycle.Event.ON_START -> ON_START_COMMAND
-					Lifecycle.Event.ON_RESUME -> ON_FOREGROUND
-					Lifecycle.Event.ON_PAUSE -> ON_PAUSE
-					Lifecycle.Event.ON_STOP -> ON_STOP
-					Lifecycle.Event.ON_DESTROY -> ON_DESTROY
+					Lifecycle.Event.ON_CREATE -> Create
+					Lifecycle.Event.ON_START -> StartCommand
+					Lifecycle.Event.ON_RESUME -> StartForeground
+					Lifecycle.Event.ON_PAUSE -> Pause
+					Lifecycle.Event.ON_STOP -> Stop
+					Lifecycle.Event.ON_DESTROY -> Destroy
 					Lifecycle.Event.ON_ANY -> TODO()
 				}
 			}
@@ -463,19 +565,19 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 	sealed class STATE {
 
 		object NOTHING : STATE()
-		// Init
+
 		object INITIALIZED : STATE()
-		// OnCreate pre-Super
+
 		object CREATED : STATE()
+
 		object STARTED : STATE()
-		// StartForeground
+
 		object FOREGROUND : STATE()
-		// StopForeground
+
 		object PAUSED : STATE()
-		// StopSelf
-		// TODO after Media3 beta Update
+
 		object STOPPED : STATE()
-		// OnDestroy pre-super
+
 		object DESTROYED: STATE()
 
 		infix fun atLeast(that: STATE): Boolean = INT.get(this) >= INT.get(that)

@@ -36,15 +36,6 @@ Properties getKeystoreProp() {
 
 android {
 
-    signingConfigs {
-        testRelease {
-            storeFile file(getKeystoreProp()['KEYSTORE_FILE_PATH'])
-            storePassword getKeystoreProp()['KEYSTORE_PASSWORD']
-            keyAlias getKeystoreProp()['KEYSTORE_KEY_ALIAS']
-            keyPassword getKeystoreProp()['KEYSTORE_KEY_PASSWORD']
-        }
-    }
-
     compileSdk 32
 
     defaultConfig {
@@ -62,12 +53,10 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled true
+            minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.testRelease
         }
         debug {
-            signingConfig signingConfigs.testRelease
         }
     }
 

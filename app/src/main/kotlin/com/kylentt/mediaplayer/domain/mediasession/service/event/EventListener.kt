@@ -40,7 +40,7 @@ class MusicLibraryEventListener(
 	private var eventCollectorJob by AutoCancelJob()
 
 	private val mediaSession
-		get() = sessionManager.mediaSession
+		get() = sessionManager.getCurrentMediaSession()
 
 	val isListening: Boolean
 		get() = state.isListening()
@@ -190,38 +190,11 @@ class MusicLibraryEventListener(
 		}
 	}
 
-	private var playWhenReadyChangedJob by AutoCancelJob()
-	private fun playWhenReadyChangedImpl(session: MediaSession) {
-		playWhenReadyChangedJob = mainScope.launch {
-			mediaEventHandler.handlePlayerPlayWhenReadyChanged(session)
-		}
-	}
-
-	private var mediaItemTransitionJob by AutoCancelJob()
-	private fun mediaItemTransitionImpl(session: MediaSession, reason: Int) {
-		mediaItemTransitionJob = mainScope.launch {
-			mediaEventHandler.handlePlayerMediaItemChanged(session, reason)
-		}
-	}
 
 	private var playerErrorJob by AutoCancelJob()
 	private fun playerErrorImpl(session: MediaSession, error: PlaybackException) {
 		playerErrorJob = immediateScope.launch {
 			mediaEventHandler.handlePlayerError(session, error)
-		}
-	}
-
-	private var playerStateChangedJob by AutoCancelJob()
-	private fun playerStateChangedImpl(session: MediaSession, playbackState: @Player.State Int) {
-		playerStateChangedJob = mainScope.launch {
-			mediaEventHandler.handlePlayerStateChanged(session)
-		}
-	}
-
-	private var repeatModeChangedJob by AutoCancelJob()
-	private fun repeatModeChangedImpl(session: MediaSession, mode: Int) {
-		repeatModeChangedJob = mainScope.launch {
-			mediaEventHandler.handlePlayerRepeatModeChanged(session)
 		}
 	}
 
@@ -337,34 +310,9 @@ class MusicLibraryEventListener(
 	}
 
 	private inner class PlayerListenerImpl : Player.Listener {
-
-		override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
-			Timber.d("EventListener onPlayWhenReadyChanged")
-
-			super.onPlayWhenReadyChanged(playWhenReady, reason)
-			playWhenReadyChangedImpl(mediaSession)
-		}
-
-		override fun onPlaybackStateChanged(playbackState: Int) {
-			Timber.d("EventListener onPlaybackStateChanged")
-
-			super.onPlaybackStateChanged(playbackState)
-			playerStateChangedImpl(mediaSession, playbackState)
-		}
-
-		override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-			super.onMediaItemTransition(mediaItem, reason)
-			mediaItemTransitionImpl(mediaSession, reason)
-		}
-
-		override fun onRepeatModeChanged(repeatMode: Int) {
-			super.onRepeatModeChanged(repeatMode)
-			repeatModeChangedImpl(mediaSession, repeatMode)
-		}
-
 		override fun onPlayerError(error: PlaybackException) {
 			super.onPlayerError(error)
-			playerErrorImpl(mediaSession, error)
+			mediaSession?.let { playerErrorImpl(it, error) }
 		}
 	}
 

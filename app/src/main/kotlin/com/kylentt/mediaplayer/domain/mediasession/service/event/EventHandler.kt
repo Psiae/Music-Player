@@ -9,11 +9,9 @@ import androidx.media3.common.PlaybackException.ERROR_CODE_DECODING_FAILED
 import androidx.media3.common.PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND
 import androidx.media3.common.Player
 import androidx.media3.session.MediaSession
-import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
 import com.kylentt.mediaplayer.core.exoplayer.mediaItem.MediaItemHelper.getDebugDescription
 import com.kylentt.mediaplayer.core.exoplayer.mediaItem.MediaMetadataHelper.getStoragePath
 import com.kylentt.mediaplayer.domain.mediasession.service.notification.MusicLibraryNotificationProvider
-import com.kylentt.mediaplayer.domain.mediasession.service.sessions.MusicLibrarySessionManager
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import com.kylentt.mediaplayer.helper.external.providers.ContentProvidersHelper
 import com.kylentt.mediaplayer.helper.external.providers.DocumentProviderHelper

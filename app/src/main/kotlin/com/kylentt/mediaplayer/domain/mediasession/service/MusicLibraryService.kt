@@ -1,5 +1,7 @@
 package com.kylentt.mediaplayer.domain.mediasession.service
+import android.app.Activity
 import android.app.Notification
+import android.app.NotificationManager
 import android.app.Service
 import android.content.ComponentName
 import android.content.Intent
@@ -37,8 +39,6 @@ import javax.inject.Inject
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 import kotlin.system.exitProcess
-import kotlin.time.ExperimentalTime
-import kotlin.time.measureTimedValue
 
 fun interface OnChanged <T> {
 	fun onChanged(old: T?, new: T)
@@ -67,7 +67,6 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 
 	private val stateRegistry = StateRegistry()
 
-	private val mediaItemFillerImpl = MediaItemFillerImpl()
 	private val sessionCallbackImpl = SessionCallbackImpl()
 
 	private val mediaNotificationProvider: MusicLibraryNotificationProvider
@@ -77,7 +76,6 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 	override val service: Service = this
 
 	val coroutineDispatchers = AppModule.provideAppDispatchers()
-
 	val serviceJob = SupervisorJob()
 
 	val mainImmediateScope =
@@ -93,6 +91,10 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 	val serviceEventSF = stateRegistry.serviceEventSF
 	val mediaStateSF = stateRegistry.mediaStateSF
 
+	val notificationManager: NotificationManager by lazy {
+		baseContext.getSystemService(NotificationManager::class.java)
+	}
+
 	val isServiceForeground
 		get() = serviceStateSF.value.isForeground()
 
@@ -105,13 +107,11 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 		stateRegistry.onEvent(ServiceEvent.Initialize)
 
 		mediaSessionManager = MusicLibrarySessionManager(musicService = this,
-			mediaItemFiller = mediaItemFillerImpl,
 			sessionCallback = sessionCallbackImpl
 		)
 
-		mediaNotificationProvider = MusicLibraryNotificationProvider(
-			sessionManager = mediaSessionManager,
-			musicService = this
+		mediaNotificationProvider = MusicLibraryNotificationProvider(musicService = this,
+			sessionManager = mediaSessionManager
 		)
 
 		mediaEventManager = MusicLibraryEventManager(musicService = this,
@@ -136,8 +136,9 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 		stateRegistry.onEvent(ServiceEvent.Create)
 
 		super.onCreate()
-
+		mediaSessionManager.initializeSession(this, injectedPlayer)
 		setupNotificationProvider()
+
 
 		onPostCreate()
 	}
@@ -196,7 +197,7 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 		return super.onBind(intent)
 	}
 
-	override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession {
+	override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? {
 		Timber.i("MusicLibraryService onGetSession()")
 		return mediaSessionManager.onGetSession(controllerInfo)
 	}
@@ -271,7 +272,7 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 
 		if (removeNotification) {
 
-			val manager = mediaNotificationProvider.notificationManager
+			val manager = notificationManager
 			if (manager.activeNotifications.isNotEmpty()) {
 
 				val get = manager.activeNotifications.find { it.id == id }
@@ -397,7 +398,7 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 		private val _serviceStateSF = MutableStateFlow<STATE>(STATE.NOTHING)
 		private val _mediaStateSF = MutableStateFlow<MediaState>(MediaState.NOTHING)
 
-		val serviceEventSF =  _serviceEventSF.asStateFlow()
+		val serviceEventSF = _serviceEventSF.asStateFlow()
 		val serviceStateSF = _serviceStateSF.asStateFlow()
 		val mediaStateSF = _mediaStateSF.asStateFlow()
 

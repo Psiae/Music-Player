@@ -6,6 +6,7 @@ import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C.CONTENT_TYPE_MUSIC
 import androidx.media3.common.C.USAGE_MEDIA
 import androidx.media3.exoplayer.ExoPlayer
+import com.kylentt.mediaplayer.core.media3.ExoPlayerFactory
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -23,25 +24,9 @@ object MusicLibraryServiceModule {
 
 	@ServiceScoped
 	@Provides
-	fun provideAudioAttributes(): AudioAttributes {
-		return AudioAttributes
-			.Builder()
-			.setContentType(CONTENT_TYPE_MUSIC)
-			.setUsage(USAGE_MEDIA)
-			.build()
-	}
-
-	@ServiceScoped
-	@Provides
-	fun provideExoplayer(
-		@ApplicationContext context: Context,
-		audioAttr: AudioAttributes
-	): ExoPlayer {
-		return ExoPlayer
-			.Builder(context)
-			.setAudioAttributes(audioAttr, true)
-			.setHandleAudioBecomingNoisy(true)
-			.setLooper(Looper.getMainLooper())
-			.build()
+	fun provideExoplayer(@ApplicationContext context: Context): ExoPlayer {
+		return ExoPlayerFactory.createMusicExoPlayer(
+			context, handleAudioFocus = true, handleAudioReroute = true
+		)
 	}
 }

@@ -5,6 +5,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.session.MediaSession
+import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
 import com.kylentt.mediaplayer.core.coroutines.safeCollect
 import com.kylentt.mediaplayer.core.delegates.AutoCancelJob
 import com.kylentt.mediaplayer.domain.mediasession.service.MusicLibraryService
@@ -19,7 +20,8 @@ import timber.log.Timber
 class MusicLibraryEventListener(
 	private val manager: MusicLibraryEventManager,
 	private val sessionManager: MusicLibrarySessionManager,
-	private val mediaEventHandler: MusicLibraryEventHandler
+	private val mediaEventHandler: MusicLibraryEventHandler,
+	private val appDispatchers: AppDispatchers
 ) {
 
 	private val listenerJob: Job
@@ -53,8 +55,8 @@ class MusicLibraryEventListener(
 
 		listenerJob = SupervisorJob(manager.eventJob)
 
-		immediateScope = CoroutineScope(manager.appDispatchers.mainImmediate + listenerJob)
-		mainScope = CoroutineScope(manager.appDispatchers.main + listenerJob)
+		immediateScope = CoroutineScope(appDispatchers.mainImmediate + listenerJob)
+		mainScope = CoroutineScope(appDispatchers.main + listenerJob)
 
 		onInternalEvent(EVENT.INITIALIZED)
 	}
@@ -183,8 +185,6 @@ class MusicLibraryEventListener(
 	}
 
 	private fun serviceStateDestroyedImpl() {
-		immediateScope.launch { mediaEventHandler.handleServiceRelease() }
-
 		if (releaseSelf) {
 			release(this)
 		}

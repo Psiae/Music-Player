@@ -1,13 +1,11 @@
 package com.kylentt.mediaplayer.domain.mediasession.service.sessions
 
 import android.app.PendingIntent
-import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import androidx.annotation.MainThread
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
-import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaLibraryService.MediaLibrarySession
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSession.ControllerInfo
@@ -24,8 +22,6 @@ import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import timber.log.Timber
 
 class MusicLibrarySessionManager(
@@ -36,48 +32,8 @@ class MusicLibrarySessionManager(
 	private val sessionLock = Any()
 	private val mainHandler = Handler(Looper.getMainLooper())
 
-	private lateinit var sessionPlayerHandler: Handler
-
-	/**
-	 * Callback when the current [Player] changes, executed on Main Thread as soon as possible
-	 *
-	 * [MediaSession] change with the same [Player] is not considered a change
-	 *
-	 * @see [onSessionPlayerChanged]
-	 */
-
-	private val onPlayerChangedListener = mutableListOf<OnChanged<Player>>()
-
-	/**
-	 * Callback when the current [MediaSession] changes, executed on Main Thread
-	 *
-	 * [onPlayerChangedListener] is called after if any
-	 *
-	 * might change when there's multiple MediaSession use case
-	 *
-	 * @see [Companion.MAX_SESSION]
-	 */
-
-	private val onMediaSessionChangedListener = mutableListOf<OnChanged<List<MediaSession>>>()
-
-	/**
-	 * [SupervisorJob] for Job's inside this class components.
-	 *
-	 * Cancelled when this instance is released and or [MusicLibraryService.serviceJob] is cancelled
-	 */
-
+	private val sessionRegistry = SessionRegistry()
 	private val sessionManagerJob = SupervisorJob(musicService.serviceJob)
-
-	/**
-	 * Default [MediaLibraryService.MediaLibrarySession] Implementation
-	 *
-	 * might change in the future
-	 * @see [MusicLibraryService.Companion.MAX_SESSION]
-	 */
-
-	private val localLibrarySessions: MutableList<MediaLibrarySession> = mutableListOf()
-	private var sessionPlayer: Player? = null
-
 
 	var isReleased = false
 		private set
@@ -102,84 +58,30 @@ class MusicLibrarySessionManager(
 	val serviceEventSF
 		get() = musicService.serviceEventSF
 
-	private fun addLibrarySession(session: MediaLibrarySession) = synchronized(sessionLock) {
-		val shouldAdd = localLibrarySessions.find { it === session } == null
-
-		if (shouldAdd) {
-			val old = localLibrarySessions
-			localLibrarySessions.add(session)
-			onMediaSessionChangedListener.forEach { it.onChanged(old, localLibrarySessions) }
-
-			sessionPlayer?.let { session.player = it }
-				?: changeSessionPlayer(session.player)
-		}
+	private fun initializeSessionImpl(service: MusicLibraryService, player: Player) {
+		val get = sessionRegistry.buildMediaLibrarySession(service, player)
+		sessionRegistry.changeLocalLibrarySession(get)
 	}
 
 	@MainThread
 	fun initializeSession(service: MusicLibraryService, player: Player) {
 		checkMainThread()
+		if (isReleased) return
 
-		val getLib = buildMediaLibrarySession(musicService, player)
-		addLibrarySession(getLib)
-	}
-
-	private fun changeSessionPlayerImpl(player: Player) {
-
-		val get: Player?
-
-		synchronized(sessionLock) {
-			get = sessionPlayer
-
-			if (get === player) return
-			sessionPlayer = player
-
-			if (localLibrarySessions.isEmpty()) return@synchronized
-			localLibrarySessions.forEach { it.player = sessionPlayer!! }
+		if (sessionRegistry.isLibrarySessionInitialized) {
+			return Timber.w("Tried to Initialize LibrarySession Multiple Times")
 		}
 
-		onSessionPlayerChanged(get, player)
+		initializeSessionImpl(service, player)
 	}
 
 	private fun releaseImpl(obj: Any) {
 		Timber.d("SessionManager releaseImpl called by $obj")
 
 		sessionManagerJob.cancel()
-		this.sessionPlayer = null
+		sessionRegistry.release()
 
 		isReleased = true
-	}
-
-	private fun onSessionPlayerChanged(old: Player?, new: Player) {
-		checkArgument(old !== new)
-		checkState(sessionPlayer === new)
-
-		sessionPlayerHandler = Handler(new.applicationLooper)
-
-		immediatePost(sessionPlayerHandler) {
-			onPlayerChangedListener.forEach { it.onChanged(old, new) }
-		}
-	}
-
-	private fun buildMediaLibrarySession(
-		musicService: MusicLibraryService,
-		player: Player
-	): MediaLibrarySession {
-		checkNotNull(musicService.baseContext)
-
-		val intent = AppDelegate.launcherIntent()
-		val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-		val requestCode = MainActivity.Constants.LAUNCH_REQUEST_CODE
-		val sessionActivity = PendingIntent.getActivity(musicService.baseContext, requestCode, intent, flag)
-		val builder = MediaLibrarySession.Builder(musicService, player, sessionCallback)
-
-		val get = with(builder) {
-			setId(MusicLibraryService.Constants.SESSION_ID)
-			setSessionActivity(sessionActivity)
-			setMediaItemFiller(LocalMediaItemFiller())
-			build()
-		}
-
-		return get
 	}
 
 	private fun immediatePost(handler: Handler, block: () -> Unit) {
@@ -193,49 +95,37 @@ class MusicLibrarySessionManager(
 	}
 
 	fun getCurrentMediaSession(): MediaSession? {
-		if (isReleased) {
-			return null
-		}
+		if (isReleased || !sessionRegistry.isLibrarySessionInitialized) return null
 
-		return localLibrarySessions.lastOrNull()
+		return sessionRegistry.localLibrarySession
 	}
 
-	fun getSessionPlayer(): Player? = with(sessionPlayer) {
-		if (isReleased) {
-			checkState(this == null)
-		}
+	fun getSessionPlayer(): Player? {
+		if (isReleased || !sessionRegistry.isLibrarySessionInitialized) return null
 
-		this
+		return sessionRegistry.localLibrarySession.player
 	}
 
-	fun getSessionPlayerHandler(): Handler {
-		return sessionPlayerHandler
-	}
-
-	fun changeSessionPlayer(player: Player) {
+	fun changeSessionPlayer(player: Player, release: Boolean) {
 		if (isReleased) return
-		changeSessionPlayerImpl(player)
+
+		sessionRegistry.changeSessionPlayer(player, release)
 	}
 
 	fun registerPlayerChangedListener(onChanged: OnChanged<Player>) {
-		if (isReleased) {
-			checkState(this.onPlayerChangedListener.isEmpty())
-			return
-		}
+		if (isReleased) return
 
-		this.onPlayerChangedListener.add(onChanged)
+		sessionRegistry.registerOnPlayerChangedListener(onChanged)
 	}
 
 	fun unregisterPlayerChangedListener(onChanged: OnChanged<Player>): Boolean {
-		if (isReleased) {
-			return checkState(this.onPlayerChangedListener.isEmpty())
-		}
+		if (isReleased) return false
 
-		return this.onPlayerChangedListener.removeAll { it === onChanged }
+		return sessionRegistry.unRegisterOnPlayerChangedListener(onChanged)
 	}
 
 	fun onGetSession(controllerInfo: ControllerInfo): MediaLibrarySession? {
-		return localLibrarySessions.lastOrNull()
+		return if (!isReleased) sessionRegistry.localLibrarySession else null
 	}
 
 	private inner class LocalMediaItemFiller : MediaSession.MediaItemFiller {
@@ -253,6 +143,111 @@ class MusicLibrarySessionManager(
 			}
 
 			return MediaItemFactory.fillInLocalConfig(mediaItem, uri)
+		}
+	}
+
+	private inner class SessionRegistry {
+
+		lateinit var localLibrarySession: MediaLibrarySession
+			private set
+
+		private val onLibrarySessionChangedListener: MutableList<OnChanged<MediaLibrarySession>> =
+			mutableListOf()
+
+		private val onPlayerChangedListener: MutableList<OnChanged<Player>> =
+			mutableListOf()
+
+		/**
+		 * MediaLibrarySession status will be tracked manually as the library didn't provide one
+		 */
+
+		var isLibrarySessionReleased = false
+			private set
+
+		var isLibrarySessionInitialized = false
+			get() = ::localLibrarySession.isInitialized
+			private set
+
+		fun changeLocalLibrarySession(session: MediaLibrarySession) {
+			var oldSession: MediaLibrarySession? = null
+			var oldPlayer: Player? = null
+
+			if (isLibrarySessionInitialized) {
+				if (localLibrarySession === session) {
+					return Timber.w("Tried to change LocalLibrarySession to same Instance." +
+						"\n $localLibrarySession === $session")
+				}
+
+				oldSession = localLibrarySession
+				if (oldSession.player !== session.player) oldPlayer = oldSession.player
+				if (!isLibrarySessionReleased) oldSession.release()
+			}
+
+			localLibrarySession = session
+			onLibrarySessionChangedListener.forEach { it.onChanged(oldSession, session) }
+
+			if (session.player !== oldPlayer) {
+				onPlayerChangedListener.forEach { it.onChanged(oldPlayer, session.player) }
+			}
+		}
+
+		fun changeSessionPlayer(player: Player, release: Boolean) {
+			val get = localLibrarySession.player
+
+			if (player === get) return
+			if (release) get.release()
+
+			localLibrarySession.player = player
+			onPlayerChangedListener.forEach { it.onChanged(get, player) }
+		}
+
+		fun registerOnLibrarySessionChangedListener(listener: OnChanged<MediaLibrarySession>) {
+			onLibrarySessionChangedListener.add(listener)
+		}
+
+		fun registerOnPlayerChangedListener(listener: OnChanged<Player>) {
+			onPlayerChangedListener.add(listener)
+		}
+
+		fun unRegisterOnLibrarySessionChangedListener(listener: OnChanged<MediaLibrarySession>): Boolean {
+			return onLibrarySessionChangedListener.removeAll { it === listener }
+		}
+
+		fun unRegisterOnPlayerChangedListener(listener: OnChanged<Player>): Boolean {
+			return onPlayerChangedListener.removeAll { it === listener }
+		}
+
+		fun buildMediaLibrarySession(
+			musicService: MusicLibraryService,
+			player: Player
+		): MediaLibrarySession {
+			checkNotNull(musicService.baseContext)
+
+			val intent = AppDelegate.launcherIntent()
+			val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+			val requestCode = MainActivity.Constants.LAUNCH_REQUEST_CODE
+			val sessionActivity = PendingIntent.getActivity(musicService.baseContext, requestCode, intent, flag)
+			val builder = MediaLibrarySession.Builder(musicService, player, sessionCallback)
+
+			val get = with(builder) {
+				setId(MusicLibraryService.Constants.SESSION_ID)
+				setSessionActivity(sessionActivity)
+				setMediaItemFiller(LocalMediaItemFiller())
+				build()
+			}
+
+			return get
+		}
+
+		fun releaseSession() {
+			localLibrarySession.release()
+			isLibrarySessionReleased = true
+		}
+
+		fun release() {
+			onLibrarySessionChangedListener.clear()
+			onPlayerChangedListener.clear()
+			releaseSession()
 		}
 	}
 }

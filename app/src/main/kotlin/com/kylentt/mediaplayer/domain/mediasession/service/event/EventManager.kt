@@ -11,14 +11,15 @@ import kotlinx.coroutines.SupervisorJob
 
 class MusicLibraryEventManager(
 	private val musicService: MusicLibraryService,
-	private val sessionManager: MusicLibrarySessionManager,
-	notificationProvider: MusicLibraryNotificationProvider
+	private val sessionManager: MusicLibrarySessionManager
 ) {
+	private val appDispatchers = AppModule.provideAppDispatchers()
 
-	private val eventHandler: MusicLibraryEventHandler
-	private val eventListener: MusicLibraryEventListener
+	private val eventHandler: MusicLibraryEventHandler = MusicLibraryEventHandler(musicService, appDispatchers)
 
-	val appDispatchers = AppModule.provideAppDispatchers()
+	private val eventListener: MusicLibraryEventListener =
+		MusicLibraryEventListener(this, sessionManager, eventHandler, appDispatchers)
+
 
 	val baseContext
 		get() = musicService.baseContext
@@ -35,28 +36,23 @@ class MusicLibraryEventManager(
 	val mainScope: CoroutineScope = CoroutineScope(appDispatchers.main + eventJob)
 	val ioScope: CoroutineScope = CoroutineScope(appDispatchers.io + eventJob)
 
-	init {
-		eventHandler = MusicLibraryEventHandler(this, notificationProvider)
-		eventListener = MusicLibraryEventListener(this, sessionManager, eventHandler)
-	}
-
 	fun startListener() {
-		eventListener.start(stopSelf = true, releaseSelf = true)
+	  eventListener.start(stopSelf = true, releaseSelf = true)
 	}
 
 	fun stopListener() {
-		eventListener.stop()
+	  eventListener.stop()
 	}
 
 	fun releaseListener(obj: Any) {
-		eventListener.release(obj)
+	  eventListener.release(obj)
 	}
 
 	fun registerOnPlayerChangedListener(onChanged: OnChanged<Player>) {
-		sessionManager.registerPlayerChangedListener(onChanged)
+	  sessionManager.registerPlayerChangedListener(onChanged)
 	}
 
 	fun unregisterOnPlayerChangedListener(onChanged: OnChanged<Player>): Boolean {
-		return sessionManager.unregisterPlayerChangedListener(onChanged)
+	  return sessionManager.unregisterPlayerChangedListener(onChanged)
 	}
 }

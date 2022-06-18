@@ -1,5 +1,4 @@
 package com.kylentt.mediaplayer.domain.mediasession.service
-import android.app.Activity
 import android.app.Notification
 import android.app.NotificationManager
 import android.app.Service
@@ -22,18 +21,20 @@ import com.kylentt.mediaplayer.app.dependency.AppModule
 import com.kylentt.mediaplayer.data.repository.MediaRepository
 import com.kylentt.mediaplayer.domain.mediasession.MediaSessionConnector
 import com.kylentt.mediaplayer.domain.mediasession.service.event.MusicLibraryEventManager
-import com.kylentt.mediaplayer.domain.mediasession.service.sessions.MusicLibrarySessionManager
 import com.kylentt.mediaplayer.domain.mediasession.service.notification.MusicLibraryNotificationProvider
+import com.kylentt.mediaplayer.domain.mediasession.service.sessions.MusicLibrarySessionManager
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.helper.VersionHelper
 import com.kylentt.mediaplayer.helper.image.CoilHelper
 import com.kylentt.mediaplayer.helper.media.MediaItemHelper
 import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
 import timber.log.Timber
 import javax.inject.Inject
 import kotlin.properties.ReadOnlyProperty
@@ -89,10 +90,9 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 
 	val serviceStateSF = stateRegistry.serviceStateSF
 	val serviceEventSF = stateRegistry.serviceEventSF
-	val mediaStateSF = stateRegistry.mediaStateSF
 
 	val notificationManager: NotificationManager by lazy {
-		baseContext.getSystemService(NotificationManager::class.java)
+		getSystemService(NotificationManager::class.java)
 	}
 
 	val isServiceForeground
@@ -116,7 +116,6 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 
 		mediaEventManager = MusicLibraryEventManager(musicService = this,
 			sessionManager = mediaSessionManager,
-			notificationProvider = mediaNotificationProvider
 		)
 
 		mediaEventManager.startListener()
@@ -374,16 +373,6 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 		}
 	}
 
-	inner class MediaItemFillerImpl : MediaSession.MediaItemFiller {
-		override fun fillInLocalConfiguration(
-			session: MediaSession,
-			controller: MediaSession.ControllerInfo,
-			mediaItem: MediaItem
-		): MediaItem {
-			return mediaItemHelper.rebuildMediaItem(mediaItem)
-		}
-	}
-
 	/**
 	 * Manage [MusicLibraryService] State and Events
 	 *
@@ -602,7 +591,7 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 			const val Stopped = 1
 			const val Destroyed = 0
 
-			fun get(state: STATE): kotlin.Int {
+			fun get(state: STATE): Int {
 				return when (state) {
 					NOTHING -> Nothing
 					INITIALIZED -> Initialized

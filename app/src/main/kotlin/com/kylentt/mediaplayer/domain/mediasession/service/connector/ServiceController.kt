@@ -1,5 +1,6 @@
 package com.kylentt.mediaplayer.domain.mediasession.service.connector
 
+import android.os.Bundle
 import android.os.Looper
 import androidx.annotation.FloatRange
 import androidx.annotation.MainThread
@@ -136,6 +137,7 @@ class MediaServiceController(
     serviceStateSF.value = MediaServiceState.CONNECTING
     sessionToken = SessionToken(context, MusicLibraryService.getComponentName())
     futureMediaController = MediaController.Builder(context, sessionToken)
+			.setConnectionHints( /* later */ Bundle.EMPTY)
       .setApplicationLooper(Looper.myLooper()!!)
       .buildAsync().apply { addListener(futureControllerListener, directExecutor) }
   }
@@ -277,7 +279,7 @@ class MediaServiceController(
 		val item = playerMediaItem
 
 		val shouldLoop = { shouldFadeOut && playerIsPlaying && playerVolume > command.to }
-		val shouldCancel = { playerPlayWhenReady != pwr || !item.idEqual(playerMediaItem) }
+		val shouldSkip = { playerPlayWhenReady != pwr || !item.idEqual(playerMediaItem) }
 		val whenReady = {
 			whenReady { setPlayerVolume(maxVolume) }
 			shouldFadeOut = true
@@ -292,12 +294,12 @@ class MediaServiceController(
     val step = duration / interval
     val deltaVol = playerVolume / step
 
-    while (shouldLoop() && !shouldCancel()) {
+		while (shouldLoop() && !shouldSkip()) {
       setPlayerVolume(playerVolume - deltaVol)
       delay(command.interval)
     }
 
-		if (shouldCancel()) {
+		if (shouldSkip()) {
 			return whenReady()
 		}
 

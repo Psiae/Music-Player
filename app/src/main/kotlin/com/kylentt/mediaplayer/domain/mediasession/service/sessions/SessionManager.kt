@@ -21,9 +21,6 @@ import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import timber.log.Timber
-import kotlin.reflect.KProperty
-import kotlin.reflect.KProperty0
-import kotlin.time.measureTimedValue
 
 class MusicLibrarySessionManager(
 	private val musicService: MusicLibraryService,
@@ -39,9 +36,6 @@ class MusicLibrarySessionManager(
 	var isReleased = false
 		private set
 
-	val baseContext
-		get() = musicService.baseContext
-
 	val coroutineDispatchers: AppDispatchers = AppModule.provideAppDispatchers()
 
 	val mainImmediateScope: CoroutineScope =
@@ -49,15 +43,6 @@ class MusicLibrarySessionManager(
 
 	val mainScope: CoroutineScope =
 		CoroutineScope(coroutineDispatchers.main + sessionManagerJob)
-
-	val isDependencyInjected
-		get() = musicService.isDependencyInjected
-
-	val lifecycle
-		get() = musicService.lifecycle
-
-	val serviceEventSF
-		get() = musicService.serviceEventSF
 
 	private fun initializeSessionImpl(service: MusicLibraryService, player: Player) {
 		val get = sessionRegistry.buildMediaLibrarySession(service, player)
@@ -207,14 +192,17 @@ class MusicLibrarySessionManager(
 				}
 
 				oldSession = localLibrarySession
-				if (oldSession.player !== session.player) oldPlayer = oldSession.player
-				if (!isLibrarySessionReleased) oldSession.release()
+				oldPlayer = localLibrarySession.player
 			}
 
 			localLibrarySession = session
+
+			oldSession?.release()
+
 			onLibrarySessionChangedListener.forEach { it.onChanged(oldSession, session) }
 
 			if (session.player !== oldPlayer) {
+				oldPlayer?.release()
 				onSessionPlayerChanged(oldPlayer, session.player)
 			}
 		}

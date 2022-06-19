@@ -123,23 +123,13 @@ class MusicLibraryEventListener(
 	private fun startDefaultListener() {
 		launchEventCollector()
 
-		val get = manager.sessionPlayer
-
-		if (get != null) {
-			registerPlayerListener(get, playerListenerImpl)
-		}
-
-		manager.registerOnPlayerChangedListener(onPlayerChangedImpl)
+		manager.registerOnPlayerEventListener(playerListenerImpl)
 	}
 
 	private fun stopDefaultListener() {
 		stopEventCollector()
 
-		val get = manager.sessionPlayer
-
-		if (get != null) {
-			unregisterPlayerListener(get, playerListenerImpl)
-		}
+		manager.registerOnPlayerEventListener(playerListenerImpl)
 	}
 
 

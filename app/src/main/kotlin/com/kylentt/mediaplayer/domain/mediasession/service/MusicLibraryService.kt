@@ -162,14 +162,7 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 			Timber.e("super.onStartCommand Failed, \n${e}")
 		}
 
-		val startMode =
-			if (isServiceForeground) {
-				START_STICKY
-			} else {
-				START_NOT_STICKY
-			}
-
-		return startMode
+		return START_NOT_STICKY
 	}
 
 	private fun onStart() {
@@ -383,25 +376,17 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 
 		private val lifecycleRegistry = LifecycleRegistry(this)
 
-		private val _serviceEventSF = MutableStateFlow<ServiceEvent>(ServiceEvent.Initialize)
 		private val _serviceStateSF = MutableStateFlow<STATE>(STATE.NOTHING)
-		private val _mediaStateSF = MutableStateFlow<MediaState>(MediaState.NOTHING)
+		private val _serviceEventSF = MutableStateFlow<ServiceEvent>(ServiceEvent.Initialize)
 
-		val serviceEventSF = _serviceEventSF.asStateFlow()
 		val serviceStateSF = _serviceStateSF.asStateFlow()
-		val mediaStateSF = _mediaStateSF.asStateFlow()
+		val serviceEventSF = _serviceEventSF.asStateFlow()
 
 		private var serviceState: STATE = STATE.NOTHING
 			set(value) {
 				field = value
 				LifecycleStateDelegate.updateState(this, field)
 				_serviceStateSF.value = field
-			}
-
-		private var mediaState: MediaState = MediaState.NOTHING
-			set(value) {
-				field = value
-				_mediaStateSF.value = field
 			}
 
 		fun setState(state: STATE) {
@@ -472,17 +457,7 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 			serviceState = state
 		}
 
-		fun updateState(state: MediaState) {
-			checkState(state != serviceState)
-
-			when (state) {
-				MediaState.NOTHING -> throw IllegalArgumentException()
-				else -> Unit
-			}
-
-			mediaState = state
-			_mediaStateSF.value = state
-		}
+		fun updateState(state: MediaState) { }
 
 		private fun onEvent(event: Lifecycle.Event) {
 			lifecycleRegistry.handleLifecycleEvent(event)

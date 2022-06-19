@@ -4,8 +4,7 @@ import android.app.PendingIntent
 import android.os.Handler
 import android.os.Looper
 import androidx.annotation.MainThread
-import androidx.media3.common.MediaItem
-import androidx.media3.common.Player
+import androidx.media3.common.*
 import androidx.media3.session.MediaLibraryService.MediaLibrarySession
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSession.ControllerInfo
@@ -14,7 +13,6 @@ import com.kylentt.mediaplayer.app.dependency.AppModule
 import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
 import com.kylentt.mediaplayer.core.media3.MediaItemFactory
 import com.kylentt.mediaplayer.domain.mediasession.service.MusicLibraryService
-import com.kylentt.mediaplayer.domain.mediasession.service.MusicLibraryService.Companion
 import com.kylentt.mediaplayer.domain.mediasession.service.OnChanged
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
@@ -23,6 +21,9 @@ import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import timber.log.Timber
+import kotlin.reflect.KProperty
+import kotlin.reflect.KProperty0
+import kotlin.time.measureTimedValue
 
 class MusicLibrarySessionManager(
 	private val musicService: MusicLibraryService,
@@ -124,6 +125,18 @@ class MusicLibrarySessionManager(
 		return sessionRegistry.unRegisterOnPlayerChangedListener(onChanged)
 	}
 
+	fun registerPlayerEventListener(listener: Player.Listener) {
+		if (isReleased) return
+
+		sessionRegistry.registerOnPlayerEventListener(listener)
+	}
+
+	fun unRegisterPlayerEventListener(listener: Player.Listener): Boolean {
+		if (isReleased) return false
+
+		return sessionRegistry.unregisterOnPlayerEventListener(listener)
+	}
+
 	fun onGetSession(controllerInfo: ControllerInfo): MediaLibrarySession? {
 		return if (!isReleased) sessionRegistry.localLibrarySession else null
 	}
@@ -157,6 +170,9 @@ class MusicLibrarySessionManager(
 		private val onPlayerChangedListener: MutableList<OnChanged<Player>> =
 			mutableListOf()
 
+		private val onPlayerEventListener: MutableList<Player.Listener> =
+			mutableListOf()
+
 		/**
 		 * MediaLibrarySession status will be tracked manually as the library didn't provide one
 		 */
@@ -167,6 +183,18 @@ class MusicLibrarySessionManager(
 		var isLibrarySessionInitialized = false
 			get() = ::localLibrarySession.isInitialized
 			private set
+
+		private fun onSessionPlayerChanged(old: Player?, new: Player) {
+			checkArgument(old !== new)
+			checkState(localLibrarySession.player === new)
+
+			onPlayerEventListener.forEach { listener ->
+				old?.removeListener(listener)
+				new.addListener(listener)
+			}
+
+			onPlayerChangedListener.forEach { it.onChanged(old, new) }
+		}
 
 		fun changeLocalLibrarySession(session: MediaLibrarySession) {
 			var oldSession: MediaLibrarySession? = null
@@ -187,18 +215,18 @@ class MusicLibrarySessionManager(
 			onLibrarySessionChangedListener.forEach { it.onChanged(oldSession, session) }
 
 			if (session.player !== oldPlayer) {
-				onPlayerChangedListener.forEach { it.onChanged(oldPlayer, session.player) }
+				onSessionPlayerChanged(oldPlayer, session.player)
 			}
 		}
 
 		fun changeSessionPlayer(player: Player, release: Boolean) {
-			val get = localLibrarySession.player
+			val old = localLibrarySession.player
 
-			if (player === get) return
-			if (release) get.release()
+			if (player === old) return
+			if (release) old.release()
 
 			localLibrarySession.player = player
-			onPlayerChangedListener.forEach { it.onChanged(get, player) }
+			onSessionPlayerChanged(old, player)
 		}
 
 		fun registerOnLibrarySessionChangedListener(listener: OnChanged<MediaLibrarySession>) {
@@ -209,12 +237,28 @@ class MusicLibrarySessionManager(
 			onPlayerChangedListener.add(listener)
 		}
 
+		fun registerOnPlayerEventListener(listener: Player.Listener) {
+			if (::localLibrarySession.isInitialized) {
+				localLibrarySession.player.addListener(listener)
+			}
+
+			onPlayerEventListener.add(listener)
+		}
+
 		fun unRegisterOnLibrarySessionChangedListener(listener: OnChanged<MediaLibrarySession>): Boolean {
 			return onLibrarySessionChangedListener.removeAll { it === listener }
 		}
 
 		fun unRegisterOnPlayerChangedListener(listener: OnChanged<Player>): Boolean {
 			return onPlayerChangedListener.removeAll { it === listener }
+		}
+
+		fun unregisterOnPlayerEventListener(listener: Player.Listener): Boolean {
+			if (::localLibrarySession.isInitialized) {
+				localLibrarySession.player.removeListener(listener)
+			}
+
+			return onPlayerEventListener.removeAll { it === listener }
 		}
 
 		fun buildMediaLibrarySession(

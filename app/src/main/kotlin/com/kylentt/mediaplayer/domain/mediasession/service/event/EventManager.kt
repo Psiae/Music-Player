@@ -1,6 +1,7 @@
 package com.kylentt.mediaplayer.domain.mediasession.service.event
 
 import androidx.media3.common.Player
+import androidx.media3.common.Player.Listener
 import com.kylentt.mediaplayer.app.dependency.AppModule
 import com.kylentt.mediaplayer.domain.mediasession.service.MusicLibraryService
 import com.kylentt.mediaplayer.domain.mediasession.service.OnChanged
@@ -54,5 +55,13 @@ class MusicLibraryEventManager(
 
 	fun unregisterOnPlayerChangedListener(onChanged: OnChanged<Player>): Boolean {
 	  return sessionManager.unregisterPlayerChangedListener(onChanged)
+	}
+
+	fun registerOnPlayerEventListener(listener: Player.Listener) {
+		sessionManager.registerPlayerEventListener(listener)
+	}
+
+	fun unRegisterOnPlayerEventListener(listener: Listener): Boolean {
+		return sessionManager.unRegisterPlayerEventListener(listener)
 	}
 }

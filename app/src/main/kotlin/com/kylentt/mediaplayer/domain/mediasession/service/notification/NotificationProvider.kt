@@ -139,7 +139,7 @@ class MusicLibraryNotificationProvider(
 			createNotificationChannel(notificationManager)
 		}
 
-		sessionManager.getSessionPlayer()?.addListener(playerListenerImpl)
+		sessionManager.registerPlayerEventListener(playerListenerImpl)
 
 		musicService.registerReceiver(notificationActionReceiver, IntentFilter(PLAYBACK_CONTROL_INTENT))
 		sessionManager.registerPlayerChangedListener(playerChangedImpl)
@@ -349,8 +349,11 @@ class MusicLibraryNotificationProvider(
 				musicService.startForegroundService(mediaNotificationId, notification, true)
 			}
 			else -> {
-				if (musicService.isServiceForeground) return
-				musicService.stopForegroundService(mediaNotificationId, false, true )
+				if (!musicService.isServiceForeground) return
+				musicService.stopForegroundService(mediaNotificationId,
+					removeNotification = false,
+					isEvent = true
+				)
 			}
 		}
   }
@@ -391,7 +394,7 @@ class MusicLibraryNotificationProvider(
 				ACTION_REPEAT_ONE_TO_ALL -> onReceiveRepeatOneToAll(get)
 				ACTION_REPEAT_ALL_TO_OFF -> onReceiveRepeatAllToOff(get)
 				ACTION_STOP_CANCEL -> onReceiveStopCancel(get)
-				ACTION_DISMISS_NOTIFICATION -> musicService.stopForegroundService(mediaNotificationId, true)
+				ACTION_DISMISS_NOTIFICATION -> onReceiveStopCancel(get)
 			}
 		}
 
@@ -601,9 +604,9 @@ class MusicLibraryNotificationProvider(
 
 			// null means player is first time changed or released
 			// in both cases listener is empty
-			old?.removeListener(playerListenerImpl)
+			/*old?.removeListener(playerListenerImpl)
 
-			new.addListener(playerListenerImpl)
+			new.addListener(playerListenerImpl)*/
 		}
 	}
 

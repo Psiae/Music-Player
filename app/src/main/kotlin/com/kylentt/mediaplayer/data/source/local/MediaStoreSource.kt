@@ -8,16 +8,16 @@ import android.provider.MediaStore
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
-import androidx.recyclerview.widget.RecyclerView
 import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
 import com.kylentt.mediaplayer.core.exoplayer.mediaItem.MediaMetadataHelper.putDisplayTitle
 import com.kylentt.mediaplayer.core.exoplayer.mediaItem.MediaMetadataHelper.putFileName
 import com.kylentt.mediaplayer.core.exoplayer.mediaItem.MediaMetadataHelper.putStoragePath
-import com.kylentt.mediaplayer.helper.VersionHelper
+import com.kylentt.mediaplayer.core.media3.MediaItemFactory
 import com.kylentt.mediaplayer.data.SongEntity
-import com.kylentt.mediaplayer.helper.media.MediaItemHelper
+import com.kylentt.mediaplayer.helper.VersionHelper
 import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
@@ -67,7 +67,7 @@ data class MediaStoreSong @JvmOverloads constructor(
     get() = this.mediaUri
 
   val mediaItem by lazy {
-    val artworkUri = MediaItemHelper.hideArtUri(songMediaArtworkUri)
+    val artworkUri = MediaItemFactory.hideArtUri(songMediaArtworkUri)
 		val bundle = Bundle()
 
 		val metadataBuilder = MediaMetadata

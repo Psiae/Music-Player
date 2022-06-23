@@ -5,10 +5,10 @@ import androidx.annotation.MainThread
 import androidx.media3.session.MediaController
 import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
 import com.kylentt.mediaplayer.core.coroutines.AppScope
+import com.kylentt.mediaplayer.core.media3.MediaItemHelper
 import com.kylentt.mediaplayer.data.repository.ProtoRepository
 import com.kylentt.mediaplayer.domain.mediasession.MediaSessionConnector
 import com.kylentt.mediaplayer.helper.image.CoilHelper
-import com.kylentt.mediaplayer.helper.media.MediaItemHelper
 import kotlinx.coroutines.flow.asStateFlow
 import timber.log.Timber
 
@@ -20,13 +20,13 @@ import timber.log.Timber
  */
 
 class ServiceConnector(
-  @JvmField val appScope: AppScope,
-  @JvmField val baseContext: Context,
-  @JvmField val coilHelper: CoilHelper,
-  @JvmField val dispatchers: AppDispatchers,
-  @JvmField val itemHelper: MediaItemHelper,
-  @JvmField val protoRepo: ProtoRepository,
-  @JvmField val sessionManager: MediaSessionConnector
+	@JvmField val appScope: AppScope,
+	@JvmField val baseContext: Context,
+	@JvmField val coilHelper: CoilHelper,
+	@JvmField val dispatchers: AppDispatchers,
+	@JvmField val itemHelper: MediaItemHelper,
+	@JvmField val protoRepo: ProtoRepository,
+	@JvmField val sessionManager: MediaSessionConnector
 ) {
 
   private val serviceController = MediaServiceController(this)

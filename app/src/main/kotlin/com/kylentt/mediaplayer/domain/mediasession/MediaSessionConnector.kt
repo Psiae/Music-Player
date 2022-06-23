@@ -7,6 +7,7 @@ import androidx.annotation.MainThread
 import androidx.media3.session.MediaController
 import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
 import com.kylentt.mediaplayer.core.coroutines.AppScope
+import com.kylentt.mediaplayer.core.media3.MediaItemHelper
 import com.kylentt.mediaplayer.data.repository.MediaRepository
 import com.kylentt.mediaplayer.data.repository.ProtoRepository
 import com.kylentt.mediaplayer.domain.mediasession.service.connector.ControllerCommand
@@ -15,7 +16,6 @@ import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import com.kylentt.mediaplayer.helper.external.IntentWrapper
 import com.kylentt.mediaplayer.helper.external.MediaIntentHandlerImpl
 import com.kylentt.mediaplayer.helper.image.CoilHelper
-import com.kylentt.mediaplayer.helper.media.MediaItemHelper
 import timber.log.Timber
 import java.lang.Exception
 import javax.inject.Singleton
@@ -24,13 +24,13 @@ import kotlin.time.measureTimedValue
 
 @Singleton
 class MediaSessionConnector(
-  private val appScope: AppScope,
-  private val baseContext: Context,
-  private val coilHelper: CoilHelper,
-  private val dispatchers: AppDispatchers,
-  private val itemHelper: MediaItemHelper,
-  private val mediaRepo: MediaRepository,
-  private val protoRepo: ProtoRepository
+	private val appScope: AppScope,
+	private val baseContext: Context,
+	private val coilHelper: CoilHelper,
+	private val dispatchers: AppDispatchers,
+	private val itemHelper: MediaItemHelper,
+	private val mediaRepo: MediaRepository,
+	private val protoRepo: ProtoRepository
 ) {
 
   private val context = baseContext

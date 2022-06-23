@@ -9,12 +9,12 @@ import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
 import com.kylentt.mediaplayer.core.exoplayer.mediaItem.MediaItemHelper.getDebugDescription
+import com.kylentt.mediaplayer.core.media3.MediaItemHelper
 import com.kylentt.mediaplayer.domain.mediasession.MediaSessionConnector
 import com.kylentt.mediaplayer.domain.mediasession.service.connector.PlaybackState
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.helper.external.IntentWrapper
-import com.kylentt.mediaplayer.helper.media.MediaItemHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.*
 import kotlinx.coroutines.android.asCoroutineDispatcher

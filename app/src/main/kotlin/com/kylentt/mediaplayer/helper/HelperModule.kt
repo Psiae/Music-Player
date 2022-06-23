@@ -3,7 +3,6 @@ package com.kylentt.mediaplayer.helper
 import android.content.Context
 import coil.ImageLoader
 import com.kylentt.mediaplayer.helper.image.CoilHelper
-import com.kylentt.mediaplayer.helper.media.MediaItemHelper
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -22,9 +21,4 @@ object HelperModule {
     loader: ImageLoader,
   ) = CoilHelper(context, loader)
 
-  @Provides
-  @Singleton
-  fun provideMediaItemHelper(
-    @ApplicationContext context: Context
-  ) = MediaItemHelper(context)
 }

@@ -12,18 +12,19 @@ import android.widget.Toast
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
+import com.kylentt.mediaplayer.core.media3.MediaItemFactory
+import com.kylentt.mediaplayer.core.media3.MediaItemHelper
+import com.kylentt.mediaplayer.data.SongEntity
 import com.kylentt.mediaplayer.data.repository.MediaRepository
 import com.kylentt.mediaplayer.data.repository.ProtoRepository
 import com.kylentt.mediaplayer.data.source.local.MediaStoreSong
 import com.kylentt.mediaplayer.domain.mediasession.MediaSessionConnector
 import com.kylentt.mediaplayer.domain.mediasession.service.connector.ControllerCommand
+import com.kylentt.mediaplayer.domain.mediasession.service.connector.ControllerCommand.Companion.wrapWithFadeOut
+import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.external.providers.ContentProvidersHelper
 import com.kylentt.mediaplayer.helper.external.providers.DocumentProviderHelper
-import com.kylentt.mediaplayer.helper.media.MediaItemHelper
-import com.kylentt.mediaplayer.data.SongEntity
-import com.kylentt.mediaplayer.domain.mediasession.service.connector.ControllerCommand.Companion.wrapWithFadeOut
-import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
 import timber.log.Timber
@@ -121,8 +122,8 @@ class MediaIntentHandlerImpl(
             }
           }
           ?: withContext(dispatcher.mainImmediate) {
-            val item = itemHelper.buildFromMetadata(intent.data.toUri())
-            if (item == MediaItem.EMPTY) {
+            val item = MediaItemFactory.fromMetaData(context, intent.data.toUri())
+            if (item == MediaItemFactory.EMPTY) {
               Toast.makeText(context, "Unable To Play Media", Toast.LENGTH_LONG).show()
             } else {
               ensureActive()

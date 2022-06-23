@@ -1,14 +1,67 @@
 package com.kylentt.mediaplayer.core.media3
 
+import android.app.Application
+import android.content.Context
+import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.provider.OpenableColumns
+import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
+import com.kylentt.mediaplayer.helper.Preconditions
+import com.kylentt.mediaplayer.helper.StringExtension.setPrefix
+import timber.log.Timber
+import javax.inject.Singleton
 
 object MediaItemFactory {
+
+	private const val ART_URI_PREFIX = "ART"
 
 	val EMPTY
 		get() = MediaItem.EMPTY
 
 	fun newBuilder(): MediaItem.Builder = MediaItem.Builder()
+
+	fun fromMetaData(context: Context, uri: Uri): MediaItem {
+		val mtr = MediaMetadataRetriever()
+		return try {
+			mtr.setDataSource(context, uri)
+			val artist = mtr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST) ?: "<Unknown>"
+			val album = mtr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM) ?: "<Unknown>"
+			val title = mtr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
+				?: if (uri.scheme == "content") {
+					context.contentResolver.query(uri, null, null, null, null)
+						?.use { cursor ->
+							cursor.moveToFirst()
+							cursor.getString(cursor.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME))
+						}
+						?: "Unknown"
+				} else {
+					"Unknown"
+				}
+
+			val mediaId = "${uri.authority}" + "_" + MediaItem.fromUri(uri).hashCode().toString()
+
+			val metadata = MediaMetadata.Builder()
+				.setMediaUri(uri)
+				.setArtist(artist)
+				.setAlbumTitle(album)
+				.setDisplayTitle(title)
+				.build()
+
+			MediaItem.Builder()
+				.setUri(uri)
+				.setMediaId(mediaId)
+				.setMediaMetadata(metadata)
+				.build()
+
+		}	catch (e: Exception) {
+			Timber.w("Failed To Build MediaItem from Uri: $uri \n${e}")
+			EMPTY
+		} finally {
+			mtr.release()
+		}
+	}
 
 	fun fillInLocalConfig(item: MediaItem, itemUri: Uri) = fillInLocalConfig(item, itemUri.toString())
 
@@ -17,5 +70,63 @@ object MediaItemFactory {
 		setMediaId(item.mediaId)
 		setUri(itemUri)
 		build()
+	}
+
+	fun getEmbeddedImage(context: Context, item: MediaItem): ByteArray? {
+		return getEmbeddedImage(context, getUri(item) ?: return null)
+	}
+
+	fun getEmbeddedImage(context: Context, uri: Uri): ByteArray? {
+		val mtr = MediaMetadataRetriever()
+		return try {
+			mtr.setDataSource(context.applicationContext, uri)
+			mtr.embeddedPicture
+		} catch (e: Exception) {
+			Timber.w("Failed to get embeddedPicture Metadata from $uri\n${e}")
+			null
+		} finally {
+			mtr.release()
+		}
+	}
+
+	fun getUri(item: MediaItem): Uri? {
+		return item.localConfiguration?.uri
+			?: item.mediaMetadata.mediaUri
+		// null
+	}
+
+	@JvmStatic fun hideArtUri(uri: Uri): Uri = hideArtUri(uri.toString()).toUri()
+	@JvmStatic fun showArtUri(uri: Uri): Uri = showArtUri(uri.toString()).toUri()
+
+	@JvmStatic fun hideArtUri(uri: String): String = uri.setPrefix(ART_URI_PREFIX)
+	@JvmStatic fun showArtUri(uri: String): String = uri.removePrefix(ART_URI_PREFIX)
+
+	@JvmStatic fun MediaItem?.orEmpty() = this ?: EMPTY
+}
+
+@Singleton
+class MediaItemHelper(
+	private val context: Context
+) {
+
+	fun buildFromMetadata(uri: Uri): MediaItem = MediaItemFactory.fromMetaData(context, uri)
+
+	@Suppress("NOTHING_TO_INLINE")
+	inline fun rebuildMediaItem(item: MediaItem): MediaItem {
+		return MediaItem
+			.Builder()
+			.setMediaId(item.mediaId)
+			.setUri(item.mediaMetadata.mediaUri)
+			.setMediaMetadata(item.mediaMetadata)
+			.build()
+	}
+
+	fun getEmbeddedPicture(item: MediaItem): ByteArray? =
+		item.mediaMetadata.mediaUri?.let { getEmbeddedPicture(it) }
+
+	fun getEmbeddedPicture(uri: Uri): ByteArray? = MediaItemFactory.getEmbeddedImage(context, uri)
+
+	init {
+		Preconditions.checkArgument(context is Application)
 	}
 }

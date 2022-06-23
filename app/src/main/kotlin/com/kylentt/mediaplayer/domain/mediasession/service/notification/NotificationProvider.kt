@@ -525,6 +525,8 @@ class MusicLibraryNotificationProvider(
 				else -> {
 					Timber.d("onReceiveStopCancel $this not OnGoing")
 
+					validatorJob.cancel()
+
 					musicLibrary.stopForegroundService(mediaNotificationId,
 						removeNotification = true, isEvent = musicLibrary.isServiceForeground
 					)

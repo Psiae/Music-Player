@@ -1,8 +1,7 @@
 package com.kylentt.mediaplayer.helper.external
 
-import android.content.ContentResolver
 import android.content.Intent
-import android.provider.MediaStore
+import com.kylentt.mediaplayer.R
 import com.kylentt.mediaplayer.helper.external.providers.ContentProvidersHelper
 
 data class IntentWrapper @JvmOverloads constructor(
@@ -31,7 +30,7 @@ data class IntentWrapper @JvmOverloads constructor(
       }
 
   val shouldHandleIntent: Boolean
-    get() = !(handled || isActionEmpty() || (isActionView() && isDataEmpty()))
+    get() = !(handled || isActionMain() || isActionEmpty() || (isActionView() && isDataEmpty()))
 
   val isCancellable = this.cancellable // TODO
 

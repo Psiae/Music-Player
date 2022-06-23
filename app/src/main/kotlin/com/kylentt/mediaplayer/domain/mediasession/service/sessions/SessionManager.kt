@@ -23,7 +23,7 @@ import kotlinx.coroutines.SupervisorJob
 import timber.log.Timber
 
 class MusicLibrarySessionManager(
-	private val musicService: MusicLibraryService,
+	private val musicLibrary: MusicLibraryService,
 	private val sessionCallback: MediaLibrarySession.MediaLibrarySessionCallback
 ) {
 
@@ -31,7 +31,7 @@ class MusicLibrarySessionManager(
 	private val mainHandler = Handler(Looper.getMainLooper())
 
 	private val sessionRegistry = SessionRegistry()
-	private val sessionManagerJob = SupervisorJob(musicService.serviceJob)
+	private val sessionManagerJob = SupervisorJob(musicLibrary.serviceJob)
 
 	var isReleased = false
 		private set
@@ -52,6 +52,7 @@ class MusicLibrarySessionManager(
 	@MainThread
 	fun initializeSession(service: MusicLibraryService, player: Player) {
 		checkMainThread()
+
 		if (isReleased) return
 
 		if (sessionRegistry.isLibrarySessionInitialized) {
@@ -68,10 +69,6 @@ class MusicLibrarySessionManager(
 		sessionRegistry.release()
 
 		isReleased = true
-	}
-
-	private fun immediatePost(handler: Handler, block: () -> Unit) {
-		if (Looper.myLooper() === handler.looper) block() else handler.postAtFrontOfQueue(block)
 	}
 
 	fun release(obj: Any) {

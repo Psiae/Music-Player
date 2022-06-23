@@ -11,7 +11,6 @@ import androidx.lifecycle.Lifecycle.Event
 import androidx.lifecycle.Lifecycle.State.INITIALIZED
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
-import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaLibraryService.MediaLibrarySession.MediaLibrarySessionCallback
@@ -20,13 +19,12 @@ import com.kylentt.mediaplayer.app.delegates.AppDelegate
 import com.kylentt.mediaplayer.app.dependency.AppModule
 import com.kylentt.mediaplayer.data.repository.MediaRepository
 import com.kylentt.mediaplayer.domain.mediasession.MediaSessionConnector
-import com.kylentt.mediaplayer.domain.mediasession.service.event.MusicLibraryEventManager
 import com.kylentt.mediaplayer.domain.mediasession.service.notification.MusicLibraryNotificationProvider
+import com.kylentt.mediaplayer.domain.mediasession.service.playback.MusicLibraryPlaybackManager
 import com.kylentt.mediaplayer.domain.mediasession.service.sessions.MusicLibrarySessionManager
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.helper.VersionHelper
 import com.kylentt.mediaplayer.helper.image.CoilHelper
-import com.kylentt.mediaplayer.helper.media.MediaItemHelper
 import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -36,7 +34,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import timber.log.Timber
-import java.util.Objects
 import javax.inject.Inject
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
@@ -61,19 +58,17 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 
 	@Inject lateinit var coilHelper: CoilHelper
 	@Inject lateinit var injectedPlayer: ExoPlayer
-	@Inject lateinit var mediaItemHelper: MediaItemHelper
 	@Inject lateinit var mediaRepository: MediaRepository
 	@Inject lateinit var sessionConnector: MediaSessionConnector
 
-	/** @see [StateRegistry] */
+	lateinit var notificationManager: NotificationManager
 
 	private val stateRegistry = StateRegistry()
-
 	private val sessionCallbackImpl = SessionCallbackImpl()
 
 	private val mediaNotificationProvider: MusicLibraryNotificationProvider
 	private val mediaSessionManager: MusicLibrarySessionManager
-	private val mediaEventManager: MusicLibraryEventManager
+	private val mediaPlaybackManager: MusicLibraryPlaybackManager
 
 	override val service: Service = this
 
@@ -86,40 +81,31 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 	val mainScope =
 		CoroutineScope(coroutineDispatchers.main + serviceJob)
 
-	val ioScope =
+	val workerScope =
 		CoroutineScope(coroutineDispatchers.io + serviceJob)
 
 	val serviceStateSF = stateRegistry.serviceStateSF
 	val serviceEventSF = stateRegistry.serviceEventSF
 
-	val notificationManager: NotificationManager by lazy {
-		getSystemService(NotificationManager::class.java)
-	}
-
 	val isServiceForeground
 		get() = serviceStateSF.value.isForeground()
-
-	val isDependencyInjected
-		get() = ::sessionConnector.isInitialized
 
 	init {
 		Timber.i("MusicLibraryService Initializing")
 
 		stateRegistry.onEvent(ServiceEvent.Initialize)
 
-		mediaSessionManager = MusicLibrarySessionManager(musicService = this,
+		mediaSessionManager = MusicLibrarySessionManager(musicLibrary = this,
 			sessionCallback = sessionCallbackImpl
 		)
 
-		mediaNotificationProvider = MusicLibraryNotificationProvider(musicService = this,
+		mediaNotificationProvider = MusicLibraryNotificationProvider(musicLibrary = this,
 			sessionManager = mediaSessionManager
 		)
 
-		mediaEventManager = MusicLibraryEventManager(musicService = this,
-			sessionManager = mediaSessionManager,
+		mediaPlaybackManager = MusicLibraryPlaybackManager(musicLibrary = this,
+			sessionManager = mediaSessionManager
 		)
-
-		mediaEventManager.startListener()
 
 		postInitialize()
 	}
@@ -133,14 +119,28 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 	override fun onCreate() {
 		Timber.i("MusicLibraryService onCreate()")
 
-		stateRegistry.onEvent(ServiceEvent.Create)
+		checkState(this.baseContext != null)
+		stateRegistry.onEvent(ServiceEvent.ContextAttached)
+		initializeService()
 
+		stateRegistry.onEvent(ServiceEvent.Create)
 		super.onCreate()
+
+		stateRegistry.onEvent(ServiceEvent.InjectDependency) // Hilt Injected dependency
 		mediaSessionManager.initializeSession(this, injectedPlayer)
 		setupNotificationProvider()
 
-
 		onPostCreate()
+	}
+
+	private fun initializeService() {
+		val state = serviceStateSF.value
+
+		checkState(state lessThan STATE.CREATED
+			&& state atLeast STATE.CONTEXT_ATTACHED
+		)
+
+		notificationManager = getSystemService(NotificationManager::class.java)
 	}
 
 	private fun onPostCreate() {
@@ -226,8 +226,7 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 
 	private fun cancelServiceScope() {
 		serviceJob.cancel()
-
-		checkState(!ioScope.isActive && !mainScope.isActive && !mainImmediateScope.isActive)
+		checkState(!mainImmediateScope.isActive && !mainScope.isActive && !workerScope.isActive)
 	}
 
 	private fun releaseComponent() {
@@ -400,6 +399,13 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 				onEvent(event.asLifecycleEvent())
 			}
 
+			if (event is ServiceEvent.SingleTimeEvent) {
+				checkState(!event.isDispatched) {
+					"$event is a SingleTimeEvent but called multiple Times"
+				}
+				event.consume()
+			}
+
 			_serviceEventSF.value = event
 			updateState(event)
 		}
@@ -410,7 +416,11 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 
 				ServiceEvent.PostInitialize -> updateState(STATE.INITIALIZED)
 
+				ServiceEvent.ContextAttached -> updateState(STATE.CONTEXT_ATTACHED)
+
 				ServiceEvent.Create -> Unit
+
+				ServiceEvent.InjectDependency -> updateState(STATE.DEPENDENCY_INJECTED)
 
 				ServiceEvent.PostCreate -> updateState(STATE.CREATED)
 
@@ -437,6 +447,8 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 				ServiceEvent.Destroy -> Unit
 
 				ServiceEvent.PostDestroy -> updateState(STATE.DESTROYED)
+
+				is ServiceEvent.SingleTimeEvent -> throw NotImplementedError()
 			}
 		}
 
@@ -469,15 +481,28 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 
 	sealed class ServiceEvent {
 
-		object Initialize : ServiceEvent()
+		open class SingleTimeEvent : ServiceEvent() {
+			private var consumed = false
 
-		object PostInitialize : ServiceEvent()
+			val isDispatched
+				get() = consumed
 
-		object Create : ServiceEvent(), LifecycleEvent {
-			override fun asLifecycleEvent(): Event = Lifecycle.Event.ON_CREATE
+			fun consume() {
+				consumed = true
+			}
 		}
 
-		object PostCreate : ServiceEvent()
+		object Initialize : SingleTimeEvent()
+
+		object PostInitialize : SingleTimeEvent()
+
+		object ContextAttached : SingleTimeEvent()
+
+		object Create : SingleTimeEvent()
+
+		object InjectDependency : SingleTimeEvent()
+
+		object PostCreate : SingleTimeEvent()
 
 		object Start : ServiceEvent(), LifecycleEvent {
 			override fun asLifecycleEvent(): Event = Lifecycle.Event.ON_START
@@ -507,11 +532,11 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 
 		object PostStop : ServiceEvent()
 
-		object Destroy : ServiceEvent(), LifecycleEvent {
+		object Destroy : SingleTimeEvent(), LifecycleEvent {
 			override fun asLifecycleEvent(): Event = Lifecycle.Event.ON_DESTROY
 		}
 
-		object PostDestroy : ServiceEvent()
+		object PostDestroy : SingleTimeEvent()
 
 		companion object {
 			@JvmStatic fun fromLifecycleEvent(event: Lifecycle.Event): ServiceEvent {
@@ -533,6 +558,10 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 		object NOTHING : STATE()
 
 		object INITIALIZED : STATE()
+
+		object CONTEXT_ATTACHED : STATE()
+
+		object DEPENDENCY_INJECTED : STATE()
 
 		object CREATED : STATE()
 
@@ -560,17 +589,21 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 		private object INT {
 			const val Nothing = -1
 			const val Initialized = 0
-			const val Created = 1
-			const val Started = 2
-			const val Foreground = 3
-			const val Paused = 2
-			const val Stopped = 1
-			const val Destroyed = 0
+			const val ContextAttached = 1
+			const val DependencyInjected = 2
+			const val Created = 3
+			const val Started = 4
+			const val Foreground = 5
+			const val Paused = 4
+			const val Stopped = 3
+			const val Destroyed = 2
 
 			fun get(state: STATE): Int {
 				return when (state) {
 					NOTHING -> Nothing
 					INITIALIZED -> Initialized
+					CONTEXT_ATTACHED -> ContextAttached
+					DEPENDENCY_INJECTED -> DependencyInjected
 					CREATED -> Created
 					STARTED -> Started
 					FOREGROUND -> Foreground
@@ -624,7 +657,7 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 							"\ncurrentHash: $currentHashCode, attempt: ${holder.hashCode()}"
 					}
 					checkState(state != currentState) {
-						"ServiceLifecycleState Failed," +
+						"ServiceLifecycleState Failed, " + "State Updated Multiple Times"
 							"\ncurrentState: $currentState, attempt: $state"
 					}
 				}

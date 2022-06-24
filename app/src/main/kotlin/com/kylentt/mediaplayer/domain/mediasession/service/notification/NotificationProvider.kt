@@ -32,6 +32,7 @@ import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isRepeatOne
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateBuffering
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateEnded
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateIdle
+import com.kylentt.mediaplayer.core.extenstions.orEmpty
 import com.kylentt.mediaplayer.core.media3.MediaItemFactory
 import com.kylentt.mediaplayer.data.source.local.MediaStoreSong
 import com.kylentt.mediaplayer.domain.mediasession.service.LifecycleService
@@ -46,6 +47,7 @@ import com.kylentt.mediaplayer.helper.Preconditions.checkNotMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.helper.VersionHelper
 import com.kylentt.mediaplayer.core.media3.MediaItemFactory.orEmpty
+import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemInfo
 import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity
 import kotlinx.coroutines.*
 import timber.log.Timber
@@ -74,6 +76,9 @@ class MusicLibraryNotificationProvider(
 	private val immediateScope = CoroutineScope(dispatchers.mainImmediate + internalJob)
 	private val mainScope = CoroutineScope(dispatchers.main + internalJob)
 	private val ioScope = CoroutineScope(dispatchers.io + internalJob)
+
+	private val itemInfoIntentConverter = MediaItemInfo.IntentConverter()
+	private val itemInfoMediaItemConverter = MediaItemInfo.MediaItemConverter()
 
 	private var isInitialized: Boolean = false
 	private var isReleased: Boolean = false
@@ -141,7 +146,7 @@ class MusicLibraryNotificationProvider(
 
 		sessionManager.registerPlayerEventListener(playerListenerImpl)
 
-		musicLibrary.registerReceiver(notificationActionReceiver, IntentFilter(PLAYBACK_CONTROL_INTENT))
+		musicLibrary.registerReceiver(notificationActionReceiver, IntentFilter(PLAYBACK_NOTIFICATION_ACTION_INTENT))
 		sessionManager.registerPlayerChangedListener(playerChangedImpl)
 
 		isInitialized = true
@@ -235,10 +240,12 @@ class MusicLibraryNotificationProvider(
 
 	suspend fun suspendHandleMediaItemTransition(
 		session: MediaSession,
-		item: MediaItem,
+		item: MediaItem?,
 		reason: Int // TODO
 	) = withContext(dispatchers.main) {
 		ensureActive()
+
+		if (item == null) return@withContext
 
 		withContext(dispatchers.io) {
 			val bitmap = getMediaItemEmbeddedPicture(item)?.let { byteArray ->
@@ -379,14 +386,17 @@ class MusicLibraryNotificationProvider(
 		}
 
 		private fun handleNotificationActionImpl(intent: Intent) {
+
+			Timber.i("handleNotificationAction $intent" +
+				"\ninfo: ${itemInfoIntentConverter.toMediaItemInfo(intent)}"
+			)
+
 			val get = currentMediaSession ?: return
 
-			val action = intent.getStringExtra(PLAYBACK_CONTROL_ACTION) ?: return
-			if (get.player.currentMediaItem == null) {
-				return validateItem(get, intent)
-			}
+			val action = intent.getStringExtra(PLAYBACK_NOTIFICATION_ACTION) ?: return
+
 			when (action) {
-				ACTION_PLAY -> onReceiveActionPlay(get)
+				ACTION_PLAY -> onReceiveActionPlay(get, intent)
 				ACTION_PAUSE -> onReceiveActionPause(get)
 				ACTION_NEXT -> onReceiveActionNext(get)
 				ACTION_PREV -> onReceiveActionPrev(get)
@@ -405,14 +415,25 @@ class MusicLibraryNotificationProvider(
 			if (currentMediaItem == null && !isValidating) {
 				isValidating = true
 
-				val mediaId = intent.getStringExtra(PLAYBACK_ITEM_ID)
+				val mediaId = when {
+					itemInfoIntentConverter.isConvertible(intent) -> {
+						itemInfoIntentConverter.getMediaIdExtra(intent)
+					}
+					else -> null
+				}
 				when {
 					mediaId == null -> musicLibrary.stopService(true)
 					mediaId.startsWith(MediaStoreSong.MEDIA_ID_PREFIX) -> {
-						musicLibrary.mainScope
+						musicLibrary.mainImmediateScope
 							.launch {
 								val item = musicLibrary.mediaRepository.getMediaStoreSongById(mediaId)
 								item?.let { setMediaItem(it.asMediaItem) }
+									?: run {
+										Timber.d("Null MediaId, removing notification")
+										musicLibrary.stopForegroundService(
+											mediaNotificationId, true, musicLibrary.isServiceForeground
+										)
+									}
 								isValidating = false
 							}
 					}
@@ -420,7 +441,10 @@ class MusicLibraryNotificationProvider(
 			}
 		}
 
-		private fun onReceiveActionPlay(session: MediaSession): Unit = with(session.player) {
+		private fun onReceiveActionPlay(session: MediaSession, intent: Intent): Unit = with(session.player) {
+
+			if (currentMediaItem == null) return@with validateItem(session, intent)
+
 			if (playWhenReady && playbackState.isOngoing()) {
 				return updateNotificationFromSession(session)
 			}
@@ -430,9 +454,7 @@ class MusicLibraryNotificationProvider(
 					if (hasNextMediaItem()) seekToNextMediaItem()
 					seekTo(0L)
 				}
-				playbackState.isStateIdle() -> {
-					prepare()
-				}
+				playbackState.isStateIdle() -> prepare()
 			}
 
 			playWhenReady = true
@@ -558,14 +580,14 @@ class MusicLibraryNotificationProvider(
 		private var updateNotificationJob by AutoCancelJob()
 		private var mediaItemTransitionJob by AutoCancelJob()
 
+
+
 		override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
 			super.onMediaItemTransition(mediaItem, reason)
 
-			val item = mediaItem ?: MediaItemFactory.EMPTY
-
 			sessionManager.getCurrentMediaSession()?.let {
 				mediaItemTransitionJob = mainScope.launch {
-					suspendHandleMediaItemTransition(it, item, reason)
+					suspendHandleMediaItemTransition(it, mediaItem, reason)
 				}
 			}
 		}
@@ -631,15 +653,22 @@ class MusicLibraryNotificationProvider(
 
 					val mediaItem = player.currentMediaItem.orEmpty()
 
+					val contentTitle = with(mediaItem) {
+						mediaMetadata.title ?: mediaMetadata.displayTitle }.orEmpty()
+
+					val contentText = with(mediaItem) {
+						mediaMetadata.artist ?: mediaMetadata.albumArtist }.orEmpty()
+
+					val onGoing = foregroundServiceCondition(player)
+
 					setChannelId(channelId)
 					setContentIntent(contentIntent)
-					setContentTitle(mediaItem.mediaMetadata.title)
-					setContentText(mediaItem.mediaMetadata.artist)
+					setContentTitle(contentTitle)
+					setContentText(contentText)
 					setSmallIcon(R.drawable.play_icon_theme3_notification)
-
-					setColorized(true)
-					setOngoing(false)
+					setOngoing(onGoing)
 					setShowWhen(false)
+					setColorized(true)
 
 					val subText = mediaItem.mediaMetadata.albumTitle
 					if (!subText.isNullOrEmpty()) setSubText(subText)
@@ -690,13 +719,13 @@ class MusicLibraryNotificationProvider(
 					val dismissIntent = makeDismissPendingIntent(mediaItem)
 					setDeleteIntent(dismissIntent)
 
-					val style = MediaStyleNotificationHelper
-						.DecoratedMediaCustomViewStyle(mediaSession)
-						.setCancelButtonIntent(dismissIntent)
-						.setShowCancelButton(true)
-						.setShowActionsInCompactView(1,2,3)
+					val style =
+						MediaStyleNotificationHelper
+							.DecoratedMediaCustomViewStyle(mediaSession)
+							.setCancelButtonIntent(dismissIntent)
+							.setShowCancelButton(true)
+							.setShowActionsInCompactView(1,2,3)
 					setStyle(style)
-
 				}.build()
 		}
 
@@ -717,7 +746,7 @@ class MusicLibraryNotificationProvider(
 
 					setChannelId(channelId)
 					setContentIntent(contentIntent)
-					setContentTitle(mediaItem.mediaMetadata.title)
+					setContentTitle(mediaItem.mediaMetadata.title ?: mediaItem.mediaMetadata.displayTitle)
 					setContentText(mediaItem.mediaMetadata.artist)
 					setSmallIcon(R.drawable.play_icon_theme3_notification)
 
@@ -783,13 +812,20 @@ class MusicLibraryNotificationProvider(
 				}.build()
 		}
 
+		private fun putMediaItemInfo(intent: Intent, item: MediaItem): Intent {
+			return intent.apply {
+				putExtra(PLAYBACK_ITEM_ID, item.mediaId)
+			}
+		}
+
 		private fun makeDismissPendingIntent(item: MediaItem): PendingIntent {
-			val intent = Intent(PLAYBACK_CONTROL_INTENT)
+			val intent = Intent(PLAYBACK_NOTIFICATION_ACTION_INTENT)
 				.apply {
-					putExtra(PLAYBACK_CONTROL_ACTION, ACTION_DISMISS_NOTIFICATION)
-					putExtra(PLAYBACK_ITEM_ID, item.mediaId)
+					putExtra(PLAYBACK_NOTIFICATION_ACTION, ACTION_DISMISS_NOTIFICATION)
 					setPackage(musicLibrary.packageName)
 				}
+
+			itemInfoIntentConverter.applyFromMediaItem(intent, item)
 			val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
 			return PendingIntent.getBroadcast(musicLibrary, ACTION_DISMISS_NOTIFICATION_CODE, intent, flag)
 		}
@@ -797,12 +833,13 @@ class MusicLibraryNotificationProvider(
 		private fun makeActionStopCancel(item: MediaItem): NotificationCompat.Action {
 			val resId = R.drawable.ic_notif_close
 			val title = "ACTION_PLAY"
-			val intent = Intent(PLAYBACK_CONTROL_INTENT)
+			val intent = Intent(PLAYBACK_NOTIFICATION_ACTION_INTENT)
 				.apply {
-					putExtra(PLAYBACK_CONTROL_ACTION, ACTION_STOP_CANCEL)
-					putExtra(PLAYBACK_ITEM_ID, item.mediaId)
+					putExtra(PLAYBACK_NOTIFICATION_ACTION, ACTION_STOP_CANCEL)
 					setPackage(musicLibrary.packageName)
 				}
+
+			itemInfoIntentConverter.applyFromMediaItem(intent, item)
 			val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
 			val pIntent = PendingIntent.getBroadcast(musicLibrary, ACTION_STOP_CANCEL_CODE, intent, flag)
 			return NotificationCompat.Action.Builder(resId, title, pIntent).build()
@@ -811,12 +848,13 @@ class MusicLibraryNotificationProvider(
 		private fun makeActionRepeatOneToAll(item: MediaItem): NotificationCompat.Action {
 			val resId = R.drawable.ic_notif_repeat_one
 			val title = "ACTION_PLAY"
-			val intent = Intent(PLAYBACK_CONTROL_INTENT)
+			val intent = Intent(PLAYBACK_NOTIFICATION_ACTION_INTENT)
 				.apply {
-					putExtra(PLAYBACK_CONTROL_ACTION, ACTION_REPEAT_ONE_TO_ALL)
-					putExtra(PLAYBACK_ITEM_ID, item.mediaId)
+					putExtra(PLAYBACK_NOTIFICATION_ACTION, ACTION_REPEAT_ONE_TO_ALL)
 					setPackage(musicLibrary.packageName)
 				}
+
+			itemInfoIntentConverter.applyFromMediaItem(intent, item)
 			val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
 			val pIntent = PendingIntent.getBroadcast(musicLibrary, ACTION_REPEAT_ONE_TO_ALL_CODE, intent, flag)
 			return NotificationCompat.Action.Builder(resId, title, pIntent).build()
@@ -825,12 +863,13 @@ class MusicLibraryNotificationProvider(
 		private fun makeActionRepeatOffToOne(item: MediaItem): NotificationCompat.Action {
 			val resId = R.drawable.ic_notif_repeat_off
 			val title = "ACTION_REPEAT_OFF_TO_ONE"
-			val intent = Intent(PLAYBACK_CONTROL_INTENT)
+			val intent = Intent(PLAYBACK_NOTIFICATION_ACTION_INTENT)
 				.apply {
-					putExtra(PLAYBACK_CONTROL_ACTION, ACTION_REPEAT_OFF_TO_ONE)
-					putExtra(PLAYBACK_ITEM_ID, item.mediaId)
+					putExtra(PLAYBACK_NOTIFICATION_ACTION, ACTION_REPEAT_OFF_TO_ONE)
 					setPackage(musicLibrary.packageName)
 				}
+
+			itemInfoIntentConverter.applyFromMediaItem(intent, item)
 			val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
 			val pIntent = PendingIntent.getBroadcast(musicLibrary, ACTION_REPEAT_OFF_TO_ONE_CODE, intent, flag)
 			return NotificationCompat.Action.Builder(resId, title, pIntent).build()
@@ -839,12 +878,13 @@ class MusicLibraryNotificationProvider(
 		private fun makeActionRepeatAllToOff(item: MediaItem): NotificationCompat.Action {
 			val resId = R.drawable.ic_notif_repeat_all
 			val title = "ACTION_REPEAT_ALL_TO_OFF"
-			val intent = Intent(PLAYBACK_CONTROL_INTENT)
+			val intent = Intent(PLAYBACK_NOTIFICATION_ACTION_INTENT)
 				.apply {
-					putExtra(PLAYBACK_CONTROL_ACTION, ACTION_REPEAT_ALL_TO_OFF)
-					putExtra(PLAYBACK_ITEM_ID, item.mediaId)
+					putExtra(PLAYBACK_NOTIFICATION_ACTION, ACTION_REPEAT_ALL_TO_OFF)
 					setPackage(musicLibrary.packageName)
 				}
+
+			itemInfoIntentConverter.applyFromMediaItem(intent, item)
 			val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
 			val pIntent = PendingIntent.getBroadcast(musicLibrary, ACTION_REPEAT_ALL_TO_OFF_CODE, intent, flag)
 			return NotificationCompat.Action.Builder(resId, title, pIntent).build()
@@ -853,12 +893,13 @@ class MusicLibraryNotificationProvider(
 		private fun makeActionPlay(item: MediaItem): NotificationCompat.Action {
 			val resId = R.drawable.ic_notif_play
 			val title = "ACTION_PLAY"
-			val intent = Intent(PLAYBACK_CONTROL_INTENT)
+			val intent = Intent(PLAYBACK_NOTIFICATION_ACTION_INTENT)
 				.apply {
-					putExtra(PLAYBACK_CONTROL_ACTION, ACTION_PLAY)
-					putExtra(PLAYBACK_ITEM_ID, item.mediaId)
+					putExtra(PLAYBACK_NOTIFICATION_ACTION, ACTION_PLAY)
 					setPackage(musicLibrary.packageName)
 				}
+
+			itemInfoIntentConverter.applyFromMediaItem(intent, item)
 			val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
 			val pIntent = PendingIntent.getBroadcast(musicLibrary, ACTION_PLAY_CODE, intent, flag)
 			return NotificationCompat.Action.Builder(resId, title, pIntent).build()
@@ -867,12 +908,13 @@ class MusicLibraryNotificationProvider(
 		private fun makeActionPause(item: MediaItem): NotificationCompat.Action {
 			val resId = R.drawable.ic_notif_pause
 			val title = "ACTION_PAUSE"
-			val intent = Intent(PLAYBACK_CONTROL_INTENT)
+			val intent = Intent(PLAYBACK_NOTIFICATION_ACTION_INTENT)
 				.apply {
-					putExtra(PLAYBACK_CONTROL_ACTION, ACTION_PAUSE)
-					putExtra(PLAYBACK_ITEM_ID, item.mediaId)
+					putExtra(PLAYBACK_NOTIFICATION_ACTION, ACTION_PAUSE)
 					setPackage(musicLibrary.packageName)
 				}
+
+			itemInfoIntentConverter.applyFromMediaItem(intent, item)
 			val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
 			val pIntent = PendingIntent.getBroadcast(musicLibrary, ACTION_PAUSE_CODE, intent, flag)
 			return NotificationCompat.Action.Builder(resId, title, pIntent).build()
@@ -881,12 +923,13 @@ class MusicLibraryNotificationProvider(
 		private fun makeActionNext(item: MediaItem): NotificationCompat.Action {
 			val resId = R.drawable.ic_notif_next
 			val title = "ACTION_NEXT"
-			val intent = Intent(PLAYBACK_CONTROL_INTENT)
+			val intent = Intent(PLAYBACK_NOTIFICATION_ACTION_INTENT)
 				.apply {
-					putExtra(PLAYBACK_CONTROL_ACTION, ACTION_NEXT)
-					putExtra(PLAYBACK_ITEM_ID, item.mediaId)
+					putExtra(PLAYBACK_NOTIFICATION_ACTION, ACTION_NEXT)
 					setPackage(musicLibrary.packageName)
 				}
+
+			itemInfoIntentConverter.applyFromMediaItem(intent, item)
 			val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
 			val pIntent = PendingIntent.getBroadcast(musicLibrary, ACTION_NEXT_CODE, intent, flag)
 			return NotificationCompat.Action.Builder(resId, title, pIntent).build()
@@ -895,12 +938,13 @@ class MusicLibraryNotificationProvider(
 		private fun makeActionNextDisabled(item: MediaItem): NotificationCompat.Action {
 			val resId = R.drawable.ic_notif_next_disabled
 			val title = "ACTION_NEXT_DISABLED"
-			val intent = Intent(PLAYBACK_CONTROL_INTENT)
+			val intent = Intent(PLAYBACK_NOTIFICATION_ACTION_INTENT)
 				.apply {
-					putExtra(PLAYBACK_CONTROL_ACTION, ACTION_NEXT_DISABLED)
-					putExtra(PLAYBACK_ITEM_ID, item.mediaId)
+					putExtra(PLAYBACK_NOTIFICATION_ACTION, ACTION_NEXT_DISABLED)
 					setPackage(musicLibrary.packageName)
 				}
+
+			itemInfoIntentConverter.applyFromMediaItem(intent, item)
 			val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
 			val pIntent = PendingIntent.getBroadcast(musicLibrary, ACTION_NEXT_DISABLED_CODE, intent, flag)
 			return NotificationCompat.Action.Builder(resId, title, pIntent).build()
@@ -909,12 +953,13 @@ class MusicLibraryNotificationProvider(
 		private fun makeActionPrev(item: MediaItem): NotificationCompat.Action {
 			val resId = R.drawable.ic_notif_prev
 			val title = "ACTION_PREV"
-			val intent = Intent(PLAYBACK_CONTROL_INTENT)
+			val intent = Intent(PLAYBACK_NOTIFICATION_ACTION_INTENT)
 				.apply {
-					putExtra(PLAYBACK_CONTROL_ACTION, ACTION_PREV)
-					putExtra(PLAYBACK_ITEM_ID, item.mediaId)
+					putExtra(PLAYBACK_NOTIFICATION_ACTION, ACTION_PREV)
 					setPackage(musicLibrary.packageName)
 				}
+
+			itemInfoIntentConverter.applyFromMediaItem(intent, item)
 			val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
 			val pIntent = PendingIntent.getBroadcast(musicLibrary, ACTION_PREV_CODE, intent, flag)
 			return NotificationCompat.Action.Builder(resId, title, pIntent).build()
@@ -923,12 +968,13 @@ class MusicLibraryNotificationProvider(
 		private fun makeActionPrevDisabled(item: MediaItem): NotificationCompat.Action {
 			val resId = R.drawable.ic_notif_prev_disabled
 			val title = "ACTION_PREV_DISABLED"
-			val intent = Intent(PLAYBACK_CONTROL_INTENT)
+			val intent = Intent(PLAYBACK_NOTIFICATION_ACTION_INTENT)
 				.apply {
-					putExtra(PLAYBACK_CONTROL_ACTION, ACTION_PREV_DISABLED)
-					putExtra(PLAYBACK_ITEM_ID, item.mediaId)
+					putExtra(PLAYBACK_NOTIFICATION_ACTION, ACTION_PREV_DISABLED)
 					setPackage(musicLibrary.packageName)
 				}
+
+			itemInfoIntentConverter.applyFromMediaItem(intent, item)
 			val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
 			val pIntent = PendingIntent.getBroadcast(musicLibrary, ACTION_PREV_DISABLED_CODE, intent, flag)
 			return NotificationCompat.Action.Builder(resId, title, pIntent).build()
@@ -940,8 +986,8 @@ class MusicLibraryNotificationProvider(
     const val NOTIFICATION_NAME = "Media Service Notification"
     const val NOTIFICATION_ID = 301
 
-    const val PLAYBACK_CONTROL_INTENT = "com.kylennt.mediaplayer.PLAYBACK_CONTROL_INTENT"
-    const val PLAYBACK_CONTROL_ACTION = "PLAYBACK_CONTROL_ACTION"
+    const val PLAYBACK_NOTIFICATION_ACTION_INTENT = "com.kylennt.mediaplayer.PLAYBACK_CONTROL_INTENT"
+    const val PLAYBACK_NOTIFICATION_ACTION = "PLAYBACK_NOTIFICATION_ACTION"
     const val PLAYBACK_ITEM_ID = "PLAYBACK_ITEM_ID"
     const val ACTION_STOP_CANCEL = "ACTION_STOP_CANCEL"
     const val ACTION_NEXT = "ACTION_NEXT"

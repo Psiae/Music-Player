@@ -1,6 +1,7 @@
 package com.kylentt.mediaplayer.core.media3
 
 import android.content.Context
+import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemHelper
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

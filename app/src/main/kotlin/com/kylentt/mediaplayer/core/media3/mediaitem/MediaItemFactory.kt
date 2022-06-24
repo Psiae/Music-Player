@@ -1,6 +1,5 @@
 package com.kylentt.mediaplayer.core.media3
 
-import android.app.Application
 import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.net.Uri
@@ -8,10 +7,8 @@ import android.provider.OpenableColumns
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
-import com.kylentt.mediaplayer.helper.Preconditions
 import com.kylentt.mediaplayer.helper.StringExtension.setPrefix
 import timber.log.Timber
-import javax.inject.Singleton
 
 object MediaItemFactory {
 
@@ -47,6 +44,7 @@ object MediaItemFactory {
 				.setArtist(artist)
 				.setAlbumTitle(album)
 				.setDisplayTitle(title)
+				.setTitle(title)
 				.build()
 
 			MediaItem.Builder()
@@ -104,29 +102,3 @@ object MediaItemFactory {
 	@JvmStatic fun MediaItem?.orEmpty() = this ?: EMPTY
 }
 
-@Singleton
-class MediaItemHelper(
-	private val context: Context
-) {
-
-	fun buildFromMetadata(uri: Uri): MediaItem = MediaItemFactory.fromMetaData(context, uri)
-
-	@Suppress("NOTHING_TO_INLINE")
-	inline fun rebuildMediaItem(item: MediaItem): MediaItem {
-		return MediaItem
-			.Builder()
-			.setMediaId(item.mediaId)
-			.setUri(item.mediaMetadata.mediaUri)
-			.setMediaMetadata(item.mediaMetadata)
-			.build()
-	}
-
-	fun getEmbeddedPicture(item: MediaItem): ByteArray? =
-		item.mediaMetadata.mediaUri?.let { getEmbeddedPicture(it) }
-
-	fun getEmbeddedPicture(uri: Uri): ByteArray? = MediaItemFactory.getEmbeddedImage(context, uri)
-
-	init {
-		Preconditions.checkArgument(context is Application)
-	}
-}

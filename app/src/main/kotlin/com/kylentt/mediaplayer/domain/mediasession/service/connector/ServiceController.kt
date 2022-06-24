@@ -294,14 +294,13 @@ class MediaServiceController(
     val step = duration / interval
     val deltaVol = playerVolume / step
 
-		while (shouldLoop() && !shouldSkip()) {
-      setPlayerVolume(playerVolume - deltaVol)
+		while (shouldLoop()) {
+
+			if (shouldSkip()) return whenReady()
+
+			setPlayerVolume(playerVolume - deltaVol)
       delay(command.interval)
     }
-
-		if (shouldSkip()) {
-			return whenReady()
-		}
 
 		fadeOutListener.forEachClear {
 			commandController(it.command)

@@ -3,7 +3,7 @@ package com.kylentt.mediaplayer.domain.mediasession
 import android.content.Context
 import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
 import com.kylentt.mediaplayer.core.coroutines.AppScope
-import com.kylentt.mediaplayer.core.media3.MediaItemHelper
+import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemHelper
 import com.kylentt.mediaplayer.data.repository.MediaRepository
 import com.kylentt.mediaplayer.data.repository.ProtoRepository
 import com.kylentt.mediaplayer.helper.image.CoilHelper
@@ -28,13 +28,13 @@ object MediaSessionModule {
 	@Provides
 	@Singleton
 	fun provideMediaSessionConnector(
-		@ApplicationContext context: Context,
-		coroutineScope: AppScope,
-		coilHelper: CoilHelper,
-		dispatchers: AppDispatchers,
-		itemHelper: MediaItemHelper,
-		mediaRepo: MediaRepository,
-		protoRepo: ProtoRepository
+        @ApplicationContext context: Context,
+        coroutineScope: AppScope,
+        coilHelper: CoilHelper,
+        dispatchers: AppDispatchers,
+        itemHelper: MediaItemHelper,
+        mediaRepo: MediaRepository,
+        protoRepo: ProtoRepository
 	): MediaSessionConnector {
 		return MediaSessionConnector(
 			appScope = coroutineScope,

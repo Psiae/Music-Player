@@ -1,6 +1,7 @@
 package com.kylentt.mediaplayer.core.exoplayer
 
 import androidx.media3.common.Player
+import com.kylentt.mediaplayer.core.extenstions.clamp
 
 /**
  * [Player] Interface Property Helper Function
@@ -11,19 +12,13 @@ import androidx.media3.common.Player
  */
 
 object PlayerHelper {
-  val minVol = PlayerConstants.MIN_VOLUME
-  val maxVol = PlayerConstants.MAX_VOLUME
+  private const val minVol = PlayerConstants.MIN_VOLUME
+  private const val maxVol = PlayerConstants.MAX_VOLUME
 
   /**
    * @param [vol] the requested Volume as [Float]
    * @return proper Volume according to [androidx.media3.session.MediaController.setVolume] range
    */
 
-  @JvmStatic fun fixVolumeToRange(vol: Float): Float {
-    return when {
-      vol < minVol -> minVol
-      vol > maxVol -> maxVol
-      else -> vol
-    }
-  }
+  @JvmStatic fun fixVolumeToRange(vol: Float): Float = vol.clamp(minVol, maxVol)
 }

@@ -27,9 +27,6 @@ class MusicLibrarySessionManager(
 	private val sessionCallback: MediaLibrarySession.MediaLibrarySessionCallback
 ) {
 
-	private val sessionLock = Any()
-	private val mainHandler = Handler(Looper.getMainLooper())
-
 	private val sessionRegistry = SessionRegistry()
 	private val sessionManagerJob = SupervisorJob(musicLibrary.serviceJob)
 
@@ -162,9 +159,8 @@ class MusicLibrarySessionManager(
 		var isLibrarySessionReleased = false
 			private set
 
-		var isLibrarySessionInitialized = false
+		val isLibrarySessionInitialized
 			get() = ::localLibrarySession.isInitialized
-			private set
 
 		private fun onSessionPlayerChanged(old: Player?, new: Player) {
 			checkArgument(old !== new)

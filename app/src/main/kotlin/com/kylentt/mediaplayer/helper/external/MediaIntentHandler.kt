@@ -13,7 +13,7 @@ import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
 import com.kylentt.mediaplayer.core.media3.MediaItemFactory
-import com.kylentt.mediaplayer.core.media3.MediaItemHelper
+import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemHelper
 import com.kylentt.mediaplayer.data.SongEntity
 import com.kylentt.mediaplayer.data.repository.MediaRepository
 import com.kylentt.mediaplayer.data.repository.ProtoRepository
@@ -53,12 +53,12 @@ interface MediaIntentHandler {
 
 @Singleton
 class MediaIntentHandlerImpl(
-  private val context: Context,
-  private val dispatcher: AppDispatchers,
-  private val itemHelper: MediaItemHelper,
-  private val protoRepo: ProtoRepository,
-  private val mediaRepo: MediaRepository,
-  private val sessionManager: MediaSessionConnector
+    private val context: Context,
+    private val dispatcher: AppDispatchers,
+    private val itemHelper: MediaItemHelper,
+    private val protoRepo: ProtoRepository,
+    private val mediaRepo: MediaRepository,
+    private val sessionManager: MediaSessionConnector
 ) : MediaIntentHandler {
 
   private val actionViewHandler = ActionViewHandler()

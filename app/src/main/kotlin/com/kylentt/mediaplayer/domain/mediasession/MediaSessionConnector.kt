@@ -7,7 +7,7 @@ import androidx.annotation.MainThread
 import androidx.media3.session.MediaController
 import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
 import com.kylentt.mediaplayer.core.coroutines.AppScope
-import com.kylentt.mediaplayer.core.media3.MediaItemHelper
+import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemHelper
 import com.kylentt.mediaplayer.data.repository.MediaRepository
 import com.kylentt.mediaplayer.data.repository.ProtoRepository
 import com.kylentt.mediaplayer.domain.mediasession.service.connector.ControllerCommand

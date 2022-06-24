@@ -136,8 +136,8 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 	private fun initializeService() {
 		val state = serviceStateSF.value
 
-		checkState(state lessThan STATE.CREATED
-			&& state atLeast STATE.CONTEXT_ATTACHED
+		checkState(state lessThan STATE.Created
+			&& state atLeast STATE.ContextAttached
 		)
 
 		notificationManager = getSystemService(NotificationManager::class.java)
@@ -150,7 +150,7 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 	}
 
 	override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-		if (serviceStateSF.value sameAs STATE.CREATED) {
+		if (serviceStateSF.value sameAs STATE.Created) {
 			onStart()
 		}
 
@@ -180,7 +180,7 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 	}
 
 	override fun onBind(intent: Intent?): IBinder? {
-		if (serviceStateSF.value sameAs STATE.CREATED) {
+		if (serviceStateSF.value sameAs STATE.Created) {
 			onStart()
 		}
 
@@ -315,9 +315,9 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 
 	fun updateForegroundState(isForeground: Boolean) {
 		if (isForeground) {
-			stateRegistry.setState(STATE.FOREGROUND)
+			stateRegistry.setState(STATE.Foreground)
 		} else {
-			stateRegistry.setState(STATE.PAUSED)
+			stateRegistry.setState(STATE.Paused)
 		}
 	}
 
@@ -376,13 +376,13 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 
 		private val lifecycleRegistry = LifecycleRegistry(this)
 
-		private val _serviceStateSF = MutableStateFlow<STATE>(STATE.NOTHING)
+		private val _serviceStateSF = MutableStateFlow<STATE>(STATE.Nothing)
 		private val _serviceEventSF = MutableStateFlow<ServiceEvent>(ServiceEvent.Initialize)
 
 		val serviceStateSF = _serviceStateSF.asStateFlow()
 		val serviceEventSF = _serviceEventSF.asStateFlow()
 
-		private var serviceState: STATE = STATE.NOTHING
+		private var serviceState: STATE = STATE.Nothing
 			set(value) {
 				field = value
 				LifecycleStateDelegate.updateState(this, field)
@@ -414,19 +414,19 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 			when (event) {
 				ServiceEvent.Initialize -> Unit
 
-				ServiceEvent.PostInitialize -> updateState(STATE.INITIALIZED)
+				ServiceEvent.PostInitialize -> updateState(STATE.Initialized)
 
-				ServiceEvent.ContextAttached -> updateState(STATE.CONTEXT_ATTACHED)
+				ServiceEvent.ContextAttached -> updateState(STATE.ContextAttached)
 
 				ServiceEvent.Create -> Unit
 
-				ServiceEvent.InjectDependency -> updateState(STATE.DEPENDENCY_INJECTED)
+				ServiceEvent.InjectDependency -> updateState(STATE.DependencyInjected)
 
-				ServiceEvent.PostCreate -> updateState(STATE.CREATED)
+				ServiceEvent.PostCreate -> updateState(STATE.Created)
 
 				ServiceEvent.Start -> Unit
 
-				ServiceEvent.PostStart -> updateState(STATE.STARTED)
+				ServiceEvent.PostStart -> updateState(STATE.Started)
 
 				ServiceEvent.StartCommand -> Unit
 
@@ -434,19 +434,19 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 
 				ServiceEvent.StartForeground -> Unit
 
-				ServiceEvent.PostForeground -> updateState(STATE.FOREGROUND)
+				ServiceEvent.PostForeground -> updateState(STATE.Foreground)
 
 				ServiceEvent.Pause -> Unit
 
-				ServiceEvent.PostPause -> updateState(STATE.PAUSED)
+				ServiceEvent.PostPause -> updateState(STATE.Paused)
 
 				ServiceEvent.Stop -> Unit
 
-				ServiceEvent.PostStop -> updateState(STATE.STOPPED)
+				ServiceEvent.PostStop -> updateState(STATE.Stopped)
 
 				ServiceEvent.Destroy -> Unit
 
-				ServiceEvent.PostDestroy -> updateState(STATE.DESTROYED)
+				ServiceEvent.PostDestroy -> updateState(STATE.Destroyed)
 
 				is ServiceEvent.SingleTimeEvent -> throw NotImplementedError()
 			}
@@ -458,8 +458,8 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 			}
 
 			when (state) {
-				STATE.NOTHING -> throw IllegalArgumentException()
-				STATE.INITIALIZED -> checkState(lifecycleRegistry.currentState == INITIALIZED)
+				STATE.Nothing -> throw IllegalArgumentException()
+				STATE.Initialized -> checkState(lifecycleRegistry.currentState == INITIALIZED)
 				else -> {
 					checkState( state upFrom serviceState  || state downFrom serviceState) {
 						"State jump from $serviceState to $state"
@@ -477,11 +477,13 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 		}
 
 		override fun getLifecycle(): Lifecycle = lifecycleRegistry
+
+		// end of StateRegistry
 	}
 
 	sealed class ServiceEvent {
 
-		open class SingleTimeEvent : ServiceEvent() {
+		sealed class SingleTimeEvent : ServiceEvent() {
 			private var consumed = false
 
 			val isDispatched
@@ -493,15 +495,10 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 		}
 
 		object Initialize : SingleTimeEvent()
-
 		object PostInitialize : SingleTimeEvent()
-
 		object ContextAttached : SingleTimeEvent()
-
 		object Create : SingleTimeEvent()
-
 		object InjectDependency : SingleTimeEvent()
-
 		object PostCreate : SingleTimeEvent()
 
 		object Start : ServiceEvent(), LifecycleEvent {
@@ -509,9 +506,7 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 		}
 
 		object PostStart : ServiceEvent()
-
 		object StartCommand : ServiceEvent()
-
 		object Binding : ServiceEvent()
 
 		object StartForeground : ServiceEvent(), LifecycleEvent {
@@ -550,81 +545,92 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 					Lifecycle.Event.ON_ANY -> TODO()
 				}
 			}
+			// end of ServiceEvent.Companion
 		}
+		// end of ServiceEvent
 	}
 
-	sealed class STATE {
+	sealed class STATE : Comparable<STATE> {
 
-		object NOTHING : STATE()
+		override fun compareTo(other: STATE): Int = when {
+			ComparableInt.get(this) > ComparableInt.get(other) -> 1
+			ComparableInt.get(this) < ComparableInt.get(other) -> -1
+			else -> 0
+		}
 
-		object INITIALIZED : STATE()
+		object Nothing : STATE()
 
-		object CONTEXT_ATTACHED : STATE()
+		object Initialized : STATE()
 
-		object DEPENDENCY_INJECTED : STATE()
+		object ContextAttached : STATE()
 
-		object CREATED : STATE()
+		object DependencyInjected : STATE()
 
-		object STARTED : STATE()
+		object Created : STATE()
 
-		object FOREGROUND : STATE()
+		object Started : STATE()
 
-		object PAUSED : STATE()
+		object Foreground : STATE()
 
-		object STOPPED : STATE()
+		object Paused : STATE()
 
-		object DESTROYED: STATE()
+		object Stopped : STATE()
 
-		infix fun atLeast(that: STATE): Boolean = INT.get(this) >= INT.get(that)
-		infix fun atMost(that: STATE): Boolean = INT.get(this) <= INT.get(that)
-		infix fun lessThan(that: STATE): Boolean = INT.get(this) < INT.get(that)
-		infix fun moreThan(that: STATE): Boolean = INT.get(this) > INT.get(that)
-		infix fun sameAs(that: STATE): Boolean = INT.get(this) == INT.get(that)
+		object Destroyed: STATE()
 
-		infix fun downFrom(that: STATE): Boolean = INT.get(this) == (INT.get(that) - 1)
-		infix fun upFrom(that: STATE): Boolean = INT.get(this) == (INT.get(that) + 1)
+		infix fun atLeast(that: STATE): Boolean = this >= that
+		infix fun atMost(that: STATE): Boolean = this <= that
+		infix fun lessThan(that: STATE): Boolean = this < that
+		infix fun moreThan(that: STATE): Boolean = this > that
+		infix fun sameAs(that: STATE): Boolean = this == that
 
-		fun isForeground(): Boolean = this == FOREGROUND
+		infix fun downFrom(that: STATE): Boolean = ComparableInt.get(this) == (ComparableInt.get(that) - 1)
+		infix fun upFrom(that: STATE): Boolean = ComparableInt.get(this) == (ComparableInt.get(that) + 1)
 
-		private object INT {
-			const val Nothing = -1
-			const val Initialized = 0
-			const val ContextAttached = 1
-			const val DependencyInjected = 2
-			const val Created = 3
-			const val Started = 4
-			const val Foreground = 5
-			const val Paused = 4
-			const val Stopped = 3
-			const val Destroyed = 2
+		fun isForeground(): Boolean = this == Foreground
+
+		private object ComparableInt {
+			const val NothingInt = -1
+			const val InitializedInt = 0
+			const val ContextAttachedInt = 1
+			const val DependencyInjectedInt = 2
+			const val CreatedInt = 3
+			const val StartedInt = 4
+			const val ForegroundInt = 5
+			const val PausedInt = 4
+			const val StoppedInt = 3
+			const val DestroyedInt = 2
 
 			fun get(state: STATE): Int {
 				return when (state) {
-					NOTHING -> Nothing
-					INITIALIZED -> Initialized
-					CONTEXT_ATTACHED -> ContextAttached
-					DEPENDENCY_INJECTED -> DependencyInjected
-					CREATED -> Created
-					STARTED -> Started
-					FOREGROUND -> Foreground
-					PAUSED -> Paused
-					STOPPED -> Stopped
-					DESTROYED -> Destroyed
+					Nothing -> NothingInt
+					Initialized -> InitializedInt
+					ContextAttached -> ContextAttachedInt
+					DependencyInjected -> DependencyInjectedInt
+					Created -> CreatedInt
+					Started -> StartedInt
+					Foreground -> ForegroundInt
+					Paused -> PausedInt
+					Stopped -> StoppedInt
+					Destroyed -> DestroyedInt
 				}
 			}
+			// end of ComparableInt
 		}
 
 		companion object {
 			fun fromLifecycleState(state: Lifecycle.State): STATE {
 				return when (state) {
-					Lifecycle.State.INITIALIZED -> INITIALIZED
-					Lifecycle.State.CREATED -> CREATED
-					Lifecycle.State.STARTED -> STARTED
-					Lifecycle.State.RESUMED -> FOREGROUND
-					Lifecycle.State.DESTROYED -> DESTROYED
+					Lifecycle.State.INITIALIZED -> Initialized
+					Lifecycle.State.CREATED -> Created
+					Lifecycle.State.STARTED -> Started
+					Lifecycle.State.RESUMED -> Foreground
+					Lifecycle.State.DESTROYED -> Destroyed
 				}
 			}
+			// end of STATE.Companion
 		}
+		// end of STATE
 	}
 
 	sealed class MediaState {
@@ -639,18 +645,20 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 		object DISCONNECTED : MediaState()
 		// TODO
 		data class ERROR (val e: Exception, val msg: String) : MediaState()
+
+		// end of MediaState
 	}
 
 	object LifecycleStateDelegate : ReadOnlyProperty<Any?, STATE> {
 
-		private var currentState: STATE = STATE.NOTHING
+		private var currentState: STATE = STATE.Nothing
 		private var currentHashCode: Int? = null
 
 		fun updateState(holder: Any, state: STATE) {
 
 			when (state) {
-				STATE.NOTHING -> throw IllegalArgumentException()
-				STATE.INITIALIZED -> currentHashCode = holder.hashCode()
+				STATE.Nothing -> throw IllegalArgumentException()
+				STATE.Initialized -> currentHashCode = holder.hashCode()
 				else -> {
 					checkState(holder.hashCode() == currentHashCode) {
 						"ServiceLifecycleState Failed," +
@@ -666,12 +674,14 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 			Timber.d("ServiceLifecycleState updated to $state")
 		}
 
-		@JvmStatic fun wasLaunched() = currentState != STATE.NOTHING
-		@JvmStatic fun isDestroyed() = currentState == STATE.DESTROYED
-		@JvmStatic fun isAlive() = currentState atLeast STATE.INITIALIZED
+		@JvmStatic fun wasLaunched() = currentState != STATE.Nothing
+		@JvmStatic fun isDestroyed() = currentState == STATE.Destroyed
+		@JvmStatic fun isAlive() = currentState atLeast STATE.Initialized
 		@JvmStatic fun isForeground(): Boolean = currentState.isForeground()
 
 		override fun getValue(thisRef: Any?, property: KProperty<*>): STATE = currentState
+
+		// end of LifecycleStateDelegate
 	}
 
 	object Constants {
@@ -681,7 +691,7 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 	companion object {
 
 		/**
-		 * current MAX number of MediaSession
+		 * current MAX number of MediaLibrarySession
 		 *
 		 * [MusicLibraryService] considered / tested in its current implementation
 		 */
@@ -696,5 +706,7 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 		fun getComponentName(): ComponentName {
 			return AppDelegate.componentName(MusicLibraryService::class.java)
 		}
+
+		// end of MusicLibraryService.Companion
 	}
 }

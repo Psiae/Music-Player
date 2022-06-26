@@ -75,7 +75,7 @@ class MediaItemInfo private constructor(
 		fun fromMediaItemInfo(itemInfo: MediaItemInfo): T
 	}
 
-	class IntentConverter : Converter<Intent> {
+	class IntentConverter : MediaItemInfo.Converter<Intent> {
 
 		override fun toMediaItemInfo(obj: Intent): MediaItemInfo {
 			return with(Builder()) {
@@ -158,7 +158,7 @@ class MediaItemInfo private constructor(
 			intent.getStringExtra(intentConverterSignatureKey) == intentConverterSignatureValue
 
 		private fun hasConverterSignature(item: MediaItem): Boolean =
-			item.mediaMetadata.extras?.get(intentConverterSignatureKey) == intentConverterSignatureKey
+			item.mediaMetadata.extras?.get(intentConverterSignatureKey) == intentConverterSignatureValue
 
 		private fun hasConverterSignature(item: MediaItemInfo): Boolean =
 			hasConverterSignature(item.mediaItem)
@@ -188,16 +188,15 @@ class MediaItemInfo private constructor(
 		}
 	}
 
-	class MediaItemConverter : Converter<MediaItem> {
+	class MediaItemConverter : MediaItemInfo.Converter<MediaItem> {
 		override fun toMediaItemInfo(obj: MediaItem): MediaItemInfo {
 			return with(Builder()) {
-				val metadata = obj.mediaMetadata
 				mediaId = obj.mediaId
 				mediaUri = obj.localConfiguration?.uri ?: obj.mediaMetadata.mediaUri.orEmpty()
-				artist = metadata.artist.orEmptyString()
-				album = metadata.albumTitle.orEmptyString()
-				displayTitle = metadata.displayTitle.orEmptyString()
-				title = metadata.title.orEmptyString()
+				artist = obj.mediaMetadata.artist.orEmptyString()
+				album = obj.mediaMetadata.albumTitle.orEmptyString()
+				displayTitle = obj.mediaMetadata.displayTitle.orEmptyString()
+				title = obj.mediaMetadata.title.orEmptyString()
 				build()
 			}
 		}

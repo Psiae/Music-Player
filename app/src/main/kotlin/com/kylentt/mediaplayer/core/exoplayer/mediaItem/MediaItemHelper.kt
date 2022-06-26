@@ -3,6 +3,7 @@ package com.kylentt.mediaplayer.core.exoplayer.mediaItem
 import android.os.Bundle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import com.kylentt.mediaplayer.core.exoplayer.mediaItem.MediaItemHelper.title
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import com.kylentt.mediaplayer.helper.external.providers.DocumentProviderHelper
 
@@ -14,12 +15,15 @@ object MediaItemHelper {
   inline val MediaItem.displayTitle
     @JvmStatic get() = mediaMetadata.displayTitle
 
+	inline val MediaItem.title
+		@JvmStatic get() = mediaMetadata.title
+
   @JvmStatic
   fun MediaItem.getDebugDescription(): String {
     return "$this Description:" +
       "\n fileName: $fileName" +
       "\n mediaId: $mediaId" +
-      "\n displayTitle: $displayTitle"
+      "\n title: $title"
   }
 }
 

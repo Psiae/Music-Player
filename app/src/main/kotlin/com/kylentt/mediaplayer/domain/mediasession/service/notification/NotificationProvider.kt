@@ -23,6 +23,7 @@ import androidx.media3.common.Player
 import androidx.media3.session.*
 import com.kylentt.mediaplayer.R
 import com.kylentt.mediaplayer.app.delegates.AppDelegate
+import com.kylentt.mediaplayer.core.OnChanged
 import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
 import com.kylentt.mediaplayer.core.delegates.AutoCancelJob
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isOngoing
@@ -32,12 +33,13 @@ import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isRepeatOne
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateBuffering
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateEnded
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateIdle
+import com.kylentt.mediaplayer.core.extenstions.LifecycleService
 import com.kylentt.mediaplayer.core.extenstions.orEmpty
 import com.kylentt.mediaplayer.core.media3.MediaItemFactory
+import com.kylentt.mediaplayer.core.media3.MediaItemFactory.orEmpty
+import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemInfo
 import com.kylentt.mediaplayer.data.source.local.MediaStoreSong
-import com.kylentt.mediaplayer.domain.mediasession.service.LifecycleService
 import com.kylentt.mediaplayer.domain.mediasession.service.MusicLibraryService
-import com.kylentt.mediaplayer.domain.mediasession.service.OnChanged
 import com.kylentt.mediaplayer.domain.mediasession.service.connector.ControllerCommand
 import com.kylentt.mediaplayer.domain.mediasession.service.connector.ControllerCommand.Companion.wrapWithFadeOut
 import com.kylentt.mediaplayer.domain.mediasession.service.sessions.MusicLibrarySessionManager
@@ -46,8 +48,6 @@ import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkNotMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.helper.VersionHelper
-import com.kylentt.mediaplayer.core.media3.MediaItemFactory.orEmpty
-import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemInfo
 import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity
 import kotlinx.coroutines.*
 import timber.log.Timber
@@ -60,6 +60,7 @@ import timber.log.Timber
  * @since 2022/04/30
  */
 
+@Deprecated("Deprecated, use MediaNotificationManager")
 class MusicLibraryNotificationProvider(
 	private val musicLibrary: MusicLibraryService,
 	private val sessionManager: MusicLibrarySessionManager

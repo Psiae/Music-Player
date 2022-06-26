@@ -139,7 +139,7 @@ data class MediaStoreSong @JvmOverloads constructor(
  */
 
 interface MediaStoreSource {
-  suspend fun getMediaStoreSong(): Flow<List<MediaStoreSong>>
+  suspend fun getMediaStoreSong(): List<MediaStoreSong>
 }
 
 /**
@@ -155,8 +155,7 @@ class MediaStoreSourceImpl(
   private val dispatchers: AppDispatchers
 ) : MediaStoreSource {
 
-  override suspend fun getMediaStoreSong(): Flow<List<MediaStoreSong>> =
-    flow { emit(queryAudioColumn()) }
+  override suspend fun getMediaStoreSong(): List<MediaStoreSong> = queryAudioColumn()
 
   private suspend fun queryAudioColumn(): List<MediaStoreSong> =
     withContext(dispatchers.io) {

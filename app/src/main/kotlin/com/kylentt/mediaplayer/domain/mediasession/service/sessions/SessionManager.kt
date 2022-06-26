@@ -27,7 +27,17 @@ class MusicLibrarySessionManager(
 	private val sessionRegistry = SessionRegistry()
 	private val sessionManagerJob = SupervisorJob(musicLibrary.serviceJob)
 
-	var isReleased = false
+	private var componentInteractor: MusicLibraryService.ComponentInteractor? = null
+
+	var isReleased: Boolean = false
+		private set(value) {
+			checkArgument(value) {
+				"cannot unRelease this class"
+			}
+			field = value
+		}
+
+	var isStarted: Boolean = false
 		private set
 
 	val coroutineDispatchers: AppDispatchers = AppModule.provideAppDispatchers()
@@ -38,37 +48,57 @@ class MusicLibrarySessionManager(
 	val mainScope: CoroutineScope =
 		CoroutineScope(coroutineDispatchers.main + sessionManagerJob)
 
-	private fun initializeSessionImpl(service: MusicLibraryService, player: Player) {
-		val get = sessionRegistry.buildMediaLibrarySession(service, player)
-		sessionRegistry.changeLocalLibrarySession(get)
-	}
-
 	@MainThread
-	fun initializeSession(service: MusicLibraryService, player: Player) {
+	fun start(
+		componentInteractor: MusicLibraryService.ComponentInteractor,
+		player: Player
+	) {
 		checkMainThread()
 
-		if (isReleased) return
+		if (isReleased || isStarted) return
 
 		if (sessionRegistry.isLibrarySessionInitialized) {
 			return Timber.w("Tried to Initialize LibrarySession Multiple Times")
 		}
 
-		initializeSessionImpl(service, player)
+		if (this.componentInteractor != componentInteractor) {
+			this.componentInteractor = componentInteractor
+		}
+
+		val get = sessionRegistry.buildMediaLibrarySession(musicLibrary, player)
+		sessionRegistry.changeLocalLibrarySession(get)
+
+		isStarted = true
 	}
 
-	private fun releaseImpl(obj: Any) {
-		Timber.d("SessionManager releaseImpl called by $obj")
+	@MainThread
+	fun stop() {
+		checkMainThread()
+
+		if (isReleased || !isStarted) return
+
+		this.componentInteractor = null
+
+		// TODO: do something about the session and or player
+
+		isStarted = false
+	}
+
+	@MainThread
+	fun release(obj: Any) {
+		Timber.i("SessionManager.release() called by $obj")
+
+		checkMainThread()
+
+		if (isReleased) return
+		if (isStarted) stop()
 
 		sessionManagerJob.cancel()
 		sessionRegistry.release()
 
 		isReleased = true
-	}
 
-	fun release(obj: Any) {
-		if (!this.isReleased) {
-			releaseImpl(obj)
-		}
+		Timber.i("SessionManager released by $obj")
 	}
 
 	fun getCurrentMediaSession(): MediaSession? {
@@ -254,24 +284,24 @@ class MusicLibrarySessionManager(
 		}
 	}
 
-	class Delegator(private val manager: MusicLibrarySessionManager) {
+	inner class Delegate {
 
 		val sessionPlayer: Player?
-			get() = manager.getSessionPlayer()
+			get() = getSessionPlayer()
 
 		val mediaSession: MediaSession?
-			get() = manager.getCurrentMediaSession()
+			get() = getCurrentMediaSession()
 
 		fun registerPlayerChangedListener(listener: OnChangedNotNull<Player>): Unit =
-			manager.registerPlayerChangedListener(listener)
+			this@MusicLibrarySessionManager.registerPlayerChangedListener(listener)
 
 		fun removePlayerChangedListener(listener: OnChangedNotNull<Player>): Boolean =
-			manager.unregisterPlayerChangedListener(listener)
+			this@MusicLibrarySessionManager.unregisterPlayerChangedListener(listener)
 
 		fun registerPlayerEventListener(listener: Player.Listener) =
-			manager.registerPlayerEventListener(listener)
+			this@MusicLibrarySessionManager.registerPlayerEventListener(listener)
 
 		fun removePlayerEventListener(listener: Player.Listener) =
-			manager.unRegisterPlayerEventListener(listener)
+			this@MusicLibrarySessionManager.unRegisterPlayerEventListener(listener)
 	}
 }

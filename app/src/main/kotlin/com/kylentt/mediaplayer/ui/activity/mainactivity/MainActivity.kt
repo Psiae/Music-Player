@@ -95,11 +95,7 @@ class MainActivity : ComponentActivity() {
   }
 
   override fun onDestroy() {
-		if (!mediaViewModel.mediaPlaybackState.value.playerState.isOngoing()
-			&& serviceState atMost MusicLibraryService.STATE.Paused
-		) {
-			cancelServiceNotification(this)
-		}
+		if (serviceState atMost MusicLibraryService.STATE.Paused) cancelServiceNotification(this)
 
     super.onDestroy()
     return destroyed()

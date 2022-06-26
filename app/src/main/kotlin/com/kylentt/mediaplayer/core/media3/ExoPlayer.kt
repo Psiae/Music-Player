@@ -4,7 +4,6 @@ import android.content.Context
 import android.os.Looper
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
-import androidx.media3.common.C.CONTENT_TYPE_MUSIC
 import androidx.media3.exoplayer.ExoPlayer
 
 object ExoPlayerFactory {
@@ -15,7 +14,7 @@ object ExoPlayerFactory {
 		context: Context,
 		handleAudioFocus: Boolean,
 		handleAudioReroute: Boolean,
-		looper: Looper = Looper.getMainLooper()!!
+		looper: Looper = Looper.myLooper()!!
 	): ExoPlayer {
 		val builder = newBuilder(context)
 		return with(builder) {
@@ -28,7 +27,7 @@ object ExoPlayerFactory {
 
 	private fun getMusicAudioAttributes(): AudioAttributes {
 		return AudioAttributes.Builder()
-			.setContentType(CONTENT_TYPE_MUSIC)
+			.setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
 			.setUsage(C.USAGE_MEDIA)
 			.build()
 	}

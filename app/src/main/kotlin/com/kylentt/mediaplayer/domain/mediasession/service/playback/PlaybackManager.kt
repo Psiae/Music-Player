@@ -3,8 +3,9 @@ package com.kylentt.mediaplayer.domain.mediasession.service.playback
 import android.annotation.SuppressLint
 import android.net.Uri
 import android.widget.Toast
+import androidx.annotation.MainThread
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.Lifecycle.Event.*
+import androidx.lifecycle.Lifecycle.Event.ON_DESTROY
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.media3.common.MediaItem
@@ -15,18 +16,18 @@ import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper.get
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper.mediaUri
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaMetadataHelper.getStoragePath
 import com.kylentt.mediaplayer.domain.mediasession.service.MusicLibraryService
-import com.kylentt.mediaplayer.domain.mediasession.service.sessions.MusicLibrarySessionManager
 import com.kylentt.mediaplayer.helper.Preconditions
+import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
+import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.external.providers.ContentProvidersHelper
 import com.kylentt.mediaplayer.helper.external.providers.DocumentProviderHelper
 import kotlinx.coroutines.*
 import timber.log.Timber
 import java.io.File
 
-class MusicLibraryPlaybackManager(
-	private val musicLibrary: MusicLibraryService,
-	private val sessionManager: MusicLibrarySessionManager
-) {
+class MusicLibraryPlaybackManager(private val musicLibrary: MusicLibraryService) {
+
+	private var componentInteractor: MusicLibraryService.ComponentInteractor? = null
 
 	private val playbackListener = PlayerPlaybackListener()
 	private val eventHandler = PlayerPlaybackEventHandler()
@@ -38,35 +39,70 @@ class MusicLibraryPlaybackManager(
 	private val serviceObserver = ServiceObserver()
 
 	var isReleased: Boolean = false
+		private set(value) {
+			checkArgument(value) {
+				"cannot unRelease this class"
+			}
+			field = value
+		}
+
+	var isStarted: Boolean = false
 		private set
 
 	init {
 		musicLibrary.lifecycle.addObserver(serviceObserver)
 	}
 
-	fun release(obj: Any) {
-		Timber.d("$obj called release on PlaybackManager")
+	@MainThread
+	fun start(componentInteractor: MusicLibraryService.ComponentInteractor) {
+		checkMainThread()
 
-		if (isReleased) {
-			return Timber.d("$obj, PlaybackManager is already released")
+		if (isReleased || isStarted) return
+
+		if (this.componentInteractor !== componentInteractor) {
+			this.componentInteractor = componentInteractor
+
+			with(this.componentInteractor!!) {
+				mediaSessionManagerDelegator.registerPlayerEventListener(playbackListener)
+			}
 		}
 
-		releaseImpl(obj)
+		isStarted = true
 	}
 
-	private fun releaseImpl(obj: Any) {
-		sessionManager.unRegisterPlayerEventListener(playbackListener)
+	@MainThread
+	fun stop() {
+		checkMainThread()
+
+		if (isReleased || !isStarted) return
+
+		componentInteractor?.mediaSessionManagerDelegator?.removePlayerEventListener(playbackListener)
+		componentInteractor = null
+
+		isStarted = false
+	}
+
+	@MainThread
+	fun release(obj: Any) {
+		Timber.i("PlaybackManager.release() called by $obj")
+
+		checkMainThread()
+
+		if (isReleased) return
+		if (isStarted) stop()
+
+		musicLibrary.lifecycle.removeObserver(serviceObserver)
 		managerJob.cancel()
 
 		isReleased = true
 
-		Timber.i("$obj released PlaybackManager")
+		Timber.i("PlaybackManager released by $obj")
 	}
 
 	private fun onPlaybackError(error: PlaybackException) {
 		if (isReleased) return
 
-		sessionManager.getSessionPlayer()
+		componentInteractor?.mediaSessionManagerDelegator?.sessionPlayer
 			?.let { immediateScope.launch { eventHandler.onPlaybackError(error, it) } }
 	}
 
@@ -81,6 +117,7 @@ class MusicLibraryPlaybackManager(
 	private inner class PlayerPlaybackEventHandler {
 
 		suspend fun onPlaybackError(error: PlaybackException, player: Player) {
+			if (isReleased) return
 
 			Timber.d("onPlaybackError, \nerror: ${error}\ncode: ${error.errorCode}\nplayer: $player")
 
@@ -100,6 +137,8 @@ class MusicLibraryPlaybackManager(
 			player: Player,
 			error: PlaybackException
 		) = withContext(appDispatchers.mainImmediate) {
+			if (isReleased) return@withContext
+
 			Preconditions.checkArgument(error.errorCode == PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND)
 
 			Timber.d("handleIOErrorFileNotFound")
@@ -157,7 +196,6 @@ class MusicLibraryPlaybackManager(
 	private inner class ServiceObserver : LifecycleEventObserver {
 		override fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event) {
 			when (event) {
-				ON_CREATE -> sessionManager.registerPlayerEventListener(playbackListener)
 				ON_DESTROY -> release(this)
 				else -> Unit
 			}

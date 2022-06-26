@@ -22,11 +22,14 @@ import dagger.hilt.android.scopes.ServiceScoped
 @InstallIn(ServiceComponent::class)
 object MusicLibraryServiceModule {
 
+	const val handleAudioFocus = true
+	const val handleAudioReroute = true
+
 	@ServiceScoped
 	@Provides
 	fun provideExoplayer(@ApplicationContext context: Context): ExoPlayer {
 		return ExoPlayerFactory.createMusicExoPlayer(
-			context, handleAudioFocus = true, handleAudioReroute = true
+			context, handleAudioFocus = handleAudioFocus, handleAudioReroute = handleAudioReroute
 		)
 	}
 }

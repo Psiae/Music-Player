@@ -109,7 +109,7 @@ class MediaIntentHandlerImpl(
       require(intent.isTypeAudio())
       withContext(dispatcher.io) {
         val defPath = async { getAudioPathFromContentUri(intent) }
-        val defSongs = async { mediaRepo.getMediaStoreSong().first() }
+        val defSongs = async { mediaRepo.getMediaStoreSong() }
 
         ensureActive()
 
@@ -517,7 +517,7 @@ class MediaIntentHandlerImpl(
     return try {
       val storageString = ContentProvidersHelper.storageDirString
       val contentUris = ContentProvidersHelper.contentScheme
-      val songList = songs.ifEmpty { mediaRepo.getMediaStoreSong().first() }
+      val songList = songs.ifEmpty { mediaRepo.getMediaStoreSong() }
 
       Timber.d("findMatchingMediaStore with $predicate")
 

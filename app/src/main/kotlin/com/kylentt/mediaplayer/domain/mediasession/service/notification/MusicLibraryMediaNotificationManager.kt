@@ -9,6 +9,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build.VERSION_CODES
 import android.os.Bundle
+import androidx.annotation.MainThread
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -37,7 +38,8 @@ import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper.med
 import com.kylentt.mediaplayer.domain.mediasession.service.MusicLibraryService
 import com.kylentt.mediaplayer.domain.mediasession.service.connector.ControllerCommand
 import com.kylentt.mediaplayer.domain.mediasession.service.connector.ControllerCommand.Companion.wrapWithFadeOut
-import com.kylentt.mediaplayer.domain.mediasession.service.sessions.MusicLibrarySessionManager
+import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
+import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.helper.VersionHelper
 import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity
@@ -46,9 +48,8 @@ import timber.log.Timber
 import kotlin.coroutines.coroutineContext
 import kotlin.system.exitProcess
 
-class MediaNotificationManager(
-	private val musicLibrary: MusicLibraryService,
-	private val sessionDelegate: MusicLibrarySessionManager.Delegator
+class MusicLibraryMediaNotificationManager(
+	private val musicLibrary: MusicLibraryService
 ) {
 
 	private lateinit var provider: Provider
@@ -56,31 +57,71 @@ class MediaNotificationManager(
 
 	private val eventListener = this.PlayerEventListener()
 
+	private var componentInteractor: MusicLibraryService.ComponentInteractor? = null
+
 	val notificationManager
-		get() = musicLibrary.notificationManager
+		get() = musicLibrary.notificationManagerService
+
+	val sessionManagerDelegate
+		get() = componentInteractor?.mediaSessionManagerDelegator
 
 	val appDispatchers = AppModule.provideAppDispatchers()
 	val mainScope = CoroutineScope(appDispatchers.main + musicLibrary.serviceJob)
 	val immediateScope = CoroutineScope(appDispatchers.mainImmediate + musicLibrary.serviceJob)
 
 	val itemInfoIntentConverter = MediaItemInfo.IntentConverter()
-	val isForegroundInternal: (Player) -> Boolean = { it.playWhenReady }
-	val isForegroundCondition: (Player) -> Boolean = { it.playbackState.isOngoing() }
+
+	val isForegroundCondition: (MediaSession) -> Boolean = {
+		componentInteractor?.stateManagerDelegator?.getServiceForegroundCondition(it) ?: false }
 
 	init {
 		checkState(musicLibrary.sessions.isEmpty()) {
 			"This Provider must be initialized before MediaLibraryService.onGetSession()" }
 
-		sessionDelegate.registerPlayerEventListener(eventListener)
 		initializeWhenContextReady()
 	}
 
 	var isReleased: Boolean = false
+		private set (value) {
+			checkArgument(value) {
+				"Cannot unRelease this class"
+			}
+			field = value
+		}
+
+	var isStarted: Boolean = false
 		private set
 
-	fun release(obj: Any) {
-		Timber.d("$obj called MediaNotificationManager.release()")
+	@MainThread
+	fun start(componentInteractor: MusicLibraryService.ComponentInteractor) {
+		checkMainThread()
+		if (isReleased || isStarted) return
 
+		if (this.componentInteractor !== componentInteractor) {
+			this.componentInteractor = componentInteractor
+			this.componentInteractor!!
+				.mediaSessionManagerDelegator.registerPlayerEventListener(eventListener)
+		}
+
+		isStarted = true
+	}
+
+	@MainThread
+	fun stop() {
+		checkMainThread()
+		if (isReleased || !isStarted) return
+
+		this.componentInteractor?.mediaSessionManagerDelegator?.removePlayerEventListener(eventListener)
+		this.componentInteractor = null
+
+		isStarted = false
+	}
+
+	@MainThread
+	fun release(obj: Any) {
+		Timber.i("MediaNotificationManager.release() called by $obj")
+
+		checkMainThread()
 		val isProviderInitialized = ::provider.isInitialized
 		val isDispatcherInitialized = ::dispatcher.isInitialized
 
@@ -93,11 +134,33 @@ class MediaNotificationManager(
 			return
 		}
 
+		if (isStarted) stop()
+
 		mainScope.cancel()
 		if (isProviderInitialized) provider.release()
 		if (isDispatcherInitialized) dispatcher.release()
 
 		isReleased = true
+
+		Timber.i("MediaNotificationManager released by $obj")
+	}
+
+	fun getNotification(
+		session: MediaSession,
+		onGoing: Boolean
+	): Notification = provider.fromMediaSession(session, onGoing, ChannelName)
+
+	fun startForegroundService(
+		session: MediaSession,
+		onGoingNotification: Boolean,
+		isEvent: Boolean
+	) {
+		val notification = getNotification(session, onGoingNotification)
+		musicLibrary.startForegroundService(NotificationId, notification, isEvent)
+	}
+
+	fun stopForegroundService(isEvent: Boolean) {
+		musicLibrary.stopForegroundService(NotificationId, false, isEvent)
 	}
 
 	fun getProvider(): MediaNotification.Provider = this.provider
@@ -106,13 +169,14 @@ class MediaNotificationManager(
 		Timber.d("onUpdateNotification")
 
 		val notification =
-			provider.fromMediaSession(session, isForegroundCondition(session.player), ChannelName)
+			provider.fromMediaSession(session, isForegroundCondition(session), ChannelName)
 		dispatcher.updateNotification(NotificationId, notification)
 	}
 
 	private fun initializeWhenContextReady() {
 
 		val owner = musicLibrary as LifecycleService
+		if (owner.service.baseContext != null && !isInitialized) initializeComponents(owner.service)
 
 		val obs = object : LifecycleEventObserver {
 
@@ -185,21 +249,6 @@ class MediaNotificationManager(
 
 			coroutineContext.ensureActive()
 			notificationManager.notify(id, notification)
-		}
-
-		fun considerForegroundService(id: Int, notification: Notification, shouldForeground: Boolean) {
-			if (isReleased) return
-
-			when {
-				shouldForeground -> {
-					if (musicLibrary.isServiceForeground) return
-					musicLibrary.startForegroundService(id, notification, isEvent = true)
-				}
-				else -> {
-					if (!musicLibrary.isServiceForeground) return
-					musicLibrary.stopForegroundService(id, false, isEvent = true)
-				}
-			}
 		}
 
 		private var validatorJob by AutoCancelJob()
@@ -345,33 +394,17 @@ class MediaNotificationManager(
 			Timber.d("createNotificationInternalImpl")
 
 			val notification =
-				getNotificationFromPlayer(session.player, isForegroundCondition(session.player), ChannelName)
+				getNotificationFromPlayer(session.player, isForegroundCondition(session), ChannelName)
 
 			dispatcher.cancelValidatorJob()
 
 			return MediaNotification(NotificationId, notification)
 		}
 
-		private fun handleInternalForeground(
-			player: Player,
-			notification: Notification,
-			wasForeground: Boolean
-		) {
-			val isForeground = isForegroundInternal(player)
-			when {
-				wasForeground && isForeground && !musicLibrary.isServiceForeground -> {
-					musicLibrary.startForegroundService(NotificationId, notification, true)
-				}
-				!wasForeground && !isForeground && musicLibrary.isServiceForeground -> {
-					musicLibrary.stopForegroundService(NotificationId, removeNotification = false, isEvent = true)
-				}
-			}
-		}
-
 		inner class NotificationActionReceiver : MediaNotificationProvider.ActionReceiver {
 
 			override fun actionPlay(context: Context, intent: Intent) {
-				sessionDelegate.mediaSession
+				sessionManagerDelegate?.mediaSession
 					?.let {
 						val player = it.player
 
@@ -415,7 +448,7 @@ class MediaNotificationManager(
 			}
 
 			override fun actionPause(context: Context, intent: Intent) {
-				sessionDelegate.mediaSession
+				sessionManagerDelegate?.mediaSession
 					?.let {
 						val player = it.player
 
@@ -434,7 +467,7 @@ class MediaNotificationManager(
 			}
 
 			override fun actionNext(context: Context, intent: Intent) {
-				sessionDelegate.mediaSession
+				sessionManagerDelegate?.mediaSession
 					?.let {
 						val player = it.player
 
@@ -452,7 +485,7 @@ class MediaNotificationManager(
 			}
 
 			override fun actionPrevious(context: Context, intent: Intent) {
-				sessionDelegate.mediaSession
+				sessionManagerDelegate?.mediaSession
 					?.let {
 						val player = it.player
 
@@ -470,7 +503,7 @@ class MediaNotificationManager(
 			}
 
 			override fun actionRepeatOffToOne(context: Context, intent: Intent) {
-				sessionDelegate.mediaSession
+				sessionManagerDelegate?.mediaSession
 					?.let {
 						val player = it.player
 
@@ -488,7 +521,7 @@ class MediaNotificationManager(
 			}
 
 			override fun actionRepeatOneToAll(context: Context, intent: Intent) {
-				sessionDelegate.mediaSession
+				sessionManagerDelegate?.mediaSession
 					?.let {
 						val player = it.player
 
@@ -506,7 +539,7 @@ class MediaNotificationManager(
 			}
 
 			override fun actionRepeatAllToOff(context: Context, intent: Intent) {
-				sessionDelegate.mediaSession
+				sessionManagerDelegate?.mediaSession
 					?.let {
 						val player = it.player
 
@@ -528,12 +561,11 @@ class MediaNotificationManager(
 			override fun actionNoPrevious(context: Context, intent: Intent) = Unit
 
 			override fun actionStop(context: Context, intent: Intent) {
-				sessionDelegate.mediaSession
+				sessionManagerDelegate?.mediaSession
 					?.let {
-						val player = it.player
 
 						when {
-							!isForegroundCondition(player) -> {
+							!isForegroundCondition(it) -> {
 								val notification = provider
 									.getNotificationFromMediaSession(it, false, ChannelName)
 								return dispatcher.updateNotification(NotificationId, notification)
@@ -555,12 +587,11 @@ class MediaNotificationManager(
 			}
 
 			override fun actionCancel(context: Context, intent: Intent) {
-				sessionDelegate.mediaSession
+				sessionManagerDelegate?.mediaSession
 					?.let {
-						val player = it.player
 
 						when {
-							isForegroundCondition(player) -> {
+							isForegroundCondition(it) -> {
 								val notification = provider
 									.getNotificationFromMediaSession(it, true, ChannelName)
 								return dispatcher.updateNotification(NotificationId, notification)
@@ -586,10 +617,10 @@ class MediaNotificationManager(
 		override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
 			mediaItemTransitionJob = immediateScope.launch {
 
-				sessionDelegate.mediaSession?.let {
+				sessionManagerDelegate?.mediaSession?.let {
 					provider.updateItemBitmap(it.player)
 					val getNotification = {
-						provider.fromMediaSession(it, isForegroundCondition(it.player), ChannelName)
+						provider.fromMediaSession(it, isForegroundCondition(it), ChannelName)
 					}
 					dispatcher.dispatchNotificationValidator(NotificationId, getNotification = getNotification)
 				}
@@ -601,9 +632,9 @@ class MediaNotificationManager(
 
 			playerRepeatModeJob = mainScope.launch {
 
-				sessionDelegate.mediaSession?.let {
+				sessionManagerDelegate?.mediaSession?.let {
 					val getNotification = {
-						provider.fromMediaSession(it, isForegroundCondition(it.player), ChannelName)
+						provider.fromMediaSession(it, isForegroundCondition(it), ChannelName)
 					}
 					dispatcher.suspendUpdateNotification(NotificationId, getNotification())
 					dispatcher.dispatchNotificationValidator(NotificationId, getNotification = getNotification)
@@ -616,9 +647,9 @@ class MediaNotificationManager(
 
 			playWhenReadyChangedJob = mainScope.launch {
 
-				sessionDelegate.mediaSession?.let {
+				sessionManagerDelegate?.mediaSession?.let {
 					val getNotification = {
-						provider.fromMediaSession(it, isForegroundCondition(it.player), ChannelName)
+						provider.fromMediaSession(it, isForegroundCondition(it), ChannelName)
 					}
 					dispatcher.dispatchNotificationValidator(NotificationId, getNotification = getNotification)
 				}
@@ -630,11 +661,10 @@ class MediaNotificationManager(
 
 			playbackStateChangedJob = mainScope.launch {
 
-				sessionDelegate.mediaSession?.let {
+				sessionManagerDelegate?.mediaSession?.let {
 					val getNotification = {
-						val shouldForeground = isForegroundCondition(it.player)
+						val shouldForeground = isForegroundCondition(it)
 						val notification = provider.fromMediaSession(it, shouldForeground, ChannelName)
-						dispatcher.considerForegroundService(NotificationId, notification, shouldForeground)
 						notification
 					}
 					dispatcher.dispatchNotificationValidator(NotificationId, getNotification = getNotification)
@@ -642,6 +672,28 @@ class MediaNotificationManager(
 			}
 		}
 
+	}
+
+	inner class Delegate {
+
+		fun getNotification(
+			session: MediaSession,
+			onGoing: Boolean
+		): Notification = this@MusicLibraryMediaNotificationManager.getNotification(session, onGoing)
+
+		fun startForegroundService(
+			mediaSession: MediaSession,
+			onGoingNotification: Boolean,
+			isEvent: Boolean
+		) {
+			this@MusicLibraryMediaNotificationManager
+				.startForegroundService(mediaSession, onGoingNotification, isEvent)
+		}
+
+		fun stopForegroundService(isEvent: Boolean) {
+			this@MusicLibraryMediaNotificationManager
+				.stopForegroundService(isEvent)
+		}
 	}
 
 	companion object {

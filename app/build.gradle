@@ -145,7 +145,7 @@ dependencies {
     dependencies {
         def composeMaterial_Version = "1.1.1"
         def composeMaterial3_Version = "1.0.0-alpha13"
-        def composeMaterialIcon_Version = "1.2.0-beta03"
+        def composeMaterialIcon_Version = "1.2.0-rc02"
 
         implementation "androidx.compose.foundation:foundation:$composeMaterial_Version"
         implementation "androidx.compose.material:material-icons-core:$composeMaterialIcon_Version"
@@ -156,7 +156,7 @@ dependencies {
 
     // Androidx.navigation
     dependencies {
-        def composeNavigation_Version = "2.5.0-rc01"
+        def composeNavigation_Version = "2.5.0-rc02"
         implementation "androidx.navigation:navigation-compose:$composeNavigation_Version"
     }
 

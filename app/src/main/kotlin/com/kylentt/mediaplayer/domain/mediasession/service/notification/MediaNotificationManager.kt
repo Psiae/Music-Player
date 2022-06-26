@@ -15,9 +15,10 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
-import androidx.media3.session.MediaController
+import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaNotification
 import androidx.media3.session.MediaSession
+import com.google.common.collect.ImmutableList
 import com.kylentt.mediaplayer.app.dependency.AppModule
 import com.kylentt.mediaplayer.core.delegates.AutoCancelJob
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isOngoing
@@ -26,12 +27,13 @@ import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isRepeatOff
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isRepeatOne
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateEnded
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateIdle
-import com.kylentt.mediaplayer.core.exoplayer.mediaItem.MediaItemHelper.getDebugDescription
 import com.kylentt.mediaplayer.core.extenstions.LifecycleService
 import com.kylentt.mediaplayer.core.extenstions.checkCancellation
 import com.kylentt.mediaplayer.core.media3.MediaItemFactory
 import com.kylentt.mediaplayer.core.media3.MediaItemFactory.orEmpty
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemInfo
+import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper.getDebugDescription
+import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper.mediaUri
 import com.kylentt.mediaplayer.domain.mediasession.service.MusicLibraryService
 import com.kylentt.mediaplayer.domain.mediasession.service.connector.ControllerCommand
 import com.kylentt.mediaplayer.domain.mediasession.service.connector.ControllerCommand.Companion.wrapWithFadeOut
@@ -42,6 +44,7 @@ import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity
 import kotlinx.coroutines.*
 import timber.log.Timber
 import kotlin.coroutines.coroutineContext
+import kotlin.system.exitProcess
 
 class MediaNotificationManager(
 	private val musicLibrary: MusicLibraryService,
@@ -87,6 +90,7 @@ class MediaNotificationManager(
 			val c = !mainScope.isActive
 
 			checkState(a && b && c)
+			return
 		}
 
 		mainScope.cancel()
@@ -97,6 +101,14 @@ class MediaNotificationManager(
 	}
 
 	fun getProvider(): MediaNotification.Provider = this.provider
+
+	fun onUpdateNotification(session: MediaSession) {
+		Timber.d("onUpdateNotification")
+
+		val notification =
+			provider.fromMediaSession(session, isForegroundCondition(session.player), ChannelName)
+		dispatcher.updateNotification(NotificationId, notification)
+	}
 
 	private fun initializeWhenContextReady() {
 
@@ -248,16 +260,18 @@ class MediaNotificationManager(
 		}
 
 		override fun createNotification(
-			mediaController: MediaController,
+			session: MediaSession,
+			customLayout: ImmutableList<CommandButton>,
 			actionFactory: MediaNotification.ActionFactory,
 			onNotificationChangedCallback: MediaNotification.Provider.Callback
-		): MediaNotification = createNotificationInternalImpl(mediaController)
+		): MediaNotification = createNotificationInternalImpl(session)
 
-		override fun handleCustomAction(
-			mediaController: MediaController,
+		override fun handleCustomCommand(
+			session: MediaSession,
 			action: String,
 			extras: Bundle
-		) = Unit
+		): Boolean = false
+
 
 		fun fromMediaSession(
 			session: MediaSession,
@@ -326,18 +340,12 @@ class MediaNotificationManager(
 		}
 
 		private fun createNotificationInternalImpl(
-			mediaController: MediaController
+			session: MediaSession
 		): MediaNotification {
-			val isForeground = musicLibrary.isServiceForeground
-			val willForeground = isForegroundInternal(mediaController)
-			val shouldForeground = isForegroundCondition(mediaController)
+			Timber.d("createNotificationInternalImpl")
 
 			val notification =
-				getNotificationFromPlayer(mediaController, shouldForeground, ChannelName)
-
-			if (isForeground != willForeground) mainScope.launch {
-				handleInternalForeground(mediaController, notification, willForeground)
-			}
+				getNotificationFromPlayer(session.player, isForegroundCondition(session.player), ChannelName)
 
 			dispatcher.cancelValidatorJob()
 
@@ -368,6 +376,25 @@ class MediaNotificationManager(
 						val player = it.player
 
 						when {
+							player.mediaItemCount == 0 -> {
+
+								val itemInfo: MediaItemInfo? =
+									if (itemInfoIntentConverter.isConvertible(intent)) {
+										itemInfoIntentConverter.toMediaItemInfo(intent)
+									} else {
+										null
+									}
+
+								if (itemInfo != null && itemInfo.mediaItem.mediaUri != null) {
+									player.setMediaItem(itemInfo.mediaItem)
+									player.prepare()
+									player.play()
+								} else {
+									// Later
+									exitProcess(1)
+								}
+							}
+
 							player.playbackState.isStateIdle() -> player.prepare()
 
 							player.playbackState.isStateEnded() -> {
@@ -540,15 +567,10 @@ class MediaNotificationManager(
 							}
 						}
 
-						if (MainActivity.isAlive) {
-							musicLibrary
-								.stopForegroundService(NotificationId, true, isEvent = false)
-						} else {
-							musicLibrary
-								.stopService(releaseSession = true)
-						}
+						dispatcher.cancelValidatorJob()
 
-
+						musicLibrary.stopForegroundService(NotificationId, true, isEvent = false)
+						musicLibrary.stopService(releaseSession = !MainActivity.isAlive)
 					}
 					?: throw IllegalStateException("Received Intent: $intent on Released State")
 			}

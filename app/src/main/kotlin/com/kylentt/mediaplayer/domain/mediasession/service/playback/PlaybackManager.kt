@@ -11,8 +11,9 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import com.kylentt.mediaplayer.app.dependency.AppModule
-import com.kylentt.mediaplayer.core.exoplayer.mediaItem.MediaItemHelper.getDebugDescription
-import com.kylentt.mediaplayer.core.exoplayer.mediaItem.MediaMetadataHelper.getStoragePath
+import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper.getDebugDescription
+import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper.mediaUri
+import com.kylentt.mediaplayer.core.media3.mediaitem.MediaMetadataHelper.getStoragePath
 import com.kylentt.mediaplayer.domain.mediasession.service.MusicLibraryService
 import com.kylentt.mediaplayer.domain.mediasession.service.sessions.MusicLibrarySessionManager
 import com.kylentt.mediaplayer.helper.Preconditions
@@ -57,7 +58,7 @@ class MusicLibraryPlaybackManager(
 		sessionManager.unRegisterPlayerEventListener(playbackListener)
 		managerJob.cancel()
 
-		isReleased = false
+		isReleased = true
 
 		Timber.i("$obj released PlaybackManager")
 	}
@@ -112,7 +113,7 @@ class MusicLibraryPlaybackManager(
 
 				ensureActive()
 
-				val uri = item.mediaMetadata.mediaUri
+				val uri = item.mediaUri
 					?: Uri.parse(item.mediaMetadata.getStoragePath() ?: "")
 
 				val uriString = uri.toString()

@@ -7,8 +7,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
-import com.kylentt.mediaplayer.core.exoplayer.mediaItem.MediaItemHelper.getDebugDescription
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemHelper
+import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper.getDebugDescription
 import com.kylentt.mediaplayer.domain.mediasession.MediaSessionConnector
 import com.kylentt.mediaplayer.domain.mediasession.service.connector.PlaybackState
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread

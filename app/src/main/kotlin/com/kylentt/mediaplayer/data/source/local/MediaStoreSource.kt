@@ -7,12 +7,14 @@ import android.os.Bundle
 import android.provider.MediaStore
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaItem.RequestMetadata
 import androidx.media3.common.MediaMetadata
 import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
-import com.kylentt.mediaplayer.core.exoplayer.mediaItem.MediaMetadataHelper.putDisplayTitle
-import com.kylentt.mediaplayer.core.exoplayer.mediaItem.MediaMetadataHelper.putFileName
-import com.kylentt.mediaplayer.core.exoplayer.mediaItem.MediaMetadataHelper.putStoragePath
 import com.kylentt.mediaplayer.core.media3.MediaItemFactory
+import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper.mediaUri
+import com.kylentt.mediaplayer.core.media3.mediaitem.MediaMetadataHelper.putDisplayTitle
+import com.kylentt.mediaplayer.core.media3.mediaitem.MediaMetadataHelper.putFileName
+import com.kylentt.mediaplayer.core.media3.mediaitem.MediaMetadataHelper.putStoragePath
 import com.kylentt.mediaplayer.data.SongEntity
 import com.kylentt.mediaplayer.helper.VersionHelper
 import kotlinx.coroutines.ensureActive
@@ -70,18 +72,20 @@ data class MediaStoreSong @JvmOverloads constructor(
     val artworkUri = MediaItemFactory.hideArtUri(songMediaArtworkUri)
 		val bundle = Bundle()
 
-		val metadataBuilder = MediaMetadata
-			.Builder()
+		val metadataBuilder = MediaMetadata.Builder()
 			.putDisplayTitle(displayTitle)
 			.putFileName(fileName)
 			.setArtist(artistName)
 			.setAlbumArtist(artistName)
 			.setAlbumTitle(albumName)
-			.setArtworkUri(artworkUri) // MediaSession automatically use this one for Notification
-			.setMediaUri(songMediaUri)
+			.setArtworkUri(artworkUri) // M
 			.setSubtitle(artist)
 			.setTitle(title) // MediaSession automatically use this one for Notification
 			.setIsPlayable(duration > 0)
+
+		val metadataRequestBuilder = RequestMetadata.Builder()
+			.setMediaUri(songMediaUri)
+			.setExtras(Bundle())
 
 		if (data != null && File(data).exists()) {
 			metadataBuilder.putStoragePath(data, bundle)
@@ -91,6 +95,7 @@ data class MediaStoreSong @JvmOverloads constructor(
       .setMediaId(songMediaId)
       .setUri(songMediaUri)
       .setMediaMetadata(metadataBuilder.build())
+			.setRequestMetadata(metadataRequestBuilder.build())
 		.build()
   }
 
@@ -99,7 +104,7 @@ data class MediaStoreSong @JvmOverloads constructor(
 
   override fun equalMediaItem(item: MediaItem): Boolean {
     return item.mediaId == this.songMediaId
-			&& item.mediaMetadata.mediaUri == this.songMediaUri
+			&& item.mediaUri == this.songMediaUri
   }
 
   override fun toString(): String {

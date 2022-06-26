@@ -6,7 +6,10 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaItem.RequestMetadata
 import androidx.media3.common.MediaMetadata
+import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper
+import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper.mediaUri
 import com.kylentt.mediaplayer.helper.StringExtension.setPrefix
 import timber.log.Timber
 
@@ -40,17 +43,21 @@ object MediaItemFactory {
 			val mediaId = "${uri.authority}" + "_" + MediaItem.fromUri(uri).hashCode().toString()
 
 			val metadata = MediaMetadata.Builder()
-				.setMediaUri(uri)
 				.setArtist(artist)
 				.setAlbumTitle(album)
 				.setDisplayTitle(title)
 				.setTitle(title)
 				.build()
 
+			val reqMetadata = RequestMetadata.Builder()
+				.setMediaUri(uri)
+				.build()
+
 			MediaItem.Builder()
 				.setUri(uri)
 				.setMediaId(mediaId)
 				.setMediaMetadata(metadata)
+				.setRequestMetadata(reqMetadata)
 				.build()
 
 		}	catch (e: Exception) {
@@ -65,6 +72,7 @@ object MediaItemFactory {
 
 	fun fillInLocalConfig(item: MediaItem, itemUri: String): MediaItem = with(newBuilder()) {
 		setMediaMetadata(item.mediaMetadata)
+		setRequestMetadata(item.requestMetadata)
 		setMediaId(item.mediaId)
 		setUri(itemUri)
 		build()
@@ -87,11 +95,7 @@ object MediaItemFactory {
 		}
 	}
 
-	fun getUri(item: MediaItem): Uri? {
-		return item.localConfiguration?.uri
-			?: item.mediaMetadata.mediaUri
-		// null
-	}
+	fun getUri(item: MediaItem): Uri? = item.mediaUri
 
 	@JvmStatic fun hideArtUri(uri: Uri): Uri = hideArtUri(uri.toString()).toUri()
 	@JvmStatic fun showArtUri(uri: Uri): Uri = showArtUri(uri.toString()).toUri()

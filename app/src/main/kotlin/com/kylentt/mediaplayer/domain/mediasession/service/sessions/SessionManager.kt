@@ -2,16 +2,14 @@ package com.kylentt.mediaplayer.domain.mediasession.service.sessions
 
 import android.app.PendingIntent
 import androidx.annotation.MainThread
-import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.MediaLibraryService.MediaLibrarySession
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSession.ControllerInfo
 import com.kylentt.mediaplayer.app.delegates.AppDelegate
 import com.kylentt.mediaplayer.app.dependency.AppModule
-import com.kylentt.mediaplayer.core.OnChanged
+import com.kylentt.mediaplayer.core.OnChangedNotNull
 import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
-import com.kylentt.mediaplayer.core.media3.MediaItemFactory
 import com.kylentt.mediaplayer.domain.mediasession.service.MusicLibraryService
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
@@ -23,7 +21,7 @@ import timber.log.Timber
 
 class MusicLibrarySessionManager(
 	private val musicLibrary: MusicLibraryService,
-	private val sessionCallback: MediaLibrarySession.MediaLibrarySessionCallback
+	private val sessionCallback: MediaLibrarySession.Callback
 ) {
 
 	private val sessionRegistry = SessionRegistry()
@@ -91,13 +89,13 @@ class MusicLibrarySessionManager(
 		sessionRegistry.changeSessionPlayer(player, release)
 	}
 
-	fun registerPlayerChangedListener(onChanged: OnChanged<Player>) {
+	fun registerPlayerChangedListener(onChanged: OnChangedNotNull<Player>) {
 		if (isReleased) return
 
 		sessionRegistry.registerOnPlayerChangedListener(onChanged)
 	}
 
-	fun unregisterPlayerChangedListener(onChanged: OnChanged<Player>): Boolean {
+	fun unregisterPlayerChangedListener(onChanged: OnChangedNotNull<Player>): Boolean {
 		if (isReleased) return false
 
 		return sessionRegistry.unRegisterOnPlayerChangedListener(onChanged)
@@ -119,33 +117,15 @@ class MusicLibrarySessionManager(
 		return if (!isReleased) sessionRegistry.localLibrarySession else null
 	}
 
-	private inner class LocalMediaItemFiller : MediaSession.MediaItemFiller {
-		override fun fillInLocalConfiguration(
-			session: MediaSession,
-			controller: ControllerInfo,
-			mediaItem: MediaItem
-		): MediaItem {
-
-			val uri = mediaItem.mediaMetadata.mediaUri
-
-			if (uri == null) {
-				Timber.e("MediaItem mediaMetadata.mediaUri should not be null")
-				return MediaItemFactory.EMPTY
-			}
-
-			return MediaItemFactory.fillInLocalConfig(mediaItem, uri)
-		}
-	}
-
 	private inner class SessionRegistry {
 
 		lateinit var localLibrarySession: MediaLibrarySession
 			private set
 
-		private val onLibrarySessionChangedListener: MutableList<OnChanged<MediaLibrarySession>> =
+		private val onLibrarySessionChangedListener: MutableList<OnChangedNotNull<MediaLibrarySession>> =
 			mutableListOf()
 
-		private val onPlayerChangedListener: MutableList<OnChanged<Player>> =
+		private val onPlayerChangedListener: MutableList<OnChangedNotNull<Player>> =
 			mutableListOf()
 
 		private val onPlayerEventListener: MutableList<Player.Listener> =
@@ -209,11 +189,11 @@ class MusicLibrarySessionManager(
 			onSessionPlayerChanged(old, player)
 		}
 
-		fun registerOnLibrarySessionChangedListener(listener: OnChanged<MediaLibrarySession>) {
+		fun registerOnLibrarySessionChangedListener(listener: OnChangedNotNull<MediaLibrarySession>) {
 			onLibrarySessionChangedListener.add(listener)
 		}
 
-		fun registerOnPlayerChangedListener(listener: OnChanged<Player>) {
+		fun registerOnPlayerChangedListener(listener: OnChangedNotNull<Player>) {
 			onPlayerChangedListener.add(listener)
 		}
 
@@ -225,11 +205,11 @@ class MusicLibrarySessionManager(
 			onPlayerEventListener.add(listener)
 		}
 
-		fun unRegisterOnLibrarySessionChangedListener(listener: OnChanged<MediaLibrarySession>): Boolean {
+		fun unRegisterOnLibrarySessionChangedListener(listener: OnChangedNotNull<MediaLibrarySession>): Boolean {
 			return onLibrarySessionChangedListener.removeAll { it === listener }
 		}
 
-		fun unRegisterOnPlayerChangedListener(listener: OnChanged<Player>): Boolean {
+		fun unRegisterOnPlayerChangedListener(listener: OnChangedNotNull<Player>): Boolean {
 			return onPlayerChangedListener.removeAll { it === listener }
 		}
 
@@ -256,7 +236,6 @@ class MusicLibrarySessionManager(
 			val get = with(builder) {
 				setId(MusicLibraryService.Constants.SESSION_ID)
 				setSessionActivity(sessionActivity)
-				setMediaItemFiller(LocalMediaItemFiller())
 				build()
 			}
 
@@ -283,10 +262,10 @@ class MusicLibrarySessionManager(
 		val mediaSession: MediaSession?
 			get() = manager.getCurrentMediaSession()
 
-		fun registerPlayerChangedListener(listener: OnChanged<Player>): Unit =
+		fun registerPlayerChangedListener(listener: OnChangedNotNull<Player>): Unit =
 			manager.registerPlayerChangedListener(listener)
 
-		fun removePlayerChangedListener(listener: OnChanged<Player>): Boolean =
+		fun removePlayerChangedListener(listener: OnChangedNotNull<Player>): Boolean =
 			manager.unregisterPlayerChangedListener(listener)
 
 		fun registerPlayerEventListener(listener: Player.Listener) =

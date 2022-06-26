@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaItem.RequestMetadata
 import androidx.media3.common.MediaMetadata
 import com.kylentt.mediaplayer.core.extenstions.orEmpty
 import com.kylentt.mediaplayer.core.extenstions.orEmptyString
@@ -32,7 +33,7 @@ class MediaItemInfo private constructor(
 	private val title: String
 ) {
 
-	private val mediaItem: MediaItem = with(MediaItemFactory.newBuilder()) {
+	val mediaItem: MediaItem = with(MediaItemFactory.newBuilder()) {
 		val metadata = with(MediaMetadata.Builder()) {
 			setArtist(artist)
 			setAlbumTitle(album)
@@ -41,9 +42,15 @@ class MediaItemInfo private constructor(
 			build()
 		}
 
+		val requestMetadata = with(RequestMetadata.Builder()) {
+			setMediaUri(mediaUri)
+			build()
+		}
+
 		setUri(mediaUri)
 		setMediaId(mediaId)
 		setMediaMetadata(metadata)
+		setRequestMetadata(requestMetadata)
 		build()
 	}
 
@@ -106,7 +113,7 @@ class MediaItemInfo private constructor(
 
 		fun applyFromMediaItem(intent: Intent, item: MediaItem): Intent {
 			return intent.apply {
-				val uri = item.localConfiguration?.uri ?: item.mediaMetadata.mediaUri.orEmpty()
+				val uri = MediaItemFactory.getUri(item)
 				putExtraAsString(mediaIdIntentExtraName, item.mediaId)
 				putExtraAsString(mediaUriIntentExtraName, uri)
 				putExtraAsString(artistIntentExtraName, item.mediaMetadata.artist.orEmptyString())
@@ -133,16 +140,24 @@ class MediaItemInfo private constructor(
 			with(Bundle()) {
 				putString(intentConverterSignatureKey, intentConverterSignatureValue)
 
+				// maybe Implement these in factory
+
 				val newMetadata = MediaMetadata.Builder()
 					.populate(item.mediaMetadata)
 					.setExtras(this)
 					.build()
 
+				val newMetadataRequest = RequestMetadata.Builder()
+					.setMediaUri(item.requestMetadata.mediaUri)
+					.setExtras(item.requestMetadata.extras)
+					.build()
+
 				val newItem = MediaItem.Builder().apply {
-					val uri = item.localConfiguration?.uri ?: item.mediaMetadata.mediaUri.orEmpty()
+					val uri = getMediaItemUri(item)
 					setMediaId(item.mediaId)
 					setUri(uri)
 					setMediaMetadata(newMetadata)
+					setRequestMetadata(newMetadataRequest)
 				}
 
 				return newItem.build()
@@ -163,6 +178,8 @@ class MediaItemInfo private constructor(
 		private fun hasConverterSignature(item: MediaItemInfo): Boolean =
 			hasConverterSignature(item.mediaItem)
 
+		private fun getMediaItemUri(item: MediaItem): Uri? = MediaItemFactory.getUri(item)
+
 		fun isConvertible(intent: Intent): Boolean = hasConverterSignature(intent)
 
 		fun getMediaIdExtra(intent: Intent): String? {
@@ -175,6 +192,7 @@ class MediaItemInfo private constructor(
 				}
 			return get
 		}
+
 
 		companion object {
 			const val intentConverterSignatureKey = "MediaItemInfo.IntentConverter.intentConverterSignature"
@@ -192,7 +210,7 @@ class MediaItemInfo private constructor(
 		override fun toMediaItemInfo(obj: MediaItem): MediaItemInfo {
 			return with(Builder()) {
 				mediaId = obj.mediaId
-				mediaUri = obj.localConfiguration?.uri ?: obj.mediaMetadata.mediaUri.orEmpty()
+				mediaUri = getMediaItemUri(obj).orEmpty()
 				artist = obj.mediaMetadata.artist.orEmptyString()
 				album = obj.mediaMetadata.albumTitle.orEmptyString()
 				displayTitle = obj.mediaMetadata.displayTitle.orEmptyString()
@@ -200,6 +218,8 @@ class MediaItemInfo private constructor(
 				build()
 			}
 		}
+
+		fun getMediaItemUri(item: MediaItem): Uri? = MediaItemFactory.getUri(item)
 
 		override fun fromMediaItemInfo(itemInfo: MediaItemInfo): MediaItem = itemInfo.mediaItem
 	}

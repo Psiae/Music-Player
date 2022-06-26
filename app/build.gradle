@@ -195,8 +195,8 @@ dependencies {
 
     // Media
     dependencies {
-        def media3_version = "1.0.0-alpha03"
-        def exoplayer_version = "2.17.1"
+        def media3_version = "1.0.0-beta01"
+        def exoplayer_version = "2.18.0"
         def jaudiotagger_version = "2.3.15"
 
         implementation "androidx.media3:media3-exoplayer:$media3_version"

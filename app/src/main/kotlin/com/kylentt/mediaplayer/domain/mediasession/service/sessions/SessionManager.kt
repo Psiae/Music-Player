@@ -1,19 +1,18 @@
 package com.kylentt.mediaplayer.domain.mediasession.service.sessions
 
 import android.app.PendingIntent
-import android.os.Handler
-import android.os.Looper
 import androidx.annotation.MainThread
-import androidx.media3.common.*
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
 import androidx.media3.session.MediaLibraryService.MediaLibrarySession
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSession.ControllerInfo
 import com.kylentt.mediaplayer.app.delegates.AppDelegate
 import com.kylentt.mediaplayer.app.dependency.AppModule
+import com.kylentt.mediaplayer.core.OnChanged
 import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
 import com.kylentt.mediaplayer.core.media3.MediaItemFactory
 import com.kylentt.mediaplayer.domain.mediasession.service.MusicLibraryService
-import com.kylentt.mediaplayer.domain.mediasession.service.OnChanged
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
@@ -274,5 +273,26 @@ class MusicLibrarySessionManager(
 			onPlayerChangedListener.clear()
 			releaseSession()
 		}
+	}
+
+	class Delegator(private val manager: MusicLibrarySessionManager) {
+
+		val sessionPlayer: Player?
+			get() = manager.getSessionPlayer()
+
+		val mediaSession: MediaSession?
+			get() = manager.getCurrentMediaSession()
+
+		fun registerPlayerChangedListener(listener: OnChanged<Player>): Unit =
+			manager.registerPlayerChangedListener(listener)
+
+		fun removePlayerChangedListener(listener: OnChanged<Player>): Boolean =
+			manager.unregisterPlayerChangedListener(listener)
+
+		fun registerPlayerEventListener(listener: Player.Listener) =
+			manager.registerPlayerEventListener(listener)
+
+		fun removePlayerEventListener(listener: Player.Listener) =
+			manager.unRegisterPlayerEventListener(listener)
 	}
 }

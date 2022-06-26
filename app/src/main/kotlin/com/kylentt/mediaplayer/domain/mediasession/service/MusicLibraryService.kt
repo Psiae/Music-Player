@@ -18,6 +18,7 @@ import androidx.lifecycle.LifecycleRegistry
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaLibraryService
+import androidx.media3.session.MediaNotification
 import androidx.media3.session.MediaSession
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
@@ -26,7 +27,6 @@ import com.kylentt.mediaplayer.app.dependency.AppModule
 import com.kylentt.mediaplayer.core.extenstions.LifecycleEvent
 import com.kylentt.mediaplayer.core.extenstions.LifecycleService
 import com.kylentt.mediaplayer.core.media3.MediaItemFactory
-import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper.mediaUri
 import com.kylentt.mediaplayer.data.repository.MediaRepository
 import com.kylentt.mediaplayer.domain.mediasession.MediaSessionConnector
@@ -80,6 +80,12 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 
 	private var isReleasing = false
 
+	private var mediaNotificationProviderImpl: MediaNotification.Provider? = null
+		set(value) {
+			if (value != null) setMediaNotificationProvider(value)
+			field = value
+		}
+
 	override val service: Service = this
 
 	val coroutineDispatchers = AppModule.provideAppDispatchers()
@@ -132,7 +138,7 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 	override fun onCreate() {
 		Timber.i("MusicLibraryService onCreate()")
 		onContextAttached()
-		onPreSuperOnCreate()
+		onPostContextAttached()
 		super.onCreate()
 		onPostSuperOnCreate()
 		onPostCreate()
@@ -141,16 +147,6 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 	private fun onContextAttached() {
 		stateRegistry.onEvent(ServiceEvent.ContextAttached)
 		initializeService()
-	}
-
-	private fun onPreSuperOnCreate() {
-		stateRegistry.onEvent(ServiceEvent.Create)
-	}
-
-	private fun onPostSuperOnCreate() {
-		stateRegistry.onEvent(ServiceEvent.InjectDependency) // Hilt Injected dependency
-		mediaSessionManager.initializeSession(this, injectedPlayer)
-		setupNotificationProvider()
 	}
 
 	private fun initializeService() {
@@ -166,6 +162,24 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 		registerReceiver(serviceCommandReceiver, CommandReceiver.getIntentFilter())
 	}
 
+	private fun onPostContextAttached() {
+		stateRegistry.onEvent(ServiceEvent.Create)
+	}
+
+	private fun onPostSuperOnCreate() {
+		stateRegistry.onEvent(ServiceEvent.InjectDependency) // Hilt Injected dependency
+		initializeLibrarySession()
+	}
+
+	private fun initializeLibrarySession() {
+		mediaSessionManager.initializeSession(this, injectedPlayer)
+		setupNotificationProvider()
+	}
+
+	private fun setupNotificationProvider() {
+		this.mediaNotificationProviderImpl = mediaNotificationManager.getProvider()
+	}
+
 	private fun onPostCreate() {
 		stateRegistry.onEvent(ServiceEvent.PostCreate)
 		Timber.i("MusicLibraryService Created")
@@ -173,7 +187,8 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 
 	override fun onUpdateNotification(session: MediaSession) {
 		if (isReleasing) return
-		super.onUpdateNotification(session)
+		if (mediaNotificationProviderImpl != null) return super.onUpdateNotification(session)
+		mediaNotificationManager.onUpdateNotification(session)
 	}
 
 	override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -250,10 +265,6 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 
 	override fun getLifecycle(): Lifecycle {
 		return stateRegistry.lifecycle
-	}
-
-	private fun setupNotificationProvider() {
-		setMediaNotificationProvider(mediaNotificationManager.getProvider())
 	}
 
 	private fun cancelServiceScope() {
@@ -734,8 +745,10 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 		// end of MediaState
 	}
 
-	inner class ServiceCommandReceiver() : BroadcastReceiver() {
+	inner class ServiceCommandReceiver : BroadcastReceiver() {
 		override fun onReceive(context: Context?, intent: Intent?) {
+			Timber.d("ServiceCommandReceiver onReceive $context, $intent")
+
 			if (context == null || intent == null) return
 
 			val action = intent.getStringExtra(CommandReceiver.commandIntentReceiverActionKey) ?: return
@@ -785,6 +798,11 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 
 		@JvmStatic
 		fun isStopped(): Boolean = currentState == STATE.Stopped
+
+		@JvmStatic
+		fun isPaused(): Boolean = currentState == STATE.Stopped
+
+
 
 		override fun getValue(thisRef: Any?, property: KProperty<*>): STATE = currentState
 	}

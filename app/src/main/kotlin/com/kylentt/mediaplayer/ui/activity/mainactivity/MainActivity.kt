@@ -17,7 +17,6 @@ import com.kylentt.mediaplayer.core.coroutines.AppScope
 import com.kylentt.mediaplayer.core.delegates.LateLazy
 import com.kylentt.mediaplayer.core.delegates.LockMainThread
 import com.kylentt.mediaplayer.app.delegates.device.StoragePermissionHelper
-import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isOngoing
 import com.kylentt.mediaplayer.domain.mediasession.service.MusicLibraryService
 import com.kylentt.mediaplayer.domain.viewmodels.MainViewModel
 import com.kylentt.mediaplayer.domain.viewmodels.MediaViewModel
@@ -95,13 +94,13 @@ class MainActivity : ComponentActivity() {
   }
 
   override fun onDestroy() {
-		if (serviceState atMost MusicLibraryService.STATE.Paused) cancelServiceNotification(this)
-
-    super.onDestroy()
+		super.onDestroy()
     return destroyed()
   }
 
-	private fun cancelServiceNotification(context: Context) {
+	private fun maybeCancelServiceNotification(context: Context) {
+		if (serviceState.isForeground()) return
+
 		val intent = MusicLibraryService.CommandReceiver.getIntentWithAction()
 			.apply {
 				val key = MusicLibraryService.CommandReceiver.commandIntentReceiverActionKey

@@ -6,10 +6,9 @@ import androidx.media3.session.MediaSession
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isOngoing
 import com.kylentt.mediaplayer.domain.mediasession.service.MusicLibraryService
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
-import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import timber.log.Timber
 
-class MusicLibraryStateManager : MusicLibraryService.ServiceComponent() {
+class MusicLibraryStateManager : MusicLibraryService.ServiceComponent.Stoppable() {
 	private val playerListenerImpl = PlayerListenerImpl()
 
 	private val foregroundServiceCondition: (MediaSession) -> Boolean = {
@@ -28,29 +27,29 @@ class MusicLibraryStateManager : MusicLibraryService.ServiceComponent() {
 		private set
 
 	@MainThread
-	override fun create(serviceInteractor: MusicLibraryService.ServiceInteractor) {
-		super.create(serviceInteractor)
+	override fun onCreate(serviceInteractor: MusicLibraryService.ServiceInteractor) {
+		super.onCreate(serviceInteractor)
 	}
 
 	@MainThread
-	override fun start(componentInteractor: MusicLibraryService.ComponentInteractor) {
-		super.start(componentInteractor)
+	override fun onStart(componentInteractor: MusicLibraryService.ComponentInteractor) {
+		super.onStart(componentInteractor)
 		componentInteractor.mediaSessionManagerDelegator.registerPlayerEventListener(playerListenerImpl)
 		isStarted = true
 	}
 
 	@MainThread
-	override fun stop(componentInteractor: MusicLibraryService.ComponentInteractor) {
-		super.stop(componentInteractor)
+	override fun onStop(componentInteractor: MusicLibraryService.ComponentInteractor) {
+		super.onStop(componentInteractor)
 		componentInteractor.mediaSessionManagerDelegator.removePlayerEventListener(playerListenerImpl)
 		isStarted = false
 	}
 
 	@MainThread
-	override fun release(obj: Any) {
+	override fun onRelease(obj: Any) {
 		Timber.i("StateManager.release() called by $obj")
 
-		super.release(obj)
+		super.onRelease(obj)
 		isReleased = true
 
 		Timber.i("StateManager released by $obj")
@@ -64,7 +63,7 @@ class MusicLibraryStateManager : MusicLibraryService.ServiceComponent() {
 			val mediaSession =
 				componentInteractor?.mediaSessionManagerDelegator?.mediaSession ?: return
 			val notificationManagerDelegator =
-				componentInteractor?.mediaNotificationManagerDelegator?: return
+				componentInteractor?.mediaNotificationManagerDelegator ?: return
 
 			if (foregroundServiceCondition(mediaSession)) {
 				if (!getServiceInteractor.isForeground) {
@@ -77,7 +76,7 @@ class MusicLibraryStateManager : MusicLibraryService.ServiceComponent() {
 				}
 			}
 
-			when(playbackState) {
+			when (playbackState) {
 				Player.STATE_READY -> {}
 				Player.STATE_BUFFERING -> {}
 				Player.STATE_IDLE -> {}

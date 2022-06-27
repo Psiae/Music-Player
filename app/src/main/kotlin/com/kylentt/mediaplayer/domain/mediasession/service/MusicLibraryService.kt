@@ -3,11 +3,7 @@ package com.kylentt.mediaplayer.domain.mediasession.service
 import android.app.Notification
 import android.app.NotificationManager
 import android.app.Service
-import android.content.BroadcastReceiver
-import android.content.ComponentName
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
+import android.content.*
 import android.content.pm.ServiceInfo
 import android.os.IBinder
 import androidx.annotation.CallSuper
@@ -59,76 +55,6 @@ import kotlin.system.exitProcess
 @AndroidEntryPoint
 class MusicLibraryService : MediaLibraryService(), LifecycleService {
 
-	private val serviceComponents: MutableList<ServiceComponent> = mutableListOf()
-
-	abstract class ServiceComponent {
-		private lateinit var impl: ServiceComponent
-
-		protected var componentInteractor: ComponentInteractor? = null
-			private set
-		protected var serviceInteractor: ServiceInteractor? = null
-			private set
-
-		var isStartedInternal: Boolean = false
-			private set
-
-		var isReleasedInternal: Boolean = false
-			private set
-
-		@CallSuper
-		@MainThread
-		open fun create(serviceInteractor: ServiceInteractor) {
-			checkMainThread()
-			checkState(!::impl.isInitialized)
-			impl = this
-			impl.serviceInteractor = serviceInteractor
-		}
-
-		@CallSuper
-		@MainThread
-		open fun onContextAttached(context: Context) {
-			checkMainThread()
-		}
-
-		@CallSuper
-		@MainThread
-		open fun onDependencyInjected(serviceInteractor: ServiceInteractor) {
-			checkMainThread()
-		}
-
-		@CallSuper
-		@MainThread
-		open fun start(componentInteractor: ComponentInteractor) {
-			checkMainThread()
-			checkState(::impl.isInitialized)
-			impl.componentInteractor = componentInteractor
-			isStartedInternal = true
-		}
-
-		@CallSuper
-		@MainThread
-		open fun stop(componentInteractor: ComponentInteractor) {
-			checkMainThread()
-			checkState(::impl.isInitialized)
-			impl.componentInteractor = null
-			isStartedInternal = false
-		}
-
-		@CallSuper
-		@MainThread
-		open fun release(obj: Any) {
-			if (isStartedInternal) stop(impl.componentInteractor!!)
-
-			serviceInteractor = null
-
-			checkState(!isStartedInternal
-				&& impl.serviceInteractor == null
-				&& impl.componentInteractor == null)
-
-			isReleasedInternal = true
-		}
-	}
-
 	@Inject
 	lateinit var coilHelper: CoilHelper
 
@@ -147,20 +73,22 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 	private val sessionCallbackImpl = SessionCallbackImpl()
 	private val serviceCommandReceiver = ServiceCommandReceiver()
 
+	/** @see [ServiceComponent] */
+	private val serviceComponents: MutableList<ServiceComponent> = mutableListOf()
+
 	private val mediaSessionManager: SessionManager
 	private val mediaPlaybackManager: PlaybackManager
 	private val mediaNotificationManager: MediaNotificationManager
-
 	private val stateManager: MusicLibraryStateManager
-
 	private val componentInteractor: ComponentInteractor
-	private val serviceInteractor = ServiceInteractor()
-
-	private var isReleasing = false
-	override val service: Service = this
+	private val serviceInteractor: ServiceInteractor
 
 	private val appDispatchers = AppModule.provideAppDispatchers()
 	private val serviceJob = SupervisorJob()
+
+	private var isReleasing = false
+
+	override val service: Service = this
 
 	val serviceStateSF = stateRegistry.serviceStateSF
 	val serviceEventSF = stateRegistry.serviceEventSF
@@ -182,15 +110,17 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 		mediaNotificationManager = MediaNotificationManager()
 		stateManager = MusicLibraryStateManager()
 
+		componentInteractor = ComponentInteractor(
+			mediaSessionManager.Delegate(), mediaPlaybackManager.Delegate(),
+			stateManager.Delegate(), mediaNotificationManager.Delegate()
+		)
+
+		serviceInteractor = ServiceInteractor()
+
 		serviceComponents.add(mediaSessionManager)
 		serviceComponents.add(mediaPlaybackManager)
 		serviceComponents.add(mediaNotificationManager)
 		serviceComponents.add(stateManager)
-
-		componentInteractor = ComponentInteractor(
-			mediaNotificationManager.Delegate(), mediaSessionManager.Delegate(), stateManager.Delegate()
-		)
-
 		serviceComponents.forEach { it.create(serviceInteractor) }
 		postInitialize()
 	}
@@ -209,7 +139,7 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 
 	private fun onContextAttached() {
 		stateRegistry.onEvent(ServiceEvent.ContextAttached)
-		serviceComponents.forEach { it.onContextAttached(this) }
+		serviceComponents.forEach { it.contextAttached(this) }
 		initializeService()
 	}
 
@@ -231,7 +161,7 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 
 	private fun onPostSuperOnCreate() {
 		stateRegistry.onEvent(ServiceEvent.InjectDependency) // Hilt Injected dependency
-		serviceComponents.forEach { it.onDependencyInjected(serviceInteractor) }
+		serviceComponents.forEach { it.dependencyInjected() }
 		initializeLibrarySession()
 	}
 
@@ -244,18 +174,22 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 	}
 
 	override fun onUpdateNotification(session: MediaSession) {
+		Timber.i("onUpdateNotification")
+
 		if (isReleasing) return
 		if (isServiceStopped) onStart()
 		mediaNotificationManager.onUpdateNotification(session)
 	}
 
 	override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-		if (serviceStateSF.value sameAs STATE.Created) {
+		if (!isServiceStarted) {
 			onStart()
 		}
 
-		Timber.i("MusicLibraryService onStartCommand()," +
-			" ${intent}\n${flags}\n${startId}\n${serviceEventSF.value}\n${serviceStateSF.value}")
+		Timber.i(
+			"MusicLibraryService onStartCommand()," +
+				" ${intent}\n${flags}\n${startId}\n${serviceEventSF.value}\n${serviceStateSF.value}"
+		)
 
 		stateRegistry.onEvent(ServiceEvent.StartCommand)
 
@@ -283,7 +217,7 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 	}
 
 	override fun onBind(intent: Intent?): IBinder? {
-		if (serviceStateSF.value sameAs STATE.Created) {
+		if (!isServiceStarted) {
 			onStart()
 		}
 		stateRegistry.onEvent(ServiceEvent.Binding)
@@ -336,8 +270,10 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 		}
 
 		serviceComponents.forEach {
-			Timber.i("Service Release session," +
-				"\n${it.javaClass.simpleName} released: ${it.isReleasedInternal}")
+			Timber.i(
+				"Service Release session," +
+					"\n${it.javaClass.simpleName} released: ${it.isReleasedInternal}"
+			)
 		}
 
 		serviceComponents.forEach {
@@ -412,7 +348,7 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 		stateRegistry.onEvent(ServiceEvent.Stop)
 
 		stopSelf()
-		serviceComponents.forEach { it.stop(componentInteractor) }
+		serviceComponents.forEach { if (it is ServiceComponent.Stoppable) it.stop(componentInteractor) }
 
 		postStopService(releaseSession)
 	}
@@ -421,6 +357,172 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 		stateRegistry.onEvent(ServiceEvent.PostStop(releaseSession))
 		if (releaseSession) {
 			this.sessions.forEach { it.release() }
+		}
+	}
+
+	/**
+	 * Abstraction for what is essentially this Service Component
+	 * instead of constructing them with this service as a whole
+	 * they will Interact with each other and service through
+	 * [ComponentInteractor], [ServiceInteractor] and [ServiceCommandReceiver]
+	 *
+	 * note: my first time actually using an abstract class (really),
+	 * just want an experience thus why it exist
+	 */
+
+	abstract class ServiceComponent {
+
+		/** represent the sub-Class */
+
+		private lateinit var impl: ServiceComponent
+
+		/**
+		 * the provided [ServiceInteractor],
+		 *
+		 * not null after [onCreate] is called
+		 *
+		 * null after [onRelease] is called
+		 */
+
+		private var mServiceInteractor: ServiceInteractor? = null
+
+		/**
+		 * the provided [ComponentInteractor],
+		 *
+		 * not null after [onStart] is called
+		 *
+		 * null after [onRelease] is called
+		 */
+
+		private var mComponentInteractor: ComponentInteractor? = null
+		private var mStartedInternal: Boolean = false
+		private var mReleasedInternal: Boolean = false
+
+		protected open val serviceInteractor
+			get() = mServiceInteractor
+
+		protected open val componentInteractor
+			get() = mComponentInteractor
+
+		open val isStartedInternal
+			get() = mStartedInternal
+
+		open val isReleasedInternal
+			get() = mReleasedInternal
+
+		fun create(serviceInteractor: ServiceInteractor) {
+			if (!::impl.isInitialized) onCreate(serviceInteractor)
+			checkState(::impl.isInitialized)
+		}
+
+		fun contextAttached(context: Context) {
+			checkState(::impl.isInitialized)
+			onContextAttached(context)
+		}
+
+		fun dependencyInjected() {
+			checkState(::impl.isInitialized)
+			onDependencyInjected()
+		}
+
+		fun start(componentInteractor: ComponentInteractor) {
+			if (!isStartedInternal) onStart(componentInteractor)
+		}
+
+		fun release(obj: Any) {
+			if (!isReleasedInternal) onRelease(obj)
+		}
+
+		/**
+		 * Single Time Event when the component is initialized
+		 *
+		 * @param serviceInteractor the non-null [ServiceInteractor]
+		 */
+
+		@CallSuper
+		@MainThread
+		protected open fun onCreate(serviceInteractor: ServiceInteractor) {
+			checkMainThread()
+			checkState(!::impl.isInitialized)
+			impl = this
+			impl.mServiceInteractor = serviceInteractor
+		}
+
+		/**
+		 * Single Time Event when the service Context is attached
+		 *
+		 * @param context the non-null Context
+		 */
+
+		@CallSuper
+		@MainThread
+		protected open fun onContextAttached(context: Context) {
+			checkMainThread()
+		}
+
+		/**
+		 * Single Time Event when the service property Annotated with @Inject is provided by Hilt
+		 */
+
+		@CallSuper
+		@MainThread
+		protected open fun onDependencyInjected() {
+			checkMainThread()
+		}
+
+		/**
+		 * Multiple Time Event when the Service decide that this Component is ready to start and interact
+		 *
+		 * also provide [mComponentInteractor]
+		 *
+		 * @param componentInteractor non-null [ComponentInteractor]
+		 */
+
+		@CallSuper
+		@MainThread
+		protected open fun onStart(componentInteractor: ComponentInteractor) {
+			checkMainThread()
+			checkState(::impl.isInitialized)
+			mComponentInteractor = componentInteractor
+			mStartedInternal = true
+		}
+
+
+		@CallSuper
+		@MainThread
+		protected open fun onRelease(obj: Any) {
+			mServiceInteractor = null
+
+			checkState(
+				!isStartedInternal
+					&& impl.mServiceInteractor == null
+					&& impl.mComponentInteractor == null
+			)
+
+			mReleasedInternal = true
+		}
+
+		abstract class Stoppable : ServiceComponent() {
+
+			private var mStoppedInternal = false
+
+			override val isStartedInternal: Boolean
+				get() = if (!mStoppedInternal) super.isStartedInternal else false
+
+			override val componentInteractor: ComponentInteractor?
+				get() = if (!mStoppedInternal) super.componentInteractor else null
+
+			fun stop(componentInteractor: ComponentInteractor) {
+				if (!isStartedInternal) onStop(componentInteractor)
+				checkState(isStartedInternal)
+			}
+
+			@MainThread
+			@CallSuper
+			protected open fun onStop(componentInteractor: ComponentInteractor) {
+				checkMainThread()
+				mStoppedInternal = true
+			}
 		}
 	}
 
@@ -758,12 +860,10 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 
 	inner class ServiceCommandReceiver : BroadcastReceiver() {
 
-		private fun handleRequestStartService(context: Context) {
-			if (isServiceStarted) return
-			if (context !== this@MusicLibraryService.baseContext) {
-				Timber.w("only MusicLibraryService Component can request start service")
+		private fun handleRequestStartService(context: Context, intent: Intent) {
+			if (!isServiceStarted) {
+				onStart()
 			}
-			onStart()
 		}
 
 		override fun onReceive(context: Context?, intent: Intent?) {
@@ -775,18 +875,20 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 
 			when (action) {
 				CommandReceiver.ACTION_CANCEL_ALL_NOTIFICATION -> notificationManagerService.cancelAll()
-				CommandReceiver.ACTION_REQUEST_START_SERVICE -> handleRequestStartService(context)
+				CommandReceiver.ACTION_REQUEST_START_SERVICE -> handleRequestStartService(context, intent)
 			}
 		}
 	}
 
 	inner class ComponentInteractor(
-		notificationManagerDelegate: MediaNotificationManager.Delegate,
 		sessionManagerDelegate: SessionManager.Delegate,
-		stateManagerDelegate: MusicLibraryStateManager.Delegate
+		playbackManagerDelegate: PlaybackManager.Delegate,
+		stateManagerDelegate: MusicLibraryStateManager.Delegate,
+		notificationManagerDelegate: MediaNotificationManager.Delegate,
 	) {
 		val mediaNotificationManagerDelegator = notificationManagerDelegate
 		val mediaSessionManagerDelegator = sessionManagerDelegate
+		val mediaPlaybackManagerDelegator = mediaPlaybackManager
 		val stateManagerDelegator = stateManagerDelegate
 	}
 

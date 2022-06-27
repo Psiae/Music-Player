@@ -149,7 +149,7 @@ class MediaNotificationProvider(
 		return getMediaNotificationBuilder(player, largeIcon, onGoing, channelId)
 			.apply {
 				val style = MediaStyleNotificationHelper.MediaStyle(mediaSession)
-					.setShowActionsInCompactView(1,2,3)
+					.setShowActionsInCompactView(1, 2, 3)
 					.setCancelButtonIntent(makeDismissPendingIntent(item))
 					.setShowCancelButton(true)
 				setStyle(style)
@@ -166,7 +166,7 @@ class MediaNotificationProvider(
 		return getMediaNotificationBuilder(player, largeIcon, onGoing, channelId)
 			.apply {
 				val style = androidx.media.app.NotificationCompat.MediaStyle()
-					.setShowActionsInCompactView(1,2,3)
+					.setShowActionsInCompactView(1, 2, 3)
 					.setCancelButtonIntent(makeDismissPendingIntent(player.currentMediaItem.orEmpty()))
 					.setShowCancelButton(true)
 				setStyle(style)
@@ -342,7 +342,7 @@ class MediaNotificationProvider(
 	private fun Intent.applyActionExtra(value: String) = putExtra(ACTION_KEY_NAME, value)
 
 	interface ActionReceiver {
-		fun actionAny(context: Context, intent: Intent)
+		fun actionAny(context: Context, intent: Intent): Int
 		fun actionPlay(context: Context, intent: Intent)
 		fun actionPause(context: Context, intent: Intent)
 		fun actionNext(context: Context, intent: Intent)
@@ -361,16 +361,17 @@ class MediaNotificationProvider(
 		override fun onReceive(context: Context?, intent: Intent?) {
 			if (context == null
 				|| intent == null
-				|| context.packageName != this@MediaNotificationProvider.context.packageName) return
+				|| context.packageName != this@MediaNotificationProvider.context.packageName
+			) return
 
 			onReceiveImpl(context, intent)
 		}
 
 		fun onReceiveImpl(context: Context, intent: Intent) {
 			val receiver = actionReceiver!!
-			val action = intent.getStringExtra(ACTION_KEY_NAME) ?: return
 
-			receiver.actionAny(context, intent)
+			val action = intent.getStringExtra(ACTION_KEY_NAME) ?: return
+			if (receiver.actionAny(context, intent) < 0) return
 
 			when (action) {
 				ACTION_Play_NAME -> receiver.actionPlay(context, intent)

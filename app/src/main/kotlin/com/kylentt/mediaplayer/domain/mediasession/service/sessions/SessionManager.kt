@@ -20,7 +20,7 @@ import timber.log.Timber
 class SessionManager(
 	private val service: MusicLibraryService,
 	private val sessionCallback: MediaLibrarySession.Callback
-) : MusicLibraryService.ServiceComponent() {
+) : MusicLibraryService.ServiceComponent.Stoppable() {
 
 	private val sessionRegistry = SessionRegistry()
 
@@ -35,42 +35,42 @@ class SessionManager(
 			field = value
 		}
 
-	override fun create(serviceInteractor: MusicLibraryService.ServiceInteractor) {
-		super.create(serviceInteractor)
+	override fun onCreate(serviceInteractor: MusicLibraryService.ServiceInteractor) {
+		super.onCreate(serviceInteractor)
 		sessionManagerJob = serviceInteractor.getCoroutineMainJob()
 	}
 
-	override fun onContextAttached(context: Context) {
-		super.onContextAttached(context)
-	}
-
-	override fun onDependencyInjected(serviceInteractor: MusicLibraryService.ServiceInteractor) {
-		super.onDependencyInjected(serviceInteractor)
+	override fun onDependencyInjected() {
+		super.onDependencyInjected()
 		if (!sessionRegistry.isLibrarySessionInitialized) {
 			val get = sessionRegistry
-				.buildMediaLibrarySession(serviceInteractor.getContext()!!, service, service.injectedPlayer)
+				.buildMediaLibrarySession(
+					serviceInteractor!!.getContext()!!,
+					service,
+					service.injectedPlayer
+				)
 			sessionRegistry.changeLocalLibrarySession(get)
 		}
 	}
 
-	override fun start(
+	override fun onStart(
 		componentInteractor: MusicLibraryService.ComponentInteractor
 	) {
-		super.start(componentInteractor)
+		super.onStart(componentInteractor)
 		isManagerStarted = true
 	}
 
 	@MainThread
-	override fun stop(componentInteractor: MusicLibraryService.ComponentInteractor) {
-		super.stop(componentInteractor)
+	override fun onStop(componentInteractor: MusicLibraryService.ComponentInteractor) {
+		super.onStop(componentInteractor)
 		// TODO: do something about the session and or player
 		isManagerStarted = false
 	}
 
 	@MainThread
-	override fun release(obj: Any) {
+	override fun onRelease(obj: Any) {
 		Timber.i("SessionManager.release() called by $obj")
-		super.release(obj)
+		super.onRelease(obj)
 
 		sessionManagerJob.cancel()
 		sessionRegistry.release()
@@ -168,8 +168,10 @@ class SessionManager(
 
 			if (isLibrarySessionInitialized) {
 				if (localLibrarySession === session) {
-					return Timber.w("Tried to change LocalLibrarySession to same Instance." +
-						"\n $localLibrarySession === $session")
+					return Timber.w(
+						"Tried to change LocalLibrarySession to same Instance." +
+							"\n $localLibrarySession === $session"
+					)
 				}
 
 				oldSession = localLibrarySession

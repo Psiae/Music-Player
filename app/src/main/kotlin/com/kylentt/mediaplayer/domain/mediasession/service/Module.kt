@@ -1,10 +1,6 @@
 package com.kylentt.mediaplayer.domain.mediasession.service
 
 import android.content.Context
-import android.os.Looper
-import androidx.media3.common.AudioAttributes
-import androidx.media3.common.C.CONTENT_TYPE_MUSIC
-import androidx.media3.common.C.USAGE_MEDIA
 import androidx.media3.exoplayer.ExoPlayer
 import com.kylentt.mediaplayer.core.media3.ExoPlayerFactory
 import dagger.Module

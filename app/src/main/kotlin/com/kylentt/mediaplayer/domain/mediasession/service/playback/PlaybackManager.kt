@@ -23,7 +23,7 @@ import kotlinx.coroutines.*
 import timber.log.Timber
 import java.io.File
 
-class PlaybackManager : MusicLibraryService.ServiceComponent() {
+class PlaybackManager : MusicLibraryService.ServiceComponent.Stoppable() {
 	private val playbackListener = PlayerPlaybackListener()
 	private val eventHandler = PlayerPlaybackEventHandler()
 
@@ -34,30 +34,30 @@ class PlaybackManager : MusicLibraryService.ServiceComponent() {
 	private var isStarted = false
 	private var isReleased = false
 
-	override fun create(serviceInteractor: MusicLibraryService.ServiceInteractor) {
-		super.create(serviceInteractor)
+	override fun onCreate(serviceInteractor: MusicLibraryService.ServiceInteractor) {
+		super.onCreate(serviceInteractor)
 		managerJob = serviceInteractor.getCoroutineMainJob()
 		dispatchers = serviceInteractor.getCoroutineDispatchers()
 		immediateScope = CoroutineScope(dispatchers.mainImmediate + managerJob)
 	}
 
 	@MainThread
-	override fun start(componentInteractor: MusicLibraryService.ComponentInteractor) {
-		super.start(componentInteractor)
+	override fun onStart(componentInteractor: MusicLibraryService.ComponentInteractor) {
+		super.onStart(componentInteractor)
 		componentInteractor.mediaSessionManagerDelegator.registerPlayerEventListener(playbackListener)
 		isStarted = true
 	}
 
 	@MainThread
-	override fun stop(componentInteractor: MusicLibraryService.ComponentInteractor) {
-		super.stop(componentInteractor)
+	override fun onStop(componentInteractor: MusicLibraryService.ComponentInteractor) {
+		super.onStop(componentInteractor)
 		componentInteractor.mediaSessionManagerDelegator.removePlayerEventListener(playbackListener)
 		isStarted = false
 	}
 
 	@MainThread
-	override fun release(obj: Any) {
-		super.release(obj)
+	override fun onRelease(obj: Any) {
+		super.onRelease(obj)
 
 		Timber.i("PlaybackManager.release() called by $obj")
 
@@ -95,7 +95,11 @@ class PlaybackManager : MusicLibraryService.ServiceComponent() {
 				PlaybackException.ERROR_CODE_DECODING_FAILED -> {
 					player.pause()
 					val context = serviceInteractor?.getContext()!!.applicationContext
-					val toast = Toast.makeText(context, "Decoding Failed (${error.errorCode}), Paused", Toast.LENGTH_LONG)
+					val toast = Toast.makeText(
+						context,
+						"Decoding Failed (${error.errorCode}), Paused",
+						Toast.LENGTH_LONG
+					)
 					toast.show()
 				}
 			}
@@ -145,8 +149,9 @@ class PlaybackManager : MusicLibraryService.ServiceComponent() {
 
 			indexToRemove.forEach { player.removeMediaItem(it) }
 
-			val toast = Toast.makeText(currentContext.applicationContext,
-				"Could Not Find Media ${ if (count > 1) "Files ($count)" else "File" }",
+			val toast = Toast.makeText(
+				currentContext.applicationContext,
+				"Could Not Find Media ${if (count > 1) "Files ($count)" else "File"}",
 				Toast.LENGTH_LONG
 			)
 
@@ -167,7 +172,7 @@ class PlaybackManager : MusicLibraryService.ServiceComponent() {
 	private inner class ServiceObserver : LifecycleEventObserver {
 		override fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event) {
 			when (event) {
-				ON_DESTROY -> release(this)
+				ON_DESTROY -> onRelease(this)
 				else -> Unit
 			}
 		}

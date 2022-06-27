@@ -9,17 +9,12 @@ import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import timber.log.Timber
 
-class MusicLibraryStateManager(
-	private val musicLibrary: MusicLibraryService,
-	private val stateInteractor: MusicLibraryService.StateInteractor,
-) {
+class MusicLibraryStateManager : MusicLibraryService.ServiceComponent() {
 	private val playerListenerImpl = PlayerListenerImpl()
 
 	private val foregroundServiceCondition: (MediaSession) -> Boolean = {
 		it.player.playbackState.isOngoing()
 	}
-
-	private var componentInteractor: MusicLibraryService.ComponentInteractor? = null
 
 	var isReleased: Boolean = false
 		private set(value) {
@@ -33,43 +28,29 @@ class MusicLibraryStateManager(
 		private set
 
 	@MainThread
-	fun start(componentInteractor: MusicLibraryService.ComponentInteractor) {
-		checkMainThread()
+	override fun create(serviceInteractor: MusicLibraryService.ServiceInteractor) {
+		super.create(serviceInteractor)
+	}
 
-		if (isReleased || isStarted) return
-
-		if (this.componentInteractor !== componentInteractor) {
-			this.componentInteractor = componentInteractor
-
-			with(this.componentInteractor!!) {
-				mediaSessionManagerDelegator.registerPlayerEventListener(playerListenerImpl)
-			}
-		}
-
+	@MainThread
+	override fun start(componentInteractor: MusicLibraryService.ComponentInteractor) {
+		super.start(componentInteractor)
+		componentInteractor.mediaSessionManagerDelegator.registerPlayerEventListener(playerListenerImpl)
 		isStarted = true
 	}
 
 	@MainThread
-	fun stop() {
-		checkMainThread()
-		if (isReleased || !isStarted) return
-
-		with(this.componentInteractor!!) {
-			mediaSessionManagerDelegator.removePlayerEventListener(playerListenerImpl)
-		}
-
+	override fun stop(componentInteractor: MusicLibraryService.ComponentInteractor) {
+		super.stop(componentInteractor)
+		componentInteractor.mediaSessionManagerDelegator.removePlayerEventListener(playerListenerImpl)
 		isStarted = false
 	}
 
 	@MainThread
-	fun release(obj: Any) {
+	override fun release(obj: Any) {
 		Timber.i("StateManager.release() called by $obj")
 
-		checkMainThread()
-
-		if (isReleased) return
-		if (isStarted) stop()
-
+		super.release(obj)
 		isReleased = true
 
 		Timber.i("StateManager released by $obj")
@@ -77,7 +58,8 @@ class MusicLibraryStateManager(
 
 	private inner class PlayerListenerImpl : Player.Listener {
 		override fun onPlaybackStateChanged(playbackState: Int) {
-			if (isReleased) return
+			if (!isStarted) return
+			val getServiceInteractor = serviceInteractor!!
 
 			val mediaSession =
 				componentInteractor?.mediaSessionManagerDelegator?.mediaSession ?: return
@@ -85,13 +67,12 @@ class MusicLibraryStateManager(
 				componentInteractor?.mediaNotificationManagerDelegator?: return
 
 			if (foregroundServiceCondition(mediaSession)) {
-				if (musicLibrary.isServiceStopped) stateInteractor.callStart()
-				if (!musicLibrary.isServiceForeground) {
+				if (!getServiceInteractor.isForeground) {
 					notificationManagerDelegator
 						.startForegroundService(mediaSession, onGoingNotification = true, isEvent = true)
 				}
 			} else {
-				if (musicLibrary.isServiceForeground) {
+				if (getServiceInteractor.isForeground) {
 					notificationManagerDelegator.stopForegroundService(true)
 				}
 			}

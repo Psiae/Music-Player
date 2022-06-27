@@ -1,150 +1,129 @@
 package com.kylentt.mediaplayer.domain.mediasession.service.sessions
 
 import android.app.PendingIntent
+import android.content.Context
 import androidx.annotation.MainThread
 import androidx.media3.common.Player
+import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaLibraryService.MediaLibrarySession
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSession.ControllerInfo
 import com.kylentt.mediaplayer.app.delegates.AppDelegate
-import com.kylentt.mediaplayer.app.dependency.AppModule
 import com.kylentt.mediaplayer.core.OnChangedNotNull
-import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
 import com.kylentt.mediaplayer.domain.mediasession.service.MusicLibraryService
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
-import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.Job
 import timber.log.Timber
 
-class MusicLibrarySessionManager(
-	private val musicLibrary: MusicLibraryService,
+class SessionManager(
+	private val service: MusicLibraryService,
 	private val sessionCallback: MediaLibrarySession.Callback
-) {
+) : MusicLibraryService.ServiceComponent() {
 
 	private val sessionRegistry = SessionRegistry()
-	private val sessionManagerJob = SupervisorJob(musicLibrary.serviceJob)
 
-	private var componentInteractor: MusicLibraryService.ComponentInteractor? = null
+	private lateinit var sessionManagerJob: Job
 
-	var isReleased: Boolean = false
-		private set(value) {
+	private var isManagerStarted: Boolean = false
+	private var isManagerReleased: Boolean = false
+		set(value) {
 			checkArgument(value) {
 				"cannot unRelease this class"
 			}
 			field = value
 		}
 
-	var isStarted: Boolean = false
-		private set
+	override fun create(serviceInteractor: MusicLibraryService.ServiceInteractor) {
+		super.create(serviceInteractor)
+		sessionManagerJob = serviceInteractor.getCoroutineMainJob()
+	}
 
-	val coroutineDispatchers: AppDispatchers = AppModule.provideAppDispatchers()
+	override fun onContextAttached(context: Context) {
+		super.onContextAttached(context)
+	}
 
-	val mainImmediateScope: CoroutineScope =
-		CoroutineScope(coroutineDispatchers.mainImmediate + sessionManagerJob)
+	override fun onDependencyInjected(serviceInteractor: MusicLibraryService.ServiceInteractor) {
+		super.onDependencyInjected(serviceInteractor)
+		if (!sessionRegistry.isLibrarySessionInitialized) {
+			val get = sessionRegistry
+				.buildMediaLibrarySession(serviceInteractor.getContext()!!, service, service.injectedPlayer)
+			sessionRegistry.changeLocalLibrarySession(get)
+		}
+	}
 
-	val mainScope: CoroutineScope =
-		CoroutineScope(coroutineDispatchers.main + sessionManagerJob)
-
-	@MainThread
-	fun start(
-		componentInteractor: MusicLibraryService.ComponentInteractor,
-		player: Player
+	override fun start(
+		componentInteractor: MusicLibraryService.ComponentInteractor
 	) {
-		checkMainThread()
-
-		if (isReleased || isStarted) return
-
-		if (sessionRegistry.isLibrarySessionInitialized) {
-			return Timber.w("Tried to Initialize LibrarySession Multiple Times")
-		}
-
-		if (this.componentInteractor != componentInteractor) {
-			this.componentInteractor = componentInteractor
-		}
-
-		val get = sessionRegistry.buildMediaLibrarySession(musicLibrary, player)
-		sessionRegistry.changeLocalLibrarySession(get)
-
-		isStarted = true
+		super.start(componentInteractor)
+		isManagerStarted = true
 	}
 
 	@MainThread
-	fun stop() {
-		checkMainThread()
-
-		if (isReleased || !isStarted) return
-
-		this.componentInteractor = null
-
+	override fun stop(componentInteractor: MusicLibraryService.ComponentInteractor) {
+		super.stop(componentInteractor)
 		// TODO: do something about the session and or player
-
-		isStarted = false
+		isManagerStarted = false
 	}
 
 	@MainThread
-	fun release(obj: Any) {
+	override fun release(obj: Any) {
 		Timber.i("SessionManager.release() called by $obj")
-
-		checkMainThread()
-
-		if (isReleased) return
-		if (isStarted) stop()
+		super.release(obj)
 
 		sessionManagerJob.cancel()
 		sessionRegistry.release()
 
-		isReleased = true
+		isManagerReleased = true
 
 		Timber.i("SessionManager released by $obj")
 	}
 
 	fun getCurrentMediaSession(): MediaSession? {
-		if (isReleased || !sessionRegistry.isLibrarySessionInitialized) return null
+		if (isManagerReleased || !sessionRegistry.isLibrarySessionInitialized) return null
 
 		return sessionRegistry.localLibrarySession
 	}
 
 	fun getSessionPlayer(): Player? {
-		if (isReleased || !sessionRegistry.isLibrarySessionInitialized) return null
+		if (isManagerReleased || !sessionRegistry.isLibrarySessionInitialized) return null
 
 		return sessionRegistry.localLibrarySession.player
 	}
 
 	fun changeSessionPlayer(player: Player, release: Boolean) {
-		if (isReleased) return
+		if (isManagerReleased) return
 
 		sessionRegistry.changeSessionPlayer(player, release)
 	}
 
 	fun registerPlayerChangedListener(onChanged: OnChangedNotNull<Player>) {
-		if (isReleased) return
+		if (isManagerReleased) return
 
 		sessionRegistry.registerOnPlayerChangedListener(onChanged)
 	}
 
 	fun unregisterPlayerChangedListener(onChanged: OnChangedNotNull<Player>): Boolean {
-		if (isReleased) return false
+		if (isManagerReleased) return false
 
 		return sessionRegistry.unRegisterOnPlayerChangedListener(onChanged)
 	}
 
 	fun registerPlayerEventListener(listener: Player.Listener) {
-		if (isReleased) return
+		if (isManagerReleased) return
 
 		sessionRegistry.registerOnPlayerEventListener(listener)
 	}
 
 	fun unRegisterPlayerEventListener(listener: Player.Listener): Boolean {
-		if (isReleased) return false
+		if (isManagerReleased) return false
 
 		return sessionRegistry.unregisterOnPlayerEventListener(listener)
 	}
 
 	fun onGetSession(controllerInfo: ControllerInfo): MediaLibrarySession? {
-		return if (!isReleased) sessionRegistry.localLibrarySession else null
+		return if (!isManagerReleased) sessionRegistry.localLibrarySession else null
 	}
 
 	private inner class SessionRegistry {
@@ -252,24 +231,21 @@ class MusicLibrarySessionManager(
 		}
 
 		fun buildMediaLibrarySession(
-			musicService: MusicLibraryService,
+			context: Context,
+			libraryService: MediaLibraryService,
 			player: Player
 		): MediaLibrarySession {
-			checkNotNull(musicService.baseContext)
-
 			val intent = AppDelegate.launcherIntent()
 			val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
 			val requestCode = MainActivity.Constants.LAUNCH_REQUEST_CODE
-			val sessionActivity = PendingIntent.getActivity(musicService.baseContext, requestCode, intent, flag)
-			val builder = MediaLibrarySession.Builder(musicService, player, sessionCallback)
+			val sessionActivity = PendingIntent.getActivity(context, requestCode, intent, flag)
+			val builder = MediaLibrarySession.Builder(libraryService, player, sessionCallback)
 
-			val get = with(builder) {
+			return with(builder) {
 				setId(MusicLibraryService.Constants.SESSION_ID)
 				setSessionActivity(sessionActivity)
 				build()
 			}
-
-			return get
 		}
 
 		fun releaseSession() {
@@ -293,15 +269,15 @@ class MusicLibrarySessionManager(
 			get() = getCurrentMediaSession()
 
 		fun registerPlayerChangedListener(listener: OnChangedNotNull<Player>): Unit =
-			this@MusicLibrarySessionManager.registerPlayerChangedListener(listener)
+			this@SessionManager.registerPlayerChangedListener(listener)
 
 		fun removePlayerChangedListener(listener: OnChangedNotNull<Player>): Boolean =
-			this@MusicLibrarySessionManager.unregisterPlayerChangedListener(listener)
+			this@SessionManager.unregisterPlayerChangedListener(listener)
 
 		fun registerPlayerEventListener(listener: Player.Listener) =
-			this@MusicLibrarySessionManager.registerPlayerEventListener(listener)
+			this@SessionManager.registerPlayerEventListener(listener)
 
 		fun removePlayerEventListener(listener: Player.Listener) =
-			this@MusicLibrarySessionManager.unRegisterPlayerEventListener(listener)
+			this@SessionManager.unRegisterPlayerEventListener(listener)
 	}
 }

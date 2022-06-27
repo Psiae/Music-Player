@@ -10,9 +10,12 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.os.IBinder
+import androidx.annotation.CallSuper
+import androidx.annotation.MainThread
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.Lifecycle.Event
 import androidx.lifecycle.Lifecycle.State.INITIALIZED
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import androidx.media3.common.MediaItem
@@ -22,21 +25,25 @@ import androidx.media3.session.MediaSession
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.kylentt.mediaplayer.app.delegates.AppDelegate
+import com.kylentt.mediaplayer.app.dependency.AppModule
+import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
 import com.kylentt.mediaplayer.core.extenstions.LifecycleEvent
 import com.kylentt.mediaplayer.core.extenstions.LifecycleService
 import com.kylentt.mediaplayer.core.media3.MediaItemFactory
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper.mediaUri
 import com.kylentt.mediaplayer.data.repository.MediaRepository
 import com.kylentt.mediaplayer.domain.mediasession.MediaSessionConnector
-import com.kylentt.mediaplayer.domain.mediasession.service.notification.MusicLibraryMediaNotificationManager
-import com.kylentt.mediaplayer.domain.mediasession.service.playback.MusicLibraryPlaybackManager
-import com.kylentt.mediaplayer.domain.mediasession.service.sessions.MusicLibrarySessionManager
+import com.kylentt.mediaplayer.domain.mediasession.service.notification.MediaNotificationManager
+import com.kylentt.mediaplayer.domain.mediasession.service.playback.PlaybackManager
+import com.kylentt.mediaplayer.domain.mediasession.service.sessions.SessionManager
 import com.kylentt.mediaplayer.domain.mediasession.service.state.MusicLibraryStateManager
+import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.helper.VersionHelper
 import com.kylentt.mediaplayer.helper.image.CoilHelper
 import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -51,6 +58,75 @@ import kotlin.system.exitProcess
 
 @AndroidEntryPoint
 class MusicLibraryService : MediaLibraryService(), LifecycleService {
+
+	private val serviceComponents: MutableList<ServiceComponent> = mutableListOf()
+
+	abstract class ServiceComponent {
+		private lateinit var impl: ServiceComponent
+
+		protected var componentInteractor: ComponentInteractor? = null
+			private set
+		protected var serviceInteractor: ServiceInteractor? = null
+			private set
+
+		var isStartedInternal: Boolean = false
+			private set
+
+		var isReleasedInternal: Boolean = false
+			private set
+
+		@CallSuper
+		@MainThread
+		open fun create(serviceInteractor: ServiceInteractor) {
+			checkMainThread()
+			impl = this
+			impl.serviceInteractor = serviceInteractor
+		}
+
+		@CallSuper
+		@MainThread
+		open fun onContextAttached(context: Context) {
+			checkMainThread()
+		}
+
+		@CallSuper
+		@MainThread
+		open fun onDependencyInjected(serviceInteractor: ServiceInteractor) {
+			checkMainThread()
+		}
+
+		@CallSuper
+		@MainThread
+		open fun start(componentInteractor: ComponentInteractor) {
+			checkMainThread()
+			checkState(::impl.isInitialized)
+			impl.componentInteractor = componentInteractor
+			isStartedInternal = true
+		}
+
+		@CallSuper
+		@MainThread
+		open fun stop(componentInteractor: ComponentInteractor) {
+			checkMainThread()
+			checkState(::impl.isInitialized)
+			impl.componentInteractor = null
+			isStartedInternal = false
+		}
+
+		@CallSuper
+		@MainThread
+		open fun release(obj: Any) {
+			if (isStartedInternal) stop(impl.componentInteractor!!)
+
+			serviceInteractor = null
+
+			checkState(!isStartedInternal
+				&& impl.serviceInteractor == null
+				&& impl.componentInteractor == null)
+
+			isReleasedInternal = true
+		}
+	}
 
 	@Inject
 	lateinit var coilHelper: CoilHelper
@@ -70,18 +146,20 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 	private val sessionCallbackImpl = SessionCallbackImpl()
 	private val serviceCommandReceiver = ServiceCommandReceiver()
 
-	private val mediaSessionManager: MusicLibrarySessionManager
-	private val mediaPlaybackManager: MusicLibraryPlaybackManager
-	private val mediaNotificationManager: MusicLibraryMediaNotificationManager
+	private val mediaSessionManager: SessionManager
+	private val mediaPlaybackManager: PlaybackManager
+	private val mediaNotificationManager: MediaNotificationManager
 
 	private val stateManager: MusicLibraryStateManager
 
 	private val componentInteractor: ComponentInteractor
+	private val serviceInteractor = ServiceInteractor()
 
 	private var isReleasing = false
 	override val service: Service = this
 
-	val serviceJob = SupervisorJob()
+	private val appDispatchers = AppModule.provideAppDispatchers()
+	private val serviceJob = SupervisorJob()
 
 	val serviceStateSF = stateRegistry.serviceStateSF
 	val serviceEventSF = stateRegistry.serviceEventSF
@@ -97,20 +175,21 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 
 		stateRegistry.onEvent(ServiceEvent.Initialize)
 
-		mediaSessionManager = MusicLibrarySessionManager(
-			musicLibrary = this,
-			sessionCallback = sessionCallbackImpl
+		mediaSessionManager = SessionManager(this, sessionCallbackImpl)
+		mediaPlaybackManager = PlaybackManager()
+		mediaNotificationManager = MediaNotificationManager()
+		stateManager = MusicLibraryStateManager()
+
+		serviceComponents.add(mediaSessionManager)
+		serviceComponents.add(mediaPlaybackManager)
+		serviceComponents.add(mediaNotificationManager)
+		serviceComponents.add(stateManager)
+
+		componentInteractor = ComponentInteractor(
+			mediaNotificationManager.Delegate(), mediaSessionManager.Delegate(), stateManager.Delegate()
 		)
 
-		mediaPlaybackManager = MusicLibraryPlaybackManager(musicLibrary = this)
-		mediaNotificationManager = MusicLibraryMediaNotificationManager(musicLibrary = this)
-		stateManager = MusicLibraryStateManager(musicLibrary = this, StateInteractor())
-
-		componentInteractor = ComponentInteractor()
-		mediaPlaybackManager.start(componentInteractor)
-		mediaNotificationManager.start(componentInteractor)
-		stateManager.start(componentInteractor)
-
+		serviceComponents.forEach { it.create(serviceInteractor) }
 		postInitialize()
 	}
 
@@ -131,6 +210,7 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 
 	private fun onContextAttached() {
 		stateRegistry.onEvent(ServiceEvent.ContextAttached)
+		serviceComponents.forEach { it.onContextAttached(this) }
 		initializeService()
 	}
 
@@ -143,7 +223,6 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 		)
 
 		notificationManagerService = getSystemService(NotificationManager::class.java)
-		mediaNotificationManager.initializeComponents(this)
 		registerReceiver(serviceCommandReceiver, CommandReceiver.getIntentFilter())
 	}
 
@@ -153,11 +232,11 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 
 	private fun onPostSuperOnCreate() {
 		stateRegistry.onEvent(ServiceEvent.InjectDependency) // Hilt Injected dependency
+		serviceComponents.forEach { it.onDependencyInjected(serviceInteractor) }
 		initializeLibrarySession()
 	}
 
 	private fun initializeLibrarySession() {
-		mediaSessionManager.start(componentInteractor, injectedPlayer)
 		setupNotificationProvider()
 	}
 
@@ -167,6 +246,12 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 
 	private fun onPostCreate() {
 		stateRegistry.onEvent(ServiceEvent.PostCreate)
+
+		mediaSessionManager.start(componentInteractor)
+		mediaPlaybackManager.start(componentInteractor)
+		mediaNotificationManager.start(componentInteractor)
+		stateManager.start(componentInteractor)
+
 		Timber.i("MusicLibraryService Created")
 	}
 
@@ -258,8 +343,7 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 	private fun releaseComponent() {
 		injectedPlayer.release()
 		// TODO: Release them by themselves
-		mediaSessionManager.release(this)
-		stateManager.release(this)
+		serviceComponents.forEach { it.release(this) }
 		unregisterReceiver(serviceCommandReceiver)
 	}
 
@@ -269,17 +353,17 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 		}
 
 		Timber.d("releaseSession," +
-			"\n" + "mediaSessionManager: ${mediaSessionManager.isReleased}" +
-			"\n" + "mediaPlaybackManager: ${mediaPlaybackManager.isReleased}" +
-			"\n" + "mediaNotificationManager: ${mediaPlaybackManager.isReleased}" +
+			"\n" + "mediaSessionManager: ${mediaSessionManager.isReleasedInternal}" +
+			"\n" + "mediaPlaybackManager: ${mediaPlaybackManager.isReleasedInternal}" +
+			"\n" + "mediaNotificationManager: ${mediaPlaybackManager.isReleasedInternal}" +
 			"\n" + "stateManager: ${stateManager.isReleased}"
 		)
 
 		checkState(
-			mediaSessionManager.isReleased
-				&& mediaPlaybackManager.isReleased
-				&& mediaNotificationManager.isReleased
-				&& stateManager.isReleased
+			mediaSessionManager.isReleasedInternal
+				&& mediaPlaybackManager.isReleasedInternal
+				&& mediaNotificationManager.isReleasedInternal
+				&& stateManager.isReleasedInternal
 		) {
 			"Components Failed to call release,"
 		}
@@ -345,33 +429,19 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 		}
 	}
 
-	fun startForegroundService(id: Int, notification: Notification, isEvent: Boolean = false) {
-		Timber.d("startForegroundService, isEvent: $isEvent")
-
-		if (isEvent) {
-			checkState(!serviceStateSF.value.isForeground())
-		}
-		startForegroundServiceImpl(id, notification, isEvent)
+	private fun startForegroundService(id: Int, notification: Notification) {
+		Timber.d("startForegroundService")
+		if (isServiceStopped) onStart()
+		startForegroundServiceImpl(id, notification, !isServiceForeground)
 	}
 
-	fun stopForegroundService(id: Int, removeNotification: Boolean, isEvent: Boolean = false) {
-		Timber.d("stopForegroundService, isEvent: $isEvent")
+	private fun stopForegroundService(id: Int, removeNotification: Boolean) {
+		Timber.d("stopForegroundService")
 
-		if (isEvent) {
-			checkState(serviceStateSF.value.isForeground())
-		}
-		stopForegroundServiceImpl(id, removeNotification, isEvent)
+		stopForegroundServiceImpl(id, removeNotification, isServiceForeground)
 	}
 
-	fun updateForegroundState(isForeground: Boolean) {
-		if (isForeground) {
-			stateRegistry.setState(STATE.Foreground)
-		} else {
-			stateRegistry.setState(STATE.Paused)
-		}
-	}
-
-	fun stopService(releaseSession: Boolean) {
+	private fun stopService(releaseSession: Boolean) {
 		Timber.d("MusicLibraryService stopService($releaseSession)")
 		checkState(!isServiceForeground) {
 			"Cannot Stop Service on Foreground State"
@@ -694,10 +764,10 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 					Destroyed -> DestroyedInt
 				}
 			}
-			// end of ComparableInt
 		}
 
 		companion object {
+
 			fun fromLifecycleState(state: Lifecycle.State): STATE {
 				return when (state) {
 					Lifecycle.State.INITIALIZED -> Initialized
@@ -707,9 +777,7 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 					Lifecycle.State.DESTROYED -> Destroyed
 				}
 			}
-			// end of STATE.Companion
 		}
-		// end of STATE
 	}
 
 	sealed class MediaState {
@@ -747,15 +815,57 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 		}
 	}
 
-	inner class ComponentInteractor {
-		val mediaNotificationManagerDelegator =
-			this@MusicLibraryService.mediaNotificationManager.Delegate()
+	inner class ComponentInteractor(
+		notificationManagerDelegate: MediaNotificationManager.Delegate,
+		sessionManagerDelegate: SessionManager.Delegate,
+		stateManagerDelegate: MusicLibraryStateManager.Delegate
+	) {
+		val mediaNotificationManagerDelegator = notificationManagerDelegate
+		val mediaSessionManagerDelegator = sessionManagerDelegate
+		val stateManagerDelegator = stateManagerDelegate
+	}
 
-		val mediaSessionManagerDelegator =
-			this@MusicLibraryService.mediaSessionManager.Delegate()
+	inner class ServiceInteractor {
 
-		val stateManagerDelegator =
-			this@MusicLibraryService.stateManager.Delegate()
+		/**
+		 * Must guarantee not null if the service state is between
+		 * onContextAttached and onDestroy (onDestroy callback is called right before)
+		 *
+		 * @return this Service Context, may be null
+		 */
+
+		val isForeground
+			get() = this@MusicLibraryService.isServiceForeground
+
+		fun getContext(): Context? =
+			this@MusicLibraryService.baseContext
+
+		fun getCoroutineMainJob(): Job =
+			this@MusicLibraryService.serviceJob
+
+		fun getCoroutineDispatchers(): AppDispatchers =
+			this@MusicLibraryService.appDispatchers
+
+		fun getCoilHelper(): CoilHelper =
+			this@MusicLibraryService.coilHelper
+
+		fun getSessionConnector(): MediaSessionConnector =
+			this@MusicLibraryService.sessionConnector
+
+		fun addLifecycleObserver(observer: LifecycleEventObserver) =
+			this@MusicLibraryService.lifecycle.addObserver(observer)
+
+		fun removeLifecycleObserver(observer: LifecycleEventObserver) =
+			this@MusicLibraryService.lifecycle.removeObserver(observer)
+
+		fun startForeground(notificationId: Int, notification: Notification) =
+			this@MusicLibraryService.startForegroundService(notificationId, notification)
+
+		fun stopForeground(notificationId: Int, removeNotification: Boolean) =
+			this@MusicLibraryService.stopForegroundService(notificationId, removeNotification)
+
+		fun stopService(releaseSession: Boolean) =
+			this@MusicLibraryService.stopService(releaseSession)
 	}
 
 	inner class StateInteractor {

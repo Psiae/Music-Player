@@ -73,6 +73,9 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 	private val sessionCallbackImpl = SessionCallbackImpl()
 	private val serviceCommandReceiver = ServiceCommandReceiver()
 
+	private val appDispatchers = AppModule.provideAppDispatchers()
+	private val serviceJob = SupervisorJob()
+
 	/** @see [ServiceComponent] */
 	private val serviceComponents: MutableList<ServiceComponent> = mutableListOf()
 
@@ -83,11 +86,7 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 	private val componentInteractor: ComponentInteractor
 	private val serviceInteractor: ServiceInteractor
 
-	private val appDispatchers = AppModule.provideAppDispatchers()
-	private val serviceJob = SupervisorJob()
-
 	private var isReleasing = false
-
 	override val service: Service = this
 
 	val serviceStateSF = stateRegistry.serviceStateSF
@@ -507,8 +506,8 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 				get() = if (!mStoppedInternal) super.componentInteractor else null
 
 			fun stop(componentInteractor: ComponentInteractor) {
-				if (!isStartedInternal) onStop(componentInteractor)
-				checkState(isStartedInternal)
+				if (isStartedInternal) onStop(componentInteractor)
+				checkState(!isStartedInternal)
 			}
 
 			@MainThread

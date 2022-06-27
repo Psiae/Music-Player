@@ -492,13 +492,7 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 		@MainThread
 		protected open fun onRelease(obj: Any) {
 			mServiceInteractor = null
-
-			checkState(
-				!isStartedInternal
-					&& impl.mServiceInteractor == null
-					&& impl.mComponentInteractor == null
-			)
-
+			mComponentInteractor = null
 			mReleasedInternal = true
 		}
 

@@ -146,13 +146,10 @@ class MediaNotificationManager : MusicLibraryService.ServiceComponent() {
 	fun getProvider(): MediaNotification.Provider = this.provider
 
 	fun onUpdateNotification(session: MediaSession) {
-		Timber.d("onUpdateNotification")
-
 		val notification =
 			provider.fromMediaSession(session, isForegroundCondition(session), ChannelName)
 		dispatcher.updateNotification(NotificationId, notification)
 	}
-
 
 	private var isInitialized = false
 
@@ -359,6 +356,18 @@ class MediaNotificationManager : MusicLibraryService.ServiceComponent() {
 		}
 
 		inner class NotificationActionReceiver : MediaNotificationProvider.ActionReceiver {
+
+			override fun actionAny(context: Context, intent: Intent) {
+				if (!isStarted) {
+					val startIntent = MusicLibraryService.CommandReceiver.getIntentWithAction()
+						.apply {
+							val key = MusicLibraryService.CommandReceiver.commandIntentReceiverActionKey
+							val value = MusicLibraryService.CommandReceiver.ACTION_REQUEST_START_SERVICE
+							putExtra(key, value)
+						}
+					context.sendBroadcast(startIntent)
+				}
+			}
 
 			override fun actionPlay(context: Context, intent: Intent) {
 				sessionManagerDelegate?.mediaSession

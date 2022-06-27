@@ -342,6 +342,7 @@ class MediaNotificationProvider(
 	private fun Intent.applyActionExtra(value: String) = putExtra(ACTION_KEY_NAME, value)
 
 	interface ActionReceiver {
+		fun actionAny(context: Context, intent: Intent)
 		fun actionPlay(context: Context, intent: Intent)
 		fun actionPause(context: Context, intent: Intent)
 		fun actionNext(context: Context, intent: Intent)
@@ -367,9 +368,11 @@ class MediaNotificationProvider(
 
 		fun onReceiveImpl(context: Context, intent: Intent) {
 			val receiver = actionReceiver!!
+			val action = intent.getStringExtra(ACTION_KEY_NAME) ?: return
 
-			when (intent.getStringExtra(ACTION_KEY_NAME)) {
-				null -> throw IllegalStateException("Received Intent without ACTION_KEY_NAME")
+			receiver.actionAny(context, intent)
+
+			when (action) {
 				ACTION_Play_NAME -> receiver.actionPlay(context, intent)
 				ACTION_Pause_NAME -> receiver.actionPause(context, intent)
 				ACTION_Next_NAME -> receiver.actionNext(context, intent)

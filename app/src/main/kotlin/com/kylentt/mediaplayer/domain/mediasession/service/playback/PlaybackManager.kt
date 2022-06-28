@@ -31,8 +31,8 @@ class PlaybackManager : MusicLibraryService.ServiceComponent.Stoppable() {
 	private lateinit var dispatchers: AppDispatchers
 	private lateinit var immediateScope: CoroutineScope
 
-	private var isStarted = false
-	private var isReleased = false
+	private val isStopped
+		get() = !isStarted
 
 	override fun onCreate(serviceInteractor: MusicLibraryService.ServiceInteractor) {
 		super.onCreate(serviceInteractor)
@@ -45,14 +45,12 @@ class PlaybackManager : MusicLibraryService.ServiceComponent.Stoppable() {
 	override fun onStart(componentInteractor: MusicLibraryService.ComponentInteractor) {
 		super.onStart(componentInteractor)
 		componentInteractor.mediaSessionManagerDelegator.registerPlayerEventListener(playbackListener)
-		isStarted = true
 	}
 
 	@MainThread
 	override fun onStop(componentInteractor: MusicLibraryService.ComponentInteractor) {
 		super.onStop(componentInteractor)
 		componentInteractor.mediaSessionManagerDelegator.removePlayerEventListener(playbackListener)
-		isStarted = false
 	}
 
 	@MainThread
@@ -62,13 +60,12 @@ class PlaybackManager : MusicLibraryService.ServiceComponent.Stoppable() {
 		Timber.i("PlaybackManager.release() called by $obj")
 
 		managerJob.cancel()
-		isReleased = true
 
 		Timber.i("PlaybackManager released by $obj")
 	}
 
 	private fun onPlaybackError(error: PlaybackException) {
-		if (isReleased) return
+		if (!isStarted) return
 
 		componentInteractor?.mediaSessionManagerDelegator?.sessionPlayer
 			?.let { immediateScope.launch { eventHandler.onPlaybackError(error, it) } }
@@ -85,7 +82,7 @@ class PlaybackManager : MusicLibraryService.ServiceComponent.Stoppable() {
 	private inner class PlayerPlaybackEventHandler {
 
 		suspend fun onPlaybackError(error: PlaybackException, player: Player) {
-			if (isReleased) return
+			if (!isStarted) return
 
 			Timber.d("onPlaybackError, \nerror: ${error}\ncode: ${error.errorCode}\nplayer: $player")
 
@@ -109,7 +106,7 @@ class PlaybackManager : MusicLibraryService.ServiceComponent.Stoppable() {
 			player: Player,
 			error: PlaybackException
 		) = withContext(dispatchers.mainImmediate) {
-			if (isReleased) return@withContext
+			if (!isStarted) return@withContext
 			val currentContext = serviceInteractor?.getContext()!!
 
 			Preconditions.checkArgument(error.errorCode == PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND)

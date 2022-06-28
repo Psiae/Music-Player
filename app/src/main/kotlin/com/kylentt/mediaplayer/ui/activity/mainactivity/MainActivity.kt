@@ -45,7 +45,7 @@ class MainActivity : ComponentActivity() {
   private val mainViewModel: MainViewModel by viewModels()
   private val mediaViewModel: MediaViewModel by viewModels()
   private val storagePermission: Boolean by StoragePermissionHelper
-	private val serviceState by MusicLibraryService.LifecycleStateDelegate
+	private val serviceState by MusicLibraryService.StateDelegate
 
   private val storagePermToast: Toast? by lazy {
     Toast.makeText(this, "Storage Permission Needed", Toast.LENGTH_LONG)

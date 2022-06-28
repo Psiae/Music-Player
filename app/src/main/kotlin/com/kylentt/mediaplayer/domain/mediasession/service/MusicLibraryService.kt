@@ -104,10 +104,11 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 	init {
 		stateRegistry.onEvent(ServiceEvent.Initialize)
 
+		stateManager = MusicLibraryStateManager()
 		mediaSessionManager = SessionManager(this, sessionCallbackImpl)
 		mediaPlaybackManager = PlaybackManager()
 		mediaNotificationManager = MediaNotificationManager()
-		stateManager = MusicLibraryStateManager()
+
 
 		componentInteractor = ComponentInteractor(
 			mediaSessionManager.Delegate(), mediaPlaybackManager.Delegate(),
@@ -116,10 +117,10 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 
 		serviceInteractor = ServiceInteractor()
 
+		serviceComponents.add(stateManager)
 		serviceComponents.add(mediaSessionManager)
 		serviceComponents.add(mediaPlaybackManager)
 		serviceComponents.add(mediaNotificationManager)
-		serviceComponents.add(stateManager)
 		serviceComponents.forEach { it.create(serviceInteractor) }
 		postInitialize()
 	}
@@ -130,7 +131,6 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 
 	override fun onCreate() {
 		onContextAttached()
-		onPostContextAttached()
 		super.onCreate()
 		onPostSuperOnCreate()
 		onPostCreate()
@@ -140,7 +140,10 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 		stateRegistry.onEvent(ServiceEvent.ContextAttached)
 		serviceComponents.forEach { it.contextAttached(this) }
 		initializeService()
+
+		onPostContextAttached()
 	}
+
 
 	private fun initializeService() {
 		val state = serviceStateSF.value
@@ -205,7 +208,7 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 		stateRegistry.onEvent(ServiceEvent.Start)
 
 		serviceComponents.forEach {
-			if (!it.isStartedInternal) it.start(componentInteractor)
+			if (!it.isStarted) it.start(componentInteractor)
 		}
 
 		postStart()
@@ -271,12 +274,12 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 		serviceComponents.forEach {
 			Timber.i(
 				"Service Release session," +
-					"\n${it.javaClass.simpleName} released: ${it.isReleasedInternal}"
+					"\n${it.javaClass.simpleName} released: ${it.isReleased}"
 			)
 		}
 
 		serviceComponents.forEach {
-			checkState(it.isReleasedInternal) {
+			checkState(it.isReleased) {
 				"Components ${it.javaClass.simpleName} Failed to call release,"
 			}
 		}
@@ -394,8 +397,8 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 		 */
 
 		private var mComponentInteractor: ComponentInteractor? = null
-		private var mStartedInternal: Boolean = false
-		private var mReleasedInternal: Boolean = false
+		private var mStarted: Boolean = false
+		private var mReleased: Boolean = false
 
 		protected open val serviceInteractor
 			get() = mServiceInteractor
@@ -403,11 +406,11 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 		protected open val componentInteractor
 			get() = mComponentInteractor
 
-		open val isStartedInternal
-			get() = mStartedInternal
+		open val isStarted
+			get() = mStarted
 
-		open val isReleasedInternal
-			get() = mReleasedInternal
+		open val isReleased
+			get() = mReleased
 
 		fun create(serviceInteractor: ServiceInteractor) {
 			if (!::impl.isInitialized) onCreate(serviceInteractor)
@@ -425,11 +428,11 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 		}
 
 		fun start(componentInteractor: ComponentInteractor) {
-			if (!isStartedInternal) onStart(componentInteractor)
+			if (!isStarted) onStart(componentInteractor)
 		}
 
 		fun release(obj: Any) {
-			if (!isReleasedInternal) onRelease(obj)
+			if (!isReleased) onRelease(obj)
 		}
 
 		/**
@@ -483,7 +486,7 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 			checkMainThread()
 			checkState(::impl.isInitialized)
 			mComponentInteractor = componentInteractor
-			mStartedInternal = true
+			mStarted = true
 		}
 
 
@@ -492,29 +495,29 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 		protected open fun onRelease(obj: Any) {
 			mServiceInteractor = null
 			mComponentInteractor = null
-			mReleasedInternal = true
+			mReleased = true
 		}
 
 		abstract class Stoppable : ServiceComponent() {
 
-			private var mStoppedInternal = false
+			private var mStopped = false
 
-			override val isStartedInternal: Boolean
-				get() = if (!mStoppedInternal) super.isStartedInternal else false
+			override val isStarted: Boolean
+				get() = if (!mStopped) super.isStarted else false
 
 			override val componentInteractor: ComponentInteractor?
-				get() = if (!mStoppedInternal) super.componentInteractor else null
+				get() = if (!mStopped) super.componentInteractor else null
 
 			fun stop(componentInteractor: ComponentInteractor) {
-				if (isStartedInternal) onStop(componentInteractor)
-				checkState(!isStartedInternal)
+				if (isStarted) onStop(componentInteractor)
+				checkState(!isStarted)
 			}
 
 			@MainThread
 			@CallSuper
 			protected open fun onStop(componentInteractor: ComponentInteractor) {
 				checkMainThread()
-				mStoppedInternal = true
+				mStopped = true
 			}
 		}
 	}
@@ -590,7 +593,7 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 		private var serviceState: STATE = STATE.Nothing
 			set(value) {
 				field = value
-				LifecycleStateDelegate.updateState(this, field)
+				StateDelegate.updateState(this, field)
 				_serviceStateSF.value = field
 			}
 
@@ -887,15 +890,15 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 
 	inner class ServiceInteractor {
 
+		val isForeground
+			get() = this@MusicLibraryService.isServiceForeground
+
 		/**
 		 * Must guarantee not null if the service state is between
 		 * onContextAttached and onDestroy (onDestroy callback is called right before)
 		 *
 		 * @return this Service Context, may be null
 		 */
-
-		val isForeground
-			get() = this@MusicLibraryService.isServiceForeground
 
 		fun getContext(): Context? =
 			this@MusicLibraryService.baseContext
@@ -932,7 +935,7 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 		fun callStart() = onStart()
 	}
 
-	object LifecycleStateDelegate : ReadOnlyProperty<Any?, STATE> {
+	object StateDelegate : ReadOnlyProperty<Any?, STATE> {
 
 		private var currentState: STATE = STATE.Nothing
 		private var currentHashCode: Int? = null
@@ -959,19 +962,14 @@ class MusicLibraryService : MediaLibraryService(), LifecycleService {
 
 		@JvmStatic
 		fun wasLaunched() = currentState != STATE.Nothing
-
 		@JvmStatic
 		fun isDestroyed() = currentState == STATE.Destroyed
-
 		@JvmStatic
 		fun isAlive() = currentState atLeast STATE.Initialized && !isDestroyed()
-
 		@JvmStatic
 		fun isForeground(): Boolean = currentState.isForeground()
-
 		@JvmStatic
 		fun isStopped(): Boolean = currentState == STATE.Stopped
-
 		@JvmStatic
 		fun isPaused(): Boolean = currentState == STATE.Stopped
 

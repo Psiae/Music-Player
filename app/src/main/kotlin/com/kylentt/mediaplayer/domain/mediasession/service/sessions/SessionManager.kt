@@ -26,15 +26,6 @@ class SessionManager(
 
 	private lateinit var sessionManagerJob: Job
 
-	private var isManagerStarted: Boolean = false
-	private var isManagerReleased: Boolean = false
-		set(value) {
-			checkArgument(value) {
-				"cannot unRelease this class"
-			}
-			field = value
-		}
-
 	override fun onCreate(serviceInteractor: MusicLibraryService.ServiceInteractor) {
 		super.onCreate(serviceInteractor)
 		sessionManagerJob = serviceInteractor.getCoroutineMainJob()
@@ -57,14 +48,12 @@ class SessionManager(
 		componentInteractor: MusicLibraryService.ComponentInteractor
 	) {
 		super.onStart(componentInteractor)
-		isManagerStarted = true
 	}
 
 	@MainThread
 	override fun onStop(componentInteractor: MusicLibraryService.ComponentInteractor) {
 		super.onStop(componentInteractor)
 		// TODO: do something about the session and or player
-		isManagerStarted = false
 	}
 
 	@MainThread
@@ -75,55 +64,53 @@ class SessionManager(
 		sessionManagerJob.cancel()
 		sessionRegistry.release()
 
-		isManagerReleased = true
-
 		Timber.i("SessionManager released by $obj")
 	}
 
 	fun getCurrentMediaSession(): MediaSession? {
-		if (isManagerReleased || !sessionRegistry.isLibrarySessionInitialized) return null
+		if (isReleased || !sessionRegistry.isLibrarySessionInitialized) return null
 
 		return sessionRegistry.localLibrarySession
 	}
 
 	fun getSessionPlayer(): Player? {
-		if (isManagerReleased || !sessionRegistry.isLibrarySessionInitialized) return null
+		if (isReleased || !sessionRegistry.isLibrarySessionInitialized) return null
 
 		return sessionRegistry.localLibrarySession.player
 	}
 
 	fun changeSessionPlayer(player: Player, release: Boolean) {
-		if (isManagerReleased) return
+		if (isReleased) return
 
 		sessionRegistry.changeSessionPlayer(player, release)
 	}
 
 	fun registerPlayerChangedListener(onChanged: OnChangedNotNull<Player>) {
-		if (isManagerReleased) return
+		if (isReleased) return
 
 		sessionRegistry.registerOnPlayerChangedListener(onChanged)
 	}
 
 	fun unregisterPlayerChangedListener(onChanged: OnChangedNotNull<Player>): Boolean {
-		if (isManagerReleased) return false
+		if (isReleased) return false
 
 		return sessionRegistry.unRegisterOnPlayerChangedListener(onChanged)
 	}
 
 	fun registerPlayerEventListener(listener: Player.Listener) {
-		if (isManagerReleased) return
+		if (isReleased) return
 
 		sessionRegistry.registerOnPlayerEventListener(listener)
 	}
 
 	fun unRegisterPlayerEventListener(listener: Player.Listener): Boolean {
-		if (isManagerReleased) return false
+		if (isReleased) return false
 
 		return sessionRegistry.unregisterOnPlayerEventListener(listener)
 	}
 
 	fun onGetSession(controllerInfo: ControllerInfo): MediaLibrarySession? {
-		return if (!isManagerReleased) sessionRegistry.localLibrarySession else null
+		return if (!isReleased) sessionRegistry.localLibrarySession else null
 	}
 
 	private inner class SessionRegistry {

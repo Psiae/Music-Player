@@ -65,17 +65,6 @@ class MediaNotificationManager : MusicLibraryService.ServiceComponent.Stoppable(
 		componentInteractor?.stateManagerDelegator?.getServiceForegroundCondition(it) ?: false
 	}
 
-	var isReleased: Boolean = false
-		private set(value) {
-			checkArgument(value) {
-				"Cannot unRelease this class"
-			}
-			field = value
-		}
-
-	var isStarted: Boolean = false
-		private set
-
 	override fun onCreate(serviceInteractor: MusicLibraryService.ServiceInteractor) {
 		super.onCreate(serviceInteractor)
 		appDispatchers = serviceInteractor.getCoroutineDispatchers()
@@ -92,13 +81,11 @@ class MediaNotificationManager : MusicLibraryService.ServiceComponent.Stoppable(
 	override fun onStart(componentInteractor: MusicLibraryService.ComponentInteractor) {
 		super.onStart(componentInteractor)
 		componentInteractor.mediaSessionManagerDelegator.registerPlayerEventListener(eventListener)
-		isStarted = true
 	}
 
 	override fun onStop(componentInteractor: MusicLibraryService.ComponentInteractor) {
 		super.onStop(componentInteractor)
 		componentInteractor.mediaSessionManagerDelegator.removePlayerEventListener(eventListener)
-		isStarted = false
 	}
 
 	override fun onRelease(obj: Any) {
@@ -120,8 +107,6 @@ class MediaNotificationManager : MusicLibraryService.ServiceComponent.Stoppable(
 		mainScope.cancel()
 		if (isProviderInitialized) provider.release()
 		if (isDispatcherInitialized) dispatcher.release()
-
-		isReleased = true
 		Timber.i("MediaNotificationManager released by $obj")
 	}
 
@@ -365,7 +350,7 @@ class MediaNotificationManager : MusicLibraryService.ServiceComponent.Stoppable(
 			Timber.d("createNotificationInternalImpl")
 
 			val notification =
-				getNotificationFromPlayer(session.player, isForegroundCondition(session), ChannelName)
+				getNotificationFromMediaSession(session, isForegroundCondition(session), ChannelName)
 
 			dispatcher.cancelValidatorJob()
 

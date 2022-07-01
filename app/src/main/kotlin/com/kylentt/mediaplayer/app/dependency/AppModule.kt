@@ -1,5 +1,6 @@
 package com.kylentt.mediaplayer.app.dependency
 
+import android.app.NotificationManager
 import android.content.Context
 import coil.Coil
 import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
@@ -22,6 +23,12 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
+
+	@Provides
+	@Singleton
+	fun provideNotificationManager(@ApplicationContext context: Context): NotificationManager {
+		return context.getSystemService(NotificationManager::class.java)
+	}
 
   @Provides
   @Singleton

@@ -1,4 +1,4 @@
-package com.kylentt.mediaplayer.domain.mediasession.service
+package com.kylentt.mediaplayer.domain.mediasession.libraryservice
 
 import android.content.Context
 import androidx.media3.exoplayer.ExoPlayer

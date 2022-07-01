@@ -10,8 +10,8 @@ import com.kylentt.mediaplayer.core.coroutines.AppScope
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemHelper
 import com.kylentt.mediaplayer.data.repository.MediaRepository
 import com.kylentt.mediaplayer.data.repository.ProtoRepository
-import com.kylentt.mediaplayer.domain.mediasession.service.connector.ControllerCommand
-import com.kylentt.mediaplayer.domain.mediasession.service.connector.ServiceConnector
+import com.kylentt.mediaplayer.domain.mediasession.libraryservice.connector.ControllerCommand
+import com.kylentt.mediaplayer.domain.mediasession.libraryservice.connector.ServiceConnector
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import com.kylentt.mediaplayer.helper.external.IntentWrapper
 import com.kylentt.mediaplayer.helper.external.MediaIntentHandlerImpl

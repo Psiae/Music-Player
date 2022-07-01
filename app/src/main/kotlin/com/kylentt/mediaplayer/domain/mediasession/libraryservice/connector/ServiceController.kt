@@ -1,4 +1,4 @@
-package com.kylentt.mediaplayer.domain.mediasession.service.connector
+package com.kylentt.mediaplayer.domain.mediasession.libraryservice.connector
 
 import android.os.Bundle
 import android.os.Looper
@@ -16,7 +16,7 @@ import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateEnded
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateIdle
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateReady
 import com.kylentt.mediaplayer.core.exoplayer.PlayerHelper
-import com.kylentt.mediaplayer.domain.mediasession.service.MusicLibraryService
+import com.kylentt.mediaplayer.domain.mediasession.libraryservice.MusicLibraryService
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.ui.activity.CollectionExtension.forEachClear

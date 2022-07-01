@@ -1,4 +1,4 @@
-package com.kylentt.mediaplayer.domain.mediasession.service.connector
+package com.kylentt.mediaplayer.domain.mediasession.libraryservice.connector
 
 import android.content.Context
 import androidx.annotation.MainThread

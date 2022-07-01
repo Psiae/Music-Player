@@ -17,7 +17,7 @@ import com.kylentt.mediaplayer.core.coroutines.AppScope
 import com.kylentt.mediaplayer.core.delegates.LateLazy
 import com.kylentt.mediaplayer.core.delegates.LockMainThread
 import com.kylentt.mediaplayer.app.delegates.device.StoragePermissionHelper
-import com.kylentt.mediaplayer.domain.mediasession.service.MusicLibraryService
+import com.kylentt.mediaplayer.domain.mediasession.libraryservice.MusicLibraryService
 import com.kylentt.mediaplayer.domain.viewmodels.MainViewModel
 import com.kylentt.mediaplayer.domain.viewmodels.MediaViewModel
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
@@ -97,20 +97,6 @@ class MainActivity : ComponentActivity() {
 		super.onDestroy()
     return destroyed()
   }
-
-	private fun maybeCancelServiceNotification(context: Context) {
-		if (serviceState.isForeground()) return
-
-		val intent = MusicLibraryService.CommandReceiver.getIntentWithAction()
-			.apply {
-				val key = MusicLibraryService.CommandReceiver.commandIntentReceiverActionKey
-				val value = MusicLibraryService.CommandReceiver.ACTION_CANCEL_ALL_NOTIFICATION
-				putExtra(key, value)
-			}
-		context.sendBroadcast(intent)
-
-		Timber.d("cancelServiceNotification sent")
-	}
 
   private fun checkLauncherIntent() {
     checkNotNull(intent) {

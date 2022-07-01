@@ -1,4 +1,4 @@
-package com.kylentt.mediaplayer.domain.mediasession.service.playback
+package com.kylentt.mediaplayer.domain.mediasession.libraryservice.playback
 
 import android.annotation.SuppressLint
 import android.net.Uri
@@ -11,11 +11,12 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
-import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
+import com.kylentt.mediaplayer.app.dependency.AppModule
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper.getDebugDescription
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper.mediaUri
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaMetadataHelper.getStoragePath
-import com.kylentt.mediaplayer.domain.mediasession.service.MusicLibraryService
+import com.kylentt.mediaplayer.domain.mediasession.libraryservice.MusicLibraryService
+import com.kylentt.mediaplayer.domain.mediasession.libraryservice.sessions.SessionManager
 import com.kylentt.mediaplayer.helper.Preconditions
 import com.kylentt.mediaplayer.helper.external.providers.ContentProvidersHelper
 import com.kylentt.mediaplayer.helper.external.providers.DocumentProviderHelper
@@ -26,48 +27,34 @@ import java.io.File
 class PlaybackManager : MusicLibraryService.ServiceComponent.Stoppable() {
 	private val playbackListener = PlayerPlaybackListener()
 	private val eventHandler = PlayerPlaybackEventHandler()
+	private val appDispatchers = AppModule.provideAppDispatchers()
 
 	private lateinit var managerJob: Job
-	private lateinit var dispatchers: AppDispatchers
 	private lateinit var immediateScope: CoroutineScope
 
-	private val isStopped
-		get() = !isStarted
-
-	override fun onCreate(serviceInteractor: MusicLibraryService.ServiceInteractor) {
-		super.onCreate(serviceInteractor)
-		managerJob = serviceInteractor.getCoroutineMainJob()
-		dispatchers = serviceInteractor.getCoroutineDispatchers()
-		immediateScope = CoroutineScope(dispatchers.mainImmediate + managerJob)
+	override fun initialize() {
+		super.initialize()
 	}
 
-	@MainThread
-	override fun onStart(componentInteractor: MusicLibraryService.ComponentInteractor) {
-		super.onStart(componentInteractor)
-		componentInteractor.mediaSessionManagerDelegator.registerPlayerEventListener(playbackListener)
+	override fun create(serviceDelegate: MusicLibraryService.ServiceDelegate) {
+		super.create(serviceDelegate)
+		val serviceJob = serviceDelegate.getServiceMainJob()
+		managerJob = SupervisorJob(serviceJob)
+		immediateScope = CoroutineScope(appDispatchers.mainImmediate + managerJob)
+
+		serviceDelegate.getSessionInteractor().registerPlayerEventListener(playbackListener)
 	}
 
-	@MainThread
-	override fun onStop(componentInteractor: MusicLibraryService.ComponentInteractor) {
-		super.onStop(componentInteractor)
-		componentInteractor.mediaSessionManagerDelegator.removePlayerEventListener(playbackListener)
-	}
-
-	@MainThread
-	override fun onRelease(obj: Any) {
-		super.onRelease(obj)
-
-		Timber.i("PlaybackManager.release() called by $obj")
-
+	override fun release() {
 		managerJob.cancel()
-
-		Timber.i("PlaybackManager released by $obj")
+		serviceDelegate?.getSessionInteractor()?.removePlayerEventListener(playbackListener)
+		super.release()
 	}
 
 	private fun onPlaybackError(error: PlaybackException) {
 		if (!isStarted) return
 
-		componentInteractor?.mediaSessionManagerDelegator?.sessionPlayer
+		serviceDelegate?.getSessionInteractor()?.sessionPlayer
 			?.let { immediateScope.launch { eventHandler.onPlaybackError(error, it) } }
 	}
 
@@ -83,6 +70,7 @@ class PlaybackManager : MusicLibraryService.ServiceComponent.Stoppable() {
 
 		suspend fun onPlaybackError(error: PlaybackException, player: Player) {
 			if (!isStarted) return
+			val currentContext = serviceDelegate?.getContext() ?: return
 
 			Timber.d("onPlaybackError, \nerror: ${error}\ncode: ${error.errorCode}\nplayer: $player")
 
@@ -91,7 +79,7 @@ class PlaybackManager : MusicLibraryService.ServiceComponent.Stoppable() {
 				PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND -> handleIOErrorFileNotFound(player, error)
 				PlaybackException.ERROR_CODE_DECODING_FAILED -> {
 					player.pause()
-					val context = serviceInteractor?.getContext()!!.applicationContext
+					val context = currentContext.applicationContext
 					val toast = Toast.makeText(
 						context,
 						"Decoding Failed (${error.errorCode}), Paused",
@@ -105,9 +93,9 @@ class PlaybackManager : MusicLibraryService.ServiceComponent.Stoppable() {
 		private suspend fun handleIOErrorFileNotFound(
 			player: Player,
 			error: PlaybackException
-		) = withContext(dispatchers.mainImmediate) {
+		) = withContext(appDispatchers.mainImmediate) {
 			if (!isStarted) return@withContext
-			val currentContext = serviceInteractor?.getContext()!!
+			val currentContext = serviceDelegate?.getContext() ?: return@withContext
 
 			Preconditions.checkArgument(error.errorCode == PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND)
 
@@ -158,20 +146,7 @@ class PlaybackManager : MusicLibraryService.ServiceComponent.Stoppable() {
 		}
 	}
 
-	inner class Delegate {
-		// TODO
-	}
-
 	private inner class PlayerPlaybackListener : Player.Listener {
 		override fun onPlayerError(error: PlaybackException) = onPlaybackError(error)
-	}
-
-	private inner class ServiceObserver : LifecycleEventObserver {
-		override fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event) {
-			when (event) {
-				ON_DESTROY -> onRelease(this)
-				else -> Unit
-			}
-		}
 	}
 }

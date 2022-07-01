@@ -19,6 +19,7 @@ import com.kylentt.mediaplayer.core.delegates.LateInitializerDelegate
 import com.kylentt.mediaplayer.core.delegates.LateLazy
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
+import kotlin.reflect.KClass
 
 
 interface ApplicationDelegate {
@@ -27,7 +28,7 @@ interface ApplicationDelegate {
 	fun getDeviceWallpaper(): Drawable?
 	fun getImageVector(@DrawableRes id: Int): ImageVector
 	fun getLauncherIntent(): Intent
-	fun getComponentName(cls: Class<*>): ComponentName
+	fun getComponentName(kls: KClass<*>): ComponentName
 }
 
 /**
@@ -35,7 +36,7 @@ interface ApplicationDelegate {
  *
  * UI related Object returned by this class will use the Application class Theme if any
  *
- * @sample com.kylentt.mediaplayer.domain.mediasession.service.MusicLibraryService.Companion.getComponentName
+ * @sample com.kylentt.mediaplayer.domain.mediasession.libraryservice.MusicLibraryService.Companion.getComponentName
  * @author Kylentt
  * @since 2022/04/30
  */
@@ -74,8 +75,8 @@ class AppDelegate private constructor(app: Application) : ApplicationDelegate, C
 		return ImageVector.vectorResource(theme, resources, id)
 	}
 
-	override fun getComponentName(cls: Class<*>): ComponentName {
-		return ComponentName(this, cls)
+	override fun getComponentName(kls: KClass<*>): ComponentName {
+		return ComponentName(this, kls.java)
 	}
 
 	override fun getLauncherIntent(): Intent {
@@ -103,7 +104,7 @@ class AppDelegate private constructor(app: Application) : ApplicationDelegate, C
 
     @JvmStatic fun imageVectorFromDrawableId(@DrawableRes id: Int) = delegate.getImageVector(id)
 
-		@JvmStatic fun componentName(cls: Class<*>): ComponentName = delegate.getComponentName(cls)
+		@JvmStatic fun componentName(kls: KClass<*>): ComponentName = delegate.getComponentName(kls)
 
 		@JvmStatic fun launcherIntent(): Intent = delegate.getLauncherIntent()
 

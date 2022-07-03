@@ -20,31 +20,17 @@ class StateManager(
 		it.player.playbackState.isOngoing()
 	}
 
-	override fun initialize() {
-		super.initialize()
-	}
-
-	override fun create(serviceDelegate: MusicLibraryService.ServiceDelegate) {
-		super.create(serviceDelegate)
-		serviceDelegate.getSessionInteractor().registerPlayerEventListener(playerListenerImpl)
-	}
-
-	override fun serviceContextAttached(context: Context) {
-		super.serviceContextAttached(context)
-	}
-
-	override fun serviceDependencyInjected() {
-		super.serviceDependencyInjected()
-	}
 
 	override fun start(componentDelegate: MusicLibraryService.ComponentDelegate) {
 		super.start(componentDelegate)
+		componentDelegate.sessionInteractor.registerPlayerEventListener(playerListenerImpl)
 	}
 
 	override fun release() {
 		if (isReleased) return
-
-		serviceDelegate?.getSessionInteractor()?.removePlayerEventListener(playerListenerImpl)
+		if (isStarted) {
+			componentDelegate.sessionInteractor.removePlayerEventListener(playerListenerImpl)
+		}
 		return super.release()
 	}
 
@@ -55,10 +41,9 @@ class StateManager(
 		override fun onPlaybackStateChanged(playbackState: Int) {
 			Timber.d("stateManager received onPlaybackStateChanged")
 
-			if (!isStarted) return
-			val serviceDelegate = serviceDelegate ?: return
-			val mediaSession = serviceDelegate.getSessionInteractor().mediaSession ?: return
-			val notificationInteractor = serviceDelegate.getNotificationManagerInteractor()
+			if (!isStarted || isReleased) return
+			val mediaSession = componentDelegate.sessionInteractor.mediaSession ?: return
+			val notificationInteractor = componentDelegate.notificationInteractor
 
 			if (foregroundServiceCondition(mediaSession)) {
 				if (!stateInteractor.isForeground) {

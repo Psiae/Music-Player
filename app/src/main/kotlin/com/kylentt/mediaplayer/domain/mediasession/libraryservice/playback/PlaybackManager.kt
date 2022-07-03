@@ -18,44 +18,41 @@ import com.kylentt.mediaplayer.core.media3.mediaitem.MediaMetadataHelper.getStor
 import com.kylentt.mediaplayer.domain.mediasession.libraryservice.MusicLibraryService
 import com.kylentt.mediaplayer.domain.mediasession.libraryservice.sessions.SessionManager
 import com.kylentt.mediaplayer.helper.Preconditions
+import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.helper.external.providers.ContentProvidersHelper
 import com.kylentt.mediaplayer.helper.external.providers.DocumentProviderHelper
 import kotlinx.coroutines.*
 import timber.log.Timber
 import java.io.File
 
-class PlaybackManager : MusicLibraryService.ServiceComponent.Stoppable() {
+class PlaybackManager : MusicLibraryService.ServiceComponent() {
 	private val playbackListener = PlayerPlaybackListener()
 	private val eventHandler = PlayerPlaybackEventHandler()
 	private val appDispatchers = AppModule.provideAppDispatchers()
 
 	private lateinit var managerJob: Job
-	private lateinit var immediateScope: CoroutineScope
+	private lateinit var mainScope: CoroutineScope
 
-	override fun initialize() {
-		super.initialize()
-	}
+	private val sessionPlayer: Player?
+		get() = if (!isStarted) null else componentDelegate.sessionInteractor.sessionPlayer
 
 	override fun create(serviceDelegate: MusicLibraryService.ServiceDelegate) {
 		super.create(serviceDelegate)
-		val serviceJob = serviceDelegate.getServiceMainJob()
+		val serviceProperty = serviceDelegate.propertyInteractor
+		val serviceJob = serviceProperty.serviceMainJob
 		managerJob = SupervisorJob(serviceJob)
-		immediateScope = CoroutineScope(appDispatchers.mainImmediate + managerJob)
-
-		serviceDelegate.getSessionInteractor().registerPlayerEventListener(playbackListener)
+		mainScope = CoroutineScope(appDispatchers.main + managerJob)
 	}
 
 	override fun release() {
 		managerJob.cancel()
-		serviceDelegate?.getSessionInteractor()?.removePlayerEventListener(playbackListener)
-		super.release()
+		if (isStarted) {
+			componentDelegate.sessionInteractor.removePlayerEventListener(playbackListener)
+		}
 	}
 
 	private fun onPlaybackError(error: PlaybackException) {
-		if (!isStarted) return
-
-		serviceDelegate?.getSessionInteractor()?.sessionPlayer
-			?.let { immediateScope.launch { eventHandler.onPlaybackError(error, it) } }
+		sessionPlayer?.let { mainScope.launch { eventHandler.onPlaybackError(error, it) } }
 	}
 
 	private fun getPlayerMediaItems(player: Player): List<MediaItem> {
@@ -70,7 +67,7 @@ class PlaybackManager : MusicLibraryService.ServiceComponent.Stoppable() {
 
 		suspend fun onPlaybackError(error: PlaybackException, player: Player) {
 			if (!isStarted) return
-			val currentContext = serviceDelegate?.getContext() ?: return
+			val currentContext = serviceDelegate.propertyInteractor.context ?: return
 
 			Timber.d("onPlaybackError, \nerror: ${error}\ncode: ${error.errorCode}\nplayer: $player")
 
@@ -95,7 +92,7 @@ class PlaybackManager : MusicLibraryService.ServiceComponent.Stoppable() {
 			error: PlaybackException
 		) = withContext(appDispatchers.mainImmediate) {
 			if (!isStarted) return@withContext
-			val currentContext = serviceDelegate?.getContext() ?: return@withContext
+			val currentContext = serviceDelegate.propertyInteractor.context ?: return@withContext
 
 			Preconditions.checkArgument(error.errorCode == PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND)
 

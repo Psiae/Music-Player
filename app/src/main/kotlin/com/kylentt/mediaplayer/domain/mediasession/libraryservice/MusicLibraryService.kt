@@ -2,7 +2,7 @@ package com.kylentt.mediaplayer.domain.mediasession.libraryservice
 
 import android.app.Notification
 import android.app.NotificationManager
-import android.content.BroadcastReceiver
+import android.app.Service
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -15,6 +15,9 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import com.kylentt.mediaplayer.app.delegates.AppDelegate
+import com.kylentt.mediaplayer.app.dependency.AppModule
+import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
+import com.kylentt.mediaplayer.core.coroutines.safeCollect
 import com.kylentt.mediaplayer.core.extenstions.forEachClear
 import com.kylentt.mediaplayer.domain.mediasession.MediaSessionConnector
 import com.kylentt.mediaplayer.domain.mediasession.libraryservice.notification.MediaNotificationManager
@@ -22,15 +25,16 @@ import com.kylentt.mediaplayer.domain.mediasession.libraryservice.playback.Playb
 import com.kylentt.mediaplayer.domain.mediasession.libraryservice.sessions.SessionManager
 import com.kylentt.mediaplayer.domain.mediasession.libraryservice.sessions.SessionProvider
 import com.kylentt.mediaplayer.domain.mediasession.libraryservice.state.StateManager
+import com.kylentt.mediaplayer.domain.service.ContextBroadcastManager
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.helper.VersionHelper
 import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.CompletableJob
-import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import timber.log.Timber
 import javax.inject.Inject
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KClass
@@ -40,48 +44,48 @@ import kotlin.system.exitProcess
 @AndroidEntryPoint
 class MusicLibraryService : MediaLibraryService() {
 
-	private val serviceBroadcastReceivers: MutableSet<BroadcastReceiver> = mutableSetOf()
-	private val serviceComponents: MutableSet<ServiceComponent> = mutableSetOf()
-	private val serviceJob = SupervisorJob()
-	private val stateRegistry = StateRegistry()
 
-	@Inject lateinit var notificationManagerService: NotificationManager
 	@Inject lateinit var injectedExoPlayer: ExoPlayer
 	@Inject lateinit var injectedSessionConnector: MediaSessionConnector
-
-	private val isServiceCreated
-		get() = stateRegistry.serviceStateSF.value >= ServiceState.Created
-	private val isServiceStarted
-	  get() = stateRegistry.serviceStateSF.value >= ServiceState.Started
-	private val isServiceForeground
-		get() = stateRegistry.serviceStateSF.value == ServiceState.Foreground
-	private val isServicePaused
-		get() = stateRegistry.serviceStateSF.value >= ServiceState.Paused
-	private val isServiceStopped
-		get() = stateRegistry.serviceStateSF.value <= ServiceState.Stopped
-	private val isServiceReleased
-		get() = stateRegistry.serviceStateSF.value <= ServiceState.Released
-	private val isServiceDestroyed
-		get() = stateRegistry.serviceStateSF.value <= ServiceState.Destroyed
+	private lateinit var notificationManagerService: NotificationManager
+	private lateinit var broadcastManager: ContextBroadcastManager
 
 	private var mReleasing = false
+
+	private val appDispatchers = AppModule.provideAppDispatchers()
+	private val serviceJob = SupervisorJob()
+	private val serviceScope = CoroutineScope(appDispatchers.main + serviceJob)
+
+	private val stateRegistry = StateRegistry()
+	private val componentManager = ComponentManager()
 
 	private val sessionManager = SessionManager(SessionProvider(this))
 	private val stateManager = StateManager(StateInteractor())
 	private val notificationManager = MediaNotificationManager(MediaNotificationId)
 	private val playbackManager = PlaybackManager()
 
+	private val currentState
+		get() = stateRegistry.serviceStateSF.value
+
+	private val isServiceCreated get() = currentState >= ServiceState.Created
+	private val isServiceStarted get() = currentState >= ServiceState.Started
+	private val isServiceForeground get() = currentState == ServiceState.Foreground
+	private val isServicePaused get() = currentState <= ServiceState.Paused
+	private val isServiceStopped get() = currentState <= ServiceState.Stopped
+	private val isServiceReleased get() = currentState <= ServiceState.Released
+	private val isServiceDestroyed get() = currentState == ServiceState.Destroyed
+
 	init {
-		serviceComponents.add(sessionManager)
-		serviceComponents.add(stateManager)
-		serviceComponents.add(playbackManager)
-		serviceComponents.add(notificationManager)
+		componentManager.add(sessionManager)
+		componentManager.add(stateManager)
+		componentManager.add(playbackManager)
+		componentManager.add(notificationManager)
 		onPostInitialize()
 	}
 
 	private fun onPostInitialize() {
 		stateRegistry.onEvent(ServiceEvent.Initialize, true)
-		serviceComponents.forEach { it.createComponent(this) }
+		componentManager.start()
 	}
 
 	override fun onCreate() {
@@ -92,13 +96,13 @@ class MusicLibraryService : MediaLibraryService() {
 	}
 
 	private fun onContextAttached() {
+		broadcastManager = ContextBroadcastManager(this)
+		notificationManagerService = getSystemService(NotificationManager::class.java)
 		stateRegistry.onEvent(ServiceEvent.AttachContext, true)
-		serviceComponents.forEach { it.notifyContextAttached(this) }
 	}
 
 	private fun onDependencyInjected() {
 		stateRegistry.onEvent(ServiceEvent.InjectDependency, true)
-		serviceComponents.forEach { it.notifyDependencyInjected() }
 	}
 
 	private fun postCreate() {
@@ -107,7 +111,6 @@ class MusicLibraryService : MediaLibraryService() {
 
 	private fun onStart() {
 		stateRegistry.onEvent(ServiceEvent.Start, true)
-		serviceComponents.forEach { it.startComponent(this) }
 	}
 
 	override fun onBind(intent: Intent?): IBinder? {
@@ -144,7 +147,6 @@ class MusicLibraryService : MediaLibraryService() {
 	private fun stopService(release: Boolean) {
 		if (release) mReleasing = true
 		if (isServiceForeground) stopForeground(release)
-		serviceComponents.forEach { if (it is ServiceComponent.Stoppable) it.stopComponent(release) }
 		stopSelf()
 
 		stateRegistry.onEvent(ServiceEvent.Stop(release), true)
@@ -153,21 +155,16 @@ class MusicLibraryService : MediaLibraryService() {
 
 	private fun releaseService() {
 		if (!isServiceStopped) stopService(true)
+		stateRegistry.onEvent(ServiceEvent.Release, true)
 		releaseComponent()
 		releaseSessions()
-
-		checkState(!serviceJob.isActive && sessions.isEmpty()
-			&& serviceBroadcastReceivers.isEmpty() && serviceComponents.isEmpty()
-		)
-
-		stateRegistry.onEvent(ServiceEvent.Release, true)
+		serviceJob.cancel()
 	}
 
 	private fun releaseComponent() {
-		serviceJob.cancel()
+		broadcastManager.release()
+		componentManager.release()
 		injectedExoPlayer.release()
-		serviceComponents.forEachClear { it.releaseComponent(this) }
-		serviceBroadcastReceivers.forEachClear { unregisterReceiver(it) }
 	}
 
 	private fun releaseSessions() {
@@ -182,8 +179,9 @@ class MusicLibraryService : MediaLibraryService() {
 	}
 
 	private fun postDestroy() {
-		checkState(serviceComponents.isEmpty() && serviceBroadcastReceivers.isEmpty())
 		stateRegistry.onEvent(ServiceEvent.Destroy, true)
+		checkState(componentManager.released)
+
 
 		if (!MainActivity.isAlive) {
 			// could Leak
@@ -202,23 +200,20 @@ class MusicLibraryService : MediaLibraryService() {
 	}
 
 	abstract class ServiceComponent {
-		private lateinit var impl: ServiceComponent
-
 		private var mCreated = false
 		private var mStarted = false
 		private var mReleased = false
+		private var mContextNotified = false
+		private var mDependencyNotified = false
 
-		private var mServiceDelegate: ServiceDelegate? = null
-		private var mComponentDelegate: ComponentDelegate? = null
+		private lateinit var mServiceDelegate: ServiceDelegate
+		private lateinit var mComponentDelegate: ComponentDelegate
 
 		protected open val serviceDelegate
 			get() = mServiceDelegate
 
 		protected open val componentDelegate
 			get() = mComponentDelegate
-
-		open val isInitialized
-			get() = ::impl.isInitialized
 
 		open val isCreated
 			get() = mCreated
@@ -231,125 +226,76 @@ class MusicLibraryService : MediaLibraryService() {
 
 		@MainThread
 		fun createComponent(libraryService: MusicLibraryService) {
-			checkMainThread()
-			if (isReleased) return
-
-			checkState(!isInitialized)
-			initialize()
-
-			checkState(isInitialized)
+			if (!checkMainThread() || mCreated || mReleased) return
 			create(libraryService.ServiceDelegate())
-
-			checkNotNull(mServiceDelegate)
+			checkState(::mServiceDelegate.isInitialized) {
+				"ServiceComponent did not call super.create(): $this"
+			}
 			mCreated = true
 		}
 
 		@MainThread
 		fun startComponent(libraryService: MusicLibraryService) {
-			checkMainThread()
-			if (isReleased || isStarted) return
+			if (!checkMainThread() || mStarted || mReleased) return
+			if (!mCreated) createComponent(libraryService)
+			if (!mContextNotified) notifyContextAttached(libraryService)
+			if (!mDependencyNotified) notifyDependencyInjected(libraryService)
 
-			checkState(isCreated)
 			start(libraryService.ComponentDelegate())
-
-			checkNotNull(mComponentDelegate)
+			checkState(::mComponentDelegate.isInitialized) {
+				"ServiceComponent did not call super.start(): $this"
+			}
 			mStarted = true
 		}
 
 		@MainThread
-		fun releaseComponent(libraryService: MusicLibraryService) {
-			checkMainThread()
-
-			checkState(!isReleased)
+		fun releaseComponent() {
+			if (!checkMainThread() || mReleased) return
 			release()
-
-			checkState(mServiceDelegate == null && mComponentDelegate == null)
 			mReleased = true
 		}
-
-		private var mContextNotified = false
 
 		@MainThread
 		fun notifyContextAttached(service: MusicLibraryService) {
 			checkMainThread()
 			if (mContextNotified || isReleased) return
+			if (!isCreated) createComponent(service)
 			serviceContextAttached(service)
 		}
 
-		private var mDependencyNotified = false
-
 		@MainThread
-		fun notifyDependencyInjected() {
-			if (mDependencyNotified || isReleased) return
-			serviceDependencyInjected()
-			checkState(mDependencyNotified)
-		}
-
-		@MainThread
-		@CallSuper
-		protected open fun initialize() {
+		fun notifyDependencyInjected(service: MusicLibraryService) {
 			checkMainThread()
-			impl = this
+			if (mDependencyNotified || isReleased) return
+			if (!isCreated) createComponent(service)
+			serviceDependencyInjected()
 		}
 
 		@MainThread
 		@CallSuper
 		protected open fun create(serviceDelegate: ServiceDelegate) {
-			checkMainThread()
 			mServiceDelegate = serviceDelegate
 		}
 
 		@MainThread
 		@CallSuper
 		protected open fun start(componentDelegate: ComponentDelegate) {
-			checkMainThread()
 			mComponentDelegate = componentDelegate
 		}
 
 		@MainThread
-		@CallSuper
-		protected open fun release() {
-			checkMainThread()
-			mComponentDelegate = null
-			mServiceDelegate = null
-		}
+		protected open fun release() {}
 
 		@MainThread
-		protected open fun serviceContextAttached(context: Context) = Unit
+		@CallSuper
+		protected open fun serviceContextAttached(context: Context) {
+			mContextNotified = true
+		}
 
 		@MainThread
 		@CallSuper
 		protected open fun serviceDependencyInjected() {
 			mDependencyNotified = true
-		}
-
-		abstract class Stoppable : ServiceComponent() {
-			private var mStopped = false
-			private var mReleasing = false
-
-			val isReleasing
-				get() = mReleasing
-
-			override val isStarted: Boolean
-				get() = if (!mStopped) super.isStarted else false
-
-			override val componentDelegate: ComponentDelegate?
-				get() = if (!mStopped) super.componentDelegate else null
-
-			fun stopComponent(releasing: Boolean) {
-				if (isReleased || mStopped) return
-				mReleasing = releasing
-				stop()
-				checkState(!isStarted && componentDelegate == null)
-			}
-
-			@MainThread
-			@CallSuper
-			protected open fun stop() {
-				checkMainThread()
-				mStopped = true
-			}
-
 		}
 
 		abstract class Interactor
@@ -359,15 +305,20 @@ class MusicLibraryService : MediaLibraryService() {
 		val isForeground
 			get() = isServiceForeground
 
-		fun startForeground(notification: Notification) = startForegroundService(notification)
-		fun stopForeground(removeNotification: Boolean) = stopForegroundService(removeNotification)
+		fun startForeground(notification: Notification) {
+			if (isServiceCreated) startForegroundService(notification)
+		}
+
+		fun stopForeground(removeNotification: Boolean) {
+			if (isServiceCreated) stopForegroundService(removeNotification)
+		}
 
 		fun start() {
-			if (isServiceCreated && !isServiceStarted && !isServiceReleased) onStart()
+			if (isServiceCreated && !isServiceStarted) onStart()
 		}
 
 		fun stop(release: Boolean) {
-			if (isServiceCreated && !isServiceReleased) stopService(release)
+			if (isServiceCreated) stopService(release)
 		}
 
 		fun release() {
@@ -376,29 +327,30 @@ class MusicLibraryService : MediaLibraryService() {
 	}
 
 	inner class ServiceDelegate {
-		fun getContext(): Context? = baseContext
-		fun getInjectedPlayer(): ExoPlayer = injectedExoPlayer
-		fun getSessionConnector() = injectedSessionConnector
-		fun getStateInteractor() = stateManager.interactor
-		fun getSessionInteractor() = sessionManager.interactor
-		fun getNotificationManagerInteractor() = notificationManager.interactor
-		fun getServiceMainJob(): CompletableJob = serviceJob
+		val propertyInteractor = PropertyInteractor()
+	}
+
+	inner class PropertyInteractor {
+		val context: Context? get() = baseContext
+		val injectedPlayer: ExoPlayer get() = injectedExoPlayer
+
+		val serviceDispatchers
+			get() = appDispatchers
+		val serviceMainJob
+			get() = serviceJob
+		val sessionConnector
+			get() = injectedSessionConnector
 	}
 
 	inner class ComponentDelegate {
-		@Suppress("UNCHECKED_CAST")
-		fun <T : ServiceComponent> get(kls: KClass<T>): T? {
-			return serviceComponents.find { it.javaClass.kotlin == kls }?.let { it as T }
-		}
+		val sessionInteractor
+			get() = sessionManager.interactor
 
-		fun <T : ServiceComponent> provide (component: () -> T): Boolean {
-			return serviceComponents.add(component())
-		}
+		val stateInteractor
+			get() = stateManager.interactor
 
-		fun <T : ServiceComponent> getOrProvide(getKls: KClass<T>, provide: () -> T): T {
-			get(getKls) ?: provide(provide)
-			return get(getKls)!!
-		}
+		val notificationInteractor
+			get() = notificationManager.interactor
 	}
 
 	// Don't Implement LifecycleOwner when there's no use case yet
@@ -410,6 +362,8 @@ class MusicLibraryService : MediaLibraryService() {
 		val serviceEventSF = mutableServiceEventSF.asStateFlow()
 
 		fun onEvent(event: ServiceEvent, updateState: Boolean) {
+
+			Timber.d("StateRegistry onEvent\nevent: $event")
 
 			if (event is ServiceEvent.SingleTimeEvent) {
 				checkState(!event.consumed)
@@ -424,7 +378,7 @@ class MusicLibraryService : MediaLibraryService() {
 			mutableServiceEventSF.value = event
 		}
 
-		private fun updateState(state: ServiceState) {
+		fun updateState(state: ServiceState) {
 			val currentState = serviceStateSF.value
 			checkState(state upFrom currentState || state downFrom currentState) {
 				if (state == currentState) {
@@ -442,6 +396,62 @@ class MusicLibraryService : MediaLibraryService() {
 
 			StateDelegate.updateState(this, state)
 			mutableServiceStateSF.value = state
+		}
+	}
+
+	private inner class ComponentManager {
+		private val components = mutableSetOf<ServiceComponent>()
+
+		// Explicit reference
+		private val service = this@MusicLibraryService
+
+		var started = false
+			private set
+
+		var released = false
+			private set
+
+		@MainThread
+		fun add(component: ServiceComponent) {
+			if (!checkMainThread() || released) return
+			components.add(component)
+			notifyComponent(component, service.currentState)
+		}
+
+		@MainThread
+		fun remove(component: ServiceComponent) {
+			if (!checkMainThread() || released) return
+			components.remove(component)
+			component.releaseComponent()
+		}
+
+		@MainThread
+		fun start() {
+			if (!checkMainThread() || started || released) return
+			serviceScope.launch {
+				stateRegistry.serviceEventSF.safeCollect { event ->
+					components.forEach { notifyComponent(it, event.resultState) }
+				}
+			}
+		}
+
+		@MainThread
+		fun release() {
+			if (!checkMainThread() || released) return
+			components.forEachClear { it.releaseComponent() }
+			released = true
+		}
+
+		private fun notifyComponent(component: ServiceComponent, state: ServiceState) {
+			when(state) {
+				ServiceState.Nothing -> Unit
+				ServiceState.Initialized -> component.createComponent(service)
+				ServiceState.ContextAttached -> component.notifyContextAttached(service)
+				ServiceState.DependencyInjected -> component.notifyDependencyInjected(service)
+				ServiceState.Created, ServiceState.Stopped, ServiceState.Started, ServiceState.Paused,
+					ServiceState.Foreground -> component.startComponent(service)
+				ServiceState.Released, ServiceState.Destroyed -> component.releaseComponent()
+			}
 		}
 	}
 

@@ -58,22 +58,17 @@ class MediaNotificationManager(
 	private val eventListener = this.PlayerEventListener()
 	val itemInfoIntentConverter = MediaItemInfo.IntentConverter()
 
-	val isForegroundCondition: (MediaSession) -> Boolean = {
-		serviceDelegate?.getStateInteractor()?.getServiceForegroundCondition(it) ?: false
+	val isForegroundCondition: (
+		MusicLibraryService.ComponentDelegate, MediaSession
+	) -> Boolean = { delegate: MusicLibraryService.ComponentDelegate, session: MediaSession ->
+		delegate.stateInteractor.getServiceForegroundCondition(session)
 	}
 
 	val interactor = Interactor()
 
-	override fun initialize() {
-		super.initialize()
-		appDispatchers = AppModule.provideAppDispatchers()
-	}
-
 	override fun create(serviceDelegate: MusicLibraryService.ServiceDelegate) {
 		super.create(serviceDelegate)
-		val serviceJob = serviceDelegate.getServiceMainJob()
-		mainScope = CoroutineScope(appDispatchers.main + serviceJob)
-		serviceDelegate.getSessionInteractor().registerPlayerEventListener(eventListener)
+		createImpl(serviceDelegate)
 	}
 
 	override fun serviceContextAttached(context: Context) {
@@ -83,15 +78,33 @@ class MediaNotificationManager(
 
 	override fun start(componentDelegate: MusicLibraryService.ComponentDelegate) {
 		super.start(componentDelegate)
+		startImpl(componentDelegate)
 	}
 
 	override fun release() {
 		if (isReleased) return
-		if (::provider.isInitialized) provider.release()
-		if (::provider.isInitialized) dispatcher.release()
-		mainScope.cancel()
-		serviceDelegate?.getSessionInteractor()?.removePlayerEventListener(eventListener)
-		super.release()
+		releaseImpl()
+	}
+
+	fun createImpl(serviceDelegate: MusicLibraryService.ServiceDelegate) {
+		val serviceJob = serviceDelegate.propertyInteractor.serviceMainJob
+		appDispatchers = serviceDelegate.propertyInteractor.serviceDispatchers
+		mainScope = CoroutineScope(appDispatchers.main + serviceJob)
+	}
+
+	fun startImpl(componentDelegate: MusicLibraryService.ComponentDelegate) {
+		componentDelegate.sessionInteractor.registerPlayerEventListener(eventListener)
+	}
+
+	fun releaseImpl() {
+		if (::mainScope.isInitialized) mainScope.cancel()
+		if (isComponentInitialized) {
+			dispatcher.release()
+			provider.release()
+		}
+		if (isStarted) {
+			componentDelegate.sessionInteractor.removePlayerEventListener(eventListener)
+		}
 	}
 
 	fun getNotification(
@@ -105,23 +118,20 @@ class MediaNotificationManager(
 	) {
 		if (!isStarted) return
 		val notification = getNotification(session, onGoingNotification)
-		serviceDelegate!!.getStateInteractor().startForegroundService(notification)
+		componentDelegate.stateInteractor.startForegroundService(notification)
 	}
 
 	fun stopForegroundService(removeNotification: Boolean) {
 		if (!isStarted) return
-		serviceDelegate!!.getStateInteractor().stopForegroundService(removeNotification)
+		componentDelegate.stateInteractor.stopForegroundService(removeNotification)
 	}
 
 	fun getProvider(): MediaNotification.Provider = this.provider
 
 	fun onUpdateNotification(session: MediaSession) {
 		if (!isStarted) return
-		val foregroundCondition =
-			serviceDelegate!!.getStateInteractor().getServiceForegroundCondition(session)
-		val notification =
-			provider.fromMediaSession(session, foregroundCondition, ChannelName)
-
+		val foregroundCondition = isForegroundCondition(componentDelegate, session)
+		val notification = provider.fromMediaSession(session, foregroundCondition, ChannelName)
 		dispatcher.updateNotification(notificationId, notification)
 	}
 
@@ -330,7 +340,8 @@ class MediaNotificationManager(
 			Timber.d("createNotificationInternalImpl")
 
 			val notification =
-				getNotificationFromMediaSession(session, isForegroundCondition(session), ChannelName)
+				getNotificationFromMediaSession(session,
+					isForegroundCondition(componentDelegate, session), ChannelName)
 
 			dispatcher.cancelValidatorJob()
 
@@ -342,7 +353,7 @@ class MediaNotificationManager(
 			override fun actionAny(context: Context, intent: Intent): Int {
 				if (!isStarted) return -1
 
-				serviceDelegate?.getSessionInteractor()?.mediaSession
+				componentDelegate.sessionInteractor.mediaSession
 					?.let {
 						val player = it.player
 
@@ -372,7 +383,7 @@ class MediaNotificationManager(
 			}
 
 			override fun actionPlay(context: Context, intent: Intent) {
-				serviceDelegate?.getSessionInteractor()?.mediaSession
+				componentDelegate.sessionInteractor.mediaSession
 					?.let {
 						val player = it.player
 
@@ -397,7 +408,7 @@ class MediaNotificationManager(
 			}
 
 			override fun actionPause(context: Context, intent: Intent) {
-				serviceDelegate?.getSessionInteractor()?.mediaSession
+				componentDelegate.sessionInteractor.mediaSession
 					?.let {
 						val player = it.player
 
@@ -416,7 +427,7 @@ class MediaNotificationManager(
 			}
 
 			override fun actionNext(context: Context, intent: Intent) {
-				serviceDelegate?.getSessionInteractor()?.mediaSession
+				componentDelegate.sessionInteractor.mediaSession
 					?.let {
 						val player = it.player
 
@@ -434,7 +445,7 @@ class MediaNotificationManager(
 			}
 
 			override fun actionPrevious(context: Context, intent: Intent) {
-				serviceDelegate?.getSessionInteractor()?.mediaSession
+				componentDelegate.sessionInteractor.mediaSession
 					?.let {
 						val player = it.player
 
@@ -452,7 +463,7 @@ class MediaNotificationManager(
 			}
 
 			override fun actionRepeatOffToOne(context: Context, intent: Intent) {
-				serviceDelegate?.getSessionInteractor()?.mediaSession
+				componentDelegate.sessionInteractor.mediaSession
 					?.let {
 						val player = it.player
 
@@ -470,7 +481,7 @@ class MediaNotificationManager(
 			}
 
 			override fun actionRepeatOneToAll(context: Context, intent: Intent) {
-				serviceDelegate?.getSessionInteractor()?.mediaSession
+				componentDelegate.sessionInteractor.mediaSession
 					?.let {
 						val player = it.player
 
@@ -488,7 +499,7 @@ class MediaNotificationManager(
 			}
 
 			override fun actionRepeatAllToOff(context: Context, intent: Intent) {
-				serviceDelegate?.getSessionInteractor()?.mediaSession
+				componentDelegate.sessionInteractor.mediaSession
 					?.let {
 						val player = it.player
 
@@ -511,13 +522,13 @@ class MediaNotificationManager(
 
 			override fun actionStop(context: Context, intent: Intent) {
 				if (!isStarted) return
-				val sessionConnector = serviceDelegate?.getSessionConnector()
+				val sessionConnector = serviceDelegate.propertyInteractor.sessionConnector
 
-				serviceDelegate?.getSessionInteractor()?.mediaSession
+				componentDelegate.sessionInteractor.mediaSession
 					?.let {
 
 						when {
-							!isForegroundCondition(it) -> {
+							!isForegroundCondition(componentDelegate, it) -> {
 								val notification = provider
 									.getNotificationFromMediaSession(it, false, ChannelName)
 								return dispatcher.updateNotification(notificationId, notification)
@@ -540,13 +551,13 @@ class MediaNotificationManager(
 
 			override fun actionCancel(context: Context, intent: Intent) {
 				if (!isStarted) return
-				val stateInteractor = serviceDelegate?.getStateInteractor()
+				val stateInteractor = componentDelegate.stateInteractor
 
-				serviceDelegate?.getSessionInteractor()?.mediaSession
+				componentDelegate.sessionInteractor.mediaSession
 					?.let {
 
 						when {
-							isForegroundCondition(it) -> {
+							isForegroundCondition(componentDelegate, it) -> {
 								val notification = provider
 									.getNotificationFromMediaSession(it, true, ChannelName)
 								return dispatcher.updateNotification(notificationId, notification)
@@ -575,16 +586,18 @@ class MediaNotificationManager(
 			if (!isStarted) return
 
 			mediaItemTransitionJob = mainScope.launch {
-				serviceDelegate?.getSessionInteractor()?.mediaSession?.let {
-					provider.updateItemBitmap(it.player)
-					val getNotification = {
-						provider.fromMediaSession(it, isForegroundCondition(it), ChannelName)
+				componentDelegate.sessionInteractor.mediaSession
+					?.let {
+						provider.updateItemBitmap(it.player)
+						val getNotification = {
+							provider.fromMediaSession(it, isForegroundCondition(componentDelegate, it), ChannelName)
+						}
+						dispatcher.suspendUpdateNotification(notificationId, getNotification())
+						dispatcher.dispatchNotificationValidator(
+							notificationId,
+							getNotification = getNotification
+						)
 					}
-					dispatcher.dispatchNotificationValidator(
-						notificationId,
-						getNotification = getNotification
-					)
-				}
 			}
 		}
 
@@ -594,15 +607,16 @@ class MediaNotificationManager(
 
 			playerRepeatModeJob = mainScope.launch {
 
-				serviceDelegate?.getSessionInteractor()?.mediaSession?.let {
-					val getNotification = {
-						provider.fromMediaSession(it, isForegroundCondition(it), ChannelName)
-					}
-					dispatcher.suspendUpdateNotification(notificationId, getNotification())
-					dispatcher.dispatchNotificationValidator(
-						notificationId,
-						getNotification = getNotification
-					)
+				componentDelegate.sessionInteractor.mediaSession
+					?.let {
+						val getNotification = {
+							provider.fromMediaSession(it, isForegroundCondition(componentDelegate, it), ChannelName)
+						}
+						dispatcher.suspendUpdateNotification(notificationId, getNotification())
+						dispatcher.dispatchNotificationValidator(
+							notificationId,
+							getNotification = getNotification
+						)
 				}
 			}
 		}
@@ -613,15 +627,16 @@ class MediaNotificationManager(
 
 			playWhenReadyChangedJob = mainScope.launch {
 
-				serviceDelegate?.getSessionInteractor()?.mediaSession?.let {
-					val getNotification = {
-						provider.fromMediaSession(it, isForegroundCondition(it), ChannelName)
+				componentDelegate.sessionInteractor.mediaSession
+					?.let {
+						val getNotification = {
+							provider.fromMediaSession(it, isForegroundCondition(componentDelegate, it), ChannelName)
+						}
+						dispatcher.dispatchNotificationValidator(
+							notificationId,
+							getNotification = getNotification
+						)
 					}
-					dispatcher.dispatchNotificationValidator(
-						notificationId,
-						getNotification = getNotification
-					)
-				}
 			}
 		}
 
@@ -631,14 +646,15 @@ class MediaNotificationManager(
 
 			playbackStateChangedJob = mainScope.launch {
 
-				serviceDelegate?.getSessionInteractor()?.mediaSession?.let {
-					val getNotification = {
-						val shouldForeground = isForegroundCondition(it)
-						val notification = provider.fromMediaSession(it, shouldForeground, ChannelName)
-						notification
+				componentDelegate.sessionInteractor.mediaSession
+					?.let {
+						val getNotification = {
+							val shouldForeground = isForegroundCondition(componentDelegate, it)
+							val notification = provider.fromMediaSession(it, shouldForeground, ChannelName)
+							notification
+						}
+						dispatcher.dispatchNotificationValidator(notificationId, getNotification = getNotification)
 					}
-					dispatcher.dispatchNotificationValidator(notificationId, getNotification = getNotification)
-				}
 			}
 		}
 

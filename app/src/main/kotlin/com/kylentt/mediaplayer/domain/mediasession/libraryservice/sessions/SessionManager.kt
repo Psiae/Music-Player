@@ -23,6 +23,7 @@ import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import timber.log.Timber
 
 class SessionManager(
@@ -38,15 +39,17 @@ class SessionManager(
 
 	override fun create(serviceDelegate: MusicLibraryService.ServiceDelegate) {
 		super.create(serviceDelegate)
-		sessionManagerJob = serviceDelegate.getServiceMainJob()
+		val serviceJob = serviceDelegate.propertyInteractor.serviceMainJob
+		sessionManagerJob = SupervisorJob(serviceJob)
 	}
 
 	override fun serviceDependencyInjected() {
 		super.serviceDependencyInjected()
-		val delegate = serviceDelegate!!
-		val context = delegate.getContext()!!
+		val delegate = serviceDelegate
+		val context = delegate.propertyInteractor.context!!
 		val callback = librarySessionCallback
-		val get = sessionProvider.getNewLibrarySession(context, delegate.getInjectedPlayer(), callback)
+		val get = sessionProvider
+			.getNewLibrarySession(context, delegate.propertyInteractor.injectedPlayer, callback)
 		sessionRegistry.changeLocalLibrarySession(get)
 	}
 

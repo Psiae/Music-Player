@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
 import androidx.navigation.navigation
 import com.google.accompanist.navigation.animation.AnimatedNavHost
 import com.google.accompanist.navigation.animation.composable
@@ -36,6 +37,7 @@ fun AnimatedMainAppNavigator(
     controller: NavHostController,
     modifier: Modifier = Modifier
 ) {
+
     AnimatedNavHost(
         modifier = modifier,
         navController = controller,

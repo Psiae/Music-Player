@@ -48,7 +48,8 @@ object MediaItemPropertyHelper {
 		return "$this Description:" +
 			"\n fileName: $fileName" +
 			"\n mediaId: $mediaId" +
-			"\n title: $title"
+			"\n title: $title" +
+			"\n localConfig: $localConfiguration"
 	}
 
 

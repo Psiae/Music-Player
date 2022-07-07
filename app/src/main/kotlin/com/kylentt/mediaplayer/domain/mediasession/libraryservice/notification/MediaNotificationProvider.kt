@@ -38,9 +38,7 @@ class MediaNotificationProvider(
 		}
 
 		if (actionReceiver == null) {
-			checkReleaseState()
 			context.registerReceiver(actionBroadcastReceiver, getIntentFilter())
-			checkReleaseState()
 		}
 
 		actionReceiver = receiver
@@ -51,20 +49,9 @@ class MediaNotificationProvider(
 			checkState(actionReceiver == null)
 			return
 		}
-
-		checkReleaseState()
-
 		context.unregisterReceiver(actionBroadcastReceiver)
-
-		checkReleaseState()
 		actionReceiver = null
 		isReleased = true
-	}
-
-	private fun checkReleaseState(): Boolean {
-		val i = context.packageManager.queryBroadcastReceivers(Intent(ACTION_BUTTON_INTENT_NAME), PackageManager.MATCH_DEFAULT_ONLY)
-		Timber.d("checkReleaseState $i")
-		return true
 	}
 
 	private fun getMediaNotificationBuilder(

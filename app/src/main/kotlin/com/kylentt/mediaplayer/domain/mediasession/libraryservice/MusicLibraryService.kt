@@ -2,7 +2,6 @@ package com.kylentt.mediaplayer.domain.mediasession.libraryservice
 
 import android.app.Notification
 import android.app.NotificationManager
-import android.app.Service
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -16,7 +15,6 @@ import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import com.kylentt.mediaplayer.app.delegates.AppDelegate
 import com.kylentt.mediaplayer.app.dependency.AppModule
-import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
 import com.kylentt.mediaplayer.core.coroutines.safeCollect
 import com.kylentt.mediaplayer.core.extenstions.forEachClear
 import com.kylentt.mediaplayer.domain.mediasession.MediaSessionConnector
@@ -25,7 +23,7 @@ import com.kylentt.mediaplayer.domain.mediasession.libraryservice.playback.Playb
 import com.kylentt.mediaplayer.domain.mediasession.libraryservice.sessions.SessionManager
 import com.kylentt.mediaplayer.domain.mediasession.libraryservice.sessions.SessionProvider
 import com.kylentt.mediaplayer.domain.mediasession.libraryservice.state.StateManager
-import com.kylentt.mediaplayer.domain.service.ContextBroadcastManager
+import com.kylentt.mediaplayer.domain.util.ContextBroadcastManager
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.helper.VersionHelper
@@ -37,16 +35,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import timber.log.Timber
 import javax.inject.Inject
 import kotlin.properties.ReadOnlyProperty
-import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 import kotlin.system.exitProcess
 
 @AndroidEntryPoint
 class MusicLibraryService : MediaLibraryService() {
 
-
-	@Inject lateinit var injectedExoPlayer: ExoPlayer
-	@Inject lateinit var injectedSessionConnector: MediaSessionConnector
+	@Inject lateinit var iExoPlayer: ExoPlayer
+	@Inject lateinit var iSessionConnector: MediaSessionConnector
 	private lateinit var notificationManagerService: NotificationManager
 	private lateinit var broadcastManager: ContextBroadcastManager
 
@@ -164,11 +160,11 @@ class MusicLibraryService : MediaLibraryService() {
 	private fun releaseComponent() {
 		broadcastManager.release()
 		componentManager.release()
-		injectedExoPlayer.release()
+		iExoPlayer.release()
 	}
 
 	private fun releaseSessions() {
-		injectedSessionConnector.disconnectService()
+		iSessionConnector.disconnectService()
 		sessions.forEachClear { it.release() }
 	}
 
@@ -332,14 +328,10 @@ class MusicLibraryService : MediaLibraryService() {
 
 	inner class PropertyInteractor {
 		val context: Context? get() = baseContext
-		val injectedPlayer: ExoPlayer get() = injectedExoPlayer
-
-		val serviceDispatchers
-			get() = appDispatchers
-		val serviceMainJob
-			get() = serviceJob
-		val sessionConnector
-			get() = injectedSessionConnector
+		val injectedPlayer: ExoPlayer get() = iExoPlayer
+		val serviceDispatchers get() = appDispatchers
+		val serviceMainJob get() = serviceJob
+		val sessionConnector get() = iSessionConnector
 	}
 
 	inner class ComponentDelegate {
@@ -399,6 +391,7 @@ class MusicLibraryService : MediaLibraryService() {
 		}
 	}
 
+	@MainThread
 	private inner class ComponentManager {
 		private val components = mutableSetOf<ServiceComponent>()
 
@@ -411,31 +404,27 @@ class MusicLibraryService : MediaLibraryService() {
 		var released = false
 			private set
 
-		@MainThread
 		fun add(component: ServiceComponent) {
 			if (!checkMainThread() || released) return
 			components.add(component)
 			notifyComponent(component, service.currentState)
 		}
 
-		@MainThread
 		fun remove(component: ServiceComponent) {
 			if (!checkMainThread() || released) return
-			components.remove(component)
 			component.releaseComponent()
+			components.remove(component)
 		}
 
-		@MainThread
 		fun start() {
 			if (!checkMainThread() || started || released) return
 			serviceScope.launch {
-				stateRegistry.serviceEventSF.safeCollect { event ->
-					components.forEach { notifyComponent(it, event.resultState) }
-				}
+				stateRegistry.serviceEventSF
+					.safeCollect { event -> components.forEach { notifyComponent(it, event.resultState) } }
 			}
+			started = true
 		}
 
-		@MainThread
 		fun release() {
 			if (!checkMainThread() || released) return
 			components.forEachClear { it.releaseComponent() }
@@ -459,16 +448,18 @@ class MusicLibraryService : MediaLibraryService() {
 		private var savedState: ServiceState = ServiceState.Nothing
 		private var stateProvider: Any? = null
 		fun updateState(holder: Any, state: ServiceState) {
-			checkState(state upFrom savedState || state downFrom savedState) {
-				"StateDelegate StateJump Attempt from $savedState to $state"
-			}
 			when (state) {
 				ServiceState.Nothing -> throw IllegalArgumentException()
 				ServiceState.Initialized -> {
 					checkState(holder !== stateProvider)
 					stateProvider = holder
 				}
-				else -> checkState(stateProvider === holder)
+				else -> {
+					checkState(holder === stateProvider)
+					checkState(state upFrom savedState || state downFrom savedState) {
+						"StateDelegate StateJump Attempt from $savedState to $state"
+					}
+				}
 			}
 			savedState = state
 		}

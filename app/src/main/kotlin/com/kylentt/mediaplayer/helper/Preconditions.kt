@@ -1,5 +1,6 @@
 package com.kylentt.mediaplayer.helper
 
+import android.app.Activity
 import android.os.Looper
 
 @Suppress("NOTHING_TO_INLINE")
@@ -7,11 +8,9 @@ object Preconditions {
 
   @JvmStatic
 	inline fun checkState(state: Boolean): Boolean {
-		checkState(state) {
-			"CheckState Failed"
-		}
-		return state
+		return checkState(state) { "CheckState Failed" }
 	}
+
 
   @JvmStatic
 	inline fun checkState(state: Boolean, msg: () -> Any): Boolean {
@@ -21,10 +20,7 @@ object Preconditions {
 
   @JvmStatic
 	inline fun checkArgument(argument: Boolean): Boolean {
-		checkArgument(argument) {
-			"CheckArgument Failed"
-		}
-		return argument
+		return checkArgument(argument) { "CheckArgument Failed" }
 	}
 
   @JvmStatic

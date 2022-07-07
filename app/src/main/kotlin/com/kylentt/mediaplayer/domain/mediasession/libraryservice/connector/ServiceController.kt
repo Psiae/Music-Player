@@ -16,6 +16,7 @@ import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateEnded
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateIdle
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateReady
 import com.kylentt.mediaplayer.core.exoplayer.PlayerHelper
+import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper.getDebugDescription
 import com.kylentt.mediaplayer.domain.mediasession.libraryservice.MusicLibraryService
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
@@ -86,11 +87,12 @@ class MediaServiceController(
     }
 
     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-      super.onMediaItemTransition(mediaItem, reason)
+			super.onMediaItemTransition(mediaItem, reason)
 			val item = mediaItem ?: MediaItem.EMPTY
-			// not sure whether to take the mediaItem that has LocalConfiguration or Not
-
-			if (!playbackStateSF.value.currentMediaItem.idEqual(mediaItem)) {
+			val current = playbackStateSF.value.currentMediaItem
+			if (!current.idEqual(mediaItem)
+				|| (current.localConfiguration == null && item.localConfiguration != null)
+			) {
 				playbackStateSF.value = playbackStateSF.value.copy(currentMediaItem = item)
 			}
     }

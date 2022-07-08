@@ -1,4 +1,4 @@
-package com.kylentt.mediaplayer.domain.mediasession.libraryservice.notification
+package com.kylentt.mediaplayer.domain.musiclibrary.service.provider
 
 import android.app.Notification
 import android.app.PendingIntent
@@ -6,7 +6,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import androidx.core.app.NotificationCompat
 import androidx.media3.common.MediaItem
@@ -20,7 +19,6 @@ import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateBuffering
 import com.kylentt.mediaplayer.core.media3.MediaItemFactory.orEmpty
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemInfo
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
-import timber.log.Timber
 
 class MediaNotificationProvider(
 	private val context: Context,

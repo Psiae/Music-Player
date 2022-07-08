@@ -1,6 +1,5 @@
 package com.kylentt.mediaplayer.helper
 
-import android.app.Activity
 import android.os.Looper
 
 @Suppress("NOTHING_TO_INLINE")

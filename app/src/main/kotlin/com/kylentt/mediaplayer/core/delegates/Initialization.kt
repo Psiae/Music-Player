@@ -2,7 +2,7 @@ package com.kylentt.mediaplayer.core.delegates
 
 import androidx.annotation.GuardedBy
 import com.kylentt.mediaplayer.BuildConfig
-import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
+import com.kylentt.mediaplayer.core.coroutines.CoroutineDispatchers
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import kotlinx.coroutines.*
 import timber.log.Timber
@@ -85,7 +85,7 @@ object LateLazySample {
 
     val jobs = mutableListOf<String>()
 
-    val scope = CoroutineScope(AppDispatchers.DEFAULT.io)
+    val scope = CoroutineScope(CoroutineDispatchers.DEFAULT.io)
     scope.launch {
 			val c = async {
 				val key = "c"

@@ -1,4 +1,4 @@
-package com.kylentt.mediaplayer.domain.mediasession.libraryservice
+package com.kylentt.mediaplayer.domain.musiclibrary.service
 
 import android.app.Notification
 import android.app.NotificationManager
@@ -17,12 +17,12 @@ import com.kylentt.mediaplayer.app.delegates.AppDelegate
 import com.kylentt.mediaplayer.app.dependency.AppModule
 import com.kylentt.mediaplayer.core.coroutines.safeCollect
 import com.kylentt.mediaplayer.core.extenstions.forEachClear
-import com.kylentt.mediaplayer.domain.mediasession.MediaSessionConnector
-import com.kylentt.mediaplayer.domain.mediasession.libraryservice.notification.MediaNotificationManager
-import com.kylentt.mediaplayer.domain.mediasession.libraryservice.playback.PlaybackManager
-import com.kylentt.mediaplayer.domain.mediasession.libraryservice.sessions.SessionManager
-import com.kylentt.mediaplayer.domain.mediasession.libraryservice.sessions.SessionProvider
-import com.kylentt.mediaplayer.domain.mediasession.libraryservice.state.StateManager
+import com.kylentt.mediaplayer.domain.musiclibrary.MusicLibraryDelegate
+import com.kylentt.mediaplayer.domain.musiclibrary.service.manager.MediaNotificationManager
+import com.kylentt.mediaplayer.domain.musiclibrary.service.manager.PlaybackManager
+import com.kylentt.mediaplayer.domain.musiclibrary.service.manager.SessionManager
+import com.kylentt.mediaplayer.domain.musiclibrary.service.provider.SessionProvider
+import com.kylentt.mediaplayer.domain.musiclibrary.service.manager.StateManager
 import com.kylentt.mediaplayer.domain.util.ContextBroadcastManager
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import timber.log.Timber
 import javax.inject.Inject
+import javax.inject.Named
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 import kotlin.system.exitProcess
@@ -41,8 +42,11 @@ import kotlin.system.exitProcess
 @AndroidEntryPoint
 class MusicLibraryService : MediaLibraryService() {
 
-	@Inject lateinit var iExoPlayer: ExoPlayer
-	@Inject lateinit var iSessionConnector: MediaSessionConnector
+	@Inject
+	@Named("MusicExoPlayer")
+	lateinit var iExoPlayer: ExoPlayer
+
+	@Inject lateinit var iLibraryDelegate: MusicLibraryDelegate
 	private lateinit var notificationManagerService: NotificationManager
 	private lateinit var broadcastManager: ContextBroadcastManager
 
@@ -122,7 +126,8 @@ class MusicLibraryService : MediaLibraryService() {
 	private fun startForegroundService(notification: Notification) {
 		if (!isServiceStarted) onStart()
 		if (VersionHelper.hasQ()) {
-			startForeground(MediaNotificationId, notification,
+			startForeground(
+				MediaNotificationId, notification,
 				ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
 		} else {
 			startForeground(MediaNotificationId, notification)
@@ -164,7 +169,6 @@ class MusicLibraryService : MediaLibraryService() {
 	}
 
 	private fun releaseSessions() {
-		iSessionConnector.disconnectService()
 		sessions.forEachClear { it.release() }
 	}
 
@@ -327,22 +331,19 @@ class MusicLibraryService : MediaLibraryService() {
 	}
 
 	inner class PropertyInteractor {
-		val context: Context? get() = baseContext
+		private val service = this@MusicLibraryService
+
+		val context: Context? get() = if (baseContext != null) service else null
 		val injectedPlayer: ExoPlayer get() = iExoPlayer
 		val serviceDispatchers get() = appDispatchers
 		val serviceMainJob get() = serviceJob
-		val sessionConnector get() = iSessionConnector
+		val libraryDelegate get() = iLibraryDelegate
 	}
 
 	inner class ComponentDelegate {
-		val sessionInteractor
-			get() = sessionManager.interactor
-
-		val stateInteractor
-			get() = stateManager.interactor
-
-		val notificationInteractor
-			get() = notificationManager.interactor
+		val sessionInteractor get() = sessionManager.interactor
+		val stateInteractor get() = stateManager.interactor
+		val notificationInteractor get() = notificationManager.interactor
 	}
 
 	// Don't Implement LifecycleOwner when there's no use case yet
@@ -438,7 +439,7 @@ class MusicLibraryService : MediaLibraryService() {
 				ServiceState.ContextAttached -> component.notifyContextAttached(service)
 				ServiceState.DependencyInjected -> component.notifyDependencyInjected(service)
 				ServiceState.Created, ServiceState.Stopped, ServiceState.Started, ServiceState.Paused,
-					ServiceState.Foreground -> component.startComponent(service)
+				ServiceState.Foreground -> component.startComponent(service)
 				ServiceState.Released, ServiceState.Destroyed -> component.releaseComponent()
 			}
 		}
@@ -508,15 +509,15 @@ class MusicLibraryService : MediaLibraryService() {
 			private const val Destroyed = 1
 
 			fun get(serviceState: ServiceState): Int = when (serviceState) {
-				ServiceState.Nothing -> NOTHING
-				ServiceState.Initialized -> INITIALIZED
-				ServiceState.ContextAttached -> CONTEXT_ATTACHED
-				ServiceState.DependencyInjected -> DEPENDENCY_INJECTED
-				ServiceState.Created -> CREATED
-				ServiceState.Started -> STARTED
-				ServiceState.Foreground -> FOREGROUND
-				ServiceState.Paused -> PAUSED
-				ServiceState.Stopped -> STOPPED
+				Nothing -> NOTHING
+				Initialized -> INITIALIZED
+				ContextAttached -> CONTEXT_ATTACHED
+				DependencyInjected -> DEPENDENCY_INJECTED
+				Created -> CREATED
+				Started -> STARTED
+				Foreground -> FOREGROUND
+				Paused -> PAUSED
+				Stopped -> STOPPED
 				ServiceState.Released -> Released
 				ServiceState.Destroyed -> Destroyed
 			}

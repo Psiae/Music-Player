@@ -19,7 +19,7 @@ import javax.inject.Singleton
  */
 
 @Singleton
-data class AppDispatchers(
+data class CoroutineDispatchers(
   val computation: CoroutineDispatcher,
   val io: CoroutineDispatcher,
   val main: CoroutineDispatcher,
@@ -33,7 +33,7 @@ data class AppDispatchers(
 
     @JvmStatic
     val DEFAULT = with(kotlinx.coroutines.Dispatchers) {
-      AppDispatchers(
+      CoroutineDispatchers(
         computation = Default, io = IO,
         main = Main, mainImmediate = Main.immediate,
         unconfined = Unconfined

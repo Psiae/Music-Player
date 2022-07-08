@@ -6,14 +6,15 @@ import androidx.annotation.MainThread
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
-import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
+import com.kylentt.mediaplayer.core.coroutines.CoroutineDispatchers
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemHelper
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper.getDebugDescription
-import com.kylentt.mediaplayer.domain.mediasession.MediaSessionConnector
-import com.kylentt.mediaplayer.domain.mediasession.libraryservice.connector.PlaybackState
+import com.kylentt.mediaplayer.domain.musiclibrary.MusicLibraryDelegate
+import com.kylentt.mediaplayer.domain.musiclibrary.service.ServiceController
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.helper.external.IntentWrapper
+import com.kylentt.mediaplayer.helper.external.MediaIntentHandler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,31 +24,31 @@ import kotlin.coroutines.coroutineContext
 
 @HiltViewModel
 class MediaViewModel @Inject constructor(
-    private val dispatchers: AppDispatchers,
-    private val itemHelper: MediaItemHelper,
-    private val mediaSessionConnector: MediaSessionConnector
+	private val dispatchers: CoroutineDispatchers,
+	private val itemHelper: MediaItemHelper,
+	private val intentHandler: MediaIntentHandler,
+	private val musicLibraryDelegate: MusicLibraryDelegate
 ) : ViewModel() {
 
   private val ioScope = viewModelScope + dispatchers.io
 
   val mediaItemBitmap = MutableStateFlow(MediaItemBitmap.EMPTY)
-  val mediaPlaybackState = MutableStateFlow(PlaybackState.EMPTY)
+  val mediaPlaybackState = MutableStateFlow(ServiceController.PlaybackState.EMPTY)
 
   private var updateItemBitmapJob = Job().job
 
   @MainThread
-  fun connectService() {
-    checkMainThread()
-    mediaSessionConnector.connectService()
-  }
+  fun connectService() = Unit
 
   fun handleMediaIntent(intent: IntentWrapper) {
-    viewModelScope.launch(dispatchers.computation) { mediaSessionConnector.handleMediaIntent(intent) }
+    viewModelScope.launch(dispatchers.computation) {
+			if (intent.shouldHandleIntent) intentHandler.handleMediaIntent(intent)
+		}
   }
 
   private suspend fun collectPlaybackState() {
     Timber.d("MediaViewModel collectPlaybackState")
-    mediaSessionConnector.playbackState.collect { playbackState ->
+    musicLibraryDelegate.playbackStateSF.collect { playbackState ->
       Timber.d("MediaViewModel collectPlaybackState collected for: " +
         "\n${playbackState.currentMediaItem.getDebugDescription()}"
       )

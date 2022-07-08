@@ -9,7 +9,7 @@ import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaItem.RequestMetadata
 import androidx.media3.common.MediaMetadata
-import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
+import com.kylentt.mediaplayer.core.coroutines.CoroutineDispatchers
 import com.kylentt.mediaplayer.core.media3.MediaItemFactory
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper.mediaUri
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaMetadataHelper.putDisplayTitle
@@ -18,8 +18,6 @@ import com.kylentt.mediaplayer.core.media3.mediaitem.MediaMetadataHelper.putStor
 import com.kylentt.mediaplayer.data.SongEntity
 import com.kylentt.mediaplayer.helper.VersionHelper
 import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
@@ -152,7 +150,7 @@ interface MediaStoreSource {
 @Singleton
 class MediaStoreSourceImpl(
   private val context: Context,
-  private val dispatchers: AppDispatchers
+  private val dispatchers: CoroutineDispatchers
 ) : MediaStoreSource {
 
   override suspend fun getMediaStoreSong(): List<MediaStoreSong> = queryAudioColumn()

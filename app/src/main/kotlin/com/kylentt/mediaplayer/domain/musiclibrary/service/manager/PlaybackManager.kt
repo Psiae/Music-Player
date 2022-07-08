@@ -1,13 +1,8 @@
-package com.kylentt.mediaplayer.domain.mediasession.libraryservice.playback
+package com.kylentt.mediaplayer.domain.musiclibrary.service.manager
 
 import android.annotation.SuppressLint
 import android.net.Uri
 import android.widget.Toast
-import androidx.annotation.MainThread
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.Lifecycle.Event.ON_DESTROY
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.LifecycleOwner
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -15,10 +10,8 @@ import com.kylentt.mediaplayer.app.dependency.AppModule
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper.getDebugDescription
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper.mediaUri
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaMetadataHelper.getStoragePath
-import com.kylentt.mediaplayer.domain.mediasession.libraryservice.MusicLibraryService
-import com.kylentt.mediaplayer.domain.mediasession.libraryservice.sessions.SessionManager
+import com.kylentt.mediaplayer.domain.musiclibrary.service.MusicLibraryService
 import com.kylentt.mediaplayer.helper.Preconditions
-import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.helper.external.providers.ContentProvidersHelper
 import com.kylentt.mediaplayer.helper.external.providers.DocumentProviderHelper
 import kotlinx.coroutines.*

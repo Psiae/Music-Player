@@ -12,12 +12,12 @@ import androidx.activity.viewModels
 import androidx.annotation.IntDef
 import androidx.annotation.MainThread
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
+import com.kylentt.mediaplayer.core.coroutines.CoroutineDispatchers
 import com.kylentt.mediaplayer.core.coroutines.AppScope
 import com.kylentt.mediaplayer.core.delegates.LateLazy
 import com.kylentt.mediaplayer.core.delegates.LockMainThread
 import com.kylentt.mediaplayer.app.delegates.device.StoragePermissionHelper
-import com.kylentt.mediaplayer.domain.mediasession.libraryservice.MusicLibraryService
+import com.kylentt.mediaplayer.domain.musiclibrary.service.MusicLibraryService
 import com.kylentt.mediaplayer.domain.viewmodels.MainViewModel
 import com.kylentt.mediaplayer.domain.viewmodels.MediaViewModel
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
@@ -40,7 +40,7 @@ import javax.inject.Inject
 class MainActivity : ComponentActivity() {
 
   @Inject lateinit var appScope: AppScope
-  @Inject lateinit var dispatchers: AppDispatchers
+  @Inject lateinit var dispatchers: CoroutineDispatchers
 
   private val mainViewModel: MainViewModel by viewModels()
   private val mediaViewModel: MediaViewModel by viewModels()

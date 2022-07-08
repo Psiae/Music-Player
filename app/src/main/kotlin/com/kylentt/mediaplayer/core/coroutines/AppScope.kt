@@ -13,7 +13,7 @@ import javax.inject.Singleton
  * @param [mainScope] Main Thread Task
  * @param [immediateScope] Main Thread Immediate Task
  * @param [unconfinedScope] Other Task
- * @see [AppDispatchers]
+ * @see [CoroutineDispatchers]
  * @author Kylentt
  * @since 2022/04/30
  */

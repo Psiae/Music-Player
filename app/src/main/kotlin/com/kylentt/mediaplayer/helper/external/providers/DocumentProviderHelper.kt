@@ -8,10 +8,8 @@ import android.os.Environment
 import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.provider.OpenableColumns
-import androidx.core.net.toUri
-import androidx.media3.exoplayer.SimpleExoPlayer
 import com.kylentt.mediaplayer.helper.VersionHelper
-import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
+import com.kylentt.mediaplayer.core.coroutines.CoroutineDispatchers
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
@@ -48,7 +46,7 @@ object DocumentProviderHelper {
     return withContext(coroutineContext) { URLDecoder.decode(url, enc) }
   }
 
-  private val dispatchers = AppDispatchers.DEFAULT
+  private val dispatchers = CoroutineDispatchers.DEFAULT
 
   suspend fun getAudioPathFromContentUri(
     context: Context,

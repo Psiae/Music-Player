@@ -1,4 +1,4 @@
-package com.kylentt.mediaplayer.domain.mediasession.libraryservice.notification
+package com.kylentt.mediaplayer.domain.musiclibrary.service.manager
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -17,8 +17,7 @@ import androidx.media3.session.MediaNotification
 import androidx.media3.session.MediaSession
 import coil.Coil
 import com.google.common.collect.ImmutableList
-import com.kylentt.mediaplayer.app.dependency.AppModule
-import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
+import com.kylentt.mediaplayer.core.coroutines.CoroutineDispatchers
 import com.kylentt.mediaplayer.core.delegates.AutoCancelJob
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isOngoing
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isRepeatAll
@@ -32,9 +31,10 @@ import com.kylentt.mediaplayer.core.media3.MediaItemFactory.orEmpty
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemInfo
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper.getDebugDescription
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper.mediaUri
-import com.kylentt.mediaplayer.domain.mediasession.libraryservice.MusicLibraryService
-import com.kylentt.mediaplayer.domain.mediasession.libraryservice.connector.ControllerCommand
-import com.kylentt.mediaplayer.domain.mediasession.libraryservice.connector.ControllerCommand.Companion.wrapWithFadeOut
+import com.kylentt.mediaplayer.domain.musiclibrary.service.MusicLibraryService
+import com.kylentt.mediaplayer.domain.musiclibrary.service.ServiceController
+import com.kylentt.mediaplayer.domain.musiclibrary.service.ServiceController.ControllerCommand.Companion.wrapWithFadeOut
+import com.kylentt.mediaplayer.domain.musiclibrary.service.provider.MediaNotificationProvider
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.helper.VersionHelper
 import com.kylentt.mediaplayer.helper.image.CoilHelper
@@ -49,7 +49,7 @@ class MediaNotificationManager(
 	private lateinit var provider: Provider
 	private lateinit var dispatcher: Dispatcher
 
-	private lateinit var appDispatchers: AppDispatchers
+	private lateinit var appDispatchers: CoroutineDispatchers
 	private lateinit var mainScope: CoroutineScope
 
 	private lateinit var coilHelper: CoilHelper
@@ -341,7 +341,8 @@ class MediaNotificationManager(
 
 			val notification =
 				getNotificationFromMediaSession(session,
-					isForegroundCondition(componentDelegate, session), ChannelName)
+					isForegroundCondition(componentDelegate, session), ChannelName
+				)
 
 			dispatcher.cancelValidatorJob()
 
@@ -522,7 +523,7 @@ class MediaNotificationManager(
 
 			override fun actionStop(context: Context, intent: Intent) {
 				if (!isStarted) return
-				val sessionConnector = serviceDelegate.propertyInteractor.sessionConnector
+				val libraryDelegate = serviceDelegate.propertyInteractor.libraryDelegate
 
 				componentDelegate.sessionInteractor.mediaSession
 					?.let {
@@ -538,13 +539,13 @@ class MediaNotificationManager(
 						dispatcher.cancelValidatorJob()
 
 						val commands = listOf(
-							ControllerCommand.SetPlayWhenReady(false),
-							ControllerCommand.STOP
+							ServiceController.ControllerCommand.SetPlayWhenReady(false),
+							ServiceController.ControllerCommand.STOP
 						)
 
 						val command =
-							ControllerCommand.MultiCommand(commands).wrapWithFadeOut(true, 500, 50)
-						sessionConnector!!.sendControllerCommand(command)
+							ServiceController.ControllerCommand.MultiCommand(commands).wrapWithFadeOut(true, 500, 50)
+						libraryDelegate.sendControllerCommand(command)
 					}
 					?: throw IllegalStateException("Received Intent: $intent on Released State")
 			}

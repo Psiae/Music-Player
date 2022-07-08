@@ -11,16 +11,14 @@ import android.provider.OpenableColumns
 import android.widget.Toast
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
-import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
+import com.kylentt.mediaplayer.core.coroutines.CoroutineDispatchers
 import com.kylentt.mediaplayer.core.media3.MediaItemFactory
-import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemHelper
 import com.kylentt.mediaplayer.data.SongEntity
 import com.kylentt.mediaplayer.data.repository.MediaRepository
-import com.kylentt.mediaplayer.data.repository.ProtoRepository
 import com.kylentt.mediaplayer.data.source.local.MediaStoreSong
-import com.kylentt.mediaplayer.domain.mediasession.MediaSessionConnector
-import com.kylentt.mediaplayer.domain.mediasession.libraryservice.connector.ControllerCommand
-import com.kylentt.mediaplayer.domain.mediasession.libraryservice.connector.ControllerCommand.Companion.wrapWithFadeOut
+import com.kylentt.mediaplayer.domain.musiclibrary.MusicLibraryDelegate
+import com.kylentt.mediaplayer.domain.musiclibrary.service.ServiceController
+import com.kylentt.mediaplayer.domain.musiclibrary.service.ServiceController.ControllerCommand.Companion.wrapWithFadeOut
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.external.providers.ContentProvidersHelper
@@ -52,12 +50,10 @@ interface MediaIntentHandler {
 
 @Singleton
 class MediaIntentHandlerImpl(
-    private val context: Context,
-    private val dispatcher: AppDispatchers,
-    private val itemHelper: MediaItemHelper,
-    private val protoRepo: ProtoRepository,
-    private val mediaRepo: MediaRepository,
-    private val sessionManager: MediaSessionConnector
+	private val context: Context,
+	private val dispatcher: CoroutineDispatchers,
+	private val mediaRepo: MediaRepository,
+	private val musicLibraryDelegate: MusicLibraryDelegate
 ) : MediaIntentHandler {
 
   private val actionViewHandler = ActionViewHandler()
@@ -150,11 +146,11 @@ class MediaIntentHandlerImpl(
     ) {
       checkMainThread()
       val commandList = listOf(
-        ControllerCommand.STOP, ControllerCommand.SetMediaItems(list, list.indexOf(item)),
-        ControllerCommand.PREPARE, ControllerCommand.SetPlayWhenReady(true)
+        ServiceController.ControllerCommand.STOP, ServiceController.ControllerCommand.SetMediaItems(list, list.indexOf(item)),
+        ServiceController.ControllerCommand.PREPARE, ServiceController.ControllerCommand.SetPlayWhenReady(true)
       )
-      val command = ControllerCommand.MultiCommand(commandList)
-      sessionManager.sendControllerCommand(if (fadeOut) command.wrapWithFadeOut() else command)
+      val command = ServiceController.ControllerCommand.MultiCommand(commandList)
+      musicLibraryDelegate.sendControllerCommand(if (fadeOut) command.wrapWithFadeOut() else command)
     }
 
     private suspend fun getAudioPathFromContentUri(

@@ -1,26 +1,20 @@
-package com.kylentt.mediaplayer.domain.mediasession.libraryservice.sessions
+package com.kylentt.mediaplayer.domain.musiclibrary.service.manager
 
-import android.app.PendingIntent
-import android.content.Context
-import androidx.annotation.MainThread
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
-import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaLibraryService.MediaLibrarySession
 import androidx.media3.session.MediaSession
-import androidx.media3.session.MediaSession.Callback
 import androidx.media3.session.MediaSession.ControllerInfo
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
-import com.kylentt.mediaplayer.app.delegates.AppDelegate
 import com.kylentt.mediaplayer.app.dependency.AppModule
 import com.kylentt.mediaplayer.core.OnChangedNotNull
 import com.kylentt.mediaplayer.core.media3.MediaItemFactory
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper
-import com.kylentt.mediaplayer.domain.mediasession.libraryservice.MusicLibraryService
+import com.kylentt.mediaplayer.domain.musiclibrary.service.provider.SessionProvider
+import com.kylentt.mediaplayer.domain.musiclibrary.service.MusicLibraryService
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
-import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -60,7 +54,7 @@ class SessionManager(
 		sessionRegistry.release()
 	}
 
-	val interactor: SessionManager.Interactor = Interactor()
+	val interactor: Interactor = Interactor()
 
 	private fun getCurrentMediaSession(): MediaSession? {
 		if (isReleased || !sessionRegistry.isLibrarySessionInitialized) return null

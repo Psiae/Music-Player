@@ -1,7 +1,7 @@
 package com.kylentt.mediaplayer.data.source
 
 import android.content.Context
-import com.kylentt.mediaplayer.core.coroutines.AppDispatchers
+import com.kylentt.mediaplayer.core.coroutines.CoroutineDispatchers
 import com.kylentt.mediaplayer.data.source.local.MediaStoreSource
 import com.kylentt.mediaplayer.data.source.local.MediaStoreSourceImpl
 import dagger.Module
@@ -28,7 +28,7 @@ object SourceModule {
     @Singleton
     fun provideMediaStoreSource(
       @ApplicationContext context: Context,
-      coroutineDispatchers: AppDispatchers
+      coroutineDispatchers: CoroutineDispatchers
     ): MediaStoreSource = MediaStoreSourceImpl(context, coroutineDispatchers)
   }
 }

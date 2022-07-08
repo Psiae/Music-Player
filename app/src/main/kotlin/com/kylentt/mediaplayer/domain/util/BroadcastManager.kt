@@ -40,7 +40,7 @@ class ContextBroadcastManager(context: Context) {
 
 	fun removeBroadcastReceiver(receiver: BroadcastReceiver): Boolean {
 		return when {
-			!checkMainThread() || released -> false
+			!checkMainThread() || released || broadcastReceivers.find { it === receiver } == null -> false
 			else -> {
 				localContext
 					?.let { context ->
@@ -58,20 +58,22 @@ class ContextBroadcastManager(context: Context) {
 	}
 
 	private fun doRelease() {
-		if (released
-			&& localContext == null
-			&& broadcastReceivers.isEmpty()) return
+		var releaseAttempt = 0
 
-		localContext
-			?.let { context ->
-				broadcastReceivers.forEachClear { context.unregisterReceiver(it) }
-				localContext = null
-			}
-			?: run {
-				checkState(broadcastReceivers.isEmpty())
-				released = true
-			}
+		while (!released || localContext != null || broadcastReceivers.isNotEmpty()) {
+			if (releaseAttempt > 3) throw IllegalStateException()
 
-		doRelease()
+			localContext
+				?.let { context ->
+					broadcastReceivers.forEachClear { context.unregisterReceiver(it) }
+					localContext = null
+				}
+				?: run {
+					checkState(broadcastReceivers.isEmpty())
+					released = true
+				}
+
+			releaseAttempt++
+		}
 	}
 }

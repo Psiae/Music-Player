@@ -30,7 +30,7 @@
         </provider>
 
         <service
-            android:name="com.kylentt.mediaplayer.domain.mediasession.libraryservice.MusicLibraryService"
+            android:name="com.kylentt.mediaplayer.domain.musiclibrary.service.MusicLibraryService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback">

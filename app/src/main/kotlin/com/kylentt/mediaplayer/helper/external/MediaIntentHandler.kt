@@ -16,9 +16,7 @@ import com.kylentt.mediaplayer.core.media3.MediaItemFactory
 import com.kylentt.mediaplayer.data.SongEntity
 import com.kylentt.mediaplayer.data.repository.MediaRepository
 import com.kylentt.mediaplayer.data.source.local.MediaStoreSong
-import com.kylentt.mediaplayer.domain.musiclibrary.MusicLibraryDelegate
-import com.kylentt.mediaplayer.domain.musiclibrary.service.ServiceController
-import com.kylentt.mediaplayer.domain.musiclibrary.service.ServiceController.ControllerCommand.Companion.wrapWithFadeOut
+import com.kylentt.mediaplayer.domain.musiclib.MusicLibrary
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.external.providers.ContentProvidersHelper
@@ -52,8 +50,7 @@ interface MediaIntentHandler {
 class MediaIntentHandlerImpl(
 	private val context: Context,
 	private val dispatcher: CoroutineDispatchers,
-	private val mediaRepo: MediaRepository,
-	private val musicLibraryDelegate: MusicLibraryDelegate
+	private val mediaRepo: MediaRepository
 ) : MediaIntentHandler {
 
   private val actionViewHandler = ActionViewHandler()
@@ -144,14 +141,13 @@ class MediaIntentHandlerImpl(
       list: List<MediaItem>,
       fadeOut: Boolean
     ) {
-      checkMainThread()
-      val commandList = listOf(
-        ServiceController.ControllerCommand.STOP, ServiceController.ControllerCommand.SetMediaItems(list, list.indexOf(item)),
-        ServiceController.ControllerCommand.PREPARE, ServiceController.ControllerCommand.SetPlayWhenReady(true)
-      )
-      val command = ServiceController.ControllerCommand.MultiCommand(commandList)
-      musicLibraryDelegate.sendControllerCommand(if (fadeOut) command.wrapWithFadeOut() else command)
-    }
+			checkMainThread()
+			with(MusicLibrary.serviceInteractor.controller) {
+				setMediaItems(list)
+				seekTo(list.indexOf(item), 0)
+				play()
+			}
+		}
 
     private suspend fun getAudioPathFromContentUri(
       intent: IntentWrapper

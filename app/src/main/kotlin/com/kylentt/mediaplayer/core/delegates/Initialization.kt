@@ -25,33 +25,33 @@ interface LateInitializerDelegate <T> : InitializerDelegate<T> {
  */
 
 class LateLazy<T>(lock: Any? = null) : LateInitializerDelegate<T> {
-
 	private object EMPTY
 
-	private val lock: Any = lock ?: this
+	private val localLock: Any = lock ?: this
 
 	@GuardedBy("lock")
-	private var value: Any? = EMPTY
+	private var localValue: Any? = EMPTY
+
+	private val value: T
+		@Suppress("UNCHECKED_CAST") get() = localValue as T
 
   override val isInitialized
-    get() = value !== EMPTY
+    get() = localValue !== EMPTY
 
-  override fun initializeValue(lazyValue: () -> T): T = synchronized(lock) {
-		if (!isInitialized) {
-			value = lazyValue()
+  override fun initializeValue(lazyValue: () -> T): T {
+		if (!isInitialized) sync {
+			if (!isInitialized) localValue = lazyValue()
 		}
-		castValue()
+		return value
 	}
 
   override fun getValue(thisRef: Any?, property: KProperty<*>): T {
-		if (!isInitialized) {
-			synchronized(lock) { /* wait */ }
-		}
-		return castValue()
+		if (!isInitialized) sync()
+		return value
 	}
 
-	@Suppress("UNCHECKED_CAST")
-	private fun castValue(): T = value as T
+	private fun sync(): Unit = sync {  }
+	private fun <T> sync(block: () -> T): T = synchronized(localLock) { block() }
 }
 
 object LateLazySample {

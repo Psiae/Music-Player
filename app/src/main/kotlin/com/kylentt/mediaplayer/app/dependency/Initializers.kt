@@ -4,8 +4,8 @@ import android.app.Application
 import android.content.Context
 import androidx.startup.Initializer
 import com.kylentt.mediaplayer.BuildConfig
-import com.kylentt.mediaplayer.app.MediaPlayerApp
 import com.kylentt.mediaplayer.app.delegates.AppDelegate
+import com.kylentt.mediaplayer.domain.musiclib.MusicLibraryInitializer
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import timber.log.Timber
 
@@ -33,6 +33,7 @@ class AppInitializer : Initializer<Unit> {
 
 	private fun create(app: Application) {
 		AppDelegate provides app
+		MusicLibraryInitializer().create(app)
 	}
 }
 

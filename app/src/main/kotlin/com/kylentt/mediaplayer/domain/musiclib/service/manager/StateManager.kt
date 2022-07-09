@@ -1,10 +1,10 @@
-package com.kylentt.mediaplayer.domain.musiclibrary.service.manager
+package com.kylentt.mediaplayer.domain.musiclib.service.manager
 
 import android.app.Notification
 import androidx.media3.common.Player
 import androidx.media3.session.MediaSession
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isOngoing
-import com.kylentt.mediaplayer.domain.musiclibrary.service.MusicLibraryService
+import com.kylentt.mediaplayer.domain.musiclib.service.MusicLibraryService
 import timber.log.Timber
 
 class StateManager(

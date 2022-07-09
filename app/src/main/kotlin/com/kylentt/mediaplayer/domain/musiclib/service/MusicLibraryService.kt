@@ -1,4 +1,4 @@
-package com.kylentt.mediaplayer.domain.musiclibrary.service
+package com.kylentt.mediaplayer.domain.musiclib.service
 
 import android.app.Notification
 import android.app.NotificationManager
@@ -17,12 +17,11 @@ import com.kylentt.mediaplayer.app.delegates.AppDelegate
 import com.kylentt.mediaplayer.app.dependency.AppModule
 import com.kylentt.mediaplayer.core.coroutines.safeCollect
 import com.kylentt.mediaplayer.core.extenstions.forEachClear
-import com.kylentt.mediaplayer.domain.musiclibrary.MusicLibraryDelegate
-import com.kylentt.mediaplayer.domain.musiclibrary.service.manager.MediaNotificationManager
-import com.kylentt.mediaplayer.domain.musiclibrary.service.manager.PlaybackManager
-import com.kylentt.mediaplayer.domain.musiclibrary.service.manager.SessionManager
-import com.kylentt.mediaplayer.domain.musiclibrary.service.provider.SessionProvider
-import com.kylentt.mediaplayer.domain.musiclibrary.service.manager.StateManager
+import com.kylentt.mediaplayer.domain.musiclib.service.manager.MediaNotificationManager
+import com.kylentt.mediaplayer.domain.musiclib.service.manager.PlaybackManager
+import com.kylentt.mediaplayer.domain.musiclib.service.manager.SessionManager
+import com.kylentt.mediaplayer.domain.musiclib.service.provider.SessionProvider
+import com.kylentt.mediaplayer.domain.musiclib.service.manager.StateManager
 import com.kylentt.mediaplayer.domain.util.ContextBroadcastManager
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
@@ -46,7 +45,6 @@ class MusicLibraryService : MediaLibraryService() {
 	@Named("MusicExoPlayer")
 	lateinit var iExoPlayer: ExoPlayer
 
-	@Inject lateinit var iLibraryDelegate: MusicLibraryDelegate
 	private lateinit var notificationManagerService: NotificationManager
 	private lateinit var broadcastManager: ContextBroadcastManager
 
@@ -337,7 +335,6 @@ class MusicLibraryService : MediaLibraryService() {
 		val injectedPlayer: ExoPlayer get() = iExoPlayer
 		val serviceDispatchers get() = appDispatchers
 		val serviceMainJob get() = serviceJob
-		val libraryDelegate get() = iLibraryDelegate
 	}
 
 	inner class ComponentDelegate {

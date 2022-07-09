@@ -230,4 +230,5 @@ dependencies {
         implementation "jp.wasabeef.transformers:coil:$coilTransformer_Version"
         implementation "jp.wasabeef.transformers:coil-gpu:$coilTransformer_Version"
     }
+    implementation "org.jetbrains.kotlin:kotlin-reflect:1.6.21"
 }

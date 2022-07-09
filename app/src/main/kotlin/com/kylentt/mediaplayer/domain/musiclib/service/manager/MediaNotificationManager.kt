@@ -1,4 +1,4 @@
-package com.kylentt.mediaplayer.domain.musiclibrary.service.manager
+package com.kylentt.mediaplayer.domain.musiclib.service.manager
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -31,10 +31,8 @@ import com.kylentt.mediaplayer.core.media3.MediaItemFactory.orEmpty
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemInfo
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper.getDebugDescription
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper.mediaUri
-import com.kylentt.mediaplayer.domain.musiclibrary.service.MusicLibraryService
-import com.kylentt.mediaplayer.domain.musiclibrary.service.ServiceController
-import com.kylentt.mediaplayer.domain.musiclibrary.service.ServiceController.ControllerCommand.Companion.wrapWithFadeOut
-import com.kylentt.mediaplayer.domain.musiclibrary.service.provider.MediaNotificationProvider
+import com.kylentt.mediaplayer.domain.musiclib.service.MusicLibraryService
+import com.kylentt.mediaplayer.domain.musiclib.service.provider.MediaNotificationProvider
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.helper.VersionHelper
 import com.kylentt.mediaplayer.helper.image.CoilHelper
@@ -523,7 +521,6 @@ class MediaNotificationManager(
 
 			override fun actionStop(context: Context, intent: Intent) {
 				if (!isStarted) return
-				val libraryDelegate = serviceDelegate.propertyInteractor.libraryDelegate
 
 				componentDelegate.sessionInteractor.mediaSession
 					?.let {
@@ -538,14 +535,8 @@ class MediaNotificationManager(
 
 						dispatcher.cancelValidatorJob()
 
-						val commands = listOf(
-							ServiceController.ControllerCommand.SetPlayWhenReady(false),
-							ServiceController.ControllerCommand.STOP
-						)
-
-						val command =
-							ServiceController.ControllerCommand.MultiCommand(commands).wrapWithFadeOut(true, 500, 50)
-						libraryDelegate.sendControllerCommand(command)
+						it.player.pause()
+						it.player.stop()
 					}
 					?: throw IllegalStateException("Received Intent: $intent on Released State")
 			}
@@ -567,7 +558,7 @@ class MediaNotificationManager(
 
 						dispatcher.cancelValidatorJob()
 
-						stateInteractor!!.stopForegroundService(true)
+						stateInteractor.stopForegroundService(true)
 						stateInteractor.stopService()
 						if (!MainActivity.isAlive) stateInteractor.releaseService()
 					}

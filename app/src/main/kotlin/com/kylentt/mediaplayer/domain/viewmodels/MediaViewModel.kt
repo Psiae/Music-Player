@@ -7,10 +7,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import com.kylentt.mediaplayer.core.coroutines.CoroutineDispatchers
+import com.kylentt.mediaplayer.core.coroutines.safeCollect
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemHelper
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper.getDebugDescription
-import com.kylentt.mediaplayer.domain.musiclibrary.MusicLibraryDelegate
-import com.kylentt.mediaplayer.domain.musiclibrary.service.ServiceController
+import com.kylentt.mediaplayer.core.media3.playback.PlaybackState
+import com.kylentt.mediaplayer.domain.musiclib.MusicLibrary
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.helper.external.IntentWrapper
@@ -26,14 +27,13 @@ import kotlin.coroutines.coroutineContext
 class MediaViewModel @Inject constructor(
 	private val dispatchers: CoroutineDispatchers,
 	private val itemHelper: MediaItemHelper,
-	private val intentHandler: MediaIntentHandler,
-	private val musicLibraryDelegate: MusicLibraryDelegate
+	private val intentHandler: MediaIntentHandler
 ) : ViewModel() {
 
   private val ioScope = viewModelScope + dispatchers.io
 
   val mediaItemBitmap = MutableStateFlow(MediaItemBitmap.EMPTY)
-  val mediaPlaybackState = MutableStateFlow(ServiceController.PlaybackState.EMPTY)
+  val mediaPlaybackState = MutableStateFlow(PlaybackState.EMPTY)
 
   private var updateItemBitmapJob = Job().job
 
@@ -48,13 +48,13 @@ class MediaViewModel @Inject constructor(
 
   private suspend fun collectPlaybackState() {
     Timber.d("MediaViewModel collectPlaybackState")
-    musicLibraryDelegate.playbackStateSF.collect { playbackState ->
+    MusicLibrary.serviceInfo.state.playbackState.safeCollect { playbackState ->
       Timber.d("MediaViewModel collectPlaybackState collected for: " +
-        "\n${playbackState.currentMediaItem.getDebugDescription()}"
+        "\n${playbackState.mediaItem.getDebugDescription()}"
       )
       mediaPlaybackState.value = playbackState
-      if (playbackState.currentMediaItem !== mediaItemBitmap.value.item) {
-        dispatchUpdateItemBitmap(playbackState.currentMediaItem)
+      if (playbackState.mediaItem !== mediaItemBitmap.value.item) {
+        dispatchUpdateItemBitmap(playbackState.mediaItem)
       }
     }
   }
@@ -80,7 +80,7 @@ class MediaViewModel @Inject constructor(
   private suspend inline fun ensureValidCurrentItem(item: MediaItem, msg: () -> Any) {
     checkMainThread()
     coroutineContext.ensureActive()
-    val current = mediaPlaybackState.value.currentMediaItem
+    val current = mediaPlaybackState.value.mediaItem
     checkState(item === current) {
       "checkValidCurrentItem failed." +
         "\nexpected : ${item.getDebugDescription()}" +
@@ -90,7 +90,7 @@ class MediaViewModel @Inject constructor(
   }
 
   init {
-    viewModelScope.launch {
+    viewModelScope.launch(dispatchers.main) {
       collectPlaybackState()
     }
   }

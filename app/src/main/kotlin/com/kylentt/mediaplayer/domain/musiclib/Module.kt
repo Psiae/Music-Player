@@ -1,4 +1,4 @@
-package com.kylentt.mediaplayer.domain.musiclibrary
+package com.kylentt.mediaplayer.domain.musiclib
 
 import android.content.Context
 import androidx.media3.exoplayer.ExoPlayer
@@ -22,20 +22,12 @@ object MusicLibraryModule {
 
 	@Provides
 	@Singleton
-	fun provideDelegate(
-		@ApplicationContext context: Context,
-		coroutineDispatchers: CoroutineDispatchers
-	): MusicLibraryDelegate = MusicLibraryDelegate.get(context, coroutineDispatchers)
-
-	@Provides
-	@Singleton
 	fun provideMediaIntentHandler(
 		@ApplicationContext context: Context,
 		coroutineDispatchers: CoroutineDispatchers,
-		mediaRepository: MediaRepository,
-		libraryDelegate: MusicLibraryDelegate
+		mediaRepository: MediaRepository
 	): MediaIntentHandler {
-		return MediaIntentHandlerImpl(context, coroutineDispatchers, mediaRepository, libraryDelegate)
+		return MediaIntentHandlerImpl(context, coroutineDispatchers, mediaRepository)
 	}
 }
 

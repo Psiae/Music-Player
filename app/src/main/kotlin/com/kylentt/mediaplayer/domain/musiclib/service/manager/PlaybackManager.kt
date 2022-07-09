@@ -1,4 +1,4 @@
-package com.kylentt.mediaplayer.domain.musiclibrary.service.manager
+package com.kylentt.mediaplayer.domain.musiclib.service.manager
 
 import android.annotation.SuppressLint
 import android.net.Uri
@@ -10,7 +10,7 @@ import com.kylentt.mediaplayer.app.dependency.AppModule
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper.getDebugDescription
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper.mediaUri
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaMetadataHelper.getStoragePath
-import com.kylentt.mediaplayer.domain.musiclibrary.service.MusicLibraryService
+import com.kylentt.mediaplayer.domain.musiclib.service.MusicLibraryService
 import com.kylentt.mediaplayer.helper.Preconditions
 import com.kylentt.mediaplayer.helper.external.providers.ContentProvidersHelper
 import com.kylentt.mediaplayer.helper.external.providers.DocumentProviderHelper

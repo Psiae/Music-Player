@@ -1,4 +1,4 @@
-package com.kylentt.mediaplayer.domain.musiclibrary.service.provider
+package com.kylentt.mediaplayer.domain.musiclib.service.provider
 
 import android.app.PendingIntent
 import android.content.Context

@@ -1,4 +1,4 @@
-package com.kylentt.mediaplayer.domain.musiclibrary.service.manager
+package com.kylentt.mediaplayer.domain.musiclib.service.manager
 
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
@@ -11,8 +11,8 @@ import com.kylentt.mediaplayer.app.dependency.AppModule
 import com.kylentt.mediaplayer.core.OnChangedNotNull
 import com.kylentt.mediaplayer.core.media3.MediaItemFactory
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper
-import com.kylentt.mediaplayer.domain.musiclibrary.service.provider.SessionProvider
-import com.kylentt.mediaplayer.domain.musiclibrary.service.MusicLibraryService
+import com.kylentt.mediaplayer.domain.musiclib.service.provider.SessionProvider
+import com.kylentt.mediaplayer.domain.musiclib.service.MusicLibraryService
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import kotlinx.coroutines.CoroutineScope

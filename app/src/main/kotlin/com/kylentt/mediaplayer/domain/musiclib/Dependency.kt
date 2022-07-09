@@ -15,9 +15,13 @@ class DependencyBundle {
 
 	@Suppress("UNCHECKED_CAST")
 	fun <T> get(cls: Class<T>): T? = sync {
-		mDependency.forEach { dep ->
-			if (cls.isInstance(dep)) return dep as T
-		}
+		mDependency.find { it.javaClass == cls }
+			?.let { exact ->
+				return exact as T
+			}
+			?: mDependency.forEach { possibleSub ->
+				if (cls.isInstance(possibleSub)) { return possibleSub as T }
+			}
 		null
 	}
 

@@ -6,7 +6,7 @@ import android.widget.Toast
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
-import com.kylentt.mediaplayer.app.dependency.AppModule
+import com.kylentt.mediaplayer.core.app.dependency.AppModule
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper.getDebugDescription
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper.mediaUri
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaMetadataHelper.getStoragePath

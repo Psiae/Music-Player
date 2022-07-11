@@ -1,4 +1,4 @@
-package com.kylentt.mediaplayer.app.settings
+package com.kylentt.mediaplayer.core.app.settings
 
 import kotlinx.serialization.Serializable
 
@@ -16,13 +16,13 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class WallpaperSettings(
-  val mode: Mode,
-  val source: Source,
-  val sourceALT: Source
+    val mode: Mode,
+    val source: Source,
+    val sourceALT: Source
 ) {
 
 	val defaultValue
-		get() = Companion.DEFAULT
+		get() = DEFAULT
 
   enum class Mode {
     NORMAL,

@@ -11,34 +11,37 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateIdle
 import com.kylentt.mediaplayer.core.media3.playback.PlaybackState
-import com.kylentt.mediaplayer.domain.musiclib.DependencyBundle
+import com.kylentt.musicplayer.domain.musiclib.dependency.DependencyProvider
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
+import com.kylentt.musicplayer.domain.musiclib.MusicLibrary
+import com.kylentt.musicplayer.domain.musiclib.interactor.Agent
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import timber.log.Timber
 
-class ServiceConnector() {
-	private lateinit var bundle: DependencyBundle
-	private lateinit var mediaController: Controller
-	private lateinit var mediaRegistry: Registry
+class ServiceConnector(delegate: MusicLibrary.ServiceDelegate) {
+	private val dependency = DependencyProvider.Mutable()
+	private val mediaController = Controller()
+	private val mediaRegistry = Registry()
 
 	val interactor = object : Interactor {
+
 		override val controller: ControllerInteractor
 			get() = mediaController.interactor
+
+		override val info: Info
+			get() = mediaRegistry.info
 	}
 
-	val info = object : Info {
-		override val state: StateInfo
-			get() = mediaRegistry.stateInfo
+	fun initialize(agent: Agent) {
+		dependency.add(agent.dependency)
+		Timber.d("ServiceConnector initialized, dependency:" +
+			"\n${dependency.getDebugMessage(true)}")
 	}
 
-	fun connect(bundle: DependencyBundle): Interactor {
-		if (!this::bundle.isInitialized) {
-			this.bundle = bundle
-			mediaController = Controller()
-			mediaRegistry = Registry()
-			mediaController.connectMediaController { Unit }
-		}
+	fun connect(): Interactor {
+		mediaController.connectMediaController()
 		return interactor
 	}
 
@@ -52,6 +55,11 @@ class ServiceConnector() {
 		val stateInfo = object : StateInfo {
 			override val playbackState: StateFlow<PlaybackState> = _playbackStateSF.asStateFlow()
 		}
+
+		val info = object : Info {
+			override val state: StateInfo
+				get() = stateInfo
+		}
 	}
 
 	private inner class Controller {
@@ -60,7 +68,7 @@ class ServiceConnector() {
 		private lateinit var mediaControllerFuture: ListenableFuture<MediaController>
 		private lateinit var mediaController: MediaController
 
-		fun connectMediaController(onConnected: (MediaController) -> Unit) {
+		fun connectMediaController(onConnected: (MediaController) -> Unit = {}) {
 			if (state == ControllerState.CONNECTED) {
 				return onConnected(mediaController)
 			}
@@ -71,7 +79,7 @@ class ServiceConnector() {
 
 			state = ControllerState.CONNECTING
 
-			val context = bundle.get(Context::class.java)!!.applicationContext
+			val context = dependency.get(Context::class.java)!!.applicationContext
 			val serviceComponent = MusicLibraryService.getComponentName()
 			val token = SessionToken(context, serviceComponent)
 			mediaControllerFuture = MediaController.Builder(context, token)
@@ -160,6 +168,7 @@ class ServiceConnector() {
 
 	interface Interactor {
 		val controller: ControllerInteractor
+		val info: Info
 	}
 
 	interface ControllerInteractor {

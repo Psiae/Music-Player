@@ -1,4 +1,4 @@
-package com.kylentt.mediaplayer.app.settings
+package com.kylentt.mediaplayer.core.app.settings
 
 import androidx.annotation.FloatRange
 import kotlinx.serialization.Serializable
@@ -18,7 +18,7 @@ data class NavigationSettings(
 ) {
 
 	val defaultValue
-		get() = Companion.DEFAULT
+		get() = DEFAULT
 
   companion object {
 
@@ -32,13 +32,13 @@ data class NavigationSettings(
 
 @Serializable
 data class BottomNavigationSettings(
-  val itemAnimation: ItemAnimation,
-  val itemAlignment: ItemAlignment,
-  @FloatRange(from = 0.0, to = 100.0) val visibility: Float
+    val itemAnimation: ItemAnimation,
+    val itemAlignment: ItemAlignment,
+    @FloatRange(from = 0.0, to = 100.0) val visibility: Float
 ) {
 
 	val defaultValue
-		get() = Companion.DEFAULT
+		get() = DEFAULT
 
   enum class ItemAlignment {
     VERTICAL,

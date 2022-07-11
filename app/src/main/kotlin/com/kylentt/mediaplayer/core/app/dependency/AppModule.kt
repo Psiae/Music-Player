@@ -1,4 +1,4 @@
-package com.kylentt.mediaplayer.app.dependency
+package com.kylentt.mediaplayer.core.app.dependency
 
 import android.app.NotificationManager
 import android.content.Context

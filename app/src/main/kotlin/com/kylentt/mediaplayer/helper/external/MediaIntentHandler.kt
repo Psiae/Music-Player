@@ -16,7 +16,7 @@ import com.kylentt.mediaplayer.core.media3.MediaItemFactory
 import com.kylentt.mediaplayer.data.SongEntity
 import com.kylentt.mediaplayer.data.repository.MediaRepository
 import com.kylentt.mediaplayer.data.source.local.MediaStoreSong
-import com.kylentt.mediaplayer.domain.musiclib.MusicLibrary
+import com.kylentt.musicplayer.domain.musiclib.MusicLibrary
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.external.providers.ContentProvidersHelper
@@ -142,7 +142,7 @@ class MediaIntentHandlerImpl(
       fadeOut: Boolean
     ) {
 			checkMainThread()
-			with(MusicLibrary.serviceInteractor.controller) {
+			with(MusicLibrary.localAgent.session.controller) {
 				setMediaItems(list)
 				seekTo(list.indexOf(item), 0)
 				play()

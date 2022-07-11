@@ -13,8 +13,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
-import com.kylentt.mediaplayer.app.delegates.AppDelegate
-import com.kylentt.mediaplayer.app.dependency.AppModule
+import com.kylentt.mediaplayer.core.app.delegates.AppDelegate
+import com.kylentt.mediaplayer.core.app.dependency.AppModule
 import com.kylentt.mediaplayer.core.coroutines.safeCollect
 import com.kylentt.mediaplayer.core.extenstions.forEachClear
 import com.kylentt.mediaplayer.domain.musiclib.service.manager.MediaNotificationManager

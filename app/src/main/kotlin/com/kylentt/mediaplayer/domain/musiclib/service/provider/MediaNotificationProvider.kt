@@ -13,7 +13,7 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaStyleNotificationHelper
 import com.kylentt.mediaplayer.R
-import com.kylentt.mediaplayer.app.delegates.AppDelegate
+import com.kylentt.mediaplayer.core.app.delegates.AppDelegate
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isOngoing
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateBuffering
 import com.kylentt.mediaplayer.core.media3.MediaItemFactory.orEmpty

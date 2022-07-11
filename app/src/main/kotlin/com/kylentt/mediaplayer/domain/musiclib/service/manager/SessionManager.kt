@@ -7,7 +7,7 @@ import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSession.ControllerInfo
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
-import com.kylentt.mediaplayer.app.dependency.AppModule
+import com.kylentt.mediaplayer.core.app.dependency.AppModule
 import com.kylentt.mediaplayer.core.OnChangedNotNull
 import com.kylentt.mediaplayer.core.media3.MediaItemFactory
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper

@@ -1,4 +1,4 @@
-package com.kylentt.mediaplayer.app.delegates.device
+package com.kylentt.mediaplayer.core.app.delegates.device
 
 import android.app.WallpaperManager
 import android.content.Context
@@ -10,7 +10,7 @@ import androidx.core.graphics.component2
 import androidx.core.graphics.component3
 import androidx.core.graphics.component4
 import androidx.core.graphics.drawable.toBitmap
-import com.kylentt.mediaplayer.app.delegates.AppDelegate
+import com.kylentt.mediaplayer.core.app.delegates.AppDelegate
 import com.kylentt.mediaplayer.core.delegates.LateLazy
 import com.kylentt.mediaplayer.core.delegates.LateInitializerDelegate
 import kotlin.properties.ReadOnlyProperty

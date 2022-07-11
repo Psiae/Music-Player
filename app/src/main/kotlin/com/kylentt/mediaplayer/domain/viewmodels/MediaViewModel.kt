@@ -11,7 +11,7 @@ import com.kylentt.mediaplayer.core.coroutines.safeCollect
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemHelper
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper.getDebugDescription
 import com.kylentt.mediaplayer.core.media3.playback.PlaybackState
-import com.kylentt.mediaplayer.domain.musiclib.MusicLibrary
+import com.kylentt.musicplayer.domain.musiclib.MusicLibrary
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.helper.external.IntentWrapper
@@ -48,7 +48,7 @@ class MediaViewModel @Inject constructor(
 
   private suspend fun collectPlaybackState() {
     Timber.d("MediaViewModel collectPlaybackState")
-    MusicLibrary.serviceInfo.state.playbackState.safeCollect { playbackState ->
+    MusicLibrary.localAgent.session.info.state.playbackState.safeCollect { playbackState ->
       Timber.d("MediaViewModel collectPlaybackState collected for: " +
         "\n${playbackState.mediaItem.getDebugDescription()}"
       )

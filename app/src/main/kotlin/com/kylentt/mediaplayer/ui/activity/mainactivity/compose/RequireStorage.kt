@@ -2,7 +2,7 @@ package com.kylentt.mediaplayer.ui.activity.mainactivity.compose
 
 import androidx.compose.runtime.*
 import com.google.accompanist.permissions.*
-import com.kylentt.mediaplayer.app.delegates.device.StoragePermissionHelper
+import com.kylentt.mediaplayer.core.app.delegates.device.StoragePermissionHelper
 import timber.log.Timber
 
 @OptIn(ExperimentalPermissionsApi::class)

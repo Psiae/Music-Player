@@ -1,4 +1,4 @@
-package com.kylentt.mediaplayer.app.settings
+package com.kylentt.mediaplayer.core.app.settings
 
 import android.content.Context
 import androidx.compose.material.Button
@@ -31,13 +31,13 @@ import java.io.OutputStream
 
 @Serializable
 data class AppSettings(
-  val navigationSettings: NavigationSettings,
-  val wallpaperSettings: WallpaperSettings,
-  val isValid: Boolean = true
+	val navigationSettings: NavigationSettings,
+	val wallpaperSettings: WallpaperSettings,
+	val isValid: Boolean = true
 ) {
 
 	val defaultValue
-		get() = Companion.DEFAULT
+		get() = DEFAULT
 	val fileName
 		get() = Companion.fileName
 

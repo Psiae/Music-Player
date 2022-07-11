@@ -13,7 +13,7 @@
     </queries>
 
     <application
-        android:name="com.kylentt.mediaplayer.app.MediaPlayerApp"
+        android:name="com.kylentt.mediaplayer.core.app.MediaPlayerApp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher_3"
         android:label="@string/app_name"
@@ -25,7 +25,7 @@
             android:authorities="${applicationId}.androidx-startup"
             android:exported="false">
             <meta-data
-                android:name="com.kylentt.mediaplayer.app.dependency.AppInitializer"
+                android:name="com.kylentt.mediaplayer.core.app.dependency.AppInitializer"
                 android:value="androidx.startup"/>
         </provider>
 

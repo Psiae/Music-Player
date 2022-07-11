@@ -1,10 +1,10 @@
-package com.kylentt.mediaplayer.app.delegates.device
+package com.kylentt.mediaplayer.core.app.delegates.device
 
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
-import com.kylentt.mediaplayer.app.delegates.AppDelegate
+import com.kylentt.mediaplayer.core.app.delegates.AppDelegate
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 

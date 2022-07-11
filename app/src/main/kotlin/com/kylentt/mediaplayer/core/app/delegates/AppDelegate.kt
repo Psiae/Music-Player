@@ -1,4 +1,4 @@
-package com.kylentt.mediaplayer.app.delegates
+package com.kylentt.mediaplayer.core.app.delegates
 
 import android.app.Application
 import android.content.ComponentName
@@ -11,9 +11,9 @@ import androidx.annotation.DrawableRes
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import androidx.core.content.ContextCompat
-import com.kylentt.mediaplayer.app.delegates.AppDelegate.Constants.ANDROID_PERMISSION_PREFIX
-import com.kylentt.mediaplayer.app.delegates.device.DeviceWallpaper
-import com.kylentt.mediaplayer.app.delegates.device.StoragePermissionHelper
+import com.kylentt.mediaplayer.core.app.delegates.AppDelegate.Constants.ANDROID_PERMISSION_PREFIX
+import com.kylentt.mediaplayer.core.app.delegates.device.DeviceWallpaper
+import com.kylentt.mediaplayer.core.app.delegates.device.StoragePermissionHelper
 import com.kylentt.mediaplayer.core.annotation.Singleton
 import com.kylentt.mediaplayer.core.delegates.LateInitializerDelegate
 import com.kylentt.mediaplayer.core.delegates.LateLazy
@@ -30,16 +30,6 @@ interface ApplicationDelegate {
 	fun getLauncherIntent(): Intent
 	fun getComponentName(kls: KClass<*>): ComponentName
 }
-
-/**
- * Singleton to use the [Application] Context when there's no [Context] available,
- *
- * UI related Object returned by this class will use the Application class Theme if any
- *
- * @sample com.kylentt.mediaplayer.domain.mediasession.libraryservice.MusicLibraryService.Companion.getComponentName
- * @author Kylentt
- * @since 2022/04/30
- */
 
 @Singleton
 class AppDelegate private constructor(app: Application) : ApplicationDelegate, ContextWrapper(app) {

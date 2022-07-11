@@ -55,11 +55,11 @@ import com.google.accompanist.permissions.PermissionState
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.shouldShowRationale
 import com.kylentt.mediaplayer.R
-import com.kylentt.mediaplayer.app.delegates.AppDelegate
-import com.kylentt.mediaplayer.app.delegates.device.StoragePermissionHelper
-import com.kylentt.mediaplayer.app.settings.AppSettings
-import com.kylentt.mediaplayer.app.settings.WallpaperSettings
-import com.kylentt.mediaplayer.app.settings.WallpaperSettings.Source.*
+import com.kylentt.mediaplayer.core.app.delegates.AppDelegate
+import com.kylentt.mediaplayer.core.app.delegates.device.StoragePermissionHelper
+import com.kylentt.mediaplayer.core.app.settings.AppSettings
+import com.kylentt.mediaplayer.core.app.settings.WallpaperSettings
+import com.kylentt.mediaplayer.core.app.settings.WallpaperSettings.Source.*
 import com.kylentt.mediaplayer.domain.viewmodels.MainViewModel
 import com.kylentt.mediaplayer.domain.viewmodels.MediaViewModel
 import com.kylentt.mediaplayer.ui.activity.CollectionExtension.forEachClearSync

@@ -3,8 +3,8 @@ package com.kylentt.mediaplayer.data.repository
 import android.app.Application
 import android.content.Context
 import com.kylentt.mediaplayer.core.coroutines.AppScope
-import com.kylentt.mediaplayer.app.settings.AppSettings
-import com.kylentt.mediaplayer.app.settings.AppSettings.Companion.settingsDataStore
+import com.kylentt.mediaplayer.core.app.settings.AppSettings
+import com.kylentt.mediaplayer.core.app.settings.AppSettings.Companion.settingsDataStore
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow

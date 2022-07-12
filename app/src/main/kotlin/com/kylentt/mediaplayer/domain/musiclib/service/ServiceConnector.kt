@@ -11,17 +11,15 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateIdle
 import com.kylentt.mediaplayer.core.media3.playback.PlaybackState
-import com.kylentt.musicplayer.domain.musiclib.dependency.DependencyProvider
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.musicplayer.domain.musiclib.MusicLibrary
-import com.kylentt.musicplayer.domain.musiclib.interactor.Agent
+import com.kylentt.musicplayer.domain.musiclib.dependency.Injector
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import timber.log.Timber
 
 class ServiceConnector(delegate: MusicLibrary.ServiceDelegate) {
-	private val dependency = DependencyProvider.Mutable()
+	private val localInjector = Injector()
 	private val mediaController = Controller()
 	private val mediaRegistry = Registry()
 
@@ -34,10 +32,8 @@ class ServiceConnector(delegate: MusicLibrary.ServiceDelegate) {
 			get() = mediaRegistry.info
 	}
 
-	fun initialize(agent: Agent) {
-		dependency.add(agent.dependency)
-		Timber.d("ServiceConnector initialized, dependency:" +
-			"\n${dependency.getDebugMessage(true)}")
+	fun initialize(dependencyInjector: Injector) {
+		localInjector.fuseProvider(dependencyInjector)
 	}
 
 	fun connect(): Interactor {
@@ -79,7 +75,7 @@ class ServiceConnector(delegate: MusicLibrary.ServiceDelegate) {
 
 			state = ControllerState.CONNECTING
 
-			val context = dependency.get(Context::class.java)!!.applicationContext
+			val context = localInjector.get(Context::class.java, subclass = true)!!.applicationContext
 			val serviceComponent = MusicLibraryService.getComponentName()
 			val token = SessionToken(context, serviceComponent)
 			mediaControllerFuture = MediaController.Builder(context, token)

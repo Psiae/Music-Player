@@ -1,9 +1,8 @@
 package com.kylentt.musicplayer.domain.musiclib
 
 import com.kylentt.mediaplayer.core.annotation.Singleton
-import com.kylentt.musicplayer.domain.musiclib.dependency.DependencyProvider
-import com.kylentt.musicplayer.domain.musiclib.interactor.Agent
 import com.kylentt.mediaplayer.domain.musiclib.service.ServiceConnector
+import com.kylentt.musicplayer.domain.musiclib.interactor.Agent
 
 @Singleton
 class MusicLibrary private constructor() {
@@ -26,8 +25,6 @@ class MusicLibrary private constructor() {
 		private val musicLibrary = MusicLibrary()
 
 		// Singleton Interactor
-		val localAgent: Agent = Agent {
-			musicLibrary.AgentDelegate(this)
-		}
+		val localAgent: Agent = Agent { musicLibrary.AgentDelegate(this) }
 	}
 }

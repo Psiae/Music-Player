@@ -19,15 +19,16 @@ class MusicLibraryInitializer : Initializer<Unit> {
 class AgentInitializer : Initializer<Agent> {
 
 	override fun create(context: Context): Agent {
-		val provider = DependencyProvider(
+		val provider = ValueProvider.args(
 			context.applicationContext as Application,
 			CoroutineDispatchers.DEFAULT
 		)
 
-		return MusicLibrary.localAgent.apply {
-			loader.loadDependency(provider)
-			initializer.initialize()
-		}
+		return MusicLibrary.localAgent
+			.apply {
+				injector.addProvider(*provider)
+				initializer.initialize()
+			}
 	}
 
 	override fun dependencies(): MutableList<Class<out Initializer<*>>> = mutableListOf()

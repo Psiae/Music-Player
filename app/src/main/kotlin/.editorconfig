@@ -11,4 +11,3 @@ ij_java_wrap_long_lines = true
 
 [com/kylentt/**/*compose*/**.kt]
 indent_size = 4
-

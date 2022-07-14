@@ -103,8 +103,8 @@ dependencies {
         implementation "androidx.compose.ui:ui:1.1.1"
         implementation "androidx.compose.material:material:1.1.1"
         implementation "androidx.compose.ui:ui-tooling-preview:1.1.1"
-        implementation "androidx.lifecycle:lifecycle-runtime-ktx:2.4.1"
-        implementation "androidx.activity:activity-compose:1.4.0"
+        implementation "androidx.lifecycle:lifecycle-runtime-ktx:2.5.0"
+        implementation "androidx.activity:activity-compose:1.5.0"
         implementation 'com.google.android.material:material:1.6.1'
         testImplementation "junit:junit:4.13.2"
         androidTestImplementation "androidx.test.ext:junit:1.1.3"
@@ -143,9 +143,9 @@ dependencies {
 
     // Androidx.compose
     dependencies {
-        def composeMaterial_Version = "1.1.1"
-        def composeMaterial3_Version = "1.0.0-alpha13"
-        def composeMaterialIcon_Version = "1.2.0-rc02"
+        def composeMaterial_Version = "1.3.0-alpha01"
+        def composeMaterial3_Version = "1.0.0-alpha14"
+        def composeMaterialIcon_Version = "1.3.0-alpha01"
 
         implementation "androidx.compose.foundation:foundation:$composeMaterial_Version"
         implementation "androidx.compose.material:material-icons-core:$composeMaterialIcon_Version"
@@ -156,7 +156,7 @@ dependencies {
 
     // Androidx.navigation
     dependencies {
-        def composeNavigation_Version = "2.5.0-rc02"
+        def composeNavigation_Version = "2.5.0"
         implementation "androidx.navigation:navigation-compose:$composeNavigation_Version"
     }
 
@@ -173,7 +173,7 @@ dependencies {
     dependencies {
         implementation("com.google.guava:guava:31.0.1-android")
         implementation("androidx.concurrent:concurrent-futures:1.1.0")
-        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-guava:1.6.0")
+        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-guava:1.6.1")
     }
 
     // Debugging
@@ -230,5 +230,5 @@ dependencies {
         implementation "jp.wasabeef.transformers:coil:$coilTransformer_Version"
         implementation "jp.wasabeef.transformers:coil-gpu:$coilTransformer_Version"
     }
-    implementation "org.jetbrains.kotlin:kotlin-reflect:1.6.21"
+    implementation "org.jetbrains.kotlin:kotlin-reflect:1.7.10"
 }

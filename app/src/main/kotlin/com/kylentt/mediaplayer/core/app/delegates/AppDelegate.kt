@@ -14,7 +14,6 @@ import androidx.core.content.ContextCompat
 import com.kylentt.mediaplayer.core.app.delegates.AppDelegate.Constants.ANDROID_PERMISSION_PREFIX
 import com.kylentt.mediaplayer.core.app.delegates.device.DeviceWallpaper
 import com.kylentt.mediaplayer.core.app.delegates.device.StoragePermissionHelper
-import com.kylentt.mediaplayer.core.annotation.Singleton
 import com.kylentt.mediaplayer.core.delegates.LateInitializerDelegate
 import com.kylentt.mediaplayer.core.delegates.LateLazy
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
@@ -31,7 +30,6 @@ interface ApplicationDelegate {
 	fun getComponentName(kls: KClass<*>): ComponentName
 }
 
-@Singleton
 class AppDelegate private constructor(app: Application) : ApplicationDelegate, ContextWrapper(app) {
 
 	private constructor(context: Context) : this(context.applicationContext as Application)

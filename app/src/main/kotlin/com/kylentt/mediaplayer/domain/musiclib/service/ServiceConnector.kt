@@ -12,16 +12,21 @@ import com.google.common.util.concurrent.MoreExecutors
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateIdle
 import com.kylentt.mediaplayer.core.media3.playback.PlaybackState
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
-import com.kylentt.musicplayer.domain.musiclib.MusicLibrary
-import com.kylentt.musicplayer.domain.musiclib.dependency.Injector
+import com.kylentt.musicplayer.domain.musiclib.interactor.Agent
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-class ServiceConnector(delegate: MusicLibrary.ServiceDelegate) {
-	private val localInjector = Injector()
+class ServiceConnector(private val agent: Agent) {
+
+	private val localInjector get() = agent.injector
+
+	private val context: Context by localInjector.inject(subclass = true)
+
 	private val mediaController = Controller()
 	private val mediaRegistry = Registry()
+
+
 
 	val interactor = object : Interactor {
 
@@ -30,15 +35,6 @@ class ServiceConnector(delegate: MusicLibrary.ServiceDelegate) {
 
 		override val info: Info
 			get() = mediaRegistry.info
-	}
-
-	fun initialize(dependencyInjector: Injector) {
-		localInjector.fuseProvider(dependencyInjector)
-	}
-
-	fun connect(): Interactor {
-		mediaController.connectMediaController()
-		return interactor
 	}
 
 	private inner class Registry {
@@ -75,7 +71,6 @@ class ServiceConnector(delegate: MusicLibrary.ServiceDelegate) {
 
 			state = ControllerState.CONNECTING
 
-			val context = localInjector.get(Context::class.java, subclass = true)!!.applicationContext
 			val serviceComponent = MusicLibraryService.getComponentName()
 			val token = SessionToken(context, serviceComponent)
 			mediaControllerFuture = MediaController.Builder(context, token)
@@ -88,6 +83,7 @@ class ServiceConnector(delegate: MusicLibrary.ServiceDelegate) {
 					checkState(isDone)
 					mediaController = get()
 					mediaController.addListener(playbackEventListener)
+					onConnected(mediaController)
 				}, MoreExecutors.directExecutor())
 			}
 		}

@@ -12,32 +12,63 @@ class Injector {
 	}
 
 	@Suppress("UNCHECKED_CAST")
-	fun <R : Any> get(cls: Class<R>, subclass: Boolean): R? {
-		localProviders.forEach { if (it.valueClass == cls ) return it.value as R }
+	fun <R> inject(cls: Class<R>, subclass: Boolean): R? {
+		localProviders.forEach {
+			if (it.valueClass == cls ) return it.value as R
+		}
 		if (subclass) {
-			localProviders.forEach { if (cls.isAssignableFrom(it.valueClass)) return it.value as /* Super */ R }
+			localProviders.forEach {
+				if (cls.isAssignableFrom(it.valueClass)) return it.value as /* Super */ R }
 		}
 		return null
 	}
 
-	fun fuseProvider(from: Injector) {
-		from.localProviders.forEach { provider -> this.addProvider(provider) }
+	fun fuseInjector(from: Injector) {
+		this.addProvider(*from.localProviders.toTypedArray())
 	}
-}
 
-interface Provider<T: Any> {
-	val value: T
-	val valueClass: Class<T>
-}
+	inline fun <reified R: Any> inject(subclass: Boolean): Lazy<R> {
+		return LazyValue(R::class.java, subclass)
+	}
 
-class ValueProvider <T: Any>(override val value: T) : Provider<T> {
-	override val valueClass: Class<T> = value.javaClass
+	inline fun <reified R> lateInject(subclass: Boolean): Lazy<R?> {
+		return LateLazyValue(R::class.java, subclass)
+	}
 
-	companion object {
-		fun args(vararg args : Any): Array<ValueProvider<Any>> {
-			val mtb = mutableListOf<ValueProvider<Any>>()
-			args.forEach { mtb.add(ValueProvider(it)) }
-			return mtb.toTypedArray()
-		}
+	inner class LateLazyValue<T>(
+		private val cls: Class<T>,
+		private val subclass: Boolean
+	): Lazy<T?> {
+
+		private var _value: T? = null
+
+		override val value: T?
+			get() {
+				if (!isInitialized()) {
+					sync { if (!isInitialized()) _value = inject(cls, subclass) }
+				}
+				return _value
+			}
+
+		override fun isInitialized(): Boolean = _value != null
+	}
+
+	inner class LazyValue<T: Any>(
+		private val cls: Class<T>,
+		private val subclass: Boolean
+	): Lazy<T> {
+
+		private var _value: T? = null
+
+		override val value: T
+			get() {
+				if (!isInitialized()) {
+					sync { if (!isInitialized()) _value = inject(cls, subclass) }
+				}
+				return _value!!
+			}
+
+
+		override fun isInitialized(): Boolean = _value != null
 	}
 }

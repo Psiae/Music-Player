@@ -5,7 +5,6 @@ import android.content.Context
 import androidx.startup.Initializer
 import com.kylentt.mediaplayer.core.coroutines.CoroutineDispatchers
 import com.kylentt.musicplayer.domain.musiclib.MusicLibrary
-import com.kylentt.musicplayer.domain.musiclib.interactor.Agent
 
 class MusicLibraryInitializer : Initializer<Unit> {
 
@@ -16,19 +15,15 @@ class MusicLibraryInitializer : Initializer<Unit> {
 	}
 }
 
-class AgentInitializer : Initializer<Agent> {
+class AgentInitializer : Initializer<Unit> {
 
-	override fun create(context: Context): Agent {
+	override fun create(context: Context): Unit {
 		val provider = ValueProvider.args(
 			context.applicationContext as Application,
 			CoroutineDispatchers.DEFAULT
 		)
 
-		return MusicLibrary.localAgent
-			.apply {
-				injector.addProvider(*provider)
-				initializer.initialize()
-			}
+		MusicLibrary.localAgent.dependency.provide(*provider)
 	}
 
 	override fun dependencies(): MutableList<Class<out Initializer<*>>> = mutableListOf()

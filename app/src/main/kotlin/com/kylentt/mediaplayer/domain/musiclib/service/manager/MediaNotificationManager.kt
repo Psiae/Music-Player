@@ -26,8 +26,8 @@ import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isRepeatOne
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateEnded
 import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateIdle
 import com.kylentt.mediaplayer.core.extenstions.checkCancellation
-import com.kylentt.mediaplayer.core.media3.MediaItemFactory
-import com.kylentt.mediaplayer.core.media3.MediaItemFactory.orEmpty
+import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemFactory
+import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemFactory.orEmpty
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemInfo
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper.getDebugDescription
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper.mediaUri

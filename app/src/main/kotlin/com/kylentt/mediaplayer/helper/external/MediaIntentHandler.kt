@@ -12,7 +12,7 @@ import android.widget.Toast
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import com.kylentt.mediaplayer.core.coroutines.CoroutineDispatchers
-import com.kylentt.mediaplayer.core.media3.MediaItemFactory
+import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemFactory
 import com.kylentt.mediaplayer.data.SongEntity
 import com.kylentt.mediaplayer.data.repository.MediaRepository
 import com.kylentt.mediaplayer.data.source.local.MediaStoreSong

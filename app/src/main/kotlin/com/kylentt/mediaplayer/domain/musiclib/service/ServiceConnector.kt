@@ -137,7 +137,7 @@ class ServiceConnector(private val agent: Agent) {
 			}
 			override fun pause() = connectMediaController { it.pause() }
 			override fun stop() = connectMediaController { it.stop() }
-			override fun toggleRepeat() = connectMediaController { getToggledRepeat(it.repeatMode)}
+			override fun toggleRepeat() = connectMediaController { getToggledRepeat(it.repeatMode) }
 
 			override fun setMediaItems(items: List<MediaItem>) = connectMediaController {
 				val pbs = it.playbackState

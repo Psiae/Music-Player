@@ -9,7 +9,7 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.kylentt.mediaplayer.core.app.dependency.AppModule
 import com.kylentt.mediaplayer.core.OnChangedNotNull
-import com.kylentt.mediaplayer.core.media3.MediaItemFactory
+import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemFactory
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper
 import com.kylentt.mediaplayer.domain.musiclib.service.provider.SessionProvider
 import com.kylentt.mediaplayer.domain.musiclib.service.MusicLibraryService

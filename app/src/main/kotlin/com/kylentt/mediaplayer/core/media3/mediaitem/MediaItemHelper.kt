@@ -6,10 +6,8 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
-import com.kylentt.mediaplayer.core.media3.MediaItemFactory
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper.mediaUri
 import com.kylentt.mediaplayer.helper.Preconditions
-import com.kylentt.mediaplayer.helper.external.providers.DocumentProviderHelper
 import javax.inject.Singleton
 
 @Singleton

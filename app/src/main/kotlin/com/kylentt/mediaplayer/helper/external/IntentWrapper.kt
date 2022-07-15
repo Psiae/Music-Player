@@ -1,7 +1,7 @@
 package com.kylentt.mediaplayer.helper.external
 
 import android.content.Intent
-import com.kylentt.mediaplayer.R
+import com.kylentt.musicplayer.R
 import com.kylentt.mediaplayer.helper.external.providers.ContentProvidersHelper
 
 data class IntentWrapper @JvmOverloads constructor(

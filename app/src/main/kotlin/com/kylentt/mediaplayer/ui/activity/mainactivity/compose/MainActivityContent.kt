@@ -54,7 +54,7 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionState
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.shouldShowRationale
-import com.kylentt.mediaplayer.R
+import com.kylentt.musicplayer.R
 import com.kylentt.mediaplayer.core.app.delegates.AppDelegate
 import com.kylentt.mediaplayer.core.app.delegates.device.StoragePermissionHelper
 import com.kylentt.mediaplayer.core.app.settings.AppSettings
@@ -167,24 +167,18 @@ private fun RootScaffold(
     }
 }
 
+@Immutable
+private object NoRippleTheme : RippleTheme {
+	@Composable override fun defaultColor(): Color = Color.Transparent
+
+	@Composable override fun rippleAlpha(): RippleAlpha {
+		return RippleAlpha(0F,0F,0F,0F)
+	}
+}
+
 @Composable
 private fun NoRipple(content: @Composable () -> Unit) {
-
-    CompositionLocalProvider (
-
-        LocalRippleTheme provides object : RippleTheme {
-
-            @Composable
-            override fun defaultColor(): Color = Color.Transparent
-
-            @Composable
-            override fun rippleAlpha(): RippleAlpha {
-                return RippleAlpha(0F,0F,0F,0F)
-            }
-        }
-    ) {
-        content()
-    }
+    CompositionLocalProvider (LocalRippleTheme provides NoRippleTheme) { content() }
 }
 
 @Composable
@@ -289,7 +283,7 @@ private inline fun StorageDenied(
 
 	val permission = StoragePermissionHelper.checkReadWriteStoragePermission(localContext)
 
-    check(!permission)
+	check(!permission)
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult(),

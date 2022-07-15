@@ -4,10 +4,9 @@ import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import com.kylentt.mediaplayer.R
 import com.kylentt.mediaplayer.ui.activity.IntentExtension.isActionView
 import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity
+import com.kylentt.musicplayer.R
 import timber.log.Timber
 
 /**

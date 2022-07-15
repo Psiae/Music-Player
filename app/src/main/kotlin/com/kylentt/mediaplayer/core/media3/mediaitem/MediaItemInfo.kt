@@ -10,7 +10,6 @@ import com.kylentt.mediaplayer.core.extenstions.orEmpty
 import com.kylentt.mediaplayer.core.extenstions.orEmptyString
 import com.kylentt.mediaplayer.core.extenstions.orEmptyUri
 import com.kylentt.mediaplayer.core.extenstions.putExtraAsString
-import com.kylentt.mediaplayer.core.media3.MediaItemFactory
 
 class MediaItemInfo private constructor(
 

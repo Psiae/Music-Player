@@ -1,12 +1,10 @@
 package com.kylentt.mediaplayer.core.app.dependency
 
-import android.app.Application
 import android.content.Context
 import androidx.startup.Initializer
-import com.kylentt.mediaplayer.BuildConfig
 import com.kylentt.mediaplayer.core.app.delegates.AppDelegate
+import com.kylentt.musicplayer.BuildConfig
 import com.kylentt.musicplayer.domain.musiclib.dependency.MusicLibraryInitializer
-import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import timber.log.Timber
 
 /**

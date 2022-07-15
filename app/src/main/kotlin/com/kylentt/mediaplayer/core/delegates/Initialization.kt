@@ -1,7 +1,7 @@
 package com.kylentt.mediaplayer.core.delegates
 
 import androidx.annotation.GuardedBy
-import com.kylentt.mediaplayer.BuildConfig
+import com.kylentt.musicplayer.BuildConfig
 import com.kylentt.mediaplayer.core.coroutines.CoroutineDispatchers
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import kotlinx.coroutines.*

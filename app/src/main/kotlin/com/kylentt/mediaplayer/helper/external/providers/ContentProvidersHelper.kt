@@ -7,7 +7,7 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import androidx.core.net.toUri
-import com.kylentt.mediaplayer.BuildConfig
+import com.kylentt.musicplayer.BuildConfig
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import com.kylentt.mediaplayer.helper.VersionHelper
 import okio.IOException

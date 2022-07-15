@@ -1,4 +1,4 @@
-package com.kylentt.mediaplayer.core.media3
+package com.kylentt.mediaplayer.core.media3.mediaitem
 
 import android.content.Context
 import android.media.MediaMetadataRetriever
@@ -8,7 +8,6 @@ import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaItem.RequestMetadata
 import androidx.media3.common.MediaMetadata
-import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper.mediaUri
 import com.kylentt.mediaplayer.helper.StringExtension.setPrefix
 import timber.log.Timber

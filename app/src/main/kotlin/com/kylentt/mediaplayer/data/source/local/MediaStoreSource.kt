@@ -10,7 +10,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaItem.RequestMetadata
 import androidx.media3.common.MediaMetadata
 import com.kylentt.mediaplayer.core.coroutines.CoroutineDispatchers
-import com.kylentt.mediaplayer.core.media3.MediaItemFactory
+import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemFactory
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemPropertyHelper.mediaUri
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaMetadataHelper.putDisplayTitle
 import com.kylentt.mediaplayer.core.media3.mediaitem.MediaMetadataHelper.putFileName

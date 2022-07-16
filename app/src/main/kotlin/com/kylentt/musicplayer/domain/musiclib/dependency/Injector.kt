@@ -3,6 +3,7 @@ package com.kylentt.musicplayer.domain.musiclib.dependency
 import com.kylentt.mediaplayer.core.extenstions.sync
 
 class Injector {
+	private var mParents: MutableSet<Injector> = mutableSetOf()
 	private val localProviders: MutableList<Provider<Any>> = mutableListOf()
 
 	fun addProvider(vararg providers: Provider<Any>): Unit = localProviders.sync {
@@ -13,18 +14,23 @@ class Injector {
 
 	@Suppress("UNCHECKED_CAST")
 	fun <R> inject(cls: Class<R>, subclass: Boolean): R? {
-		localProviders.forEach {
-			if (it.valueClass == cls ) return it.value as R
+		localProviders.forEach { provider ->
+			if (provider.valueClass == cls ) return provider.value as R
 		}
+
 		if (subclass) {
-			localProviders.forEach {
-				if (cls.isAssignableFrom(it.valueClass)) return it.value as /* Super */ R }
+			localProviders.forEach { provider ->
+				if (cls.isAssignableFrom(provider.valueClass)) return provider.value as /* Super */ R }
 		}
+
+		mParents.forEach { parent ->
+			parent.inject(cls, subclass)?.let { fromParent -> return fromParent } }
+
 		return null
 	}
 
-	fun fuseInjector(from: Injector) {
-		this.addProvider(*from.localProviders.toTypedArray())
+	fun fuseInjector(injector: Injector): Unit {
+		mParents.add(injector)
 	}
 
 	inline fun <reified R: Any> inject(subclass: Boolean): Lazy<R> {

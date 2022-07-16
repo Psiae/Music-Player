@@ -48,7 +48,7 @@ class MediaViewModel @Inject constructor(
 
   private suspend fun collectPlaybackState() {
     Timber.d("MediaViewModel collectPlaybackState")
-    MusicLibrary.localAgent.session.info.state.playbackState.safeCollect { playbackState ->
+    MusicLibrary.localAgent.session.info.playbackState.safeCollect { playbackState ->
       Timber.d("MediaViewModel collectPlaybackState collected for: " +
         "\n${playbackState.mediaItem.getDebugDescription()}"
       )

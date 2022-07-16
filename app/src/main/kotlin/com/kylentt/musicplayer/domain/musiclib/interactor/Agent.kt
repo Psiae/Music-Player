@@ -1,29 +1,34 @@
 package com.kylentt.musicplayer.domain.musiclib.interactor
 
-import com.kylentt.mediaplayer.domain.musiclib.service.ServiceConnector
 import com.kylentt.musicplayer.domain.musiclib.MusicLibrary
 import com.kylentt.musicplayer.domain.musiclib.dependency.Injector
+import com.kylentt.musicplayer.domain.musiclib.session.LibraryPlayer
+import com.kylentt.musicplayer.domain.musiclib.session.MusicSession
 
 
 class Agent private constructor() {
-	constructor(lib: MusicLibrary) : this()
+	private lateinit var mLib: MusicLibrary
 
-	val mask = AgentMask(this)
-	val injector = Injector()
-
-	val session = object : Session {
-
-		override val controller: ServiceConnector.ControllerInteractor
-			get() = serviceConnector.interactor.controller
-
-		override val info: ServiceConnector.Info
-			get() = serviceConnector.interactor.info
+	constructor(lib: MusicLibrary) : this() {
+		mLib = lib
 	}
 
-	private val serviceConnector: ServiceConnector = ServiceConnector(this)
+	val injector: Injector = Injector()
+	private val session = MusicSession(this)
 
-	interface Session {
-		val controller: ServiceConnector.ControllerInteractor // TODO
-		val info: ServiceConnector.Info // TODO
+	val mask: AgentMask = AgentMask(this)
+
+	val sessionMask = object : SessionMask {
+
+		override val player: LibraryPlayer
+			get() = session.player
+
+		override val info: MusicSession.SessionInfo
+			get() = session.sessionInfo
+	}
+
+	interface SessionMask {
+		val player: LibraryPlayer
+		val info: MusicSession.SessionInfo
 	}
 }

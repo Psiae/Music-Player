@@ -1,8 +1,9 @@
 package com.kylentt.musicplayer.domain.musiclib.interactor
 
-import com.kylentt.mediaplayer.domain.musiclib.service.ServiceConnector
 import com.kylentt.musicplayer.domain.musiclib.dependency.Injector
 import com.kylentt.musicplayer.domain.musiclib.dependency.Provider
+import com.kylentt.musicplayer.domain.musiclib.session.LibraryPlayer
+import com.kylentt.musicplayer.domain.musiclib.session.MusicSession
 
 class AgentMask private constructor() {
 	private lateinit var mAgent: Agent
@@ -12,15 +13,15 @@ class AgentMask private constructor() {
 	}
 
 	val dependency = object : Dependency {
-		override fun provide(injector: Injector) = mAgent.injector.fuseInjector(injector)
+		override fun provide(injector: Injector): Unit = mAgent.injector.fuseInjector(injector)
 		override fun provide(vararg providers: Provider<Any>) = mAgent.injector.addProvider(*providers)
 	}
 
 	val session = object : Session {
-		override val controller: ServiceConnector.ControllerInteractor
-			get() = mAgent.session.controller
-		override val info: ServiceConnector.Info
-			get() = mAgent.session.info
+		override val controller: LibraryPlayer
+			get() = mAgent.sessionMask.player
+		override val info: MusicSession.SessionInfo
+			get() = mAgent.sessionMask.info
 	}
 
 	interface Dependency {
@@ -29,7 +30,7 @@ class AgentMask private constructor() {
 	}
 
 	interface Session {
-		val controller: ServiceConnector.ControllerInteractor
-		val info: ServiceConnector.Info
+		val controller: LibraryPlayer
+		val info: MusicSession.SessionInfo
 	}
 }

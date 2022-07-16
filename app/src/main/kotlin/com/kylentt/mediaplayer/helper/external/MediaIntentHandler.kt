@@ -143,8 +143,7 @@ class MediaIntentHandlerImpl(
     ) {
 			checkMainThread()
 			with(MusicLibrary.localAgent.session.controller) {
-				setMediaItems(list)
-				seekTo(list.indexOf(item), 0)
+				setMediaItems(list, list.indexOf(item), 0)
 				play()
 			}
 		}

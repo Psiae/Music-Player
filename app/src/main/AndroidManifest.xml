@@ -13,7 +13,7 @@
     </queries>
 
     <application
-        android:name="com.kylentt.mediaplayer.core.app.MediaPlayerApp"
+        android:name=".core.app.MusicPlayerApp"
         android:allowBackup="true"
         android:exported="true"
         android:icon="@mipmap/ic_launcher_3"
@@ -26,12 +26,12 @@
             android:authorities="${applicationId}.androidx-startup"
             android:exported="false">
             <meta-data
-                android:name="com.kylentt.mediaplayer.core.app.dependency.AppInitializer"
+                android:name="com.kylentt.musicplayer.core.app.dependency.AppInitializer"
                 android:value="androidx.startup"/>
         </provider>
 
         <service
-            android:name="com.kylentt.mediaplayer.domain.musiclib.service.MusicLibraryService"
+            android:name=".domain.musiclib.service.MusicLibraryService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback">

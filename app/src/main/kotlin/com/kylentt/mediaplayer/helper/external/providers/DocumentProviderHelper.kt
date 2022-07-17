@@ -8,8 +8,8 @@ import android.os.Environment
 import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.provider.OpenableColumns
-import com.kylentt.mediaplayer.helper.VersionHelper
-import com.kylentt.mediaplayer.core.coroutines.CoroutineDispatchers
+import com.kylentt.musicplayer.core.sdk.VersionHelper
+import com.kylentt.musicplayer.core.app.coroutines.CoroutineDispatchers
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File

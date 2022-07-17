@@ -11,8 +11,8 @@ import android.provider.OpenableColumns
 import android.widget.Toast
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
-import com.kylentt.mediaplayer.core.coroutines.CoroutineDispatchers
-import com.kylentt.mediaplayer.core.media3.mediaitem.MediaItemFactory
+import com.kylentt.musicplayer.core.app.coroutines.CoroutineDispatchers
+import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemFactory
 import com.kylentt.mediaplayer.data.SongEntity
 import com.kylentt.mediaplayer.data.repository.MediaRepository
 import com.kylentt.mediaplayer.data.source.local.MediaStoreSong
@@ -48,9 +48,9 @@ interface MediaIntentHandler {
 
 @Singleton
 class MediaIntentHandlerImpl(
-	private val context: Context,
-	private val dispatcher: CoroutineDispatchers,
-	private val mediaRepo: MediaRepository
+    private val context: Context,
+    private val dispatcher: CoroutineDispatchers,
+    private val mediaRepo: MediaRepository
 ) : MediaIntentHandler {
 
   private val actionViewHandler = ActionViewHandler()
@@ -142,7 +142,7 @@ class MediaIntentHandlerImpl(
       fadeOut: Boolean
     ) {
 			checkMainThread()
-			with(MusicLibrary.localAgent.session.controller) {
+			with(MusicLibrary.localAgent.session.player) {
 				setMediaItems(list, list.indexOf(item), 0)
 				play()
 			}

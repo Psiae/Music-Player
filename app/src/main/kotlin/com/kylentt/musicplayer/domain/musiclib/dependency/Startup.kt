@@ -3,7 +3,7 @@ package com.kylentt.musicplayer.domain.musiclib.dependency
 import android.app.Application
 import android.content.Context
 import androidx.startup.Initializer
-import com.kylentt.mediaplayer.core.coroutines.CoroutineDispatchers
+import com.kylentt.musicplayer.core.app.coroutines.CoroutineDispatchers
 import com.kylentt.musicplayer.domain.musiclib.MusicLibrary
 
 class MusicLibraryInitializer : Initializer<Unit> {

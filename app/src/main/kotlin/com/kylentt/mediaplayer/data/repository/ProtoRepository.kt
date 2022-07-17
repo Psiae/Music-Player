@@ -2,7 +2,7 @@ package com.kylentt.mediaplayer.data.repository
 
 import android.app.Application
 import android.content.Context
-import com.kylentt.mediaplayer.core.coroutines.AppScope
+import com.kylentt.musicplayer.core.app.coroutines.AppScope
 import com.kylentt.mediaplayer.core.app.settings.AppSettings
 import com.kylentt.mediaplayer.core.app.settings.AppSettings.Companion.settingsDataStore
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument

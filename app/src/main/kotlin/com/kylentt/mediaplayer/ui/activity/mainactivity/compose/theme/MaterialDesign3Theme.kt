@@ -14,7 +14,7 @@ import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.google.android.material.color.ColorRoles
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.color.MaterialColors
-import com.kylentt.mediaplayer.helper.VersionHelper
+import com.kylentt.musicplayer.core.sdk.VersionHelper
 import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.theme.helper.ColorHelper
 import timber.log.Timber
 

@@ -9,7 +9,7 @@ import android.provider.OpenableColumns
 import androidx.core.net.toUri
 import com.kylentt.musicplayer.BuildConfig
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
-import com.kylentt.mediaplayer.helper.VersionHelper
+import com.kylentt.musicplayer.core.sdk.VersionHelper
 import okio.IOException
 import timber.log.Timber
 import java.io.File

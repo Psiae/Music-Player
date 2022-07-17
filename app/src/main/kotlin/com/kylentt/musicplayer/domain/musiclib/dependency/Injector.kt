@@ -1,9 +1,9 @@
 package com.kylentt.musicplayer.domain.musiclib.dependency
 
-import com.kylentt.mediaplayer.core.extenstions.sync
+import com.kylentt.musicplayer.core.extenstions.sync
 
 class Injector {
-	private var mParents: MutableSet<Injector> = mutableSetOf()
+	private val mParents: MutableSet<Injector> = mutableSetOf()
 	private val localProviders: MutableList<Provider<Any>> = mutableListOf()
 
 	fun addProvider(vararg providers: Provider<Any>): Unit = localProviders.sync {
@@ -15,8 +15,7 @@ class Injector {
 	@Suppress("UNCHECKED_CAST")
 	fun <R> inject(cls: Class<R>, subclass: Boolean): R? {
 		localProviders.forEach { provider ->
-			if (provider.valueClass == cls ) return provider.value as R
-		}
+			if (provider.valueClass == cls ) return provider.value as R }
 
 		if (subclass) {
 			localProviders.forEach { provider ->

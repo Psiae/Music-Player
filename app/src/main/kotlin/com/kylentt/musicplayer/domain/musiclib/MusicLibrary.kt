@@ -1,19 +1,14 @@
 package com.kylentt.musicplayer.domain.musiclib
 
-import android.os.Handler
-import android.os.Looper
-import com.kylentt.mediaplayer.core.extenstions.sync
-import com.kylentt.musicplayer.domain.musiclib.interactor.Agent
-import com.kylentt.musicplayer.domain.musiclib.interactor.AgentMask
+import com.kylentt.musicplayer.domain.musiclib.interactor.LibraryAgent
 
 class MusicLibrary private constructor() {
-	val agent = Agent(this)
-
+	val agent = LibraryAgent(this)
 	companion object {
 		private val musicLibrary = MusicLibrary()
 
 		// Singleton Interactor, hide whatever mess happen behind
-		val localAgent: AgentMask
+		val localAgent: LibraryAgent.Mask
 			get() = musicLibrary.agent.mask
 	}
 }

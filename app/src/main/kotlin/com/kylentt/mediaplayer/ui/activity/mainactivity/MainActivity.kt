@@ -12,12 +12,12 @@ import androidx.activity.viewModels
 import androidx.annotation.IntDef
 import androidx.annotation.MainThread
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import com.kylentt.mediaplayer.core.coroutines.CoroutineDispatchers
-import com.kylentt.mediaplayer.core.coroutines.AppScope
-import com.kylentt.mediaplayer.core.delegates.LateLazy
+import com.kylentt.musicplayer.core.app.coroutines.CoroutineDispatchers
+import com.kylentt.musicplayer.core.app.coroutines.AppScope
+import com.kylentt.musicplayer.core.late.LateLazy
 import com.kylentt.mediaplayer.core.delegates.LockMainThread
-import com.kylentt.mediaplayer.core.app.delegates.device.StoragePermissionHelper
-import com.kylentt.mediaplayer.domain.musiclib.service.MusicLibraryService
+import com.kylentt.musicplayer.core.app.delegates.device.StoragePermissionHelper
+import com.kylentt.musicplayer.domain.musiclib.service.MusicLibraryService
 import com.kylentt.mediaplayer.domain.viewmodels.MainViewModel
 import com.kylentt.mediaplayer.domain.viewmodels.MediaViewModel
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument

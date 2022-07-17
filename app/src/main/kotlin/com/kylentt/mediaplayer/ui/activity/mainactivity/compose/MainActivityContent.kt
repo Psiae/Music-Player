@@ -55,8 +55,8 @@ import com.google.accompanist.permissions.PermissionState
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.shouldShowRationale
 import com.kylentt.musicplayer.R
-import com.kylentt.mediaplayer.core.app.delegates.AppDelegate
-import com.kylentt.mediaplayer.core.app.delegates.device.StoragePermissionHelper
+import com.kylentt.musicplayer.core.app.delegates.AppDelegate
+import com.kylentt.musicplayer.core.app.delegates.device.StoragePermissionHelper
 import com.kylentt.mediaplayer.core.app.settings.AppSettings
 import com.kylentt.mediaplayer.core.app.settings.WallpaperSettings
 import com.kylentt.mediaplayer.core.app.settings.WallpaperSettings.Source.*

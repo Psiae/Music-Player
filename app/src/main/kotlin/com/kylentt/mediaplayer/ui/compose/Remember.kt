@@ -9,7 +9,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.Lifecycle
-import com.kylentt.mediaplayer.core.app.delegates.device.DeviceWallpaper
+import com.kylentt.musicplayer.core.app.delegates.device.DeviceWallpaper
 import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.LifeCycleExtension.RecomposeOnEvent
 
 @Composable

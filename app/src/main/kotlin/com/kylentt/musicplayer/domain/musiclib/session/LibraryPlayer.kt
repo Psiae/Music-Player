@@ -8,10 +8,9 @@ import androidx.media3.common.Player.Listener
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
-import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateEnded
-import com.kylentt.mediaplayer.core.exoplayer.PlayerExtension.isStateIdle
-import com.kylentt.mediaplayer.domain.musiclib.service.MusicLibraryService
-import com.kylentt.musicplayer.domain.musiclib.MusicLibrary
+import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.isStateEnded
+import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.isStateIdle
+import com.kylentt.musicplayer.domain.musiclib.service.MusicLibraryService
 import com.kylentt.musicplayer.domain.musiclib.dependency.Injector
 import com.kylentt.musicplayer.domain.musiclib.util.addListener
 import java.util.concurrent.Executor

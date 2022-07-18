@@ -9,7 +9,7 @@ import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import com.kylentt.musicplayer.core.sdk.VersionHelper
-import com.kylentt.musicplayer.core.app.coroutines.CoroutineDispatchers
+import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File

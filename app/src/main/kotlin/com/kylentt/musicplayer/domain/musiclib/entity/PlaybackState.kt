@@ -3,9 +3,10 @@ package com.kylentt.musicplayer.domain.musiclib.entity
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
+import com.kylentt.musicplayer.common.extenstions.sync
 import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemFactory
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.update
+import com.kylentt.musicplayer.domain.musiclib.session.LibraryPlayer
+import kotlinx.coroutines.flow.*
 
 data class PlaybackState(
 	val mediaItem: MediaItem,
@@ -15,6 +16,37 @@ data class PlaybackState(
 	@Player.RepeatMode val playerRepeatMode: Int,
 	@Player.State val playerState: Int
 ) {
+
+	class StateFlow() : kotlinx.coroutines.flow.StateFlow<PlaybackState> {
+		private val mStateFlow = MutableStateFlow(EMPTY)
+
+		private val listenerImpl = mStateFlow
+			.byPlayerListener(
+				getMediaItems = { mPlayer?.getMediaItems() ?: emptyList() }
+			)
+
+		private var mPlayer: LibraryPlayer? = null
+			set(value) = sync {
+				if (field === value) return@sync
+				field?.removeListener(listenerImpl)
+				value?.addListener(listenerImpl)
+				field = value
+			}
+
+		override val replayCache: List<PlaybackState>
+			get() = mStateFlow.replayCache
+
+		override val value: PlaybackState
+			get() = mStateFlow.value
+
+		override suspend fun collect(collector: FlowCollector<PlaybackState>): Nothing {
+			mStateFlow.collect(collector)
+		}
+
+		constructor(player: LibraryPlayer) : this() {
+			mPlayer = player
+		}
+	}
 
 	companion object {
 		val EMPTY = PlaybackState(

@@ -55,6 +55,11 @@ class LibraryPlayer private constructor() {
 		wrapper.addListener(listener)
 	}
 
+	fun removeListener(listener: Listener) {
+		wrapper.removeListener(listener)
+	}
+
+	// maybe cache it
 	fun getMediaItems(): List<MediaItem> = wrapper.getMediaItems()
 }
 

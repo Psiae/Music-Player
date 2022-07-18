@@ -12,7 +12,7 @@ import androidx.activity.viewModels
 import androidx.annotation.IntDef
 import androidx.annotation.MainThread
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import com.kylentt.musicplayer.core.app.coroutines.CoroutineDispatchers
+import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
 import com.kylentt.musicplayer.core.app.coroutines.AppScope
 import com.kylentt.musicplayer.common.late.LateLazy
 import com.kylentt.mediaplayer.core.delegates.LockMainThread

@@ -2,7 +2,7 @@ package com.kylentt.musicplayer.common.late
 
 import androidx.annotation.GuardedBy
 import com.kylentt.musicplayer.BuildConfig
-import com.kylentt.musicplayer.core.app.coroutines.CoroutineDispatchers
+import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import kotlinx.coroutines.*
 import timber.log.Timber

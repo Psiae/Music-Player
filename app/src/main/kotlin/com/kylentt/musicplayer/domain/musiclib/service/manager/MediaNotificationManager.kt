@@ -17,8 +17,8 @@ import androidx.media3.session.MediaNotification
 import androidx.media3.session.MediaSession
 import coil.Coil
 import com.google.common.collect.ImmutableList
-import com.kylentt.musicplayer.core.app.coroutines.CoroutineDispatchers
-import com.kylentt.musicplayer.core.app.coroutines.AutoCancelJob
+import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
+import com.kylentt.musicplayer.common.coroutines.AutoCancelJob
 import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.isOngoing
 import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.isRepeatAll
 import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.isRepeatOff

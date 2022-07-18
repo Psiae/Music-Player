@@ -1,4 +1,4 @@
-package com.kylentt.musicplayer.core.app.coroutines
+package com.kylentt.musicplayer.common.coroutines
 
 import kotlinx.coroutines.CoroutineDispatcher
 import javax.inject.Singleton

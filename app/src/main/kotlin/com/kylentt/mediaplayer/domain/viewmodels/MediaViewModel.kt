@@ -6,7 +6,7 @@ import androidx.annotation.MainThread
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
-import com.kylentt.musicplayer.core.app.coroutines.CoroutineDispatchers
+import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
 import com.kylentt.musicplayer.core.app.coroutines.safeCollect
 import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemHelper
 import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemPropertyHelper.getDebugDescription
@@ -25,9 +25,9 @@ import kotlin.coroutines.coroutineContext
 
 @HiltViewModel
 class MediaViewModel @Inject constructor(
-	private val dispatchers: CoroutineDispatchers,
-	private val itemHelper: MediaItemHelper,
-	private val intentHandler: MediaIntentHandler
+    private val dispatchers: CoroutineDispatchers,
+    private val itemHelper: MediaItemHelper,
+    private val intentHandler: MediaIntentHandler
 ) : ViewModel() {
 
   private val ioScope = viewModelScope + dispatchers.io

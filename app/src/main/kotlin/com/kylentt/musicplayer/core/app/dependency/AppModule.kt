@@ -3,7 +3,7 @@ package com.kylentt.musicplayer.core.app.dependency
 import android.app.NotificationManager
 import android.content.Context
 import coil.Coil
-import com.kylentt.musicplayer.core.app.coroutines.CoroutineDispatchers
+import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
 import com.kylentt.musicplayer.core.app.coroutines.AppScope
 import dagger.Module
 import dagger.Provides

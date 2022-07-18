@@ -1,4 +1,4 @@
-package com.kylentt.musicplayer.core.late
+package com.kylentt.musicplayer.common.late
 
 import androidx.annotation.GuardedBy
 import com.kylentt.musicplayer.BuildConfig

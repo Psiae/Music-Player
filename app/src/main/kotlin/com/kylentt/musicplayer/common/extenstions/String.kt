@@ -1,4 +1,4 @@
-package com.kylentt.musicplayer.core.extenstions
+package com.kylentt.musicplayer.common.extenstions
 
 fun String.notEmptyOrNull(): String? = this.ifEmpty { null }
 

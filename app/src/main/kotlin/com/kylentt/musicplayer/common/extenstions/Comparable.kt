@@ -1,4 +1,4 @@
-package com.kylentt.musicplayer.core.extenstions
+package com.kylentt.musicplayer.common.extenstions
 
 import androidx.compose.ui.unit.Dp
 import kotlin.time.Duration

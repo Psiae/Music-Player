@@ -11,7 +11,7 @@ import androidx.core.graphics.component3
 import androidx.core.graphics.component4
 import androidx.core.graphics.drawable.toBitmap
 import com.kylentt.musicplayer.core.app.delegates.AppDelegate
-import com.kylentt.musicplayer.core.late.LateLazy
+import com.kylentt.musicplayer.common.late.LateLazy
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 

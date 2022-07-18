@@ -14,7 +14,7 @@ import androidx.core.content.ContextCompat
 import com.kylentt.musicplayer.core.app.delegates.AppDelegate.Constants.ANDROID_PERMISSION_PREFIX
 import com.kylentt.musicplayer.core.app.delegates.device.DeviceWallpaper
 import com.kylentt.musicplayer.core.app.delegates.device.StoragePermissionHelper
-import com.kylentt.musicplayer.core.late.LateLazy
+import com.kylentt.musicplayer.common.late.LateLazy
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import kotlin.reflect.KClass

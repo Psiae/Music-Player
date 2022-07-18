@@ -14,9 +14,8 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import com.kylentt.musicplayer.core.app.delegates.AppDelegate
-import com.kylentt.mediaplayer.core.app.dependency.AppModule
 import com.kylentt.musicplayer.core.app.coroutines.safeCollect
-import com.kylentt.musicplayer.core.extenstions.forEachClear
+import com.kylentt.musicplayer.common.extenstions.forEachClear
 import com.kylentt.musicplayer.domain.musiclib.service.manager.MediaNotificationManager
 import com.kylentt.musicplayer.domain.musiclib.service.manager.PlaybackManager
 import com.kylentt.musicplayer.domain.musiclib.service.manager.SessionManager
@@ -27,6 +26,7 @@ import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.musicplayer.core.sdk.VersionHelper
 import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity
+import com.kylentt.musicplayer.core.app.dependency.CoroutineModule
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -50,7 +50,7 @@ class MusicLibraryService : MediaLibraryService() {
 
 	private var mReleasing = false
 
-	private val appDispatchers = AppModule.provideAppDispatchers()
+	private val appDispatchers = CoroutineModule.provideAppDispatchers()
 	private val serviceJob = SupervisorJob()
 	private val serviceScope = CoroutineScope(appDispatchers.main + serviceJob)
 

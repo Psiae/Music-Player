@@ -14,7 +14,7 @@ import androidx.annotation.MainThread
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.kylentt.musicplayer.core.app.coroutines.CoroutineDispatchers
 import com.kylentt.musicplayer.core.app.coroutines.AppScope
-import com.kylentt.musicplayer.core.late.LateLazy
+import com.kylentt.musicplayer.common.late.LateLazy
 import com.kylentt.mediaplayer.core.delegates.LockMainThread
 import com.kylentt.musicplayer.core.app.delegates.device.StoragePermissionHelper
 import com.kylentt.musicplayer.domain.musiclib.service.MusicLibraryService

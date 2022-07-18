@@ -6,7 +6,6 @@ import android.widget.Toast
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
-import com.kylentt.mediaplayer.core.app.dependency.AppModule
 import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemPropertyHelper.getDebugDescription
 import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemPropertyHelper.mediaUri
 import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaMetadataHelper.getStoragePath
@@ -14,6 +13,7 @@ import com.kylentt.musicplayer.domain.musiclib.service.MusicLibraryService
 import com.kylentt.mediaplayer.helper.Preconditions
 import com.kylentt.mediaplayer.helper.external.providers.ContentProvidersHelper
 import com.kylentt.mediaplayer.helper.external.providers.DocumentProviderHelper
+import com.kylentt.musicplayer.core.app.dependency.CoroutineModule
 import kotlinx.coroutines.*
 import timber.log.Timber
 import java.io.File
@@ -21,7 +21,7 @@ import java.io.File
 class PlaybackManager : MusicLibraryService.ServiceComponent() {
 	private val playbackListener = PlayerPlaybackListener()
 	private val eventHandler = PlayerPlaybackEventHandler()
-	private val appDispatchers = AppModule.provideAppDispatchers()
+	private val appDispatchers = CoroutineModule.provideAppDispatchers()
 
 	private lateinit var managerJob: Job
 	private lateinit var mainScope: CoroutineScope

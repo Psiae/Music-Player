@@ -25,7 +25,7 @@ import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.is
 import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.isRepeatOne
 import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.isStateEnded
 import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.isStateIdle
-import com.kylentt.musicplayer.core.extenstions.checkCancellation
+import com.kylentt.musicplayer.common.extenstions.checkCancellation
 import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemFactory
 import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemFactory.orEmpty
 import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemInfo

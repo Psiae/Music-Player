@@ -1,7 +1,7 @@
 package com.kylentt.musicplayer.domain.musiclib.core.exoplayer
 
 import androidx.media3.common.Player
-import com.kylentt.musicplayer.core.extenstions.clamp
+import com.kylentt.musicplayer.common.extenstions.clamp
 
 object PlayerHelper {
   private const val minVol = PlayerConstants.MIN_VOLUME

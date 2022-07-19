@@ -37,6 +37,15 @@ class PlaybackManager : MusicLibraryService.ServiceComponent() {
 		mainScope = CoroutineScope(appDispatchers.main + managerJob)
 	}
 
+	override fun serviceDependencyInjected() {
+		super.serviceDependencyInjected()
+	}
+
+	override fun start(componentDelegate: MusicLibraryService.ComponentDelegate) {
+		super.start(componentDelegate)
+		componentDelegate.sessionInteractor.registerPlayerEventListener(playbackListener)
+	}
+
 	override fun release() {
 		managerJob.cancel()
 		if (isStarted) {

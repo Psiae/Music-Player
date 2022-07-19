@@ -36,7 +36,7 @@ import com.kylentt.musicplayer.domain.musiclib.service.provider.MediaNotificatio
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.musicplayer.core.sdk.VersionHelper
 import com.kylentt.mediaplayer.helper.image.CoilHelper
-import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity
+import com.kylentt.musicplayer.ui.main.MainActivity
 import kotlinx.coroutines.*
 import timber.log.Timber
 import kotlin.coroutines.coroutineContext
@@ -560,7 +560,9 @@ class MediaNotificationManager(
 
 						stateInteractor.stopForegroundService(true)
 						stateInteractor.stopService()
-						if (!MainActivity.isAlive) stateInteractor.releaseService()
+
+						val state by MainActivity.StateDelegate
+						if (!state.isAlive()) stateInteractor.releaseService()
 					}
 					?: throw IllegalStateException("Received Intent: $intent on Released State")
 			}

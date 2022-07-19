@@ -6,7 +6,6 @@ import com.kylentt.musicplayer.domain.musiclib.dependency.Provider
 import com.kylentt.musicplayer.domain.musiclib.session.LibraryPlayer
 import com.kylentt.musicplayer.domain.musiclib.session.MusicSession
 
-
 class LibraryAgent private constructor() {
 	private lateinit var mLib: MusicLibrary
 
@@ -20,7 +19,7 @@ class LibraryAgent private constructor() {
 	val mask = object : Mask {
 
 		override val dependency: Mask.Dependency = object : Mask.Dependency {
-			override fun provide(injector: Injector) = injector.fuseInjector(injector)
+			override fun provide(injector: Injector) = injector.fuse(injector)
 			override fun provide(vararg providers: Provider<Any>) = injector.addProvider(*providers)
 		}
 

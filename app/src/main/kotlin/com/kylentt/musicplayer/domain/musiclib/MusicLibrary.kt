@@ -10,5 +10,6 @@ class MusicLibrary private constructor() {
 		// Singleton Interactor, hide whatever mess happen behind
 		val localAgent: LibraryAgent.Mask
 			get() = musicLibrary.agent.mask
+
 	}
 }

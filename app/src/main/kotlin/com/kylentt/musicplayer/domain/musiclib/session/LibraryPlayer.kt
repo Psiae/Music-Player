@@ -4,23 +4,25 @@ import android.content.Context
 import android.os.Bundle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
-import androidx.media3.common.Player.Listener
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
 import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.isStateEnded
 import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.isStateIdle
-import com.kylentt.musicplayer.domain.musiclib.service.MusicLibraryService
 import com.kylentt.musicplayer.domain.musiclib.dependency.Injector
+import com.kylentt.musicplayer.domain.musiclib.interactor.LibraryAgent
+import com.kylentt.musicplayer.domain.musiclib.service.MusicLibraryService
 import com.kylentt.musicplayer.domain.musiclib.util.addListener
+import com.kylentt.musicplayer.domain.musiclib.util.addResultListener
+import com.kylentt.musicplayer.domain.musiclib.util.withEach
 import java.util.concurrent.Executor
 
 class LibraryPlayer private constructor() {
 	private val localInjector = Injector()
 	private val wrapper = MediaControllerWrapper(localInjector)
 
-	constructor(injector: Injector) : this() {
-		localInjector.fuseInjector(injector)
+	constructor(agent: LibraryAgent) : this() {
+		localInjector.fuse(agent.injector)
 	}
 
 	fun play() = wrapper.connect {
@@ -51,11 +53,11 @@ class LibraryPlayer private constructor() {
 		if (!state.isStateIdle()) it.prepare()
 	}
 
-	fun addListener(listener: Listener) {
+	fun addListener(listener: Player.Listener) {
 		wrapper.addListener(listener)
 	}
 
-	fun removeListener(listener: Listener) {
+	fun removeListener(listener: Player.Listener) {
 		wrapper.removeListener(listener)
 	}
 
@@ -83,7 +85,7 @@ private class MediaControllerWrapper(injector: Injector) {
 		}
 
 		val context = localContext ?: return
-		val token = SessionToken(context, MusicLibraryService.getComponentName())
+		val token = SessionToken(context, MusicLibraryService.getComponentName(context))
 
 		state = WrapperState.CONNECTING
 
@@ -91,21 +93,20 @@ private class MediaControllerWrapper(injector: Injector) {
 			.setConnectionHints( /* Later */ Bundle.EMPTY)
 			.buildAsync()
 
-		mediaControllerFuture.addListener(executor) {
-			mediaController = it
-			localListeners.forEach { listener -> it.addListener(listener) }
-			onConnected(it)
-
+		mediaControllerFuture.addResultListener(executor) { result: MediaController ->
+			mediaController = result
+			localListeners.forEach { listener -> result.addListener(listener) }
+			onConnected(result)
 			state = WrapperState.CONNECTED
 		}
 	}
 
-	fun addListener(listener: Listener) {
+	fun addListener(listener: Player.Listener) {
 		localListeners.add(listener)
 		if (state == WrapperState.CONNECTED) mediaController.addListener(listener)
 	}
 
-	fun removeListener(listener: Listener) {
+	fun removeListener(listener: Player.Listener) {
 		localListeners.remove(listener)
 		if (state == WrapperState.CONNECTED) mediaController.removeListener(listener)
 	}
@@ -114,9 +115,8 @@ private class MediaControllerWrapper(injector: Injector) {
 		val list = mutableListOf<MediaItem>()
 
 		if (state == WrapperState.CONNECTED) {
-			for (i in 0 until mediaController.mediaItemCount) {
-				list.add(mediaController.getMediaItemAt(i))
-			}
+			val count = mediaController.mediaItemCount
+			withEach(0 until count) { i -> list.add(mediaController.getMediaItemAt(i)) }
 		}
 		return list
 	}

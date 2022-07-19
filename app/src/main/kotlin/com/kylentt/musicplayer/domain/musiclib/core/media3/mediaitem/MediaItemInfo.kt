@@ -16,7 +16,7 @@ class MediaItemInfo private constructor(
 	/** @see MediaItem.mediaId */
 	private val mediaId: String,
 
-	/** @see MediaMetadata.mediaUri */
+	/** @see RequestMetadata.mediaUri */
 	private val mediaUri: Uri,
 
 	/** @see MediaMetadata.artist */

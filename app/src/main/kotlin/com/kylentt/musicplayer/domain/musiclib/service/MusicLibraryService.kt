@@ -13,7 +13,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
-import com.kylentt.musicplayer.core.app.delegates.AppDelegate
 import com.kylentt.musicplayer.core.app.coroutines.safeCollect
 import com.kylentt.musicplayer.common.extenstions.forEachClear
 import com.kylentt.musicplayer.domain.musiclib.service.manager.MediaNotificationManager
@@ -25,8 +24,8 @@ import com.kylentt.mediaplayer.domain.util.ContextBroadcastManager
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.musicplayer.core.sdk.VersionHelper
-import com.kylentt.mediaplayer.ui.activity.mainactivity.MainActivity
 import com.kylentt.musicplayer.core.app.dependency.CoroutineModule
+import com.kylentt.musicplayer.ui.main.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -180,8 +179,9 @@ class MusicLibraryService : MediaLibraryService() {
 		stateRegistry.onEvent(ServiceEvent.Destroy, true)
 		checkState(componentManager.released)
 
-
-		if (!MainActivity.isAlive) {
+		// probably would be nice to introduce something similar in musiclib package
+		val activityState by MainActivity.StateDelegate
+		if (!activityState.isAlive()) {
 			// could Leak
 			// TODO: CleanUp
 			notificationManagerService.cancelAll()
@@ -452,6 +452,10 @@ class MusicLibraryService : MediaLibraryService() {
 					checkState(holder !== stateProvider)
 					stateProvider = holder
 				}
+				ServiceState.Destroyed -> {
+					checkState(holder === stateProvider)
+					stateProvider = null
+				}
 				else -> {
 					checkState(holder === stateProvider)
 					checkState(state upFrom savedState || state downFrom savedState) {
@@ -581,6 +585,8 @@ class MusicLibraryService : MediaLibraryService() {
 	companion object {
 		const val MediaNotificationId = 301
 
-		fun getComponentName(): ComponentName = AppDelegate.componentName(MusicLibraryService::class)
+		fun getComponentName(context: Context): ComponentName {
+			return ComponentName(context.packageName, MusicLibraryService::class.java.name)
+		}
 	}
 }

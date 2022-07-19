@@ -28,7 +28,7 @@ class Injector {
 		return null
 	}
 
-	fun fuseInjector(injector: Injector): Unit {
+	fun fuse(injector: Injector): Unit {
 		mParents.add(injector)
 	}
 

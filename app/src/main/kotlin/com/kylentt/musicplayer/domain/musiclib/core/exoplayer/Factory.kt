@@ -1,4 +1,4 @@
-package com.kylentt.mediaplayer.core.media3
+package com.kylentt.musicplayer.domain.musiclib.core.exoplayer
 
 import android.content.Context
 import android.os.Looper

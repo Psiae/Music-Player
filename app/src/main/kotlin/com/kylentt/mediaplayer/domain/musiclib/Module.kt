@@ -3,7 +3,7 @@ package com.kylentt.mediaplayer.domain.musiclib
 import android.content.Context
 import androidx.media3.exoplayer.ExoPlayer
 import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
-import com.kylentt.mediaplayer.core.media3.ExoPlayerFactory
+import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.ExoPlayerFactory
 import com.kylentt.mediaplayer.data.repository.MediaRepository
 import com.kylentt.mediaplayer.helper.external.MediaIntentHandler
 import com.kylentt.mediaplayer.helper.external.MediaIntentHandlerImpl

@@ -42,8 +42,7 @@ object DeviceWallpaper : ReadOnlyProperty<Any?, Drawable?> {
 		fastPath: Boolean = true,
 		config: Bitmap.Config? = null
 	): Bitmap? {
-		return (
-			context?.let { acc -> getDeviceWallpaper(acc) } ?: AppDelegate.deviceWallpaperDrawable)
+		return (context?.let { acc -> getDeviceWallpaper(acc) } ?: AppDelegate.deviceWallpaperDrawable)
 			?.let { drawable: Drawable ->
 				with(drawable) { if (fastPath) toBitmap(config = config) else toNewBitmap(config) }
 			}

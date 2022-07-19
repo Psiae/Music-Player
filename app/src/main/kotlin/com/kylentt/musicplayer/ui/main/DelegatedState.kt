@@ -29,7 +29,7 @@ class DelegatedState : ReadOnlyProperty<Any?, DelegatedState.State> {
 	fun updateState(activity: MainActivity) {
 		when(activity.lifecycle.currentState) {
 			Lifecycle.State.INITIALIZED -> hashCode = activity.hashCode()
-			Lifecycle.State.DESTROYED -> if (hashEqual(activity)) return
+			Lifecycle.State.DESTROYED -> if (!hashEqual(activity)) return
 			else -> {
 				require(hashEqual(activity))
 				mState = getState(activity.lifecycle)

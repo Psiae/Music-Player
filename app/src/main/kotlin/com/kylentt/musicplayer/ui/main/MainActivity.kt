@@ -9,6 +9,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.Lifecycle.Event.*
 import com.kylentt.mediaplayer.domain.viewmodels.MainViewModel
 import com.kylentt.mediaplayer.domain.viewmodels.MediaViewModel
 import com.kylentt.mediaplayer.helper.external.IntentWrapper
@@ -33,6 +35,10 @@ class MainActivity : ComponentActivity() {
 
 	private val storagePermission by StoragePermissionHelper
 
+	init {
+		dispatchEvent(Event.Init)
+	}
+
 	override fun onCreate(savedInstanceState: Bundle?) {
 		checkLauncherIntent()
 		setupWindow()
@@ -42,13 +48,13 @@ class MainActivity : ComponentActivity() {
 		// later
 		setContent { MainActivityContent() }
 
-		return updateStateDelegate()
+		return dispatchEvent(Event.Create)
 	}
 
 	override fun onStart() {
 		super.onStart()
 
-		return updateStateDelegate()
+		return dispatchEvent(Event.Start)
 	}
 
 	override fun onNewIntent(intent: Intent?) {
@@ -59,32 +65,36 @@ class MainActivity : ComponentActivity() {
 	override fun onResume() {
 		super.onResume()
 
-		return updateStateDelegate()
+		return dispatchEvent(Event.Resume)
 	}
 
 	override fun onPause() {
 		super.onPause()
 
-		return updateStateDelegate()
+		return dispatchEvent(Event.Pause)
 	}
 
 	override fun onStop() {
 		super.onStop()
 
-		return updateStateDelegate()
+		return dispatchEvent(Event.Stop)
+	}
+
+	private fun onRelease() {
+		return dispatchEvent(Event.Release)
 	}
 
 	override fun onDestroy() {
 		super.onDestroy()
 
-		return updateStateDelegate()
+		return dispatchEvent(Event.Destroy)
 	}
 
 	private fun checkLauncherIntent() = check(intent.isActionMain())
 
 	private fun setupWindow() {
 		requireNotNull(window) {
-			"window was null" +
+			"window was null, " +
 				"call this function when or after Activity.onCreate(Bundle?) is called"
 		}
 
@@ -96,7 +106,9 @@ class MainActivity : ComponentActivity() {
 	}
 
 
-	private fun updateStateDelegate() = StateDelegate.updateState(this)
+	private fun dispatchEvent(event: Event) {
+		StateDelegate.onEvent(this, event)
+	}
 
 
 	private inner class IntentHandler() {
@@ -130,6 +142,7 @@ class MainActivity : ComponentActivity() {
 
 			if (!state.isVisible()) {
 				val launchIntent = Intent(context, MainActivity::class.java)
+					.apply { action = Intent.ACTION_MAIN }
 				context.startActivity(launchIntent)
 			}
 
@@ -140,11 +153,33 @@ class MainActivity : ComponentActivity() {
 		}
 	}
 
+	sealed class Event {
+		object Init : Event()
+		object Create : Event()
+		object Start : Event()
+		object Resume : Event()
+		object Pause : Event()
+		object Stop : Event()
+		object Release : Event()
+		object Destroy : Event()
+	}
+
 	object StateDelegate : ReadOnlyProperty<Any?, DelegatedState.State> {
 		private val stateDelegate = DelegatedState()
 
-		fun updateState(activity: MainActivity) {
-			stateDelegate.updateState(activity)
+		fun onEvent(activity: MainActivity, event: Event) {
+			val state = when(event) {
+				Event.Init, Event.Release -> DelegatedState.State.Initialized
+				Event.Create, Event.Stop -> DelegatedState.State.Created
+				Event.Start, Event.Pause -> DelegatedState.State.Started
+				Event.Resume -> DelegatedState.State.Resumed
+				Event.Destroy -> DelegatedState.State.Destroyed
+			}
+			updateStateDelegate(activity, state)
+		}
+
+		private fun updateStateDelegate(activity: MainActivity, state: DelegatedState.State) {
+			stateDelegate.updateState(activity, state)
 		}
 
 		fun getValue(): DelegatedState.State = stateDelegate.getValue()

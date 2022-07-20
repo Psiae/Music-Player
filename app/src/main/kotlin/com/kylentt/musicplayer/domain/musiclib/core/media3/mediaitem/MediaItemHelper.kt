@@ -2,12 +2,17 @@ package com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem
 
 import android.app.Application
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Bundle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemPropertyHelper.mediaUri
 import com.kylentt.mediaplayer.helper.Preconditions
+import com.kylentt.musicplayer.core.sdk.VersionHelper
+import timber.log.Timber
 import javax.inject.Singleton
 
 @Singleton

@@ -219,7 +219,14 @@ class MediaNotificationManager(
 
 	private inner class Provider(private val context: Context) : MediaNotification.Provider {
 
+
+		//config
+		private val cacheConfig
+			get() = true
+
 		private var currentItemBitmap: Pair<MediaItem, Bitmap?> = MediaItem.EMPTY to null
+		private var nextItemBitmap: Pair<MediaItem, Bitmap?> = MediaItem.EMPTY to null
+		private var previousItemBitmap: Pair<MediaItem, Bitmap?> = MediaItem.EMPTY to null
 		private val notificationProvider = MediaNotificationProvider(context, itemInfoIntentConverter)
 
 		init {
@@ -298,19 +305,56 @@ class MediaNotificationManager(
 			)
 		}
 
-		suspend fun updateItemBitmap(player: Player) =
+		suspend fun updateItemBitmap(player: Player): Unit =
+			withContext(this@MediaNotificationManager.appDispatchers.main) {
+
+				if (!cacheConfig)  {
+					getItemBitmap(player.currentMediaItem.orEmpty()) { currentItemBitmap = it }
+					return@withContext
+				}
+
+				val currentItem = player.currentMediaItem.orEmpty()
+
+				if (currentItem.mediaId != currentItemBitmap.first.mediaId) {
+					getItemBitmap(currentItem) { currentItemBitmap = it }
+				}
+
+				val nextItem =
+					if (player.hasNextMediaItem()) {
+						player.getMediaItemAt(player.nextMediaItemIndex)
+					} else {
+						MediaItem.EMPTY
+					}
+
+				if (nextItem.mediaId != nextItemBitmap.first.mediaId) {
+					getItemBitmap(nextItem) { nextItemBitmap = it }
+				}
+
+				val prevItem =
+					if (player.hasPreviousMediaItem()) {
+						player.getMediaItemAt(player.previousMediaItemIndex)
+					} else {
+						MediaItem.EMPTY
+					}
+
+				if (prevItem.mediaId != previousItemBitmap.first.mediaId) {
+					getItemBitmap(prevItem) { previousItemBitmap = it }
+				}
+			}
+
+		private suspend fun getItemBitmap(item: MediaItem, update: (Pair<MediaItem, Bitmap?>) -> Unit) =
 			withContext(this@MediaNotificationManager.appDispatchers.main) {
 				if (!isStarted) return@withContext
+				ensureActive()
 
-				val item = player.currentMediaItem.orEmpty()
-				withContext(this@MediaNotificationManager.appDispatchers.io) updateValue@{
+				withContext(this@MediaNotificationManager.appDispatchers.io) updateValue@ {
 					val bitmap = MediaItemFactory.getEmbeddedImage(context, item)
 						?.let {
 							ensureActive()
 							BitmapFactory.decodeByteArray(it, 0, it.size)
 						}
 						?: run {
-							currentItemBitmap = item to null
+							update(item to null)
 							return@updateValue
 						}
 
@@ -318,17 +362,24 @@ class MediaNotificationManager(
 					// maybe create Fitter Class for some APIs version or Device that require some modification
 					// to have proper display
 					val squaredBitmap = coilHelper.squareBitmap(bitmap, 500)
+					checkCancellation { squaredBitmap.recycle() }
 
-					checkCancellation { bitmap.recycle() }
-					currentItemBitmap = item to squaredBitmap
+					Timber.d("squaredBitmap size: ${squaredBitmap.height}:${squaredBitmap.width}")
+					update(item to squaredBitmap)
 				}
 			}
 
 		private fun getItemBitmap(player: Player): Bitmap? {
-			return if (player.currentMediaItem?.mediaId == currentItemBitmap.first.mediaId) {
-				currentItemBitmap.second
-			} else {
-				null
+			return player.currentMediaItem?.mediaId?.let {
+				when {
+					it == currentItemBitmap.first.mediaId -> currentItemBitmap.second
+					cacheConfig -> when (it) {
+						nextItemBitmap.first.mediaId -> nextItemBitmap.second
+						previousItemBitmap.first.mediaId -> previousItemBitmap.second
+						else -> null
+					}
+					else -> null
+				}
 			}
 		}
 

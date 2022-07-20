@@ -12,6 +12,7 @@ class DelegatedState : ReadOnlyProperty<Any?, DelegatedState.State> {
 		object Created : State()
 		object Started : State()
 		object Resumed : State()
+		object Released : State()
 		object Destroyed : State()
 
 		fun wasLaunched() = this != Nothing

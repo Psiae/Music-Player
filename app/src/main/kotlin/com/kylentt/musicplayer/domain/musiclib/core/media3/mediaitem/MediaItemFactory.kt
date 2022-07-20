@@ -11,6 +11,7 @@ import androidx.media3.common.MediaMetadata
 import com.kylentt.musicplayer.common.extenstions.setPrefix
 import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemPropertyHelper.mediaUri
 import timber.log.Timber
+import wseemann.media.FFmpegMediaMetadataRetriever
 
 object MediaItemFactory {
 
@@ -82,7 +83,7 @@ object MediaItemFactory {
 	}
 
 	fun getEmbeddedImage(context: Context, uri: Uri): ByteArray? {
-		val mtr = MediaMetadataRetriever()
+		val mtr = FFmpegMediaMetadataRetriever()
 		return try {
 			mtr.setDataSource(context.applicationContext, uri)
 			mtr.embeddedPicture

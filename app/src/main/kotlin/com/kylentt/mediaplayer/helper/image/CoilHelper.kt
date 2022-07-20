@@ -39,7 +39,6 @@ object CoilBitmapTransformer {
 		imageLoader: ImageLoader,
 		type: CenterCropTransform,
 		cachePolicy: CachePolicy,
-		placeHolder: Drawable?,
 		fastPath: Boolean,
 	): Bitmap {
 		coroutineContext.ensureActive()
@@ -50,14 +49,21 @@ object CoilBitmapTransformer {
 			CenterCropTransform.BOTTOM -> CenterBottomCropTransformation()
 		}
 
-		val req = ImageRequest.Builder(context)
+		val transformReq = ImageRequest.Builder(context)
 			.data(bitmap)
 			.size(size)
 			.transformations(centerCropType)
 			.diskCachePolicy(cachePolicy)
-			.placeholder(placeHolder)
+			.build()
+
+		coroutineContext.ensureActive()
+		val transformDrawable = imageLoader.execute(transformReq).drawable!!
+
+		val req = ImageRequest.Builder(context)
+			.data(transformDrawable)
+			.size(size)
+			.diskCachePolicy(cachePolicy)
 			.scale(Scale.FIT)
-			.precision(Precision.EXACT)
 			.build()
 
 		coroutineContext.ensureActive()
@@ -66,9 +72,9 @@ object CoilBitmapTransformer {
 		coroutineContext.ensureActive()
 		val result =
 			if (fastPath) {
-				drawable.toBitmap()
+				drawable.toBitmap(size, size)
 			} else {
-				drawable.toNewBitmap()
+				drawable.toNewBitmap(size, size)
 			}
 
 		return result
@@ -116,7 +122,6 @@ class CoilHelper(
 		context: Context = this.context,
 		loader: ImageLoader = this.imageLoader,
 		cache: CachePolicy = CachePolicy.DISABLED,
-		placeHolder: Drawable? = null,
 		fastPath: Boolean = false,
 		centerType: CenterCropTransform = CENTER
   ): Bitmap {
@@ -127,7 +132,7 @@ class CoilHelper(
 		}
 
 		val get = CoilBitmapTransformer
-			.squareBitmap(bitmap, size, context, loader, type, cache, placeHolder, fastPath)
+			.squareBitmap(bitmap, size, context, loader, type, cache, fastPath)
 
 		coroutineContext.ensureActive()
 		return get

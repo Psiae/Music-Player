@@ -169,10 +169,11 @@ class MainActivity : ComponentActivity() {
 
 		fun onEvent(activity: MainActivity, event: Event) {
 			val state = when(event) {
-				Event.Init, Event.Release -> DelegatedState.State.Initialized
+				Event.Init -> DelegatedState.State.Initialized
 				Event.Create, Event.Stop -> DelegatedState.State.Created
 				Event.Start, Event.Pause -> DelegatedState.State.Started
 				Event.Resume -> DelegatedState.State.Resumed
+				Event.Release -> DelegatedState.State.Released
 				Event.Destroy -> DelegatedState.State.Destroyed
 			}
 			updateStateDelegate(activity, state)

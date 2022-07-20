@@ -193,6 +193,15 @@ dependencies {
         implementation("com.github.Adonai:jaudiotagger:$vJAudioTagger")
     }
 
+    @Suppress("SpellCheckingInspection")
+    /* Github.wseeman */
+    dependencies {
+
+        // FFmpegMediaMetadataRetriever
+        implementation("com.github.wseemann:FFmpegMediaMetadataRetriever-core:1.0.16")
+        implementation("com.github.wseemann:FFmpegMediaMetadataRetriever-native:1.0.16")
+    }
+
 
     @Suppress("SpellCheckingInspection")
     /* Google.accompanist */

@@ -52,11 +52,7 @@ import coil.request.ImageRequest
 import com.google.accompanist.navigation.animation.rememberAnimatedNavController
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionState
-import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.shouldShowRationale
-import com.kylentt.musicplayer.R
-import com.kylentt.musicplayer.core.app.delegates.AppDelegate
-import com.kylentt.musicplayer.core.app.delegates.device.StoragePermissionHelper
 import com.kylentt.mediaplayer.core.app.settings.AppSettings
 import com.kylentt.mediaplayer.core.app.settings.WallpaperSettings
 import com.kylentt.mediaplayer.core.app.settings.WallpaperSettings.Source.*
@@ -65,9 +61,13 @@ import com.kylentt.mediaplayer.domain.viewmodels.MediaViewModel
 import com.kylentt.mediaplayer.ui.activity.CollectionExtension.forEachClearSync
 import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.ComposableExtension.noPadding
 import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.theme.AppTypography
-import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.theme.MaterialDesign3Theme
-import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.theme.helper.ColorHelper
 import com.kylentt.mediaplayer.ui.compose.rememberWallpaperBitmapAsState
+import com.kylentt.musicplayer.R
+import com.kylentt.musicplayer.core.app.delegates.AppDelegate
+import com.kylentt.musicplayer.core.app.delegates.device.StoragePermissionHelper
+import com.kylentt.musicplayer.ui.main.compose.theme.Material3Theme
+import com.kylentt.musicplayer.ui.main.compose.theme.color.ColorHelper
+import com.kylentt.musicplayer.ui.main.compose.util.PermissionHelper
 import timber.log.Timber
 import kotlin.math.roundToInt
 
@@ -78,17 +78,22 @@ fun MainActivityContent(
 ) {
     val appSettings = mainViewModel.appSettings.collectAsState()
 
-    MaterialDesign3Theme {
+    Material3Theme {
 
-        RequireStorage(
-            whenDenied = { StorageDenied(it) },
-            whenShowRationale = { ShowStorageRationale(it) },
+        PermissionHelper.RequirePermission(
+			permission = PermissionHelper.Permission.WRITE_EXTERNAL_STORAGE,
+            whenDenied = {
+				StorageDenied(state = it)
+			},
+            showRationale = {
+				/* Temporary */ StorageDenied(state = it)
+			},
         ) {
 
-			val permisssion =
+			val permission =
 				StoragePermissionHelper.checkReadWriteStoragePermission(LocalContext.current)
 
-			require(permisssion) { "App Storage Permission is Not Granted" }
+			require(permission) { "App Storage Permission is Not Granted" }
 
             with(mainViewModel) {
                 pendingStorageGranted.forEachClearSync()
@@ -132,7 +137,7 @@ private fun RootScaffold(
     Scaffold(
         bottomBar = {
             if (showBottomNav(backStackEntry.value)) {
-                val backgroundColor = ColorHelper.getTonedSurface()
+                val backgroundColor = ColorHelper.getTonedSurface(elevation = 2.dp)
                     .copy(alpha = appSettings.navigationSettings.bnvSettings.visibility / 100)
                 RootBottomNavigation(
                     appSettings = appSettings,
@@ -196,14 +201,14 @@ private fun RootBottomNavigation(
         ) {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding(),
+					.fillMaxWidth()
+					.navigationBarsPadding(),
             ) {
 
                 val contentColor = if (isSystemInDarkTheme()) {
                     MaterialTheme.colorScheme.onSecondaryContainer
                 } else {
-                    MaterialTheme.colorScheme.onSecondaryContainer.compositeOver(Color.White)
+					MaterialTheme.colorScheme.onSecondaryContainer
                 }
 
                 BottomNavigation(
@@ -273,17 +278,14 @@ private fun showBottomNav(stack: NavBackStackEntry?): Boolean =
 
 @Suppress("NOTHING_TO_INLINE")
 @Composable
-private inline fun StorageDenied(
-    state: PermissionState
-) {
-	require(!state.status.isGranted)
-	require(!state.status.shouldShowRationale)
-
+private inline fun StorageDenied(state: PermissionState) {
 	val localContext = LocalContext.current
 
 	val permission = StoragePermissionHelper.checkReadWriteStoragePermission(localContext)
 
 	check(!permission)
+
+
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult(),
@@ -294,18 +296,21 @@ private inline fun StorageDenied(
             action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
             data = "package:${localContext.packageName}".toUri()
         }
-    Toast.makeText(localContext, "Permission Required", Toast.LENGTH_SHORT).show()
     PermissionScreen(grantButtonText = "Grant Storage Permission") {
-        launcher.launch(intent)
+		if (state.status.shouldShowRationale) {
+			state.launchPermissionRequest()
+		} else {
+			launcher.launch(intent)
+		}
     }
 }
 
 @Suppress("NOTHING_TO_INLINE")
 @Composable
-private inline fun ShowStorageRationale(
-    state: PermissionState
-) {
+private inline fun ShowStorageRationale(state: PermissionState) {
     require(state.status.shouldShowRationale)
+
+	Timber.d("RequirePermission ShowStorageRationale")
 
 	val permission = StoragePermissionHelper.checkReadWriteStoragePermission(LocalContext.current)
     check(!permission)
@@ -324,7 +329,9 @@ private fun MainActivityNavWallpaper(
     appSettings: AppSettings,
 ) {
 
-    Timber.d("MainActivity NavWallpaper Recomposed")
+	if (!appSettings.isValid) return
+
+	Timber.d("MainActivity NavWallpaper Recomposed")
 
     val context = LocalContext.current
     val wpx = with(LocalDensity.current) { LocalConfiguration.current.screenWidthDp.dp.toPx() }
@@ -401,8 +408,8 @@ fun NavWallpaper(
 
     Image(
         modifier = modifier
-            .fillMaxSize()
-            .horizontalScroll(scrollState),
+			.fillMaxSize()
+			.horizontalScroll(scrollState),
         alignment = Alignment.CenterStart,
         contentDescription = null,
         contentScale = scale,
@@ -486,15 +493,15 @@ fun PermissionScreen(
 ) {
     Column(
         modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface),
+			.fillMaxSize()
+			.background(MaterialTheme.colorScheme.surface),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Button(
             onClick = { onGrantButton() },
             colors = ButtonDefaults
-                .buttonColors(containerColor = ColorHelper.getTonedSurface(10))
+                .buttonColors(containerColor = ColorHelper.getTonedSurface(elevation = 8.dp))
         ) {
             Text(text = grantButtonText, color = MaterialTheme.colorScheme.onSurface)
         }

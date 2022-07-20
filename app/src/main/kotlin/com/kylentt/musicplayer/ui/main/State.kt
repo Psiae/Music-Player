@@ -1,6 +1,5 @@
 package com.kylentt.musicplayer.ui.main
 
-import androidx.lifecycle.Lifecycle
 import timber.log.Timber
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty

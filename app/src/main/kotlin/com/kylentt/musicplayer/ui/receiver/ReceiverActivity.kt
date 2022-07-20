@@ -11,7 +11,6 @@ class ReceiverActivity : Activity() {
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
 		when {
-			intent == null -> Unit
 			intent.isActionView() -> launchMainActivity()
 			else -> throw NotImplementedError()
 		}

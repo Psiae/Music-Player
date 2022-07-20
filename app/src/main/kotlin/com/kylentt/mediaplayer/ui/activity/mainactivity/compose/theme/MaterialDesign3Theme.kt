@@ -89,19 +89,6 @@ fun MaterialDesign3Theme(
 
     Timber.d("hasSnowCone? ${VersionHelper.hasSnowCone()}")
 
-    if (dynamic && DynamicColors.isDynamicColorAvailable()) {
-       return HarmonizedTheme(dynamic,useDarkTheme) {
-           with(systemUiController) {
-               setStatusBarColor(ColorHelper.getTonedSurface().copy(alpha = 0.5f))
-               setNavigationBarColor(Color.Transparent)
-               isNavigationBarContrastEnforced = true
-               statusBarDarkContentEnabled = !useDarkTheme
-               navigationBarDarkContentEnabled = !useDarkTheme
-           }
-           content()
-       }
-    }
-
     val colors = if (DynamicColors.isDynamicColorAvailable()) {
         if (useDarkTheme) {
             dynamicDarkColorScheme(LocalContext.current)

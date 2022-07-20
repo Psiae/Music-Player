@@ -8,9 +8,9 @@ import timber.log.Timber
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 inline fun RequireStorage(
-    whenDenied: @Composable (state: PermissionState) -> Unit,
-    whenShowRationale: @Composable (state: PermissionState) -> Unit,
-    whenGranted: @Composable (state: PermissionState) -> Unit,
+    whenDenied: @Composable (permission: PermissionState) -> Unit,
+    whenShowRationale: @Composable (permission: PermissionState) -> Unit,
+    whenGranted: @Composable (permission: PermissionState) -> Unit,
 ) {
     val hasStoragePermission by StoragePermissionHelper
 
@@ -18,11 +18,11 @@ inline fun RequireStorage(
         mutableStateOf(hasStoragePermission, policy = neverEqualPolicy())
     }
 
-    val permission = rememberPermissionState(
-        permission = StoragePermissionHelper.Write_External_Storage
-    ) { result ->
-        permissionResult.value = result
-    }
+	val permission = rememberPermissionState(
+		permission = StoragePermissionHelper.Write_External_Storage
+	) {
+		permissionResult.value = it
+	}
 
     Timber.d("RequireStorage Composable," +
         "\nhasPermission: $hasStoragePermission," +
@@ -31,13 +31,11 @@ inline fun RequireStorage(
     )
 
     when {
-        permission.status.isGranted
-            && hasStoragePermission -> whenGranted(permission)
+		permission.status.isGranted
+			&& hasStoragePermission -> whenGranted(permission)
         !permissionResult.value
             && permission.status.shouldShowRationale
-            && !hasStoragePermission -> {
-            whenShowRationale(permission)
-        }
+            && !hasStoragePermission -> whenShowRationale(permission)
         !permissionResult.value
             && !permission.status.shouldShowRationale
             && !hasStoragePermission -> whenDenied(permission)

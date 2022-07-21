@@ -1,7 +1,6 @@
 package com.kylentt.mediaplayer.domain.viewmodels
 
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import androidx.annotation.MainThread
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -15,8 +14,10 @@ import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.helper.external.IntentWrapper
 import com.kylentt.mediaplayer.helper.external.MediaIntentHandler
+import com.kylentt.musicplayer.common.context.DeviceInfo
 import com.kylentt.musicplayer.common.extenstions.checkCancellation
 import com.kylentt.musicplayer.domain.musiclib.entity.PlaybackState
+import com.kylentt.musicplayer.ui.util.BitmapFactoryHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,6 +29,7 @@ import kotlin.time.measureTimedValue
 
 @HiltViewModel
 class MediaViewModel @Inject constructor(
+		private val deviceInfo: DeviceInfo,
     private val dispatchers: CoroutineDispatchers,
     private val itemHelper: MediaItemHelper,
     private val intentHandler: MediaIntentHandler
@@ -79,13 +81,23 @@ class MediaViewModel @Inject constructor(
 
 			ensureActive()
 
+			val width = deviceInfo.screenWidthPixel
+			val height = deviceInfo.screenHeightPixel
+
       val measureDecode = measureTimedValue {
 				measureGet.value?.let { bytes: ByteArray ->
-					BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+					BitmapFactoryHelper.decodeByteArrayToSampledBitmap(bytes,
+						0, bytes.size, width, height,
+						BitmapFactoryHelper.SubSampleCalculationType.MaxAlloc( /* 10MB */10000000)
+					)
 				}
 			}
 
-			Timber.d("decodeByteArray took ${measureDecode.duration.inWholeMilliseconds}ms")
+			Timber.d("decodeByteArray with size: ${measureGet.value?.size} " +
+				"took ${measureDecode.duration.inWholeMilliseconds}ms" +
+				"\nrequestedSize: $width:$height" +
+				"\nsize: ${measureDecode.value?.width}:${measureDecode.value?.height}" +
+				"\nalloc: ${measureDecode.value?.allocationByteCount ?: "0 / null"}")
 
 			val bitmap = measureDecode.value
 			ensureActive()

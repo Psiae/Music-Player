@@ -17,6 +17,7 @@ import coil.request.ImageRequest
 import coil.size.Precision
 import coil.size.Scale
 import com.kylentt.mediaplayer.helper.image.CoilHelper.CenterCropTransform.*
+import com.kylentt.musicplayer.common.extenstions.checkCancellation
 import jp.wasabeef.transformers.coil.CenterBottomCropTransformation
 import jp.wasabeef.transformers.coil.CenterCropTransformation
 import jp.wasabeef.transformers.coil.CenterTopCropTransformation
@@ -49,19 +50,10 @@ object CoilBitmapTransformer {
 			CenterCropTransform.BOTTOM -> CenterBottomCropTransformation()
 		}
 
-		val transformReq = ImageRequest.Builder(context)
+		val req = ImageRequest.Builder(context)
 			.data(bitmap)
 			.size(size)
 			.transformations(centerCropType)
-			.diskCachePolicy(cachePolicy)
-			.build()
-
-		coroutineContext.ensureActive()
-		val transformDrawable = imageLoader.execute(transformReq).drawable!!
-
-		val req = ImageRequest.Builder(context)
-			.data(transformDrawable)
-			.size(size)
 			.diskCachePolicy(cachePolicy)
 			.scale(Scale.FIT)
 			.build()
@@ -134,7 +126,9 @@ class CoilHelper(
 		val get = CoilBitmapTransformer
 			.squareBitmap(bitmap, size, context, loader, type, cache, fastPath)
 
-		coroutineContext.ensureActive()
+		coroutineContext.checkCancellation {
+			if (!fastPath) get.recycle()
+		}
 		return get
 	}
 }

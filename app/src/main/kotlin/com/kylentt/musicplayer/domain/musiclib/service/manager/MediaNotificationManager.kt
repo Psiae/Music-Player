@@ -37,6 +37,7 @@ import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.musicplayer.core.sdk.VersionHelper
 import com.kylentt.mediaplayer.helper.image.CoilHelper
 import com.kylentt.musicplayer.ui.main.MainActivity
+import com.kylentt.musicplayer.ui.util.BitmapFactoryHelper
 import kotlinx.coroutines.*
 import timber.log.Timber
 import kotlin.coroutines.coroutineContext
@@ -349,25 +350,59 @@ class MediaNotificationManager(
 
 				withContext(this@MediaNotificationManager.appDispatchers.io) updateValue@ {
 					val bitmap = MediaItemFactory.getEmbeddedImage(context, item)
-						?.let {
+						?.let { bytes ->
 							ensureActive()
-							BitmapFactory.decodeByteArray(it, 0, it.size)
+							BitmapFactoryHelper.decodeByteArrayToSampledBitmap(bytes,
+								0, bytes.size, 500, 500,
+								BitmapFactoryHelper.SubSampleCalculationType.IF_WH_IS_LARGER
+							)
 						}
 						?: run {
 							update(item to null)
 							return@updateValue
 						}
 
+					Timber.d("getItemBitmap, decoded ByteArray to bitmap with " +
+						"\nsize: ${bitmap.width}:${bitmap.height}" +
+						"\nalloc: ${bitmap.allocationByteCount}")
+
 					checkCancellation { bitmap.recycle() }
 					// maybe create Fitter Class for some APIs version or Device that require some modification
 					// to have proper display
-					val squaredBitmap = coilHelper.squareBitmap(bitmap, 500)
-					checkCancellation { squaredBitmap.recycle() }
-
+					val fastPath = true
+					val squaredBitmap = coilHelper.squareBitmap(bitmap, 500, fastPath = false)
 					Timber.d("squaredBitmap size: ${squaredBitmap.height}:${squaredBitmap.width}")
+
+					checkCancellation {
+						bitmap.recycle()
+						if (!fastPath) squaredBitmap.recycle()
+					}
+
+					bitmap.recycle()
 					update(item to squaredBitmap)
 				}
 			}
+
+		// copied from docs
+		fun calculateInSampleSize(options: BitmapFactory.Options, reqWidth: Int, reqHeight: Int): Int {
+			// Raw height and width of image
+			val (height: Int, width: Int) = options.run { outHeight to outWidth }
+			var inSampleSize = 1
+
+			if (height > reqHeight || width > reqWidth) {
+
+				val halfHeight: Int = height / 2
+				val halfWidth: Int = width / 2
+
+				// Calculate the largest inSampleSize value that is a power of 2 and keeps both
+				// height and width larger than the requested height and width.
+				while (halfHeight / inSampleSize >= reqHeight && halfWidth / inSampleSize >= reqWidth) {
+					inSampleSize *= 2
+				}
+			}
+
+			return inSampleSize
+		}
 
 		private fun getItemBitmap(player: Player): Bitmap? {
 			return player.currentMediaItem?.mediaId?.let {

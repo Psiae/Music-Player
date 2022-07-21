@@ -1,5 +1,6 @@
 package com.kylentt.musicplayer.domain.musiclib.service
 
+import android.app.ForegroundServiceStartNotAllowedException
 import android.app.Notification
 import android.app.NotificationManager
 import android.content.ComponentName
@@ -123,17 +124,19 @@ class MusicLibraryService : MediaLibraryService() {
 	}
 
 	private fun startForegroundService(notification: Notification) {
-		if (!isServiceStarted) onStart()
-		if (VersionHelper.hasQ()) {
-			startForeground(
-				MediaNotificationId, notification,
-				ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
-			)
-		} else {
-			startForeground(MediaNotificationId, notification)
-		}
-		if (!isServiceForeground) {
-			stateRegistry.onEvent(ServiceEvent.ResumeForeground, true)
+		try {
+			if (!isServiceStarted) onStart()
+			if (VersionHelper.hasQ()) {
+				startForeground(MediaNotificationId, notification,
+					ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
+			} else {
+				startForeground(MediaNotificationId, notification)
+			}
+			if (!isServiceForeground) {
+				stateRegistry.onEvent(ServiceEvent.ResumeForeground, true)
+			}
+		} catch (e: Exception) {
+			if (VersionHelper.hasSnowCone() && e !is ForegroundServiceStartNotAllowedException) throw e
 		}
 	}
 

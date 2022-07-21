@@ -10,6 +10,7 @@ import com.kylentt.mediaplayer.helper.Preconditions
 import com.kylentt.mediaplayer.helper.external.providers.ContentProvidersHelper
 import com.kylentt.mediaplayer.helper.external.providers.DocumentProviderHelper
 import com.kylentt.musicplayer.core.app.dependency.CoroutineModule
+import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.isStateEnded
 import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemPropertyHelper.getDebugDescription
 import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemPropertyHelper.mediaUri
 import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaMetadataHelper.getStoragePath
@@ -51,6 +52,12 @@ class PlaybackManager : MusicLibraryService.ServiceComponent() {
 
 	private fun onPlaybackError(error: PlaybackException) {
 		sessionPlayer?.let { mainScope.launch { eventHandler.onPlaybackError(error, it) } }
+	}
+
+	private fun onPlayerStateChanged(@Player.State state: Int) {
+		sessionPlayer?.let {
+			if (state.isStateEnded()) it.pause()
+		}
 	}
 
 	private fun getPlayerMediaItems(player: Player): List<MediaItem> {
@@ -143,5 +150,6 @@ class PlaybackManager : MusicLibraryService.ServiceComponent() {
 
 	private inner class PlayerPlaybackListener : Player.Listener {
 		override fun onPlayerError(error: PlaybackException) = onPlaybackError(error)
+		override fun onPlaybackStateChanged(playbackState: Int) = onPlayerStateChanged(playbackState)
 	}
 }

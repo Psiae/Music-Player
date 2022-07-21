@@ -325,7 +325,8 @@ class MediaNotificationManager(
 				return@withContext
 			}
 
-			currentItemBitmap = getItemBitmap(player.currentMediaItem.orEmpty())
+			val currentItem = player.currentMediaItem.orEmpty()
+			currentItemBitmap = getItemBitmap(currentItem)
 
 			val nextItem =
 				if (player.hasNextMediaItem()) {
@@ -360,9 +361,11 @@ class MediaNotificationManager(
 
 					val type =
 						if (cache) {
-							BitmapFactoryHelper.SubSampleCalculationType.MaxAlloc(2000000)
+							BitmapFactoryHelper.SubSampleCalculationType
+								.SizeTargetForceWithinAlloc(500, 500, 2000000)
 						} else {
-							BitmapFactoryHelper.SubSampleCalculationType.SizeTarget(500, 500)
+							BitmapFactoryHelper.SubSampleCalculationType
+								.SizeTarget(500, 500)
 						}
 
 					BitmapFactoryHelper.decodeByteArrayToSampledBitmap(bytes, 0, bytes.size, type)

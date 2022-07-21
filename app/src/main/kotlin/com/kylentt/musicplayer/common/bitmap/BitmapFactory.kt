@@ -1,13 +1,9 @@
 package com.kylentt.musicplayer.common.bitmap
 
-import android.app.Activity
-import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.BitmapFactory.Options
-import android.view.View
 import com.kylentt.musicplayer.core.sdk.VersionHelper
-import timber.log.Timber
 
 object BitmapFactoryHelper {
 
@@ -43,8 +39,38 @@ object BitmapFactoryHelper {
 	}
 
 	sealed class SubSampleCalculationType {
-		data class SizeTarget(val width: Int, val height: Int) : SubSampleCalculationType()
-		data class MaxAlloc(val maxByte: Int) : SubSampleCalculationType()
+
+		data class SizeTarget(val width: Int, val height: Int) : SubSampleCalculationType() {
+			override fun shouldSubSample(options: Options, inSampleSize: Int): Boolean {
+				return options.outHeight / (inSampleSize * 2) >= height
+					&& options.outWidth / (inSampleSize * 2) >= width
+			}
+		}
+
+		data class MaxAlloc(val maxByte: Int) : SubSampleCalculationType() {
+			override fun shouldSubSample(options: Options, inSampleSize: Int): Boolean {
+				val bytePixelSize = getBitmapPixelSize(options)
+				val pixels = (options.outHeight * options.outWidth) / (inSampleSize * inSampleSize)
+				val currentAlloc = pixels * bytePixelSize
+				return currentAlloc >= maxByte
+			}
+		}
+
+		data class SizeTargetForceWithinAlloc(
+			val width: Int,
+			val height: Int,
+			val maxByte: Int
+		) : SubSampleCalculationType() {
+			private val sizeTarget = SizeTarget(width, height)
+			private val maxAlloc = MaxAlloc(maxByte)
+
+			override fun shouldSubSample(options: Options, inSampleSize: Int): Boolean {
+				return sizeTarget.shouldSubSample(options, inSampleSize)
+					|| maxAlloc.shouldSubSample(options, inSampleSize)
+			}
+		}
+
+		abstract fun shouldSubSample(options: BitmapFactory.Options, inSampleSize: Int): Boolean
 	}
 
 	// Copied from docs
@@ -57,20 +83,7 @@ object BitmapFactoryHelper {
 		// Raw SampleSize
 		var inSampleSize = 1
 
-		val shouldPower = {
-			when(type) {
-				is SubSampleCalculationType.SizeTarget -> {
-					height / (inSampleSize * 2) >= type.height && width / (inSampleSize * 2) >= type.width
-				}
-				is SubSampleCalculationType.MaxAlloc -> {
-					val bytePixelSize = getBitmapPixelSize(options)
-					val currentAlloc = (((height * width) / (inSampleSize * inSampleSize)) * bytePixelSize)
-					currentAlloc >= type.maxByte
-				}
-			}
-		}
-
-		while (shouldPower()) {
+		while (type.shouldSubSample(options, inSampleSize)) {
 			inSampleSize *= 2
 		}
 

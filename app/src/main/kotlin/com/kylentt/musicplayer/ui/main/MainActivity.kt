@@ -9,8 +9,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.Lifecycle.Event.*
 import com.kylentt.mediaplayer.domain.viewmodels.MainViewModel
 import com.kylentt.mediaplayer.domain.viewmodels.MediaViewModel
 import com.kylentt.mediaplayer.helper.external.IntentWrapper
@@ -26,7 +24,8 @@ import kotlin.reflect.KProperty
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
-	@Inject lateinit var coroutineDispatchers: CoroutineDispatchers
+	@Inject
+	lateinit var coroutineDispatchers: CoroutineDispatchers
 
 	private val intentHandler = IntentHandler()
 
@@ -111,7 +110,7 @@ class MainActivity : ComponentActivity() {
 	}
 
 
-	private inner class IntentHandler() {
+	private inner class IntentHandler {
 		fun handleIntent(intent: Intent) {
 			val wrapped = IntentWrapper.fromIntent(intent)
 			if (!wrapped.shouldHandleIntent) return
@@ -168,7 +167,7 @@ class MainActivity : ComponentActivity() {
 		private val stateDelegate = DelegatedState()
 
 		fun onEvent(activity: MainActivity, event: Event) {
-			val state = when(event) {
+			val state = when (event) {
 				Event.Init -> DelegatedState.State.Initialized
 				Event.Create, Event.Stop -> DelegatedState.State.Created
 				Event.Start, Event.Pause -> DelegatedState.State.Started

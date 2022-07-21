@@ -19,7 +19,7 @@ class ContextBroadcastManager(context: Context) {
 		}
 
 	var released = false
-		private set (value) {
+		private set(value) {
 			checkArgument(value)
 			field = value
 		}

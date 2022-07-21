@@ -15,7 +15,7 @@ class DeviceInfo @Inject constructor(@ApplicationContext context: Context) {
 		get() = localContext.screenHeightPixel
 
 	val isOrientationPortrait
-		get() = when(localContext.screenOrientation) {
+		get() = when (localContext.screenOrientation) {
 			Configuration.ORIENTATION_LANDSCAPE -> false
 			else -> true
 		}

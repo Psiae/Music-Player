@@ -11,12 +11,12 @@ import androidx.annotation.DrawableRes
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import androidx.core.content.ContextCompat
+import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
+import com.kylentt.mediaplayer.helper.Preconditions.checkState
+import com.kylentt.musicplayer.common.late.LateLazy
 import com.kylentt.musicplayer.core.app.delegates.AppDelegate.Constants.ANDROID_PERMISSION_PREFIX
 import com.kylentt.musicplayer.core.app.delegates.device.DeviceWallpaper
 import com.kylentt.musicplayer.core.app.delegates.device.StoragePermissionHelper
-import com.kylentt.musicplayer.common.late.LateLazy
-import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
-import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import kotlin.reflect.KClass
 
 
@@ -76,15 +76,15 @@ class AppDelegate private constructor(app: Application) : ApplicationDelegate, C
 		const val ANDROID_PERMISSION_PREFIX = "android.permission."
 	}
 
-  companion object {
-    private val initializer = LateLazy<AppDelegate>()
-    private val delegate by initializer
+	companion object {
+		private val initializer = LateLazy<AppDelegate>()
+		private val delegate by initializer
 
-    val deviceWallpaperDrawable
-       get() = delegate.getDeviceWallpaper()
+		val deviceWallpaperDrawable
+			get() = delegate.getDeviceWallpaper()
 
-    val storagePermissionStatus
-       get() = delegate.hasStoragePermission()
+		val storagePermissionStatus
+			get() = delegate.hasStoragePermission()
 
 		fun checkStoragePermission() = storagePermissionStatus
 		fun imageVectorFromDrawableId(@DrawableRes id: Int) = delegate.getImageVector(id)
@@ -92,8 +92,8 @@ class AppDelegate private constructor(app: Application) : ApplicationDelegate, C
 		fun launcherIntent(): Intent = delegate.getLauncherIntent()
 
 		infix fun provides(context: Context): ApplicationDelegate {
-      checkState(!initializer.isInitialized)
-      return initializer.initializeValue { AppDelegate(context) }
-    }
-  }
+			checkState(!initializer.isInitialized)
+			return initializer.initializeValue { AppDelegate(context) }
+		}
+	}
 }

@@ -13,23 +13,25 @@ import androidx.lifecycle.Lifecycle
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
-import com.kylentt.musicplayer.core.app.coroutines.safeCollect
-import com.kylentt.musicplayer.common.extenstions.forEachClear
-import com.kylentt.musicplayer.domain.musiclib.service.manager.MediaNotificationManager
-import com.kylentt.musicplayer.domain.musiclib.service.manager.PlaybackManager
-import com.kylentt.musicplayer.domain.musiclib.service.manager.SessionManager
-import com.kylentt.musicplayer.domain.musiclib.service.provider.SessionProvider
-import com.kylentt.musicplayer.domain.musiclib.service.manager.StateManager
 import com.kylentt.mediaplayer.domain.util.ContextBroadcastManager
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
-import com.kylentt.musicplayer.core.sdk.VersionHelper
+import com.kylentt.musicplayer.common.extenstions.forEachClear
+import com.kylentt.musicplayer.core.app.coroutines.safeCollect
 import com.kylentt.musicplayer.core.app.dependency.CoroutineModule
+import com.kylentt.musicplayer.core.sdk.VersionHelper
+import com.kylentt.musicplayer.domain.musiclib.service.manager.MediaNotificationManager
+import com.kylentt.musicplayer.domain.musiclib.service.manager.PlaybackManager
+import com.kylentt.musicplayer.domain.musiclib.service.manager.SessionManager
+import com.kylentt.musicplayer.domain.musiclib.service.manager.StateManager
+import com.kylentt.musicplayer.domain.musiclib.service.provider.SessionProvider
 import com.kylentt.musicplayer.ui.main.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Named
@@ -125,7 +127,8 @@ class MusicLibraryService : MediaLibraryService() {
 		if (VersionHelper.hasQ()) {
 			startForeground(
 				MediaNotificationId, notification,
-				ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
+				ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+			)
 		} else {
 			startForeground(MediaNotificationId, notification)
 		}
@@ -282,7 +285,8 @@ class MusicLibraryService : MediaLibraryService() {
 		}
 
 		@MainThread
-		protected open fun release() {}
+		protected open fun release() {
+		}
 
 		@MainThread
 		@CallSuper
@@ -430,7 +434,7 @@ class MusicLibraryService : MediaLibraryService() {
 		}
 
 		private fun notifyComponent(component: ServiceComponent, state: ServiceState) {
-			when(state) {
+			when (state) {
 				ServiceState.Nothing -> Unit
 				ServiceState.Initialized -> component.createComponent(service)
 				ServiceState.ContextAttached -> component.notifyContextAttached(service)
@@ -442,7 +446,7 @@ class MusicLibraryService : MediaLibraryService() {
 		}
 	}
 
-	object StateDelegate : ReadOnlyProperty <Any?, ServiceState> {
+	object StateDelegate : ReadOnlyProperty<Any?, ServiceState> {
 		private var savedState: ServiceState = ServiceState.Nothing
 		private var stateProvider: Any? = null
 		fun updateState(holder: Any, state: ServiceState) {
@@ -465,6 +469,7 @@ class MusicLibraryService : MediaLibraryService() {
 			}
 			savedState = state
 		}
+
 		override fun getValue(thisRef: Any?, property: KProperty<*>): ServiceState = savedState
 	}
 
@@ -532,6 +537,7 @@ class MusicLibraryService : MediaLibraryService() {
 		sealed class SingleTimeEvent : ServiceEvent() {
 			var consumed: Boolean = false
 				private set
+
 			fun consume() {
 				consumed = true
 			}
@@ -544,38 +550,48 @@ class MusicLibraryService : MediaLibraryService() {
 		object Nothing : SingleTimeEvent() {
 			override val resultState: ServiceState = ServiceState.Nothing
 		}
+
 		object Initialize : SingleTimeEvent() {
 			override val resultState: ServiceState = ServiceState.Initialized
 		}
+
 		object AttachContext : SingleTimeEvent() {
 			override val resultState: ServiceState = ServiceState.ContextAttached
 		}
+
 		object InjectDependency : SingleTimeEvent() {
 			override val resultState: ServiceState = ServiceState.DependencyInjected
 		}
+
 		object Create : SingleTimeEvent(), LifecycleEvent {
 			override val resultState: ServiceState = ServiceState.Created
 			override fun asLifecycleEvent(): Lifecycle.Event = Lifecycle.Event.ON_CREATE
 		}
+
 		object Start : ServiceEvent(), LifecycleEvent {
 			override val resultState: ServiceState = ServiceState.Started
 			override fun asLifecycleEvent(): Lifecycle.Event = Lifecycle.Event.ON_START
 		}
+
 		object ResumeForeground : ServiceEvent(), LifecycleEvent {
 			override val resultState: ServiceState = ServiceState.Foreground
 			override fun asLifecycleEvent(): Lifecycle.Event = Lifecycle.Event.ON_RESUME
 		}
+
 		object PauseForeground : ServiceEvent(), LifecycleEvent {
 			override val resultState: ServiceState = ServiceState.Paused
 			override fun asLifecycleEvent(): Lifecycle.Event = Lifecycle.Event.ON_PAUSE
 		}
+
 		data class Stop(val isReleasing: Boolean) : ServiceEvent(), LifecycleEvent {
 			override val resultState: ServiceState = ServiceState.Stopped
 			override fun asLifecycleEvent(): Lifecycle.Event = Lifecycle.Event.ON_STOP
 		}
+
 		object Release : SingleTimeEvent() {
 			override val resultState: ServiceState = ServiceState.Released
 		}
+
 		object Destroy : SingleTimeEvent(), LifecycleEvent {
 			override val resultState: ServiceState = ServiceState.Destroyed
 			override fun asLifecycleEvent(): Lifecycle.Event = Lifecycle.Event.ON_DESTROY

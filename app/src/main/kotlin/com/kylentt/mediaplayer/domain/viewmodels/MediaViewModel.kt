@@ -17,7 +17,7 @@ import com.kylentt.mediaplayer.helper.external.MediaIntentHandler
 import com.kylentt.musicplayer.common.context.DeviceInfo
 import com.kylentt.musicplayer.common.extenstions.checkCancellation
 import com.kylentt.musicplayer.domain.musiclib.entity.PlaybackState
-import com.kylentt.musicplayer.ui.util.BitmapFactoryHelper
+import com.kylentt.musicplayer.common.bitmap.BitmapFactoryHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -81,21 +81,18 @@ class MediaViewModel @Inject constructor(
 
 			ensureActive()
 
-			val width = deviceInfo.screenWidthPixel
-			val height = deviceInfo.screenHeightPixel
-
       val measureDecode = measureTimedValue {
 				measureGet.value?.let { bytes: ByteArray ->
-					BitmapFactoryHelper.decodeByteArrayToSampledBitmap(bytes,
-						0, bytes.size, width, height,
-						BitmapFactoryHelper.SubSampleCalculationType.MaxAlloc( /* 10MB */10000000)
-					)
+
+					val type = BitmapFactoryHelper
+						.SubSampleCalculationType.MaxAlloc( /* 10MB */10000000)
+
+					BitmapFactoryHelper.decodeByteArrayToSampledBitmap(bytes, 0, bytes.size, type)
 				}
 			}
 
 			Timber.d("decodeByteArray with size: ${measureGet.value?.size} " +
 				"took ${measureDecode.duration.inWholeMilliseconds}ms" +
-				"\nrequestedSize: $width:$height" +
 				"\nsize: ${measureDecode.value?.width}:${measureDecode.value?.height}" +
 				"\nalloc: ${measureDecode.value?.allocationByteCount ?: "0 / null"}")
 

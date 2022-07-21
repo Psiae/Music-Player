@@ -6,14 +6,14 @@ import android.widget.Toast
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
-import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemPropertyHelper.getDebugDescription
-import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemPropertyHelper.mediaUri
-import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaMetadataHelper.getStoragePath
-import com.kylentt.musicplayer.domain.musiclib.service.MusicLibraryService
 import com.kylentt.mediaplayer.helper.Preconditions
 import com.kylentt.mediaplayer.helper.external.providers.ContentProvidersHelper
 import com.kylentt.mediaplayer.helper.external.providers.DocumentProviderHelper
 import com.kylentt.musicplayer.core.app.dependency.CoroutineModule
+import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemPropertyHelper.getDebugDescription
+import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemPropertyHelper.mediaUri
+import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaMetadataHelper.getStoragePath
+import com.kylentt.musicplayer.domain.musiclib.service.MusicLibraryService
 import kotlinx.coroutines.*
 import timber.log.Timber
 import java.io.File
@@ -35,10 +35,6 @@ class PlaybackManager : MusicLibraryService.ServiceComponent() {
 		val serviceJob = serviceProperty.serviceMainJob
 		managerJob = SupervisorJob(serviceJob)
 		mainScope = CoroutineScope(appDispatchers.main + managerJob)
-	}
-
-	override fun serviceDependencyInjected() {
-		super.serviceDependencyInjected()
 	}
 
 	override fun start(componentDelegate: MusicLibraryService.ComponentDelegate) {

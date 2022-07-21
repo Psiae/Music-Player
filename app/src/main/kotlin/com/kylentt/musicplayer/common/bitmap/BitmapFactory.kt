@@ -1,9 +1,13 @@
-package com.kylentt.musicplayer.ui.util
+package com.kylentt.musicplayer.common.bitmap
 
+import android.app.Activity
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.BitmapFactory.Options
+import android.view.View
 import com.kylentt.musicplayer.core.sdk.VersionHelper
+import timber.log.Timber
 
 object BitmapFactoryHelper {
 
@@ -11,8 +15,6 @@ object BitmapFactoryHelper {
 		array: ByteArray,
 		offset: Int,
 		buffer: Int,
-		reqWidth: Int,
-		reqHeight: Int,
 		sampleCalculationType: SubSampleCalculationType
 	): Bitmap? {
 		return BitmapFactory.Options()
@@ -22,7 +24,7 @@ object BitmapFactoryHelper {
 				decodeByteArray(array, offset, buffer, this)
 
 				// Calculate inSampleSize
-				inSampleSize = calculateInSampleSize(this, reqWidth, reqHeight, sampleCalculationType)
+				inSampleSize = calculateInSampleSize(this, sampleCalculationType)
 
 				// Decode bitmap with inSampleSize set
 				inJustDecodeBounds = false
@@ -41,49 +43,37 @@ object BitmapFactoryHelper {
 	}
 
 	sealed class SubSampleCalculationType {
-		object IF_WH_IS_LARGER : SubSampleCalculationType()
-		object IF_ANY_WH_IS_LARGER : SubSampleCalculationType()
+		data class SizeTarget(val width: Int, val height: Int) : SubSampleCalculationType()
 		data class MaxAlloc(val maxByte: Int) : SubSampleCalculationType()
 	}
 
 	// Copied from docs
 	private fun calculateInSampleSize(
 		options: BitmapFactory.Options,
-		reqWidth: Int,
-		reqHeight: Int,
 		type: SubSampleCalculationType
 	): Int {
 		// Raw height and width of image
 		val (height: Int, width: Int) = options.run { outHeight to outWidth }
+		// Raw SampleSize
 		var inSampleSize = 1
 
-		if (height > reqHeight || width > reqWidth) {
-
-			// Calculate the largest inSampleSize value that is a power of 2 and keeps both
-			// height and width larger than the requested height and width.
-
-			val condition = {
-				val toBeSampleSize = inSampleSize * 2
-
-				when(type) {
-					SubSampleCalculationType.IF_WH_IS_LARGER -> {
-						height / toBeSampleSize >= reqHeight && width / toBeSampleSize >= reqWidth
-					}
-					SubSampleCalculationType.IF_ANY_WH_IS_LARGER -> {
-						height / toBeSampleSize >= reqHeight || width / toBeSampleSize >= reqWidth
-					}
-					is SubSampleCalculationType.MaxAlloc -> {
-						val bytePixel = getBitmapPixelSize(options)
-						val alloc = (height * width) * bytePixel
-						val afterSample = alloc / toBeSampleSize
-						afterSample >= type.maxByte
-					}
+		val shouldPower = {
+			when(type) {
+				is SubSampleCalculationType.SizeTarget -> {
+					height / (inSampleSize * 2) >= type.height && width / (inSampleSize * 2) >= type.width
+				}
+				is SubSampleCalculationType.MaxAlloc -> {
+					val bytePixelSize = getBitmapPixelSize(options)
+					val currentAlloc = (((height * width) / (inSampleSize * inSampleSize)) * bytePixelSize)
+					currentAlloc >= type.maxByte
 				}
 			}
-				while (condition()) {
-					inSampleSize *= 2
-				}
-			}
+		}
+
+		while (shouldPower()) {
+			inSampleSize *= 2
+		}
+
 		return inSampleSize
 	}
 

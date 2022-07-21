@@ -5,7 +5,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import kotlin.math.ln
 
 object ColorHelper {
@@ -16,7 +15,7 @@ object ColorHelper {
 		surface: Color = MaterialTheme.colorScheme.surface,
 		elevation: Dp,
 	): Color {
-		val alpha = ((4.5f * ln( x = (elevation).value + 1) ) + 2f) / 100f
+		val alpha = ((4.5f * ln(x = (elevation).value + 1)) + 2f) / 100f
 		return color.copy(alpha = alpha).compositeOver(surface)
 	}
 }

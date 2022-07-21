@@ -43,8 +43,8 @@ class LibraryPlayer private constructor() {
 	fun setMediaItems(
 		items: List<MediaItem>,
 		startIndex: Int = 0,
-		startPos: Long = 0)
-	= wrapper.connect {
+		startPos: Long = 0
+	) = wrapper.connect {
 		val state = it.playbackState
 
 		it.stop()

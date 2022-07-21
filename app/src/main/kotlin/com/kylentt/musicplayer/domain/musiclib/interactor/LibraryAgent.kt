@@ -41,6 +41,7 @@ class LibraryAgent private constructor() {
 			fun provide(injector: Injector)
 			fun provide(vararg providers: Provider<Any>)
 		}
+
 		interface Session {
 			val player: LibraryPlayer
 			val info: MusicSession.SessionInfo

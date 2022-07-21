@@ -29,7 +29,8 @@ class SessionProvider(
 	): MediaLibrarySession {
 		val activityIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)!!
 		val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-		val activityPendingIntent = PendingIntent.getActivity(context, requestCode, activityIntent, flag)
+		val activityPendingIntent =
+			PendingIntent.getActivity(context, requestCode, activityIntent, flag)
 		val builder = MediaLibrarySession.Builder(service, player, callback)
 		return with(builder) {
 			setId(sessionId)

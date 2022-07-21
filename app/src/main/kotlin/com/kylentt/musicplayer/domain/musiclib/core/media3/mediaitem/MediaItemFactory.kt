@@ -60,7 +60,7 @@ object MediaItemFactory {
 				.setRequestMetadata(reqMetadata)
 				.build()
 
-		}	catch (e: Exception) {
+		} catch (e: Exception) {
 			Timber.w("Failed To Build MediaItem from Uri: $uri \n${e}")
 			EMPTY
 		} finally {

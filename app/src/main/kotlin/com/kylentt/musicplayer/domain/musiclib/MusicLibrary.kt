@@ -4,6 +4,7 @@ import com.kylentt.musicplayer.domain.musiclib.interactor.LibraryAgent
 
 class MusicLibrary private constructor() {
 	val agent = LibraryAgent(this)
+
 	companion object {
 		private val musicLibrary = MusicLibrary()
 

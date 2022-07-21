@@ -2,7 +2,10 @@ package com.kylentt.musicplayer.ui.main.compose.util
 
 import android.content.Context
 import android.content.pm.PackageManager
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.neverEqualPolicy
+import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import com.google.accompanist.permissions.*
@@ -56,11 +59,12 @@ object PermissionHelper {
 			requestResult.value = result
 		}
 
-		Timber.d("RequirePermission Composable," +
-			"\nmanifest String: ${permission.androidManifestString}" +
-			"\nhasPermission: $currentStatus" +
-			"\nresult: ${requestResult.value}" +
-			"\nstatus: ${permissionState.status}"
+		Timber.d(
+			"RequirePermission Composable," +
+				"\nmanifest String: ${permission.androidManifestString}" +
+				"\nhasPermission: $currentStatus" +
+				"\nresult: ${requestResult.value}" +
+				"\nstatus: ${permissionState.status}"
 		)
 
 		when {

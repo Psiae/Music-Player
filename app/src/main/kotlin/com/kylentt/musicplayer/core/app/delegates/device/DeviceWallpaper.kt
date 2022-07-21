@@ -10,22 +10,22 @@ import androidx.core.graphics.component2
 import androidx.core.graphics.component3
 import androidx.core.graphics.component4
 import androidx.core.graphics.drawable.toBitmap
-import com.kylentt.musicplayer.core.app.delegates.AppDelegate
 import com.kylentt.musicplayer.common.late.LateLazy
+import com.kylentt.musicplayer.core.app.delegates.AppDelegate
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 
 object DeviceWallpaper : ReadOnlyProperty<Any?, Drawable?> {
 
-  private val initializer = LateLazy<WallpaperManager>()
-  private val manager by initializer
+	private val initializer = LateLazy<WallpaperManager>()
+	private val manager by initializer
 
-  override fun getValue(thisRef: Any?, property: KProperty<*>): Drawable? {
+	override fun getValue(thisRef: Any?, property: KProperty<*>): Drawable? {
 		return when (thisRef) {
 			is Context -> getDeviceWallpaper(thisRef)
 			else -> AppDelegate.deviceWallpaperDrawable
 		}
-  }
+	}
 
 	private fun getDeviceWallpaper(accessor: Context): Drawable? {
 		return elseNull(StoragePermissionHelper.checkReadStoragePermission(accessor)) {
@@ -61,7 +61,7 @@ object DeviceWallpaper : ReadOnlyProperty<Any?, Drawable?> {
 		return bitmap
 	}
 
-  private inline fun <T> elseNull(condition: Boolean, block: () -> T): T? {
-    return if (condition) block() else null
-  }
+	private inline fun <T> elseNull(condition: Boolean, block: () -> T): T? {
+		return if (condition) block() else null
+	}
 }

@@ -1,5 +1,6 @@
 package com.kylentt.musicplayer.domain.musiclib.service.manager
 
+import android.app.ActivityManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -17,15 +18,18 @@ import androidx.media3.session.MediaNotification
 import androidx.media3.session.MediaSession
 import coil.Coil
 import com.google.common.collect.ImmutableList
-import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
+import com.kylentt.mediaplayer.helper.Preconditions.checkState
+import com.kylentt.mediaplayer.helper.image.CoilHelper
 import com.kylentt.musicplayer.common.coroutines.AutoCancelJob
+import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
+import com.kylentt.musicplayer.common.extenstions.checkCancellation
+import com.kylentt.musicplayer.core.sdk.VersionHelper
 import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.isOngoing
 import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.isRepeatAll
 import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.isRepeatOff
 import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.isRepeatOne
 import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.isStateEnded
 import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.isStateIdle
-import com.kylentt.musicplayer.common.extenstions.checkCancellation
 import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemFactory
 import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemFactory.orEmpty
 import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemInfo
@@ -33,11 +37,8 @@ import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemPr
 import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemPropertyHelper.mediaUri
 import com.kylentt.musicplayer.domain.musiclib.service.MusicLibraryService
 import com.kylentt.musicplayer.domain.musiclib.service.provider.MediaNotificationProvider
-import com.kylentt.mediaplayer.helper.Preconditions.checkState
-import com.kylentt.musicplayer.core.sdk.VersionHelper
-import com.kylentt.mediaplayer.helper.image.CoilHelper
 import com.kylentt.musicplayer.ui.main.MainActivity
-import com.kylentt.musicplayer.ui.util.BitmapFactoryHelper
+import com.kylentt.musicplayer.common.bitmap.BitmapFactoryHelper
 import kotlinx.coroutines.*
 import timber.log.Timber
 import kotlin.coroutines.coroutineContext
@@ -53,6 +54,7 @@ class MediaNotificationManager(
 
 	private lateinit var coilHelper: CoilHelper
 	private lateinit var notificationManagerService: NotificationManager
+	private lateinit var activityManagerService: ActivityManager
 
 	private val eventListener = this.PlayerEventListener()
 	val itemInfoIntentConverter = MediaItemInfo.IntentConverter()
@@ -138,7 +140,9 @@ class MediaNotificationManager(
 
 	private fun initializeComponents(context: Context) {
 		notificationManagerService = context.getSystemService(NotificationManager::class.java)!!
-		coilHelper = CoilHelper(context.applicationContext, Coil.imageLoader(context.applicationContext))
+		activityManagerService = context.getSystemService(ActivityManager::class.java)!!
+		coilHelper =
+			CoilHelper(context.applicationContext, Coil.imageLoader(context.applicationContext))
 		initializeProvider(context)
 		initializeDispatcher(context)
 		isComponentInitialized = true
@@ -154,7 +158,7 @@ class MediaNotificationManager(
 		dispatcher = Dispatcher()
 	}
 
-	private inner class Dispatcher() {
+	private inner class Dispatcher {
 
 		var isReleased: Boolean = false
 			private set
@@ -239,8 +243,10 @@ class MediaNotificationManager(
 
 		fun release() {
 			if (isReleased) {
-				checkState(notificationProvider.isReleased
-					&& currentItemBitmap == MediaItem.EMPTY to null)
+				checkState(
+					notificationProvider.isReleased
+						&& currentItemBitmap == MediaItem.EMPTY to null
+				)
 				return
 			}
 
@@ -276,8 +282,10 @@ class MediaNotificationManager(
 			channelName: String
 		): Notification {
 
-			Timber.d("getNotificationFromPlayer for "
-				+ player.currentMediaItem.orEmpty().getDebugDescription())
+			Timber.d(
+				"getNotificationFromPlayer for "
+					+ player.currentMediaItem.orEmpty().getDebugDescription()
+			)
 
 			val largeIcon = getItemBitmap(player)
 			return notificationProvider.buildMediaStyleNotification(
@@ -294,8 +302,10 @@ class MediaNotificationManager(
 			channelName: String
 		): Notification {
 
-			Timber.d("getNotificationFromMediaSession for " +
-				session.player.currentMediaItem.orEmpty().getDebugDescription())
+			Timber.d(
+				"getNotificationFromMediaSession for " +
+					session.player.currentMediaItem.orEmpty().getDebugDescription()
+			)
 
 			val largeIcon = getItemBitmap(session.player)
 			return notificationProvider.buildMediaStyleNotification(
@@ -306,102 +316,73 @@ class MediaNotificationManager(
 			)
 		}
 
-		suspend fun updateItemBitmap(player: Player): Unit =
-			withContext(this@MediaNotificationManager.appDispatchers.main) {
+		suspend fun updateItemBitmap(
+			player: Player
+		): Unit = withContext(this@MediaNotificationManager.appDispatchers.main) {
 
-				if (!cacheConfig)  {
-					getItemBitmap(player.currentMediaItem.orEmpty()) { currentItemBitmap = it }
-					return@withContext
-				}
-
-				val currentItem = player.currentMediaItem.orEmpty()
-
-				if (currentItem.mediaId != currentItemBitmap.first.mediaId) {
-					getItemBitmap(currentItem) { currentItemBitmap = it }
-				}
-
-				val nextItem =
-					if (player.hasNextMediaItem()) {
-						player.getMediaItemAt(player.nextMediaItemIndex)
-					} else {
-						MediaItem.EMPTY
-					}
-
-				if (nextItem.mediaId != nextItemBitmap.first.mediaId) {
-					getItemBitmap(nextItem) { nextItemBitmap = it }
-				}
-
-				val prevItem =
-					if (player.hasPreviousMediaItem()) {
-						player.getMediaItemAt(player.previousMediaItemIndex)
-					} else {
-						MediaItem.EMPTY
-					}
-
-				if (prevItem.mediaId != previousItemBitmap.first.mediaId) {
-					getItemBitmap(prevItem) { previousItemBitmap = it }
-				}
+			if (!cacheConfig) {
+				currentItemBitmap = getItemBitmap(player.currentMediaItem.orEmpty())
+				return@withContext
 			}
 
-		private suspend fun getItemBitmap(item: MediaItem, update: (Pair<MediaItem, Bitmap?>) -> Unit) =
-			withContext(this@MediaNotificationManager.appDispatchers.main) {
-				if (!isStarted) return@withContext
-				ensureActive()
+			currentItemBitmap = getItemBitmap(player.currentMediaItem.orEmpty())
 
-				withContext(this@MediaNotificationManager.appDispatchers.io) updateValue@ {
-					val bitmap = MediaItemFactory.getEmbeddedImage(context, item)
-						?.let { bytes ->
-							ensureActive()
-							BitmapFactoryHelper.decodeByteArrayToSampledBitmap(bytes,
-								0, bytes.size, 500, 500,
-								BitmapFactoryHelper.SubSampleCalculationType.IF_WH_IS_LARGER
-							)
-						}
-						?: run {
-							update(item to null)
-							return@updateValue
+			val nextItem =
+				if (player.hasNextMediaItem()) {
+					player.getMediaItemAt(player.nextMediaItemIndex)
+				} else {
+					MediaItem.EMPTY
+				}
+
+			if (nextItem.mediaId != nextItemBitmap.first.mediaId) {
+				nextItemBitmap = getItemBitmap(nextItem, cache = true)
+			}
+
+			val prevItem =
+				if (player.hasPreviousMediaItem()) {
+					player.getMediaItemAt(player.previousMediaItemIndex)
+				} else {
+					MediaItem.EMPTY
+				}
+
+			if (prevItem.mediaId != previousItemBitmap.first.mediaId) {
+				previousItemBitmap = getItemBitmap(prevItem, cache = true)
+			}
+		}
+
+		private suspend fun getItemBitmap(
+			item: MediaItem,
+			cache: Boolean = false
+		): Pair<MediaItem, Bitmap?> = withContext(this@MediaNotificationManager.appDispatchers.io) {
+			val bitmap = MediaItemFactory.getEmbeddedImage(context, item)
+				?.let { bytes ->
+					ensureActive()
+
+					val type =
+						if (cache) {
+							BitmapFactoryHelper.SubSampleCalculationType.MaxAlloc(2000000)
+						} else {
+							BitmapFactoryHelper.SubSampleCalculationType.SizeTarget(500, 500)
 						}
 
-					Timber.d("getItemBitmap, decoded ByteArray to bitmap with " +
-						"\nsize: ${bitmap.width}:${bitmap.height}" +
-						"\nalloc: ${bitmap.allocationByteCount}")
-
-					checkCancellation { bitmap.recycle() }
-					// maybe create Fitter Class for some APIs version or Device that require some modification
-					// to have proper display
-					val fastPath = true
-					val squaredBitmap = coilHelper.squareBitmap(bitmap, 500, fastPath = false)
-					Timber.d("squaredBitmap size: ${squaredBitmap.height}:${squaredBitmap.width}")
-
-					checkCancellation {
-						bitmap.recycle()
-						if (!fastPath) squaredBitmap.recycle()
-					}
-
-					bitmap.recycle()
-					update(item to squaredBitmap)
+					BitmapFactoryHelper.decodeByteArrayToSampledBitmap(bytes, 0, bytes.size, type)
 				}
-			}
+				?: return@withContext item to null
 
-		// copied from docs
-		fun calculateInSampleSize(options: BitmapFactory.Options, reqWidth: Int, reqHeight: Int): Int {
-			// Raw height and width of image
-			val (height: Int, width: Int) = options.run { outHeight to outWidth }
-			var inSampleSize = 1
+			Timber.d(
+				"getItemBitmap, decoded ByteArray to bitmap with " +
+					"\nsize: ${bitmap.width}:${bitmap.height}" +
+					"\nalloc: ${bitmap.allocationByteCount}"
+			)
 
-			if (height > reqHeight || width > reqWidth) {
+			checkCancellation { bitmap.recycle() }
 
-				val halfHeight: Int = height / 2
-				val halfWidth: Int = width / 2
+			// maybe create Fitter Class for some APIs version or Device that require some modification
+			// to have proper display
+			val squaredBitmap = coilHelper.squareBitmap(bitmap, 500, fastPath = true)
+			Timber.d("squaredBitmap size: ${squaredBitmap.height}:${squaredBitmap.width}")
 
-				// Calculate the largest inSampleSize value that is a power of 2 and keeps both
-				// height and width larger than the requested height and width.
-				while (halfHeight / inSampleSize >= reqHeight && halfWidth / inSampleSize >= reqWidth) {
-					inSampleSize *= 2
-				}
-			}
-
-			return inSampleSize
+			item to squaredBitmap
 		}
 
 		private fun getItemBitmap(player: Player): Bitmap? {
@@ -424,7 +405,8 @@ class MediaNotificationManager(
 			Timber.d("createNotificationInternalImpl")
 
 			val notification =
-				getNotificationFromMediaSession(session,
+				getNotificationFromMediaSession(
+					session,
 					isForegroundCondition(componentDelegate, session), ChannelName
 				)
 
@@ -455,11 +437,13 @@ class MediaNotificationManager(
 							if (itemInfo != null && itemInfo.mediaItem.mediaUri != null) {
 								// TODO: handle this
 								Timber.w(
-									"received Notification action when playback item is empty (convertible)")
+									"received Notification action when playback item is empty (convertible)"
+								)
 							} else {
 								// TODO: handle this
 								Timber.w(
-									"received Notification action when playback item is empty")
+									"received Notification action when playback item is empty"
+								)
 							}
 							return -1
 						}
@@ -668,10 +652,14 @@ class MediaNotificationManager(
 			mediaItemTransitionJob = mainScope.launch {
 				componentDelegate.sessionInteractor.mediaSession
 					?.let {
-						provider.updateItemBitmap(it.player)
 						val getNotification = {
-							provider.fromMediaSession(it, isForegroundCondition(componentDelegate, it), ChannelName)
+							provider.fromMediaSession(
+								it,
+								isForegroundCondition(componentDelegate, it),
+								ChannelName
+							)
 						}
+						provider.updateItemBitmap(it.player)
 						dispatcher.suspendUpdateNotification(notificationId, getNotification())
 						dispatcher.dispatchNotificationValidator(
 							notificationId,
@@ -690,14 +678,18 @@ class MediaNotificationManager(
 				componentDelegate.sessionInteractor.mediaSession
 					?.let {
 						val getNotification = {
-							provider.fromMediaSession(it, isForegroundCondition(componentDelegate, it), ChannelName)
+							provider.fromMediaSession(
+								it,
+								isForegroundCondition(componentDelegate, it),
+								ChannelName
+							)
 						}
 						dispatcher.suspendUpdateNotification(notificationId, getNotification())
 						dispatcher.dispatchNotificationValidator(
 							notificationId,
 							getNotification = getNotification
 						)
-				}
+					}
 			}
 		}
 
@@ -710,7 +702,11 @@ class MediaNotificationManager(
 				componentDelegate.sessionInteractor.mediaSession
 					?.let {
 						val getNotification = {
-							provider.fromMediaSession(it, isForegroundCondition(componentDelegate, it), ChannelName)
+							provider.fromMediaSession(
+								it,
+								isForegroundCondition(componentDelegate, it),
+								ChannelName
+							)
 						}
 						dispatcher.dispatchNotificationValidator(
 							notificationId,
@@ -733,7 +729,10 @@ class MediaNotificationManager(
 							val notification = provider.fromMediaSession(it, shouldForeground, ChannelName)
 							notification
 						}
-						dispatcher.dispatchNotificationValidator(notificationId, getNotification = getNotification)
+						dispatcher.dispatchNotificationValidator(
+							notificationId,
+							getNotification = getNotification
+						)
 					}
 			}
 		}

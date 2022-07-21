@@ -6,7 +6,9 @@ import androidx.media3.common.Timeline
 import com.kylentt.musicplayer.common.extenstions.sync
 import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemFactory
 import com.kylentt.musicplayer.domain.musiclib.session.LibraryPlayer
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.FlowCollector
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
 
 data class PlaybackState(
 	val mediaItem: MediaItem,

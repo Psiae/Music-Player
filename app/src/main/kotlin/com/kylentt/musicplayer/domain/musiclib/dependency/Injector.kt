@@ -15,15 +15,18 @@ class Injector {
 	@Suppress("UNCHECKED_CAST")
 	fun <R> inject(cls: Class<R>, subclass: Boolean): R? {
 		localProviders.forEach { provider ->
-			if (provider.valueClass == cls ) return provider.value as R }
+			if (provider.valueClass == cls) return provider.value as R
+		}
 
 		if (subclass) {
 			localProviders.forEach { provider ->
-				if (cls.isAssignableFrom(provider.valueClass)) return provider.value as /* Super */ R }
+				if (cls.isAssignableFrom(provider.valueClass)) return provider.value as /* Super */ R
+			}
 		}
 
 		mParents.forEach { parent ->
-			parent.inject(cls, subclass)?.let { fromParent -> return fromParent } }
+			parent.inject(cls, subclass)?.let { fromParent -> return fromParent }
+		}
 
 		return null
 	}
@@ -32,7 +35,7 @@ class Injector {
 		mParents.add(injector)
 	}
 
-	inline fun <reified R: Any> inject(subclass: Boolean): Lazy<R> {
+	inline fun <reified R : Any> inject(subclass: Boolean): Lazy<R> {
 		return LazyValue(R::class.java, subclass)
 	}
 
@@ -43,7 +46,7 @@ class Injector {
 	inner class LateLazyValue<T>(
 		private val cls: Class<T>,
 		private val subclass: Boolean
-	): Lazy<T?> {
+	) : Lazy<T?> {
 
 		private var _value: T? = null
 
@@ -58,10 +61,10 @@ class Injector {
 		override fun isInitialized(): Boolean = _value != null
 	}
 
-	inner class LazyValue<T: Any>(
+	inner class LazyValue<T : Any>(
 		private val cls: Class<T>,
 		private val subclass: Boolean
-	): Lazy<T> {
+	) : Lazy<T> {
 
 		private var _value: T? = null
 

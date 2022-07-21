@@ -29,7 +29,7 @@ class DelegatedState : ReadOnlyProperty<Any?, DelegatedState.State> {
 
 	fun updateState(activity: MainActivity, state: State) {
 
-		when(state) {
+		when (state) {
 			State.Nothing -> throw IllegalArgumentException()
 			State.Initialized -> hashCode = activity.hashCode()
 			State.Destroyed -> if (!hashEqual(activity)) return

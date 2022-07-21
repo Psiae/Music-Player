@@ -2,8 +2,8 @@ package com.kylentt.musicplayer.core.app.dependency
 
 import android.content.Context
 import androidx.startup.Initializer
-import com.kylentt.musicplayer.core.app.delegates.AppDelegate
 import com.kylentt.musicplayer.BuildConfig
+import com.kylentt.musicplayer.core.app.delegates.AppDelegate
 import com.kylentt.musicplayer.domain.musiclib.dependency.MusicLibraryInitializer
 import timber.log.Timber
 
@@ -32,17 +32,18 @@ class AppInitializer : Initializer<Unit> {
 
 class DebugInitializer : Initializer<Unit> {
 
-  override fun create(context: Context) {
-    plantTimber()
-  }
+	override fun create(context: Context) {
+		plantTimber()
+	}
 
-  private fun plantTimber() {
-    Timber.plant(Timber.DebugTree())
-    Timber.i("Timber Planted")
-  }
+	private fun plantTimber() {
+		Timber.plant(Timber.DebugTree())
+		Timber.i("Timber Planted")
+	}
 
-  override fun dependencies(): MutableList<Class<out Initializer<*>>> = mutableListOf()
+	override fun dependencies(): MutableList<Class<out Initializer<*>>> = mutableListOf()
 }
+
 class ApplicationInitializer : Initializer<Unit> {
 
 	override fun create(context: Context) {

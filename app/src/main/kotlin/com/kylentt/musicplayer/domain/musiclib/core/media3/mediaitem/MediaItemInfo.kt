@@ -53,7 +53,7 @@ class MediaItemInfo private constructor(
 		build()
 	}
 
-	class Builder() {
+	class Builder {
 		var mediaId: String = ""
 
 		var mediaUri: Uri = Uri.EMPTY
@@ -117,7 +117,10 @@ class MediaItemInfo private constructor(
 				putExtraAsString(mediaUriIntentExtraName, uri)
 				putExtraAsString(artistIntentExtraName, item.mediaMetadata.artist.orEmptyString())
 				putExtraAsString(albumIntentExtraName, item.mediaMetadata.albumTitle.orEmptyString())
-				putExtraAsString(displayTitleIntentExtraName, item.mediaMetadata.displayTitle.orEmptyString())
+				putExtraAsString(
+					displayTitleIntentExtraName,
+					item.mediaMetadata.displayTitle.orEmptyString()
+				)
 				putExtraAsString(titleIntentExtraName, item.mediaMetadata.title.orEmptyString())
 
 				applyConverterSignature(this)
@@ -194,13 +197,15 @@ class MediaItemInfo private constructor(
 
 
 		companion object {
-			const val intentConverterSignatureKey = "MediaItemInfo.IntentConverter.intentConverterSignature"
+			const val intentConverterSignatureKey =
+				"MediaItemInfo.IntentConverter.intentConverterSignature"
 			const val intentConverterSignatureValue = "todoValue"
 			const val mediaIdIntentExtraName = "MediaItemInfo.IntentConverter.mediaIdIntentExtraName"
 			const val mediaUriIntentExtraName = "MediaItemInfo.IntentConverter.mediaUriIntentExtraName"
 			const val artistIntentExtraName = "MediaItemInfo.IntentConverter.artistIntentExtraName"
 			const val albumIntentExtraName = "MediaItemInfo.IntentConverter.albumIntentExtraName"
-			const val displayTitleIntentExtraName = "MediaItemInfo.IntentConverter.displayTitleIntentExtraName"
+			const val displayTitleIntentExtraName =
+				"MediaItemInfo.IntentConverter.displayTitleIntentExtraName"
 			const val titleIntentExtraName = "MediaItemInfo.IntentConverter.titleIntentExtraName"
 		}
 	}

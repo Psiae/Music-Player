@@ -7,13 +7,13 @@ import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSession.ControllerInfo
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
-import com.kylentt.musicplayer.common.generic.ChangedNotNull
-import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemPropertyHelper
-import com.kylentt.musicplayer.domain.musiclib.service.provider.SessionProvider
-import com.kylentt.musicplayer.domain.musiclib.service.MusicLibraryService
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
+import com.kylentt.musicplayer.common.generic.ChangedNotNull
 import com.kylentt.musicplayer.core.app.dependency.CoroutineModule
+import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemPropertyHelper
+import com.kylentt.musicplayer.domain.musiclib.service.MusicLibraryService
+import com.kylentt.musicplayer.domain.musiclib.service.provider.SessionProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -225,7 +225,7 @@ class SessionManager(
 		}
 	}
 
-	inner class Interactor: MusicLibraryService.ServiceComponent.Interactor() {
+	inner class Interactor : MusicLibraryService.ServiceComponent.Interactor() {
 
 		val sessionPlayer: Player?
 			get() = getSessionPlayer()
@@ -258,7 +258,11 @@ class SessionManager(
 
 				with(MediaItemPropertyHelper) {
 					val uri = it.mediaUri ?: return@forEach
-					val filled = com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemFactory.fillInLocalConfig(it, uri)
+					val filled =
+						com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemFactory.fillInLocalConfig(
+							it,
+							uri
+						)
 					toReturn.add(filled)
 				}
 			}

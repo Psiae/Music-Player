@@ -1,4 +1,4 @@
-package com.kylentt.musicplayer.core.app.coroutines
+package com.kylentt.musicplayer.common.coroutines
 
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow

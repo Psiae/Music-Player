@@ -9,14 +9,6 @@ import timber.log.Timber
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 
-interface InitializerDelegate<T> : ReadOnlyProperty<Any?, T> {
-	fun initializeValue(lazyValue: () -> T): T
-}
-
-interface LateInitializerDelegate<T> : InitializerDelegate<T> {
-	val isInitialized: Boolean
-}
-
 /**
  * Lateinit val basically, any attempt to update the value is ignored
  * @param lock the Lock
@@ -24,7 +16,7 @@ interface LateInitializerDelegate<T> : InitializerDelegate<T> {
  * @sample LateLazySample.testCase1
  */
 
-class LateLazy<T>(lock: Any? = null) : LateInitializerDelegate<T> {
+class LateLazy<T>(lock: Any? = null) : ReadOnlyProperty<Any?, T>{
 	private object EMPTY
 
 	private val localLock: Any = lock ?: this
@@ -35,10 +27,10 @@ class LateLazy<T>(lock: Any? = null) : LateInitializerDelegate<T> {
 	private val value: T
 		@Suppress("UNCHECKED_CAST") get() = localValue as T
 
-	override val isInitialized
+	val isInitialized
 		get() = localValue !== EMPTY
 
-	override fun initializeValue(lazyValue: () -> T): T {
+	fun initializeValue(lazyValue: () -> T): T {
 		if (!isInitialized) sync {
 			if (!isInitialized) localValue = lazyValue()
 		}

@@ -7,7 +7,6 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.os.Build.VERSION_CODES
 import android.os.Bundle
 import androidx.annotation.RequiresApi
@@ -20,9 +19,10 @@ import coil.Coil
 import com.google.common.collect.ImmutableList
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.helper.image.CoilHelper
+import com.kylentt.musicplayer.common.android.bitmap.bitmapfactory.BitmapSampler
 import com.kylentt.musicplayer.common.coroutines.AutoCancelJob
 import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
-import com.kylentt.musicplayer.common.extenstions.checkCancellation
+import com.kylentt.musicplayer.common.kotlin.coroutine.checkCancellation
 import com.kylentt.musicplayer.core.sdk.VersionHelper
 import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.isOngoing
 import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.isRepeatAll
@@ -38,7 +38,6 @@ import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemPr
 import com.kylentt.musicplayer.domain.musiclib.service.MusicLibraryService
 import com.kylentt.musicplayer.domain.musiclib.service.provider.MediaNotificationProvider
 import com.kylentt.musicplayer.ui.main.MainActivity
-import com.kylentt.musicplayer.common.bitmap.BitmapFactoryHelper
 import kotlinx.coroutines.*
 import timber.log.Timber
 import kotlin.coroutines.coroutineContext
@@ -317,7 +316,8 @@ class MediaNotificationManager(
 		}
 
 		suspend fun updateItemBitmap(
-			player: Player
+			player: Player,
+			currentCompleted: suspend () -> Unit
 		): Unit = withContext(this@MediaNotificationManager.appDispatchers.main) {
 
 			if (!cacheConfig) {
@@ -326,7 +326,10 @@ class MediaNotificationManager(
 			}
 
 			val currentItem = player.currentMediaItem.orEmpty()
+			val getCurrentItemBitmap = currentItemBitmap
+
 			currentItemBitmap = getItemBitmap(currentItem)
+			currentCompleted()
 
 			val nextItem =
 				if (player.hasNextMediaItem()) {
@@ -336,6 +339,9 @@ class MediaNotificationManager(
 				}
 
 			if (nextItem.mediaId != nextItemBitmap.first.mediaId) {
+				if (getCurrentItemBitmap.first.mediaId == nextItem.mediaId) {
+					nextItemBitmap = getCurrentItemBitmap
+				}
 				nextItemBitmap = getItemBitmap(nextItem, cache = true)
 			}
 
@@ -347,6 +353,9 @@ class MediaNotificationManager(
 				}
 
 			if (prevItem.mediaId != previousItemBitmap.first.mediaId) {
+				if (getCurrentItemBitmap.first.mediaId == prevItem.mediaId) {
+					previousItemBitmap = getCurrentItemBitmap
+				}
 				previousItemBitmap = getItemBitmap(prevItem, cache = true)
 			}
 		}
@@ -358,17 +367,13 @@ class MediaNotificationManager(
 			val bitmap = MediaItemFactory.getEmbeddedImage(context, item)
 				?.let { bytes ->
 					ensureActive()
-
-					val type =
-						if (cache) {
-							BitmapFactoryHelper.SubSampleCalculationType
-								.SizeTargetForceWithinAlloc(500, 500, 2000000)
-						} else {
-							BitmapFactoryHelper.SubSampleCalculationType
-								.SizeTarget(500, 500)
-						}
-
-					BitmapFactoryHelper.decodeByteArrayToSampledBitmap(bytes, 0, bytes.size, type)
+					if (cache) {
+						BitmapSampler.ByteArray.toSampledBitmap(bytes, 0, bytes.size,
+							500, 500, 2000000)
+					} else {
+						BitmapSampler.ByteArray.toSampledBitmap(bytes, 0, bytes.size,
+							500, 500)
+					}
 				}
 				?: return@withContext item to null
 
@@ -662,8 +667,9 @@ class MediaNotificationManager(
 								ChannelName
 							)
 						}
-						provider.updateItemBitmap(it.player)
-						dispatcher.suspendUpdateNotification(notificationId, getNotification())
+						provider.updateItemBitmap(it.player) {
+							dispatcher.suspendUpdateNotification(notificationId, getNotification())
+						}
 						dispatcher.dispatchNotificationValidator(
 							notificationId,
 							getNotification = getNotification

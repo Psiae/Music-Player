@@ -5,19 +5,19 @@ import androidx.annotation.MainThread
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
-import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
-import com.kylentt.musicplayer.core.app.coroutines.safeCollect
-import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemHelper
-import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemPropertyHelper.getDebugDescription
-import com.kylentt.musicplayer.domain.musiclib.MusicLibrary
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.helper.external.IntentWrapper
 import com.kylentt.mediaplayer.helper.external.MediaIntentHandler
-import com.kylentt.musicplayer.common.context.DeviceInfo
-import com.kylentt.musicplayer.common.extenstions.checkCancellation
+import com.kylentt.musicplayer.common.android.bitmap.bitmapfactory.BitmapSampler
+import com.kylentt.musicplayer.common.android.context.DeviceInfo
+import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
+import com.kylentt.musicplayer.common.kotlin.coroutine.checkCancellation
+import com.kylentt.musicplayer.common.coroutines.safeCollect
+import com.kylentt.musicplayer.domain.musiclib.MusicLibrary
+import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemHelper
+import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemPropertyHelper.getDebugDescription
 import com.kylentt.musicplayer.domain.musiclib.entity.PlaybackState
-import com.kylentt.musicplayer.common.bitmap.BitmapFactoryHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,10 +29,10 @@ import kotlin.time.measureTimedValue
 
 @HiltViewModel
 class MediaViewModel @Inject constructor(
-		private val deviceInfo: DeviceInfo,
-    private val dispatchers: CoroutineDispatchers,
-    private val itemHelper: MediaItemHelper,
-    private val intentHandler: MediaIntentHandler
+	private val deviceInfo: DeviceInfo,
+	private val dispatchers: CoroutineDispatchers,
+	private val itemHelper: MediaItemHelper,
+	private val intentHandler: MediaIntentHandler
 ) : ViewModel() {
 
   private val ioScope = viewModelScope + dispatchers.io
@@ -83,11 +83,7 @@ class MediaViewModel @Inject constructor(
 
       val measureDecode = measureTimedValue {
 				measureGet.value?.let { bytes: ByteArray ->
-
-					val type = BitmapFactoryHelper
-						.SubSampleCalculationType.MaxAlloc( /* 10MB */10000000)
-
-					BitmapFactoryHelper.decodeByteArrayToSampledBitmap(bytes, 0, bytes.size, type)
+					BitmapSampler.ByteArray.toSampledBitmap(bytes, 0, bytes.size, 10000000)
 				}
 			}
 

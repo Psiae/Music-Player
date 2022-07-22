@@ -14,7 +14,7 @@ import com.kylentt.mediaplayer.domain.viewmodels.MediaViewModel
 import com.kylentt.mediaplayer.helper.external.IntentWrapper
 import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.MainActivityContent
 import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
-import com.kylentt.musicplayer.common.intent.isActionMain
+import com.kylentt.musicplayer.common.android.intent.isActionMain
 import com.kylentt.musicplayer.core.app.delegates.device.StoragePermissionHelper
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject

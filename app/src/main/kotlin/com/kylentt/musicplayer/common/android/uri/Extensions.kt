@@ -1,4 +1,4 @@
-package com.kylentt.musicplayer.common.extenstions
+package com.kylentt.musicplayer.common.android.uri
 
 import android.net.Uri
 

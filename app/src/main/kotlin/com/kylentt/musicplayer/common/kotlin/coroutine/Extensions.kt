@@ -1,4 +1,4 @@
-package com.kylentt.musicplayer.common.extenstions
+package com.kylentt.musicplayer.common.kotlin.coroutine
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ensureActive

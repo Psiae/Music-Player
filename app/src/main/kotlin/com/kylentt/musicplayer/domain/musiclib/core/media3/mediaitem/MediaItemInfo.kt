@@ -6,10 +6,10 @@ import android.os.Bundle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaItem.RequestMetadata
 import androidx.media3.common.MediaMetadata
-import com.kylentt.musicplayer.common.extenstions.orEmpty
-import com.kylentt.musicplayer.common.extenstions.orEmptyString
-import com.kylentt.musicplayer.common.extenstions.orEmptyUri
-import com.kylentt.musicplayer.common.extenstions.putExtraAsString
+import com.kylentt.musicplayer.common.kotlin.charsequence.orEmptyString
+import com.kylentt.musicplayer.common.kotlin.charsequence.orEmptyUri
+import com.kylentt.musicplayer.common.android.intent.putExtraAsString
+import com.kylentt.musicplayer.common.android.uri.orEmpty
 
 class MediaItemInfo private constructor(
 

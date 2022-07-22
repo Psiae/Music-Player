@@ -17,8 +17,8 @@ import androidx.media3.session.MediaSession
 import com.kylentt.mediaplayer.domain.util.ContextBroadcastManager
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
-import com.kylentt.musicplayer.common.extenstions.forEachClear
-import com.kylentt.musicplayer.core.app.coroutines.safeCollect
+import com.kylentt.musicplayer.common.kotlin.mutablecollection.forEachClear
+import com.kylentt.musicplayer.common.coroutines.safeCollect
 import com.kylentt.musicplayer.core.app.dependency.CoroutineModule
 import com.kylentt.musicplayer.core.sdk.VersionHelper
 import com.kylentt.musicplayer.domain.musiclib.service.manager.MediaNotificationManager
@@ -425,7 +425,8 @@ class MusicLibraryService : MediaLibraryService() {
 			if (!checkMainThread() || started || released) return
 			serviceScope.launch {
 				stateRegistry.serviceEventSF
-					.safeCollect { event -> components.forEach { notifyComponent(it, event.resultState) } }
+					.safeCollect { event ->
+						components.forEach { notifyComponent(it, event.resultState) } }
 			}
 			started = true
 		}

@@ -1,4 +1,4 @@
-package com.kylentt.musicplayer.common.context
+package com.kylentt.musicplayer.common.android.context
 
 import android.content.Context
 import android.content.res.Configuration

@@ -1,4 +1,4 @@
-package com.kylentt.musicplayer.common.extenstions
+package com.kylentt.musicplayer.common.kotlin.mutablecollection
 
 fun <T> MutableCollection<T>.forEachClear(lock: Any? = null, action: (T) -> Unit) {
 	val doAction = { forEach(action) }

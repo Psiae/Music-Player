@@ -1,6 +1,6 @@
 package com.kylentt.musicplayer.domain.musiclib.core.exoplayer
 
-import com.kylentt.musicplayer.common.extenstions.clamp
+import com.kylentt.musicplayer.common.kotlin.comparable.clamp
 
 object PlayerHelper {
 	private const val minVol = PlayerConstants.MIN_VOLUME

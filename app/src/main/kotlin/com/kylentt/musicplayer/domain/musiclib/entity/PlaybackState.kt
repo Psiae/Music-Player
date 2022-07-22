@@ -3,7 +3,7 @@ package com.kylentt.musicplayer.domain.musiclib.entity
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
-import com.kylentt.musicplayer.common.extenstions.sync
+import com.kylentt.musicplayer.common.generic.sync
 import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemFactory
 import com.kylentt.musicplayer.domain.musiclib.session.LibraryPlayer
 import kotlinx.coroutines.flow.FlowCollector

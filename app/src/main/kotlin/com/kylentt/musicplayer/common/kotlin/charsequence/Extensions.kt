@@ -1,4 +1,4 @@
-package com.kylentt.musicplayer.common.extenstions
+package com.kylentt.musicplayer.common.kotlin.charsequence
 
 import android.net.Uri
 import androidx.core.net.toUri

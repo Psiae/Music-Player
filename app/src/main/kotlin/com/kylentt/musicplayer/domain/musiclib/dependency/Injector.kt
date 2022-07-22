@@ -1,6 +1,6 @@
 package com.kylentt.musicplayer.domain.musiclib.dependency
 
-import com.kylentt.musicplayer.common.extenstions.sync
+import com.kylentt.musicplayer.common.generic.sync
 
 class Injector {
 	private val mParents: MutableSet<Injector> = mutableSetOf()

@@ -8,7 +8,7 @@ import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaItem.RequestMetadata
 import androidx.media3.common.MediaMetadata
-import com.kylentt.musicplayer.common.extenstions.setPrefix
+import com.kylentt.musicplayer.common.kotlin.string.setPrefix
 import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemPropertyHelper.mediaUri
 import timber.log.Timber
 import wseemann.media.FFmpegMediaMetadataRetriever

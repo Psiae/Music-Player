@@ -3,7 +3,7 @@ package com.kylentt.musicplayer.ui.receiver
 import android.app.Activity
 import android.os.Bundle
 import com.kylentt.musicplayer.R
-import com.kylentt.musicplayer.common.intent.isActionView
+import com.kylentt.musicplayer.common.android.intent.isActionView
 import com.kylentt.musicplayer.ui.main.MainActivity
 
 class ReceiverActivity : Activity() {

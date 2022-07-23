@@ -16,13 +16,14 @@ import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaNotification
 import androidx.media3.session.MediaSession
 import coil.Coil
+import coil.size.Scale
 import com.google.common.collect.ImmutableList
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.helper.image.CoilHelper
-import com.kylentt.musicplayer.common.android.bitmap.bitmapfactory.BitmapSampler
+import com.kylentt.musicplayer.common.android.environtment.DeviceInfo
+import com.kylentt.musicplayer.common.android.memory.maybeWaitForMemory
 import com.kylentt.musicplayer.common.coroutines.AutoCancelJob
 import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
-import com.kylentt.musicplayer.common.kotlin.coroutine.checkCancellation
 import com.kylentt.musicplayer.core.sdk.VersionHelper
 import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.isOngoing
 import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.isRepeatAll
@@ -52,6 +53,7 @@ class MediaNotificationManager(
 	private lateinit var mainScope: CoroutineScope
 
 	private lateinit var coilHelper: CoilHelper
+	private lateinit var deviceInfo: DeviceInfo
 	private lateinit var notificationManagerService: NotificationManager
 	private lateinit var activityManagerService: ActivityManager
 
@@ -142,6 +144,7 @@ class MediaNotificationManager(
 		activityManagerService = context.getSystemService(ActivityManager::class.java)!!
 		coilHelper =
 			CoilHelper(context.applicationContext, Coil.imageLoader(context.applicationContext))
+		deviceInfo = DeviceInfo(context)
 		initializeProvider(context)
 		initializeDispatcher(context)
 		isComponentInitialized = true
@@ -195,7 +198,7 @@ class MediaNotificationManager(
 			id: Int,
 			delay: Long = 500,
 			repeat: Int = 2,
-			getNotification: () -> Notification
+			onUpdate: suspend () -> Notification
 		) {
 			if (isReleased) return
 			coroutineContext.ensureActive()
@@ -203,7 +206,7 @@ class MediaNotificationManager(
 				repeat(repeat) {
 					delay(delay)
 					coroutineContext.ensureActive()
-					notificationManagerService.notify(id, getNotification())
+					notificationManagerService.notify(id, onUpdate())
 				}
 			}
 		}
@@ -221,10 +224,11 @@ class MediaNotificationManager(
 		}
 	}
 
+
 	private inner class Provider(private val context: Context) : MediaNotification.Provider {
 
 
-		//config
+		// config later
 		private val cacheConfig
 			get() = true
 
@@ -315,18 +319,33 @@ class MediaNotificationManager(
 			)
 		}
 
+		suspend fun ensureCurrentItemBitmap(player: Player) {
+			if (currentItemBitmap.first.mediaId != player.currentMediaItem?.mediaId) {
+				updateItemBitmap(player)
+			}
+		}
+
 		suspend fun updateItemBitmap(
 			player: Player,
-			currentCompleted: suspend () -> Unit
+			currentCompleted: suspend () -> Unit = {}
 		): Unit = withContext(this@MediaNotificationManager.appDispatchers.main) {
-
-			if (!cacheConfig) {
-				currentItemBitmap = getItemBitmap(player.currentMediaItem.orEmpty())
-				return@withContext
+			if (currentItemBitmap.first.mediaId == player.currentMediaItem?.mediaId) {
+				Timber.d("updateItemBitmap was ignored")
 			}
 
 			val currentItem = player.currentMediaItem.orEmpty()
 			val getCurrentItemBitmap = currentItemBitmap
+			currentItemBitmap = currentItem to null
+
+			maybeWaitForMemory(deviceInfo, 2000, 500) {
+				Timber.w("Notification Media Bitmap will wait due to low memory")
+			}
+
+			if (!cacheConfig) {
+				currentItemBitmap = getItemBitmap(player.currentMediaItem.orEmpty())
+				currentCompleted()
+				return@withContext
+			}
 
 			currentItemBitmap = getItemBitmap(currentItem)
 			currentCompleted()
@@ -339,10 +358,11 @@ class MediaNotificationManager(
 				}
 
 			if (nextItem.mediaId != nextItemBitmap.first.mediaId) {
-				if (getCurrentItemBitmap.first.mediaId == nextItem.mediaId) {
-					nextItemBitmap = getCurrentItemBitmap
+				val currentIsNext = getCurrentItemBitmap.first.mediaId == nextItem.mediaId
+				if (currentIsNext) nextItemBitmap = getCurrentItemBitmap
+				nextItemBitmap = getItemBitmap(nextItem, cache = true).let {
+					if (it.second == null && currentIsNext) getCurrentItemBitmap else it
 				}
-				nextItemBitmap = getItemBitmap(nextItem, cache = true)
 			}
 
 			val prevItem =
@@ -353,10 +373,11 @@ class MediaNotificationManager(
 				}
 
 			if (prevItem.mediaId != previousItemBitmap.first.mediaId) {
-				if (getCurrentItemBitmap.first.mediaId == prevItem.mediaId) {
-					previousItemBitmap = getCurrentItemBitmap
+				val currentIsPrevious = getCurrentItemBitmap.first.mediaId == prevItem.mediaId
+				if (currentIsPrevious) previousItemBitmap = getCurrentItemBitmap
+				previousItemBitmap = getItemBitmap(prevItem, cache = true).let {
+					if (it.second == null && currentIsPrevious) getCurrentItemBitmap else it
 				}
-				previousItemBitmap = getItemBitmap(prevItem, cache = true)
 			}
 		}
 
@@ -364,33 +385,49 @@ class MediaNotificationManager(
 			item: MediaItem,
 			cache: Boolean = false
 		): Pair<MediaItem, Bitmap?> = withContext(this@MediaNotificationManager.appDispatchers.io) {
-			val bitmap = MediaItemFactory.getEmbeddedImage(context, item)
-				?.let { bytes ->
-					ensureActive()
-					if (cache) {
-						BitmapSampler.ByteArray.toSampledBitmap(bytes, 0, bytes.size,
-							500, 500, 2000000)
-					} else {
-						BitmapSampler.ByteArray.toSampledBitmap(bytes, 0, bytes.size,
-							500, 500)
-					}
+			if (cache) {
+				if ((item.mediaMetadata.extras?.getFloat("embedImageSizeMB") ?: 0f) > 1.5) {
+					// Don't cache
+					return@withContext item to null
 				}
-				?: return@withContext item to null
+			}
 
-			Timber.d(
-				"getItemBitmap, decoded ByteArray to bitmap with " +
-					"\nsize: ${bitmap.width}:${bitmap.height}" +
-					"\nalloc: ${bitmap.allocationByteCount}"
-			)
+			try {
+				val bytes = MediaItemFactory.getEmbeddedImage(context, item)
+					?.let {
+						item.mediaMetadata.extras?.putBoolean("hasEmbed", true)
+						it
+					}
+					?: run {
+						item.mediaMetadata.extras?.putBoolean("hasEmbed", false)
+						return@withContext item to null
+					}
 
-			checkCancellation { bitmap.recycle() }
+				item.mediaMetadata.extras?.putFloat("embedImageSizeMB", bytes.size.toFloat())
 
-			// maybe create Fitter Class for some APIs version or Device that require some modification
-			// to have proper display
-			val squaredBitmap = coilHelper.squareBitmap(bitmap, 500, fastPath = true)
-			Timber.d("squaredBitmap size: ${squaredBitmap.height}:${squaredBitmap.width}")
+				val (largeIconWidth: Int, largeIconHeight: Int) = 512 to 256 // chrome artwork use these size
 
-			item to squaredBitmap
+				val largeIconSize = maxOf(largeIconWidth, largeIconHeight)
+
+				val reqSize = largeIconSize.let { if (cache) 128 else it }
+
+				// maybe create Fitter Class for some APIs version or Device that require some modification
+				// to have proper display
+				val squaredBitmap = coilHelper.loadSquaredBitmap(bytes, reqSize, Scale.FILL)
+
+				Timber.d("squaredBitmap " +
+					"requestedSize: $reqSize " +
+					"to size: ${squaredBitmap?.width}:${squaredBitmap?.height}")
+
+				item to squaredBitmap
+			} catch (oom: OutOfMemoryError) {
+				val memInfo = deviceInfo.memoryInfo
+
+				Timber.d("OOM updating ItemBitmap at avail: ${memInfo.availMem}" +
+					"\ntotal: ${memInfo.totalMem}, threshold: ${memInfo.threshold}")
+
+				MediaItem.EMPTY to null
+			}
 		}
 
 		private fun getItemBitmap(player: Player): Bitmap? {
@@ -417,8 +454,6 @@ class MediaNotificationManager(
 					session,
 					isForegroundCondition(componentDelegate, session), ChannelName
 				)
-
-			dispatcher.cancelValidatorJob()
 
 			return MediaNotification(notificationId, notification)
 		}
@@ -660,19 +695,16 @@ class MediaNotificationManager(
 			mediaItemTransitionJob = mainScope.launch {
 				componentDelegate.sessionInteractor.mediaSession
 					?.let {
-						val getNotification = {
-							provider.fromMediaSession(
-								it,
-								isForegroundCondition(componentDelegate, it),
-								ChannelName
-							)
+						val getNotification = suspend {
+							provider.ensureCurrentItemBitmap(it.player)
+							provider.fromMediaSession(it, isForegroundCondition(componentDelegate, it), ChannelName)
 						}
 						provider.updateItemBitmap(it.player) {
 							dispatcher.suspendUpdateNotification(notificationId, getNotification())
 						}
 						dispatcher.dispatchNotificationValidator(
 							notificationId,
-							getNotification = getNotification
+							onUpdate = getNotification
 						)
 					}
 			}
@@ -686,7 +718,8 @@ class MediaNotificationManager(
 
 				componentDelegate.sessionInteractor.mediaSession
 					?.let {
-						val getNotification = {
+						val getNotification = suspend {
+							provider.ensureCurrentItemBitmap(it.player)
 							provider.fromMediaSession(
 								it,
 								isForegroundCondition(componentDelegate, it),
@@ -696,7 +729,7 @@ class MediaNotificationManager(
 						dispatcher.suspendUpdateNotification(notificationId, getNotification())
 						dispatcher.dispatchNotificationValidator(
 							notificationId,
-							getNotification = getNotification
+							onUpdate = getNotification
 						)
 					}
 			}
@@ -710,7 +743,8 @@ class MediaNotificationManager(
 
 				componentDelegate.sessionInteractor.mediaSession
 					?.let {
-						val getNotification = {
+						val getNotification = suspend {
+							provider.ensureCurrentItemBitmap(it.player)
 							provider.fromMediaSession(
 								it,
 								isForegroundCondition(componentDelegate, it),
@@ -719,7 +753,7 @@ class MediaNotificationManager(
 						}
 						dispatcher.dispatchNotificationValidator(
 							notificationId,
-							getNotification = getNotification
+							onUpdate = getNotification
 						)
 					}
 			}
@@ -733,14 +767,13 @@ class MediaNotificationManager(
 
 				componentDelegate.sessionInteractor.mediaSession
 					?.let {
-						val getNotification = {
-							val shouldForeground = isForegroundCondition(componentDelegate, it)
-							val notification = provider.fromMediaSession(it, shouldForeground, ChannelName)
-							notification
+						val getNotification = suspend {
+							provider.ensureCurrentItemBitmap(it.player)
+							provider.fromMediaSession(it, isForegroundCondition(componentDelegate, it), ChannelName)
 						}
 						dispatcher.dispatchNotificationValidator(
 							notificationId,
-							getNotification = getNotification
+							onUpdate = getNotification
 						)
 					}
 			}

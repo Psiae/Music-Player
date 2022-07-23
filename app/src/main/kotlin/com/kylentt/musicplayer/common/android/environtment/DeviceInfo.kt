@@ -1,12 +1,24 @@
-package com.kylentt.musicplayer.common.android.context
+package com.kylentt.musicplayer.common.android.environtment
 
+import android.app.ActivityManager
+import android.app.ActivityManager.MemoryInfo
 import android.content.Context
 import android.content.res.Configuration
+import androidx.annotation.DimenRes
 import dagger.hilt.android.qualifiers.ApplicationContext
+import timber.log.Timber
 import javax.inject.Inject
 
 class DeviceInfo @Inject constructor(@ApplicationContext context: Context) {
 	private val localContext = context.applicationContext
+	private val activityManager = localContext.getSystemService(ActivityManager::class.java)
+
+	val memoryInfo: MemoryInfo
+		get() {
+			val memInfo = MemoryInfo()
+			activityManager.getMemoryInfo(memInfo)
+			return memInfo
+		}
 
 	val screenWidthPixel: Int
 		get() = localContext.screenWidthPixel
@@ -20,10 +32,20 @@ class DeviceInfo @Inject constructor(@ApplicationContext context: Context) {
 			else -> true
 		}
 
+	fun dimensionPixelSize(@DimenRes id: Int): Int {
+		return localContext.resources.getDimensionPixelSize(id)
+	}
+
 	val isOrientationLandscape
 		get() = localContext.screenOrientation == Configuration.ORIENTATION_LANDSCAPE
 
+	private inner class NotificationInfo {
+
+	}
+
 	companion object {
+
+
 		val Context.screenWidthPixel: Int
 			get() = resources.displayMetrics.widthPixels
 

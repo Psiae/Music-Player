@@ -285,8 +285,6 @@ private inline fun StorageDenied(state: PermissionState) {
 
 	check(!permission)
 
-
-
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult(),
         onResult = {}

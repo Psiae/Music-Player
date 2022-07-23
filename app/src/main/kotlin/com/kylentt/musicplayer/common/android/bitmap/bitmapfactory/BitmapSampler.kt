@@ -3,8 +3,22 @@ package com.kylentt.musicplayer.common.android.bitmap.bitmapfactory
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.BitmapFactory.Options
+import androidx.core.graphics.scale
+import com.kylentt.musicplayer.common.android.bitmap.config.BitmapConfigInfo
 
 object BitmapSampler {
+
+	fun fillOptions(
+		source: kotlin.ByteArray,
+		options: BitmapFactory.Options = BitmapFactory.Options()
+	): BitmapFactory.Options {
+		return options
+			.apply {
+				inJustDecodeBounds = true
+				BitmapFactory.decodeByteArray(source, 0, source.size, this)
+				inJustDecodeBounds = false
+			}
+	}
 
 	private sealed class CalculationTarget {
 
@@ -18,7 +32,7 @@ object BitmapSampler {
 		data class MaxAlloc(val maxByte: Int) : CalculationTarget() {
 			override fun shouldSubSample(options: Options, inSampleSize: Int): Boolean {
 				val pixels = (options.outHeight * options.outWidth) / (inSampleSize * inSampleSize)
-				val currentAlloc = pixels * OptionsHelper.getBitmapPixelSize(options)
+				val currentAlloc = pixels * BitmapConfigInfo.getPixelSize(options.inPreferredConfig)
 				return currentAlloc >= maxByte
 			}
 		}
@@ -32,7 +46,7 @@ object BitmapSampler {
 			val maxAlloc = MaxAlloc(maxByte)
 			override fun shouldSubSample(options: Options, inSampleSize: Int): Boolean {
 				return sizeTarget.shouldSubSample(options, inSampleSize)
-					&& maxAlloc.shouldSubSample(options, inSampleSize)
+					|| maxAlloc.shouldSubSample(options, inSampleSize)
 			}
 		}
 
@@ -84,12 +98,8 @@ object BitmapSampler {
 	): Bitmap? {
 		return BitmapFactory.Options()
 			.run {
-				inJustDecodeBounds = true
-				BitmapFactory.decodeByteArray(source, offset, buffer, this)
-
+				fillOptions(source, this)
 				inSampleSize = calculateInSampleSize(this, target)
-
-				inJustDecodeBounds = false
 				BitmapFactory.decodeByteArray(source, offset, buffer, this)
 			}
 	}
@@ -107,3 +117,4 @@ object BitmapSampler {
 		return inSampleSize
 	}
 }
+

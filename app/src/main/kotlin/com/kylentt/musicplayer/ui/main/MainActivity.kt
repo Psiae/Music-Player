@@ -8,11 +8,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.core.view.WindowCompat
 import com.kylentt.mediaplayer.domain.viewmodels.MainViewModel
 import com.kylentt.mediaplayer.domain.viewmodels.MediaViewModel
 import com.kylentt.mediaplayer.helper.external.IntentWrapper
 import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.MainActivityContent
+import com.kylentt.musicplayer.common.android.activity.disableWindowDecorFitSystemInsets
 import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
 import com.kylentt.musicplayer.common.android.intent.isActionMain
 import com.kylentt.musicplayer.core.app.delegates.device.StoragePermissionHelper
@@ -92,12 +92,7 @@ class MainActivity : ComponentActivity() {
 	private fun checkLauncherIntent() = check(intent.isActionMain())
 
 	private fun setupWindow() {
-		requireNotNull(window) {
-			"window was null, " +
-				"call this function when or after Activity.onCreate(Bundle?) is called"
-		}
-
-		WindowCompat.setDecorFitsSystemWindows(window, false)
+		disableWindowDecorFitSystemInsets()
 	}
 
 	private fun setupSplashScreen() {

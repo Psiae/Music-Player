@@ -5,6 +5,7 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaSession
 import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.isOngoing
 import com.kylentt.musicplayer.domain.musiclib.service.MusicLibraryService
+import com.kylentt.musicplayer.ui.main.MainActivity
 import timber.log.Timber
 
 class StateManager(
@@ -13,7 +14,11 @@ class StateManager(
 	private val playerListenerImpl = PlayerListenerImpl()
 
 	private val foregroundServiceCondition: (MediaSession) -> Boolean = {
-		it.player.playbackState.isOngoing()
+		val extra = when {
+			!MainActivity.StateDelegate.getValue().isVisible() -> it.player.playWhenReady
+			else -> true
+		}
+			it.player.playbackState.isOngoing() && extra
 	}
 
 

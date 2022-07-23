@@ -17,6 +17,7 @@ import androidx.media3.session.MediaSession
 import com.kylentt.mediaplayer.domain.util.ContextBroadcastManager
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
+import com.kylentt.musicplayer.BuildConfig
 import com.kylentt.musicplayer.common.kotlin.mutablecollection.forEachClear
 import com.kylentt.musicplayer.common.coroutines.safeCollect
 import com.kylentt.musicplayer.core.app.dependency.CoroutineModule
@@ -136,7 +137,10 @@ class MusicLibraryService : MediaLibraryService() {
 				stateRegistry.onEvent(ServiceEvent.ResumeForeground, true)
 			}
 		} catch (e: Exception) {
-			if (VersionHelper.hasSnowCone() && e !is ForegroundServiceStartNotAllowedException) throw e
+			Timber.e(e)
+			if (BuildConfig.DEBUG
+				|| (VersionHelper.hasSnowCone() && e !is ForegroundServiceStartNotAllowedException)
+			) throw e
 		}
 	}
 

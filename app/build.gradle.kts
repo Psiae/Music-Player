@@ -178,7 +178,7 @@ dependencies {
 
     /* coil-kt */
     dependencies  {
-        val v = "1.4.0"
+        val v = "2.1.0"
         implementation("io.coil-kt:coil:$v")
         implementation("io.coil-kt:coil-compose:$v")
     }
@@ -305,10 +305,7 @@ dependencies {
 
     /* wasabeef.transformers*/
     dependencies {
-        // Coil
-        /* 1.0.6 Missing transition property on [coil.request.*RequestOptions],
-        called from [coil.compose.ImagePainterKt.updatePainter()] */
-        val vCoil = "1.0.5"
+        val vCoil = "1.0.6"
         implementation("jp.wasabeef.transformers:coil:$vCoil")
         implementation("jp.wasabeef.transformers:coil-gpu:$vCoil")
     }

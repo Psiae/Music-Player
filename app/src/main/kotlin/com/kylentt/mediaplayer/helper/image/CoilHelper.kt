@@ -3,6 +3,8 @@ package com.kylentt.mediaplayer.helper.image
 import android.app.Application
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Bitmap.Config
+import android.graphics.Bitmap.createScaledBitmap
 import android.graphics.Canvas
 import android.graphics.drawable.Drawable
 import androidx.annotation.Px
@@ -25,7 +27,7 @@ import kotlinx.coroutines.ensureActive
 import javax.inject.Singleton
 import kotlin.coroutines.coroutineContext
 
-object CoilBitmapTransformer {
+private object CoilBitmapTransformer {
 
 	enum class CenterCropTransform {
 		TOP,
@@ -33,15 +35,16 @@ object CoilBitmapTransformer {
 		BOTTOM
 	}
 
-	suspend fun squareBitmap(
-		bitmap: Bitmap,
+	suspend fun createSquaredBitmap(
+		source: Any,
 		@Px size: Int,
+		scale: Scale?,
 		context: Context,
 		imageLoader: ImageLoader,
 		type: CenterCropTransform,
 		cachePolicy: CachePolicy,
-		fastPath: Boolean,
-	): Bitmap {
+		config: Bitmap.Config,
+	): Bitmap? {
 		coroutineContext.ensureActive()
 
 		val centerCropType = when (type) {
@@ -51,38 +54,36 @@ object CoilBitmapTransformer {
 		}
 
 		val req = ImageRequest.Builder(context)
-			.data(bitmap)
+			.bitmapConfig(config)
+			.data(source)
 			.size(size)
 			.transformations(centerCropType)
 			.diskCachePolicy(cachePolicy)
-			.scale(Scale.FIT)
-			.build()
+
+		if (scale != null) req.scale(scale)
 
 		coroutineContext.ensureActive()
-		val drawable = imageLoader.execute(req).drawable!!
+		val queued = imageLoader.enqueue(req.build())
 
-		coroutineContext.ensureActive()
-		val result =
-			if (fastPath) {
-				drawable.toBitmap(size, size)
-			} else {
-				drawable.toNewBitmap(size, size)
-			}
+		coroutineContext.checkCancellation {
+			queued.dispose()
+		}
 
-		return result
+		return queued.job.await().drawable?.toBitmap()
 	}
 
-	private fun Drawable.toNewBitmap(
+	private fun Drawable.toNewScaledBitmap(
 		@Px height: Int = intrinsicHeight,
 		@Px width: Int = intrinsicWidth,
 		config: Bitmap.Config? = null,
 	): Bitmap {
-		val bitmap = Bitmap.createBitmap(width, height, config ?: Bitmap.Config.ARGB_8888)
+		val bitmap = Bitmap
+			.createBitmap(intrinsicWidth, intrinsicHeight, config ?: Bitmap.Config.ARGB_8888)
 		val (oldLeft, oldTop, oldRight, oldBottom) = bounds
-		setBounds(0, 0, width, height)
+		setBounds(0, 0, intrinsicWidth, intrinsicHeight)
 		draw(Canvas(bitmap))
 		setBounds(oldLeft, oldTop, oldRight, oldBottom)
-		return bitmap
+		return createScaledBitmap(bitmap, width, height, true)
 	}
 }
 
@@ -102,33 +103,61 @@ class CoilHelper(
     check(context is Application)
   }
 
+
+	suspend fun loadBitmap(
+		source: Any,
+		@Px width: Int? = null,
+		@Px height: Int? = null,
+		scale: Scale? = null,
+		context: Context = this.context,
+		loader: ImageLoader = this.imageLoader,
+		config: Config = Config.ARGB_8888
+	): Bitmap? {
+		val req = ImageRequest.Builder(context)
+			.bitmapConfig(config)
+			.data(source)
+
+
+		if (width != null && height != null) {
+			req.size(width, height)
+			req.precision(Precision.EXACT)
+		}
+		if (scale != null) req.scale(scale)
+
+		coroutineContext.ensureActive()
+		val queued = loader.enqueue(req.build())
+
+		coroutineContext.checkCancellation {
+			queued.dispose()
+		}
+
+		return queued.job.await().drawable?.toBitmap()
+	}
+
   enum class CenterCropTransform {
     TOP,
     CENTER,
     BOTTOM
   }
 
-  suspend fun squareBitmap(
-		bitmap: Bitmap,
+  suspend fun loadSquaredBitmap(
+		source: Any,
 		@Px size: Int,
+		scale: Scale? = null,
 		context: Context = this.context,
 		loader: ImageLoader = this.imageLoader,
 		cache: CachePolicy = CachePolicy.DISABLED,
-		fastPath: Boolean = false,
-		centerType: CenterCropTransform = CENTER
-  ): Bitmap {
+		config: Config = Config.ARGB_8888,
+		centerType: CenterCropTransform = CENTER,
+  ): Bitmap? {
+
 		val type = when (centerType) {
 			TOP -> CoilBitmapTransformer.CenterCropTransform.TOP
 			CENTER -> CoilBitmapTransformer.CenterCropTransform.CENTER
 			BOTTOM -> CoilBitmapTransformer.CenterCropTransform.BOTTOM
 		}
 
-		val get = CoilBitmapTransformer
-			.squareBitmap(bitmap, size, context, loader, type, cache, fastPath)
-
-		coroutineContext.checkCancellation {
-			if (!fastPath) get.recycle()
-		}
-		return get
+		return CoilBitmapTransformer
+			.createSquaredBitmap(source, size, scale, context, loader, type, cache,  config)
 	}
 }

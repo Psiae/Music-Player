@@ -9,8 +9,10 @@ import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.helper.external.IntentWrapper
 import com.kylentt.mediaplayer.helper.external.MediaIntentHandler
+import com.kylentt.mediaplayer.helper.image.CoilHelper
 import com.kylentt.musicplayer.common.android.bitmap.bitmapfactory.BitmapSampler
-import com.kylentt.musicplayer.common.android.context.DeviceInfo
+import com.kylentt.musicplayer.common.android.environtment.DeviceInfo
+import com.kylentt.musicplayer.common.android.memory.maybeWaitForMemory
 import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
 import com.kylentt.musicplayer.common.kotlin.coroutine.checkCancellation
 import com.kylentt.musicplayer.common.coroutines.safeCollect
@@ -29,6 +31,7 @@ import kotlin.time.measureTimedValue
 
 @HiltViewModel
 class MediaViewModel @Inject constructor(
+	private val coilHelper: CoilHelper,
 	private val deviceInfo: DeviceInfo,
 	private val dispatchers: CoroutineDispatchers,
 	private val itemHelper: MediaItemHelper,
@@ -42,6 +45,7 @@ class MediaViewModel @Inject constructor(
   val mediaPlaybackState = MutableStateFlow(PlaybackState.EMPTY)
 
   private var updateItemBitmapJob = Job().job
+	private var updateItemBitmapJobId: String? = null
 
   @MainThread
   fun connectService() = Unit
@@ -60,7 +64,7 @@ class MediaViewModel @Inject constructor(
       )
 			val get = mediaPlaybackState.value
       mediaPlaybackState.value = playbackState
-      if (playbackState.mediaItem !== get.mediaItem) {
+      if (mediaPlaybackState.value.mediaItem !== get.mediaItem) {
         dispatchUpdateItemBitmap(playbackState.mediaItem)
       }
     }
@@ -68,45 +72,68 @@ class MediaViewModel @Inject constructor(
 
   @OptIn(ExperimentalTime::class)
 	@MainThread
-  private suspend fun dispatchUpdateItemBitmap(item: MediaItem) {
-    updateItemBitmapJob.cancel()
+  suspend fun dispatchUpdateItemBitmap(item: MediaItem) {
+		if (updateItemBitmapJobId == item.mediaId) return
+		updateItemBitmapJobId = item.mediaId
+
+		updateItemBitmapJob.cancel()
     updateItemBitmapJob = computationScope.launch {
-      Timber.d("UpdateItemBitmap Dispatched For ${item.getDebugDescription()}")
+			ensureActive()
+			Timber.d("UpdateItemBitmap Dispatched For ${item.getDebugDescription()}")
 
-			val measureGet = measureTimedValue {
-				itemHelper.getEmbeddedPicture(item)
+			maybeWaitForMemory(deviceInfo, 2000, 500) {
+				Timber.w("dispatchUpdateItemBitmap will wait due to low memory")
 			}
 
-			Timber.d("getEmbeddedPicture took ${measureGet.duration.inWholeMilliseconds}ms")
-
-			ensureActive()
-
-      val measureDecode = measureTimedValue {
-				measureGet.value?.let { bytes: ByteArray ->
-					BitmapSampler.ByteArray.toSampledBitmap(bytes, 0, bytes.size, 10000000)
+			try {
+				val measureGet = measureTimedValue {
+					itemHelper.getEmbeddedPicture(item)
 				}
+
+				Timber.d("getEmbeddedPicture took ${measureGet.duration.inWholeMilliseconds}ms")
+
+				ensureActive()
+
+				val measureDecode = measureTimedValue {
+					measureGet.value?.let { bytes: ByteArray ->
+						val (expectWidth: Int, expectHeight: Int) =
+							BitmapSampler.fillOptions(bytes).run { outWidth to outHeight }
+						val (deviceWidth: Int, deviceHeight: Int) =
+							deviceInfo.screenWidthPixel to deviceInfo.screenHeightPixel
+						var x = 1
+						while ((expectWidth * expectHeight) / (x * x) > deviceWidth * deviceHeight ) { x *= 2 }
+						coilHelper.loadBitmap(bytes, expectWidth / x, expectHeight / x)
+					}
+				}
+
+				Timber.d("decodeByteArray with size: ${measureGet.value?.size} " +
+					"took ${measureDecode.duration.inWholeMilliseconds}ms" +
+					"\nsize: ${measureDecode.value?.width}:${measureDecode.value?.height}" +
+					"\nalloc: ${measureDecode.value?.allocationByteCount ?: "0 / null"}")
+
+				val bitmap = measureDecode.value
+
+				checkCancellation {
+					bitmap?.recycle()
+				}
+
+				withContext(dispatchers.main) {
+					if (!isActive) bitmap?.recycle()
+					ensureValidCurrentItem(item) { "dispatchUpdateItemBitmap inconsistent" }
+					mediaItemBitmap.value = MediaItemBitmap(item, bitmap)
+					Timber.d("UpdateItemBitmap Success For ${item.getDebugDescription()}")
+
+					updateItemBitmapJobId = null
+				}
+			} catch (_: OutOfMemoryError) {
+				updateItemBitmapJobId = null
+
+				val memInfo = deviceInfo.memoryInfo
+				Timber.d("OOM updating MediaVM Bitmap at avail: ${memInfo.availMem}" +
+					"\ntotal: ${memInfo.totalMem}, threshold: ${memInfo.threshold}")
 			}
-
-			Timber.d("decodeByteArray with size: ${measureGet.value?.size} " +
-				"took ${measureDecode.duration.inWholeMilliseconds}ms" +
-				"\nsize: ${measureDecode.value?.width}:${measureDecode.value?.height}" +
-				"\nalloc: ${measureDecode.value?.allocationByteCount ?: "0 / null"}")
-
-			val bitmap = measureDecode.value
-			ensureActive()
-
-			checkCancellation {
-				bitmap?.recycle()
-			}
-
-      withContext(dispatchers.main) {
-        if (!isActive) bitmap?.recycle()
-        ensureValidCurrentItem(item) { "dispatchUpdateItemBitmap inconsistent" }
-        mediaItemBitmap.value = MediaItemBitmap(item, bitmap)
-        Timber.d("UpdateItemBitmap Success For ${item.getDebugDescription()}")
-      }
-    }
-  }
+		}
+	}
 
   @MainThread
   private suspend inline fun ensureValidCurrentItem(item: MediaItem, msg: () -> Any) {

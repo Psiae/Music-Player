@@ -62,9 +62,8 @@ class MediaViewModel @Inject constructor(
       Timber.d("MediaViewModel collectPlaybackState collected for: " +
         "\n${playbackState.mediaItem.getDebugDescription()}"
       )
-			val get = mediaPlaybackState.value
       mediaPlaybackState.value = playbackState
-      if (mediaItemBitmap.value.item !== get.mediaItem) {
+      if (mediaItemBitmap.value.item !== playbackState.mediaItem) {
         dispatchUpdateItemBitmap(playbackState.mediaItem)
       }
     }

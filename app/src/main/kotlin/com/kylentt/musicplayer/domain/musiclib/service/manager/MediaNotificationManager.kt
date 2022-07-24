@@ -329,7 +329,7 @@ class MediaNotificationManager(
 		}
 
 		suspend fun ensureCurrentItemBitmap(player: Player) {
-			if (currentItemBitmap.first == emptyItem) updateItemBitmap(player)
+			if (currentItemBitmap.first === emptyItem) updateItemBitmap(player)
 		}
 
 		suspend fun updateItemBitmap(
@@ -337,12 +337,12 @@ class MediaNotificationManager(
 			currentCompleted: suspend () -> Unit = {}
 		): Unit = withContext(this@MediaNotificationManager.appDispatchers.main) {
 			val currentItem = player.currentMediaItem.orEmpty()
+			val getCurrentItemBitmap = currentItemBitmap
 
 			maybeWaitForMemory(deviceInfo, 2000, 500) {
 				Timber.w("Notification Media Bitmap will wait due to low memory")
 			}
 
-			val getCurrentItemBitmap = currentItemBitmap
 			currentItemBitmap = getItemBitmap(currentItem) ?: (emptyItem to null)
 			currentCompleted()
 
@@ -390,7 +390,11 @@ class MediaNotificationManager(
 				val bytes = MediaItemFactory.getEmbeddedImage(context, item)
 					?: return@withContext item to null
 
-				item.putEmbedSize(bytes.size.toFloat())
+				if (bytes.isEmpty()) {
+					item.putEmbedSize(0f)
+				} else {
+					bytes.size.toFloat() / 1000000
+				}
 
 				val (largeIconWidth: Int, largeIconHeight: Int) = 512 to 256 // chrome artwork use these size
 

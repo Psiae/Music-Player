@@ -64,7 +64,7 @@ class MediaViewModel @Inject constructor(
       )
 			val get = mediaPlaybackState.value
       mediaPlaybackState.value = playbackState
-      if (mediaPlaybackState.value.mediaItem !== get.mediaItem) {
+      if (mediaItemBitmap.value.item !== get.mediaItem) {
         dispatchUpdateItemBitmap(playbackState.mediaItem)
       }
     }
@@ -127,10 +127,6 @@ class MediaViewModel @Inject constructor(
 				}
 			} catch (_: OutOfMemoryError) {
 				updateItemBitmapJobId = null
-
-				val memInfo = deviceInfo.memoryInfo
-				Timber.d("OOM updating MediaVM Bitmap at avail: ${memInfo.availMem}" +
-					"\ntotal: ${memInfo.totalMem}, threshold: ${memInfo.threshold}")
 			}
 		}
 	}

@@ -24,6 +24,7 @@ import com.kylentt.musicplayer.common.android.environtment.DeviceInfo
 import com.kylentt.musicplayer.common.android.memory.maybeWaitForMemory
 import com.kylentt.musicplayer.common.coroutines.AutoCancelJob
 import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
+import com.kylentt.musicplayer.common.kotlin.comparable.clamp
 import com.kylentt.musicplayer.core.sdk.VersionHelper
 import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.isOngoing
 import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.isRepeatAll
@@ -227,6 +228,15 @@ class MediaNotificationManager(
 
 	private inner class Provider(private val context: Context) : MediaNotification.Provider {
 
+		private val MediaItem.embedSize
+			get() = mediaMetadata.extras?.getFloat("embedSize") ?: -1f
+
+		private fun MediaItem.putEmbedSize(mb: Float) {
+			mediaMetadata.extras?.putFloat("embedSize", mb.clamp(0f, Float.MAX_VALUE))
+		}
+
+		private val emptyItem = MediaItem.fromUri("empty")
+
 
 		// config later
 		private val cacheConfig
@@ -235,6 +245,7 @@ class MediaNotificationManager(
 		private var currentItemBitmap: Pair<MediaItem, Bitmap?> = MediaItem.EMPTY to null
 		private var nextItemBitmap: Pair<MediaItem, Bitmap?> = MediaItem.EMPTY to null
 		private var previousItemBitmap: Pair<MediaItem, Bitmap?> = MediaItem.EMPTY to null
+
 		private val notificationProvider = MediaNotificationProvider(context, itemInfoIntentConverter)
 
 		init {
@@ -246,15 +257,13 @@ class MediaNotificationManager(
 
 		fun release() {
 			if (isReleased) {
-				checkState(
-					notificationProvider.isReleased
-						&& currentItemBitmap == MediaItem.EMPTY to null
-				)
 				return
 			}
 
 			notificationProvider.release()
 			currentItemBitmap = MediaItem.EMPTY to null
+			nextItemBitmap = MediaItem.EMPTY to null
+			previousItemBitmap = MediaItem.EMPTY to null
 
 			isReleased = true
 			Timber.d("MediaNotificationManager.Provider released()")
@@ -320,35 +329,24 @@ class MediaNotificationManager(
 		}
 
 		suspend fun ensureCurrentItemBitmap(player: Player) {
-			if (currentItemBitmap.first.mediaId != player.currentMediaItem?.mediaId) {
-				updateItemBitmap(player)
-			}
+			if (currentItemBitmap.first == emptyItem) updateItemBitmap(player)
 		}
 
 		suspend fun updateItemBitmap(
 			player: Player,
 			currentCompleted: suspend () -> Unit = {}
 		): Unit = withContext(this@MediaNotificationManager.appDispatchers.main) {
-			if (currentItemBitmap.first.mediaId == player.currentMediaItem?.mediaId) {
-				Timber.d("updateItemBitmap was ignored")
-			}
-
 			val currentItem = player.currentMediaItem.orEmpty()
-			val getCurrentItemBitmap = currentItemBitmap
-			currentItemBitmap = currentItem to null
 
 			maybeWaitForMemory(deviceInfo, 2000, 500) {
 				Timber.w("Notification Media Bitmap will wait due to low memory")
 			}
 
-			if (!cacheConfig) {
-				currentItemBitmap = getItemBitmap(player.currentMediaItem.orEmpty())
-				currentCompleted()
-				return@withContext
-			}
-
-			currentItemBitmap = getItemBitmap(currentItem)
+			val getCurrentItemBitmap = currentItemBitmap
+			currentItemBitmap = getItemBitmap(currentItem) ?: (emptyItem to null)
 			currentCompleted()
+
+			if (!cacheConfig) return@withContext
 
 			val nextItem =
 				if (player.hasNextMediaItem()) {
@@ -360,9 +358,7 @@ class MediaNotificationManager(
 			if (nextItem.mediaId != nextItemBitmap.first.mediaId) {
 				val currentIsNext = getCurrentItemBitmap.first.mediaId == nextItem.mediaId
 				if (currentIsNext) nextItemBitmap = getCurrentItemBitmap
-				nextItemBitmap = getItemBitmap(nextItem, cache = true).let {
-					if (it.second == null && currentIsNext) getCurrentItemBitmap else it
-				}
+				nextItemBitmap = getItemBitmap(nextItem, cache = true) ?: (emptyItem to null)
 			}
 
 			val prevItem =
@@ -375,18 +371,16 @@ class MediaNotificationManager(
 			if (prevItem.mediaId != previousItemBitmap.first.mediaId) {
 				val currentIsPrevious = getCurrentItemBitmap.first.mediaId == prevItem.mediaId
 				if (currentIsPrevious) previousItemBitmap = getCurrentItemBitmap
-				previousItemBitmap = getItemBitmap(prevItem, cache = true).let {
-					if (it.second == null && currentIsPrevious) getCurrentItemBitmap else it
-				}
+				previousItemBitmap = getItemBitmap(prevItem, cache = true) ?: (emptyItem to null)
 			}
 		}
 
 		private suspend fun getItemBitmap(
 			item: MediaItem,
 			cache: Boolean = false
-		): Pair<MediaItem, Bitmap?> = withContext(this@MediaNotificationManager.appDispatchers.io) {
+		): Pair<MediaItem, Bitmap?>? = withContext(this@MediaNotificationManager.appDispatchers.io) {
 			if (cache) {
-				if ((item.mediaMetadata.extras?.getFloat("embedImageSizeMB") ?: 0f) > 1.5) {
+				if (item.embedSize > 1.5) {
 					// Don't cache
 					return@withContext item to null
 				}
@@ -394,16 +388,9 @@ class MediaNotificationManager(
 
 			try {
 				val bytes = MediaItemFactory.getEmbeddedImage(context, item)
-					?.let {
-						item.mediaMetadata.extras?.putBoolean("hasEmbed", true)
-						it
-					}
-					?: run {
-						item.mediaMetadata.extras?.putBoolean("hasEmbed", false)
-						return@withContext item to null
-					}
+					?: return@withContext item to null
 
-				item.mediaMetadata.extras?.putFloat("embedImageSizeMB", bytes.size.toFloat())
+				item.putEmbedSize(bytes.size.toFloat())
 
 				val (largeIconWidth: Int, largeIconHeight: Int) = 512 to 256 // chrome artwork use these size
 
@@ -421,24 +408,16 @@ class MediaNotificationManager(
 
 				item to squaredBitmap
 			} catch (oom: OutOfMemoryError) {
-				val memInfo = deviceInfo.memoryInfo
-
-				Timber.d("OOM updating ItemBitmap at avail: ${memInfo.availMem}" +
-					"\ntotal: ${memInfo.totalMem}, threshold: ${memInfo.threshold}")
-
-				MediaItem.EMPTY to null
+				null
 			}
 		}
 
 		private fun getItemBitmap(player: Player): Bitmap? {
-			return player.currentMediaItem?.mediaId?.let {
-				when {
-					it == currentItemBitmap.first.mediaId -> currentItemBitmap.second
-					cacheConfig -> when (it) {
-						nextItemBitmap.first.mediaId -> nextItemBitmap.second
-						previousItemBitmap.first.mediaId -> previousItemBitmap.second
-						else -> null
-					}
+			return player.currentMediaItem?.mediaId?.let { id ->
+				when(id) {
+					currentItemBitmap.first.mediaId -> currentItemBitmap.second
+					nextItemBitmap.first.mediaId -> nextItemBitmap.second
+					previousItemBitmap.first.mediaId -> previousItemBitmap.second
 					else -> null
 				}
 			}

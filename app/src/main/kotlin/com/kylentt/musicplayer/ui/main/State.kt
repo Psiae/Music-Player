@@ -4,7 +4,7 @@ import timber.log.Timber
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 
-class DelegatedState : ReadOnlyProperty<Any?, DelegatedState.State> {
+class MainActivityDelegate : ReadOnlyProperty<Any?, MainActivityDelegate.State> {
 
 	sealed class State {
 		object Nothing : State()

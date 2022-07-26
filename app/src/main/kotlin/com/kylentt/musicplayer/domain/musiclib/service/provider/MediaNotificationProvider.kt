@@ -19,6 +19,7 @@ import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.is
 import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.isStateBuffering
 import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemFactory.orEmpty
 import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemInfo
+import timber.log.Timber
 
 class MediaNotificationProvider(
 	private val context: Context,
@@ -69,10 +70,16 @@ class MediaNotificationProvider(
 
 				val mediaItem = player.currentMediaItem.orEmpty()
 
+				Timber.d("provider ${mediaItem.mediaMetadata.albumArtist}")
+
 				setChannelId(channelId)
 				setContentIntent(contentIntent)
-				setContentTitle(mediaItem.mediaMetadata.title ?: mediaItem.mediaMetadata.displayTitle)
-				setContentText(mediaItem.mediaMetadata.artist)
+				setContentTitle(
+					mediaItem.mediaMetadata.title ?: mediaItem.mediaMetadata.displayTitle ?: "<Unknown>"
+				)
+				setContentText(
+					mediaItem.mediaMetadata.albumArtist ?: mediaItem.mediaMetadata.artist ?: "<Unknown>"
+				)
 				setSmallIcon(R.drawable.play_icon_theme3_notification)
 
 				setColorized(true)

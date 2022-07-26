@@ -13,10 +13,10 @@ import com.google.android.material.color.DynamicColors
 import com.kylentt.musicplayer.ui.main.compose.theme.color.ColorHelper
 
 @Composable
-fun Material3Theme(
+inline fun Material3Theme(
 	darkTheme: Boolean = isSystemInDarkTheme(),
 	dynamic: Boolean = DynamicColors.isDynamicColorAvailable(),
-	content: @Composable () -> Unit
+	crossinline content: @Composable () -> Unit
 ) {
 	val context = LocalContext.current
 

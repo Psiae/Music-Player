@@ -3,6 +3,7 @@ package com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem
 import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.os.Bundle
 import android.provider.OpenableColumns
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
@@ -26,8 +27,12 @@ object MediaItemFactory {
 		val mtr = MediaMetadataRetriever()
 		return try {
 			mtr.setDataSource(context, uri)
-			val artist = mtr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST) ?: "<Unknown>"
-			val album = mtr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM) ?: "<Unknown>"
+			val artist =
+				mtr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST) ?: "<Unknown>"
+			val album =
+				mtr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM) ?: "<Unknown>"
+			val albumArtist =
+				mtr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST) ?: "<Unknown>"
 			val title = mtr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
 				?: if (uri.scheme == "content") {
 					context.contentResolver.query(uri, null, null, null, null)
@@ -45,6 +50,7 @@ object MediaItemFactory {
 			val metadata = MediaMetadata.Builder()
 				.setArtist(artist)
 				.setAlbumTitle(album)
+				.setAlbumArtist(albumArtist)
 				.setDisplayTitle(title)
 				.setTitle(title)
 				.build()
@@ -71,11 +77,26 @@ object MediaItemFactory {
 	fun fillInLocalConfig(item: MediaItem, itemUri: Uri) = fillInLocalConfig(item, itemUri.toString())
 
 	fun fillInLocalConfig(item: MediaItem, itemUri: String): MediaItem = with(newBuilder()) {
+		fillBundle(item.mediaMetadata)
 		setMediaMetadata(item.mediaMetadata)
 		setRequestMetadata(item.requestMetadata)
 		setMediaId(item.mediaId)
 		setUri(itemUri)
 		build()
+	}
+
+	private fun MediaItem.Builder.fillBundle(metadata: MediaMetadata): MediaItem.Builder {
+		val put =
+			if (metadata.extras == null) {
+				MediaMetadata.Builder()
+					.populate(metadata)
+					.setExtras(Bundle())
+					.build()
+			} else {
+				metadata
+			}
+		setMediaMetadata(put)
+		return this
 	}
 
 	fun getEmbeddedImage(context: Context, item: MediaItem): ByteArray? {

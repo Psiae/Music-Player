@@ -15,10 +15,10 @@ class StateManager(
 
 	private val foregroundServiceCondition: (MediaSession) -> Boolean = {
 		val extra = when {
-			!MainActivity.StateDelegate.getValue().isVisible() -> it.player.playWhenReady
+			!MainActivity.Delegate.getValue().isAlive() -> it.player.playWhenReady
 			else -> true
 		}
-			it.player.playbackState.isOngoing() && extra
+		it.player.playbackState.isOngoing() && extra
 	}
 
 
@@ -52,7 +52,7 @@ class StateManager(
 				}
 			} else {
 				if (stateInteractor.isForeground) {
-					notificationInteractor.stopForegroundService(false)
+					interactor.stopForegroundService(false)
 				}
 			}
 

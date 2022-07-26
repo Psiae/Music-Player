@@ -14,8 +14,8 @@ import com.kylentt.musicplayer.common.android.bitmap.bitmapfactory.BitmapSampler
 import com.kylentt.musicplayer.common.android.environtment.DeviceInfo
 import com.kylentt.musicplayer.common.android.memory.maybeWaitForMemory
 import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
-import com.kylentt.musicplayer.common.kotlin.coroutine.checkCancellation
 import com.kylentt.musicplayer.common.coroutines.safeCollect
+import com.kylentt.musicplayer.common.kotlin.coroutine.checkCancellation
 import com.kylentt.musicplayer.domain.musiclib.MusicLibrary
 import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemHelper
 import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemPropertyHelper.getDebugDescription
@@ -24,6 +24,9 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import timber.log.Timber
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ConcurrentMap
+import java.util.regex.Matcher
 import javax.inject.Inject
 import kotlin.coroutines.coroutineContext
 import kotlin.time.ExperimentalTime
@@ -62,8 +65,9 @@ class MediaViewModel @Inject constructor(
       Timber.d("MediaViewModel collectPlaybackState collected for: " +
         "\n${playbackState.mediaItem.getDebugDescription()}"
       )
+			val get = mediaPlaybackState.value
       mediaPlaybackState.value = playbackState
-      if (mediaItemBitmap.value.item !== playbackState.mediaItem) {
+      if (get.mediaItem !== playbackState.mediaItem) {
         dispatchUpdateItemBitmap(playbackState.mediaItem)
       }
     }
@@ -72,11 +76,8 @@ class MediaViewModel @Inject constructor(
   @OptIn(ExperimentalTime::class)
 	@MainThread
   suspend fun dispatchUpdateItemBitmap(item: MediaItem) {
-		if (updateItemBitmapJobId == item.mediaId) return
-		updateItemBitmapJobId = item.mediaId
-
 		updateItemBitmapJob.cancel()
-    updateItemBitmapJob = computationScope.launch {
+    updateItemBitmapJob = ioScope.launch {
 			ensureActive()
 			Timber.d("UpdateItemBitmap Dispatched For ${item.getDebugDescription()}")
 
@@ -84,7 +85,10 @@ class MediaViewModel @Inject constructor(
 				Timber.w("dispatchUpdateItemBitmap will wait due to low memory")
 			}
 
+
+
 			try {
+
 				val measureGet = measureTimedValue {
 					itemHelper.getEmbeddedPicture(item)
 				}
@@ -124,9 +128,7 @@ class MediaViewModel @Inject constructor(
 
 					updateItemBitmapJobId = null
 				}
-			} catch (_: OutOfMemoryError) {
-				updateItemBitmapJobId = null
-			}
+			} catch (_: OutOfMemoryError) {}
 		}
 	}
 

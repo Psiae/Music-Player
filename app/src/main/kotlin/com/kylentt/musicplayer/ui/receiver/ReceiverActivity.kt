@@ -18,7 +18,7 @@ class ReceiverActivity : Activity() {
 	}
 
 	private fun launchMainActivity() {
-		val state by MainActivity.StateDelegate
+		val state by MainActivity.Delegate
 		MainActivity.Launcher.startActivity(this, intent)
 		if (!state.wasLaunched()) {
 			overridePendingTransition(R.anim.anim_stay_still, R.anim.anim_stay_still)

@@ -3,7 +3,6 @@ package com.kylentt.musicplayer.common.android.bitmap.bitmapfactory
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.BitmapFactory.Options
-import androidx.core.graphics.scale
 import com.kylentt.musicplayer.common.android.bitmap.config.BitmapConfigInfo
 
 object BitmapSampler {
@@ -41,7 +40,7 @@ object BitmapSampler {
 			val width: Int,
 			val height: Int,
 			val maxByte: Int
-		): CalculationTarget() {
+		) : CalculationTarget() {
 			val sizeTarget = SizeTarget(width, height)
 			val maxAlloc = MaxAlloc(maxByte)
 			override fun shouldSubSample(options: Options, inSampleSize: Int): Boolean {

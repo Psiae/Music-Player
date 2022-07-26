@@ -67,6 +67,8 @@ class MediaNotificationManager(
 		delegate.stateInteractor.getServiceForegroundCondition(session)
 	}
 
+	val isOnGoingCondition: (MediaSession) -> Boolean = { it.player.playbackState.isOngoing() }
+
 	val interactor = Interactor()
 
 	override fun create(serviceDelegate: MusicLibraryService.ServiceDelegate) {
@@ -89,17 +91,18 @@ class MediaNotificationManager(
 		releaseImpl()
 	}
 
-	fun createImpl(serviceDelegate: MusicLibraryService.ServiceDelegate) {
+	private fun createImpl(serviceDelegate: MusicLibraryService.ServiceDelegate) {
+
 		val serviceJob = serviceDelegate.propertyInteractor.serviceMainJob
 		appDispatchers = serviceDelegate.propertyInteractor.serviceDispatchers
 		mainScope = CoroutineScope(appDispatchers.main + serviceJob)
 	}
 
-	fun startImpl(componentDelegate: MusicLibraryService.ComponentDelegate) {
+	private fun startImpl(componentDelegate: MusicLibraryService.ComponentDelegate) {
 		componentDelegate.sessionInteractor.registerPlayerEventListener(eventListener)
 	}
 
-	fun releaseImpl() {
+	private fun releaseImpl() {
 		if (::mainScope.isInitialized) mainScope.cancel()
 		if (isComponentInitialized) {
 			dispatcher.release()
@@ -129,12 +132,10 @@ class MediaNotificationManager(
 		componentDelegate.stateInteractor.stopForegroundService(removeNotification)
 	}
 
-	fun getProvider(): MediaNotification.Provider = this.provider
-
 	fun onUpdateNotification(session: MediaSession) {
 		if (!isStarted) return
-		val foregroundCondition = isForegroundCondition(componentDelegate, session)
-		val notification = provider.fromMediaSession(session, foregroundCondition, ChannelName)
+		val onGoing = isOnGoingCondition(session)
+		val notification = provider.fromMediaSession(session, onGoing, ChannelName)
 		dispatcher.updateNotification(notificationId, notification)
 	}
 
@@ -393,7 +394,7 @@ class MediaNotificationManager(
 				if (bytes.isEmpty()) {
 					item.putEmbedSize(0f)
 				} else {
-					bytes.size.toFloat() / 1000000
+					item.putEmbedSize(bytes.size.toFloat() / 1000000)
 				}
 
 				val (largeIconWidth: Int, largeIconHeight: Int) = 512 to 256 // chrome artwork use these size
@@ -406,9 +407,11 @@ class MediaNotificationManager(
 				// to have proper display
 				val squaredBitmap = coilHelper.loadSquaredBitmap(bytes, reqSize, Scale.FILL)
 
-				Timber.d("squaredBitmap " +
-					"requestedSize: $reqSize " +
-					"to size: ${squaredBitmap?.width}:${squaredBitmap?.height}")
+				Timber.d(
+					"squaredBitmap " +
+						"requestedSize: $reqSize " +
+						"to size: ${squaredBitmap?.width}:${squaredBitmap?.height}"
+				)
 
 				item to squaredBitmap
 			} catch (oom: OutOfMemoryError) {
@@ -418,7 +421,7 @@ class MediaNotificationManager(
 
 		private fun getItemBitmap(player: Player): Bitmap? {
 			return player.currentMediaItem?.mediaId?.let { id ->
-				when(id) {
+				when (id) {
 					currentItemBitmap.first.mediaId -> currentItemBitmap.second
 					nextItemBitmap.first.mediaId -> nextItemBitmap.second
 					previousItemBitmap.first.mediaId -> previousItemBitmap.second
@@ -622,7 +625,7 @@ class MediaNotificationManager(
 					?.let {
 
 						when {
-							!isForegroundCondition(componentDelegate, it) -> {
+							!isOnGoingCondition(it) -> {
 								val notification = provider
 									.getNotificationFromMediaSession(it, false, ChannelName)
 								return dispatcher.updateNotification(notificationId, notification)
@@ -645,7 +648,7 @@ class MediaNotificationManager(
 					?.let {
 
 						when {
-							isForegroundCondition(componentDelegate, it) -> {
+							isOnGoingCondition(it) -> {
 								val notification = provider
 									.getNotificationFromMediaSession(it, true, ChannelName)
 								return dispatcher.updateNotification(notificationId, notification)
@@ -657,7 +660,7 @@ class MediaNotificationManager(
 						stateInteractor.stopForegroundService(true)
 						stateInteractor.stopService()
 
-						val state by MainActivity.StateDelegate
+						val state by MainActivity.Delegate
 						if (!state.isAlive()) stateInteractor.releaseService()
 					}
 					?: throw IllegalStateException("Received Intent: $intent on Released State")
@@ -680,7 +683,7 @@ class MediaNotificationManager(
 					?.let {
 						val getNotification = suspend {
 							provider.ensureCurrentItemBitmap(it.player)
-							provider.fromMediaSession(it, isForegroundCondition(componentDelegate, it), ChannelName)
+							provider.fromMediaSession(it, isOnGoingCondition(it), ChannelName)
 						}
 						provider.updateItemBitmap(it.player) {
 							dispatcher.suspendUpdateNotification(notificationId, getNotification())
@@ -703,11 +706,7 @@ class MediaNotificationManager(
 					?.let {
 						val getNotification = suspend {
 							provider.ensureCurrentItemBitmap(it.player)
-							provider.fromMediaSession(
-								it,
-								isForegroundCondition(componentDelegate, it),
-								ChannelName
-							)
+							provider.fromMediaSession(it, isOnGoingCondition(it), ChannelName)
 						}
 						dispatcher.suspendUpdateNotification(notificationId, getNotification())
 						dispatcher.dispatchNotificationValidator(
@@ -730,7 +729,7 @@ class MediaNotificationManager(
 							provider.ensureCurrentItemBitmap(it.player)
 							provider.fromMediaSession(
 								it,
-								isForegroundCondition(componentDelegate, it),
+								isOnGoingCondition(it),
 								ChannelName
 							)
 						}
@@ -752,7 +751,7 @@ class MediaNotificationManager(
 					?.let {
 						val getNotification = suspend {
 							provider.ensureCurrentItemBitmap(it.player)
-							provider.fromMediaSession(it, isForegroundCondition(componentDelegate, it), ChannelName)
+							provider.fromMediaSession(it, isOnGoingCondition(it), ChannelName)
 						}
 						dispatcher.dispatchNotificationValidator(
 							notificationId,

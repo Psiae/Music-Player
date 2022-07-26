@@ -10,8 +10,8 @@ import kotlin.reflect.KProperty
 
 object StoragePermissionHelper : ReadOnlyProperty<Any?, Boolean> {
 
-  const val Read_External_Storage = Manifest.permission.READ_EXTERNAL_STORAGE
-  const val Write_External_Storage = Manifest.permission.WRITE_EXTERNAL_STORAGE
+	const val Read_External_Storage = Manifest.permission.READ_EXTERNAL_STORAGE
+	const val Write_External_Storage = Manifest.permission.WRITE_EXTERNAL_STORAGE
 
 	override fun getValue(thisRef: Any?, property: KProperty<*>): Boolean {
 		return when (thisRef) {

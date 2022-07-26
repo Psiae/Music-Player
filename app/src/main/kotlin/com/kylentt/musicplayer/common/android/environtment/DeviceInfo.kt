@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.res.Configuration
 import androidx.annotation.DimenRes
 import dagger.hilt.android.qualifiers.ApplicationContext
-import timber.log.Timber
 import javax.inject.Inject
 
 class DeviceInfo @Inject constructor(@ApplicationContext context: Context) {
@@ -39,9 +38,7 @@ class DeviceInfo @Inject constructor(@ApplicationContext context: Context) {
 	val isOrientationLandscape
 		get() = localContext.screenOrientation == Configuration.ORIENTATION_LANDSCAPE
 
-	private inner class NotificationInfo {
-
-	}
+	private inner class NotificationInfo
 
 	companion object {
 

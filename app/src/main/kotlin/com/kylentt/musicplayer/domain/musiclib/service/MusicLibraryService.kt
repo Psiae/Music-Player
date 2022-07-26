@@ -18,8 +18,8 @@ import com.kylentt.mediaplayer.domain.util.ContextBroadcastManager
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.musicplayer.BuildConfig
-import com.kylentt.musicplayer.common.kotlin.mutablecollection.forEachClear
 import com.kylentt.musicplayer.common.coroutines.safeCollect
+import com.kylentt.musicplayer.common.kotlin.mutablecollection.forEachClear
 import com.kylentt.musicplayer.core.app.dependency.CoroutineModule
 import com.kylentt.musicplayer.core.sdk.VersionHelper
 import com.kylentt.musicplayer.domain.musiclib.service.manager.MediaNotificationManager
@@ -128,8 +128,10 @@ class MusicLibraryService : MediaLibraryService() {
 		try {
 			if (!isServiceStarted) onStart()
 			if (VersionHelper.hasQ()) {
-				startForeground(MediaNotificationId, notification,
-					ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
+				startForeground(
+					MediaNotificationId, notification,
+					ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+				)
 			} else {
 				startForeground(MediaNotificationId, notification)
 			}
@@ -190,7 +192,7 @@ class MusicLibraryService : MediaLibraryService() {
 		checkState(componentManager.released)
 
 		// probably would be nice to introduce something similar in musiclib package
-		val activityState by MainActivity.StateDelegate
+		val activityState by MainActivity.Delegate
 		if (!activityState.isAlive()) {
 			// could Leak
 			// TODO: CleanUp
@@ -430,7 +432,8 @@ class MusicLibraryService : MediaLibraryService() {
 			serviceScope.launch {
 				stateRegistry.serviceEventSF
 					.safeCollect { event ->
-						components.forEach { notifyComponent(it, event.resultState) } }
+						components.forEach { notifyComponent(it, event.resultState) }
+					}
 			}
 			started = true
 		}

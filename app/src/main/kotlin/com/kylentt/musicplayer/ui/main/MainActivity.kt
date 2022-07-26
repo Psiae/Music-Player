@@ -13,8 +13,8 @@ import com.kylentt.mediaplayer.domain.viewmodels.MediaViewModel
 import com.kylentt.mediaplayer.helper.external.IntentWrapper
 import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.MainActivityContent
 import com.kylentt.musicplayer.common.android.activity.disableWindowDecorFitSystemInsets
-import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
 import com.kylentt.musicplayer.common.android.intent.isActionMain
+import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
 import com.kylentt.musicplayer.core.app.delegates.device.StoragePermissionHelper
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -23,6 +23,12 @@ import kotlin.reflect.KProperty
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+	private var mReleased: Boolean = false
+		set(value) {
+			require(value)
+			field = value
+		}
 
 	@Inject
 	lateinit var coroutineDispatchers: CoroutineDispatchers
@@ -80,10 +86,12 @@ class MainActivity : ComponentActivity() {
 	}
 
 	private fun onRelease() {
+		mReleased = true
 		return dispatchEvent(Event.Release)
 	}
 
 	override fun onDestroy() {
+		if (!mReleased) onRelease()
 		super.onDestroy()
 
 		return dispatchEvent(Event.Destroy)
@@ -101,7 +109,7 @@ class MainActivity : ComponentActivity() {
 
 
 	private fun dispatchEvent(event: Event) {
-		StateDelegate.onEvent(this, event)
+		Delegate.onEvent(this, event)
 	}
 
 
@@ -132,7 +140,7 @@ class MainActivity : ComponentActivity() {
 				"Service cannot start MainActivity"
 			}
 
-			val state by StateDelegate
+			val state by Delegate
 
 			if (!state.isVisible()) {
 				val launchIntent = Intent(context, MainActivity::class.java)
@@ -158,26 +166,27 @@ class MainActivity : ComponentActivity() {
 		object Destroy : Event()
 	}
 
-	object StateDelegate : ReadOnlyProperty<Any?, DelegatedState.State> {
-		private val stateDelegate = DelegatedState()
+	object Delegate : ReadOnlyProperty<Any?, MainActivityDelegate.State> {
+		private val delegate = MainActivityDelegate()
 
 		fun onEvent(activity: MainActivity, event: Event) {
 			val state = when (event) {
-				Event.Init -> DelegatedState.State.Initialized
-				Event.Create, Event.Stop -> DelegatedState.State.Created
-				Event.Start, Event.Pause -> DelegatedState.State.Started
-				Event.Resume -> DelegatedState.State.Resumed
-				Event.Release -> DelegatedState.State.Released
-				Event.Destroy -> DelegatedState.State.Destroyed
+				Event.Init -> MainActivityDelegate.State.Initialized
+				Event.Create, Event.Stop -> MainActivityDelegate.State.Created
+				Event.Start, Event.Pause -> MainActivityDelegate.State.Started
+				Event.Resume -> MainActivityDelegate.State.Resumed
+				Event.Release -> MainActivityDelegate.State.Released
+				Event.Destroy -> MainActivityDelegate.State.Destroyed
 			}
 			updateStateDelegate(activity, state)
 		}
 
-		private fun updateStateDelegate(activity: MainActivity, state: DelegatedState.State) {
-			stateDelegate.updateState(activity, state)
+		private fun updateStateDelegate(activity: MainActivity, state: MainActivityDelegate.State) {
+			delegate.updateState(activity, state)
 		}
 
-		fun getValue(): DelegatedState.State = stateDelegate.getValue()
-		override fun getValue(thisRef: Any?, property: KProperty<*>): DelegatedState.State = getValue()
+		fun getValue(): MainActivityDelegate.State = delegate.getValue()
+		override fun getValue(thisRef: Any?, property: KProperty<*>): MainActivityDelegate.State =
+			getValue()
 	}
 }

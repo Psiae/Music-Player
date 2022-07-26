@@ -9,7 +9,6 @@ package com.kylentt.mediaplayer.ui.activity.mainactivity.compose
 import android.content.Intent
 import android.graphics.Bitmap
 import android.provider.Settings
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresPermission
@@ -51,6 +50,7 @@ import coil.compose.rememberImagePainter
 import coil.request.ImageRequest
 import com.google.accompanist.navigation.animation.rememberAnimatedNavController
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.MultiplePermissionsState
 import com.google.accompanist.permissions.PermissionState
 import com.google.accompanist.permissions.shouldShowRationale
 import com.kylentt.mediaplayer.core.app.settings.AppSettings
@@ -65,9 +65,9 @@ import com.kylentt.mediaplayer.ui.compose.rememberWallpaperBitmapAsState
 import com.kylentt.musicplayer.R
 import com.kylentt.musicplayer.core.app.delegates.AppDelegate
 import com.kylentt.musicplayer.core.app.delegates.device.StoragePermissionHelper
+import com.kylentt.musicplayer.ui.compose.util.PermissionHelper
 import com.kylentt.musicplayer.ui.main.compose.theme.Material3Theme
 import com.kylentt.musicplayer.ui.main.compose.theme.color.ColorHelper
-import com.kylentt.musicplayer.ui.main.compose.util.PermissionHelper
 import timber.log.Timber
 import kotlin.math.roundToInt
 
@@ -80,16 +80,18 @@ fun MainActivityContent(
 
     Material3Theme {
 
-        PermissionHelper.RequirePermission(
-			permission = PermissionHelper.Permission.WRITE_EXTERNAL_STORAGE,
-            whenDenied = {
+        PermissionHelper.RequirePermissions(
+			permissions = listOf(
+				PermissionHelper.Permission.READ_EXTERNAL_STORAGE,
+				PermissionHelper.Permission.WRITE_EXTERNAL_STORAGE,
+			),
+            whenAllDenied = {
 				StorageDenied(state = it)
 			},
             showRationale = {
 				/* Temporary */ StorageDenied(state = it)
 			},
         ) {
-
 			val permission =
 				StoragePermissionHelper.checkReadWriteStoragePermission(LocalContext.current)
 
@@ -278,7 +280,7 @@ private fun showBottomNav(stack: NavBackStackEntry?): Boolean =
 
 @Suppress("NOTHING_TO_INLINE")
 @Composable
-private inline fun StorageDenied(state: PermissionState) {
+private inline fun StorageDenied(state: MultiplePermissionsState) {
 	val localContext = LocalContext.current
 
 	val permission = StoragePermissionHelper.checkReadWriteStoragePermission(localContext)
@@ -295,8 +297,8 @@ private inline fun StorageDenied(state: PermissionState) {
             data = "package:${localContext.packageName}".toUri()
         }
     PermissionScreen(grantButtonText = "Grant Storage Permission") {
-		if (state.status.shouldShowRationale) {
-			state.launchPermissionRequest()
+		if (state.shouldShowRationale) {
+			state.launchMultiplePermissionRequest()
 		} else {
 			launcher.launch(intent)
 		}

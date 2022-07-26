@@ -16,7 +16,7 @@ import kotlin.reflect.KProperty
  * @sample LateLazySample.testCase1
  */
 
-class LateLazy<T>(lock: Any? = null) : ReadOnlyProperty<Any?, T>{
+class LateLazy<T>(lock: Any? = null) : ReadOnlyProperty<Any?, T> {
 	private object EMPTY
 
 	private val localLock: Any = lock ?: this

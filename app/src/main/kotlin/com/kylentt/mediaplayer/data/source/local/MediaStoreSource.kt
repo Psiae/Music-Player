@@ -16,6 +16,7 @@ import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaMetada
 import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaMetadataHelper.putFileName
 import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaMetadataHelper.putStoragePath
 import com.kylentt.mediaplayer.data.SongEntity
+import com.kylentt.musicplayer.common.android.uri.orEmpty
 import com.kylentt.musicplayer.core.sdk.VersionHelper
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
@@ -33,6 +34,7 @@ import javax.inject.Singleton
 data class MediaStoreSong @JvmOverloads constructor(
   val album: String = "",
   val albumArtUri: Uri = Uri.EMPTY,
+	override val albumArtist: String = "",
   val albumId: Long = -1,
   val artist: String = "",
   val artistId: Long = -1,
@@ -66,7 +68,7 @@ data class MediaStoreSong @JvmOverloads constructor(
   override val songMediaUri: Uri
     get() = this.mediaUri
 
-  val mediaItem by lazy {
+  override val mediaItem by lazy {
     val artworkUri = MediaItemFactory.hideArtUri(songMediaArtworkUri)
 		val bundle = Bundle()
 
@@ -74,7 +76,7 @@ data class MediaStoreSong @JvmOverloads constructor(
 			.putDisplayTitle(displayTitle)
 			.putFileName(fileName)
 			.setArtist(artistName)
-			.setAlbumArtist(artistName)
+			.setAlbumArtist(albumArtist)
 			.setAlbumTitle(albumName)
 			.setArtworkUri(artworkUri) // M
 			.setSubtitle(artist)
@@ -96,9 +98,6 @@ data class MediaStoreSong @JvmOverloads constructor(
 			.setRequestMetadata(metadataRequestBuilder.build())
 		.build()
   }
-
-  override val asMediaItem: MediaItem
-    get() = mediaItem
 
   override fun equalMediaItem(item: MediaItem): Boolean {
     return item.mediaId == this.songMediaId
@@ -174,7 +173,7 @@ class MediaStoreSourceImpl(
 						MediaStore.Audio.AudioColumns.DATA
 					}
 
-        val projector = arrayOf(
+        val projector = mutableListOf(
           MediaStore.Audio.AudioColumns._ID,
           MediaStore.Audio.AudioColumns.ALBUM,
           MediaStore.Audio.AudioColumns.ALBUM_ID,
@@ -190,11 +189,14 @@ class MediaStoreSourceImpl(
           songFolderId,
         )
 
+				if (VersionHelper.hasR()) projector.add(MediaStore.Audio.AudioColumns.ALBUM_ARTIST)
+
+
         val selector = "${MediaStore.Audio.Media.IS_MUSIC} != 0"
         val selectOrder = MediaStore.Audio.Media.TITLE
         val nCursor = context.contentResolver.query(
           MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-          projector, selector, null, selectOrder
+          projector.toTypedArray(), selector, null, selectOrder
         )
 
         nCursor?.use { cursor ->
@@ -208,6 +210,13 @@ class MediaStoreSourceImpl(
               cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.ALBUM))
             val albumId =
               cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.ALBUM_ID))
+						val albumArtist =
+							if (VersionHelper.hasR()) {
+								cursor.getString(
+									cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.ALBUM_ARTIST))
+							} else {
+								""
+							}
             val artist =
               cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.ARTIST))
             val artistId =
@@ -240,21 +249,22 @@ class MediaStoreSourceImpl(
 
             songList.add(
               MediaStoreSong(
-                album = album,
-                albumArtUri = albumUri,
+                album = album.orEmpty(),
+                albumArtUri = albumUri.orEmpty(),
                 albumId = albumId,
-                artist = artist,
+								albumArtist = albumArtist.orEmpty(),
+                artist = artist.orEmpty(),
                 artistId = artistId,
                 byteSize = byteSize,
                 duration = duration,
-                data = data,
-                fileName = fileName,
-                fileBucket = folder ?: "",
-                fileBuckedId = folderId,
+                data = data.orEmpty(),
+                fileName = fileName.orEmpty(),
+                fileBucket = folder.orEmpty(),
+                fileBuckedId = folderId.orEmpty(),
                 lastModified = dateModified,
-                mediaId = songId,
+                mediaId = songId.orEmpty(),
                 mediaUri = songUri.toUri(),
-                title = title
+                title = title.orEmpty()
               )
             )
           }

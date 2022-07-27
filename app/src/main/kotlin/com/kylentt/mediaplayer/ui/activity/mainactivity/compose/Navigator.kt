@@ -20,15 +20,18 @@ sealed class Screen(
     object Home : Screen(Home_Screen_route, Home_Screen_label)
     object Search : Screen(Search_Screen_route, Search_Screen_label)
     object Library : Screen(Library_Screen_route, Library_Screen_label)
+	object User : Screen(User_Screen_route, User_Screen_label)
 
     private companion object {
         const val Home_Screen_route = "Home"
         const val Search_Screen_route = "Search"
         const val Library_Screen_route = "Library"
+		const val User_Screen_route = "User"
 
         const val Home_Screen_label = "Home"
         const val Search_Screen_label = "Search"
         const val Library_Screen_label = "Library"
+		const val User_Screen_label = "User"
     }
 }
 
@@ -46,6 +49,7 @@ fun AnimatedMainAppNavigator(
         addHomeRoute(controller)
         addSearchRoute(controller)
         addLibraryRoute(controller)
+		addUserRoute(controller)
     }
 }
 
@@ -115,4 +119,18 @@ private fun NavGraphBuilder.addLibraryScreen(
     composable(route = Screen.Library.route) {
 
     }
+}
+
+const val userRoute = "UserRoute"
+private fun NavGraphBuilder.addUserRoute(
+	controller: NavHostController
+) {
+	navigation(
+		route = userRoute,
+		startDestination = Screen.User.route
+	) {
+		composable(route = Screen.User.route) {
+
+		}
+	}
 }

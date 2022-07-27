@@ -9,13 +9,19 @@ import kotlin.math.ln
 
 object ColorHelper {
 
-	@Composable
 	fun getTonedSurface(
-		color: Color = MaterialTheme.colorScheme.primary,
-		surface: Color = MaterialTheme.colorScheme.surface,
+		color: Color,
+		surfaceColor: Color,
 		elevation: Dp,
 	): Color {
 		val alpha = ((4.5f * ln(x = (elevation).value + 1)) + 2f) / 100f
-		return color.copy(alpha = alpha).compositeOver(surface)
+		return color.copy(alpha = alpha).compositeOver(surfaceColor)
 	}
+
+	@Composable
+	fun tonePrimarySurface(
+		color: Color = MaterialTheme.colorScheme.primary,
+		surfaceColor: Color = MaterialTheme.colorScheme.surface,
+		elevation: Dp
+	) = getTonedSurface(color, surfaceColor, elevation)
 }

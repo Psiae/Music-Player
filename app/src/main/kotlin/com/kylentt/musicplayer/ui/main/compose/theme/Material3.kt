@@ -38,7 +38,7 @@ inline fun Material3Theme(
 			)
 
 			setStatusBarColor(
-				color = ColorHelper.getTonedSurface(elevation = 2.dp).copy(alpha = 0.50f),
+				color = ColorHelper.tonePrimarySurface(elevation = 2.dp).copy(alpha = 0.50f),
 				darkIcons = !darkTheme
 			)
 		}

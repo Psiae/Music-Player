@@ -16,9 +16,9 @@
         android:name=".core.app.MusicPlayerApp"
         android:allowBackup="true"
         android:exported="true"
-        android:icon="@mipmap/ic_launcher_blu"
+        android:icon="@mipmap/ic_launcher_blu_dark"
         android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher_blu_round"
+        android:roundIcon="@mipmap/ic_launcher_blu_dark_round"
         android:theme="@style/Theme.App.SplashScreen">
 
         <provider

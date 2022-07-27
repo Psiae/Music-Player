@@ -21,9 +21,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.BottomNavigation
 import androidx.compose.material.BottomNavigationItem
 import androidx.compose.material.Icon
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.ripple.LocalRippleTheme
 import androidx.compose.material.ripple.RippleAlpha
 import androidx.compose.material.ripple.RippleTheme
@@ -138,7 +135,7 @@ private fun RootScaffold(
     Scaffold(
         bottomBar = {
             if (showBottomNav(backStackEntry.value)) {
-                val backgroundColor = ColorHelper.getTonedSurface(elevation = 2.dp)
+                val backgroundColor = ColorHelper.tonePrimarySurface(elevation = 2.dp)
                     .copy(alpha = appSettings.navigationSettings.bnvSettings.visibility / 100)
                 RootBottomNavigation(
                     appSettings = appSettings,
@@ -457,7 +454,12 @@ private val MainBottomNavItems = listOf(
         screen = Screen.Library,
         imageVector = AppDelegate.imageVectorFromDrawableId(R.drawable.library_outlined_base_128_24),
         selectedImageVector = AppDelegate.imageVectorFromDrawableId(R.drawable.library_filled_base_128_24)
-    )
+    ),
+	MainBottomNavItem.ImageVectorIcon(
+		screen = Screen.User,
+		imageVector = AppDelegate.imageVectorFromDrawableId(R.drawable.user_circle_outlined_base_512_24),
+		selectedImageVector = AppDelegate.imageVectorFromDrawableId(R.drawable.user_circle_filled_base_512_24)
+	)
 )
 
 @Composable
@@ -498,7 +500,7 @@ fun PermissionScreen(
         Button(
             onClick = { onGrantButton() },
             colors = ButtonDefaults
-                .buttonColors(containerColor = ColorHelper.getTonedSurface(elevation = 8.dp))
+				.buttonColors(containerColor = ColorHelper.tonePrimarySurface(elevation = 8.dp))
         ) {
             Text(text = grantButtonText, color = MaterialTheme.colorScheme.onSurface)
         }

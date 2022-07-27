@@ -80,7 +80,7 @@ class MediaNotificationProvider(
 				setContentText(
 					mediaItem.mediaMetadata.albumArtist ?: mediaItem.mediaMetadata.artist ?: "<Unknown>"
 				)
-				setSmallIcon(R.drawable.play_icon_theme3_notification)
+				setSmallIcon(R.drawable.blu)
 
 				setColorized(true)
 				setOngoing(player.playbackState.isOngoing())

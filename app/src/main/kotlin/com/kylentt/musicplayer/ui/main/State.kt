@@ -4,35 +4,21 @@ import timber.log.Timber
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 
-class MainActivityDelegate : ReadOnlyProperty<Any?, MainActivityDelegate.State> {
-
-	sealed class State {
-		object Nothing : State()
-		object Initialized : State()
-		object Created : State()
-		object Started : State()
-		object Resumed : State()
-		object Released : State()
-		object Destroyed : State()
-
-		fun wasLaunched() = this != Nothing
-		fun isAlive() = wasLaunched() && !isDestroyed()
-		fun isCreated() = this == Created || isVisible()
-		fun isVisible() = this == Started || isReady()
-		fun isReady() = this == Resumed
-		fun isDestroyed() = this == Destroyed
-	}
-
-
-	private var mState: State = State.Nothing
+object MainActivityDelegate {
+	private var mState: MainActivity.State = MainActivity.State.Nothing
 	private var hashCode: Int? = null
 
-	fun updateState(activity: MainActivity, state: State) {
+	val state
+		get() = mState
+
+	val stateDelegate = ReadOnlyProperty<Any?, MainActivity.State> { _, _ -> state }
+
+	fun updateState(activity: MainActivity, state: MainActivity.State) {
 
 		when (state) {
-			State.Nothing -> throw IllegalArgumentException()
-			State.Initialized -> hashCode = activity.hashCode()
-			State.Destroyed -> if (!hashEqual(activity)) return
+			MainActivity.State.Nothing -> throw IllegalArgumentException()
+			MainActivity.State.Initialized -> hashCode = activity.hashCode()
+			MainActivity.State.Destroyed -> if (!hashEqual(activity)) return
 			else -> Unit
 		}
 
@@ -44,6 +30,10 @@ class MainActivityDelegate : ReadOnlyProperty<Any?, MainActivityDelegate.State> 
 
 	private fun hashEqual(activity: MainActivity) = hashCode == activity.hashCode()
 
-	fun getValue(): State = mState
-	override fun getValue(thisRef: Any?, property: KProperty<*>): State = getValue()
+	fun MainActivity.State.wasLaunched() = this != MainActivity.State.Nothing
+	fun MainActivity.State.isAlive() = wasLaunched() && !isDestroyed()
+	fun MainActivity.State.isCreated() = this == MainActivity.State.Created || isVisible()
+	fun MainActivity.State.isVisible() = this == MainActivity.State.Started || isReady()
+	fun MainActivity.State.isReady() = this == MainActivity.State.Resumed
+	fun MainActivity.State.isDestroyed() = this == MainActivity.State.Destroyed
 }

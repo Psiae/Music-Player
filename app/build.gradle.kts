@@ -98,7 +98,6 @@ dependencies {
         // Material
         implementation("androidx.compose.material:material:$v")
         implementation("androidx.compose.material:material-icons-core:$v")
-        implementation("androidx.compose.material:material-icons-extended:$v")
 
         // Material3
         val vMaterial3 = "1.0.0-alpha14"
@@ -198,8 +197,11 @@ dependencies {
     dependencies {
 
         // FFmpegMediaMetadataRetriever
-        implementation("com.github.wseemann:FFmpegMediaMetadataRetriever-core:1.0.16")
-        implementation("com.github.wseemann:FFmpegMediaMetadataRetriever-native:1.0.16")
+        implementation ("com.github.wseemann:FFmpegMediaMetadataRetriever-core:1.0.16")
+        implementation ("com.github.wseemann:FFmpegMediaMetadataRetriever-native-armeabi-v7a:1.0.16")
+        implementation ("com.github.wseemann:FFmpegMediaMetadataRetriever-native-x86:1.0.16")
+        implementation ("com.github.wseemann:FFmpegMediaMetadataRetriever-native-x86_64:1.0.16")
+        implementation ("com.github.wseemann:FFmpegMediaMetadataRetriever-native-arm64-v8a:1.0.16")
     }
 
 

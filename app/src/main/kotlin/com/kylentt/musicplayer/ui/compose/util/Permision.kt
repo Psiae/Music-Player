@@ -132,7 +132,7 @@ object PermissionHelper {
 		)
 
 		when {
-			currentStatus.all { it.value } || permissions.isEmpty() -> {
+			currentStatus.all { it.value } -> {
 				if (!permissionStates.allPermissionsGranted) {
 					Timber.w(
 						"Possible inconsistency in @ExperimentalPermissionsAPI "

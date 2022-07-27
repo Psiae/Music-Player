@@ -85,8 +85,6 @@ class MediaViewModel @Inject constructor(
 				Timber.w("dispatchUpdateItemBitmap will wait due to low memory")
 			}
 
-
-
 			try {
 
 				val measureGet = measureTimedValue {

@@ -22,7 +22,6 @@ import androidx.compose.material.BottomNavigation
 import androidx.compose.material.BottomNavigationItem
 import androidx.compose.material.Icon
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.ripple.LocalRippleTheme
@@ -46,7 +45,7 @@ import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
-import coil.compose.rememberImagePainter
+import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.google.accompanist.navigation.animation.rememberAnimatedNavController
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -221,7 +220,7 @@ private fun RootBottomNavigation(
                 ) {
                     MainBottomNavItems.forEach { item ->
                         BottomNavigationItem(
-                            alwaysShowLabel = false,
+                            alwaysShowLabel = true,
                             selected = item.screen == selectedItem,
                             icon = {
                                 MainBottomNavItemIcon(
@@ -403,7 +402,7 @@ fun NavWallpaper(
             .data(wallpaper)
             .build()
     }
-    val painter = rememberImagePainter(req)
+    val painter = rememberAsyncImagePainter(req)
     val scrollState = rememberScrollState()
 
     Image(
@@ -432,8 +431,6 @@ fun NavWallpaper(
     }
 }
 
-private fun Bitmap?.copyDefaultArgb() = this?.copy(Bitmap.Config.ARGB_8888, false)
-
 sealed class MainBottomNavItem(
     val screen: Screen,
 ) {
@@ -448,18 +445,18 @@ sealed class MainBottomNavItem(
 private val MainBottomNavItems = listOf(
     MainBottomNavItem.ImageVectorIcon(
         screen = Screen.Home,
-        imageVector = Icons.Filled.Home,
-        selectedImageVector = Icons.Filled.Home
+        imageVector = AppDelegate.imageVectorFromDrawableId(R.drawable.home_outlined_base_512_24),
+        selectedImageVector = AppDelegate.imageVectorFromDrawableId(R.drawable.home_filled_base_512_24)
     ),
     MainBottomNavItem.ImageVectorIcon(
         screen = Screen.Search,
-        imageVector = Icons.Outlined.Search,
-        selectedImageVector = Icons.Filled.Search
+        imageVector = AppDelegate.imageVectorFromDrawableId(R.drawable.search_outlined_base_128_24),
+        selectedImageVector = AppDelegate.imageVectorFromDrawableId(R.drawable.search_filled_base_128_24)
     ),
     MainBottomNavItem.ImageVectorIcon(
         screen = Screen.Library,
-        imageVector = AppDelegate.imageVectorFromDrawableId(R.drawable.ic_bookshelf),
-        selectedImageVector = AppDelegate.imageVectorFromDrawableId(R.drawable.ic_bookshelf)
+        imageVector = AppDelegate.imageVectorFromDrawableId(R.drawable.library_outlined_base_128_24),
+        selectedImageVector = AppDelegate.imageVectorFromDrawableId(R.drawable.library_filled_base_128_24)
     )
 )
 
@@ -480,7 +477,7 @@ private fun MainBottomNavItemIcon(
     }
     Icon(
         modifier = Modifier
-            .size(27.5.dp),
+            .size(24.dp),
         painter = if (selected) selectedPainter else painter,
         contentDescription = null
     )

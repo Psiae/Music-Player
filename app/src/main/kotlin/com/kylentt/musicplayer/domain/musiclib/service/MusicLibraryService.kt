@@ -28,6 +28,8 @@ import com.kylentt.musicplayer.domain.musiclib.service.manager.SessionManager
 import com.kylentt.musicplayer.domain.musiclib.service.manager.StateManager
 import com.kylentt.musicplayer.domain.musiclib.service.provider.SessionProvider
 import com.kylentt.musicplayer.ui.main.MainActivity
+import com.kylentt.musicplayer.ui.main.MainActivityDelegate
+import com.kylentt.musicplayer.ui.main.MainActivityDelegate.isAlive
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -192,8 +194,8 @@ class MusicLibraryService : MediaLibraryService() {
 		checkState(componentManager.released)
 
 		// probably would be nice to introduce something similar in musiclib package
-		val activityState by MainActivity.Delegate
-		if (!activityState.isAlive()) {
+
+		if (!MainActivityDelegate.state.isAlive()) {
 			// could Leak
 			// TODO: CleanUp
 			notificationManagerService.cancelAll()

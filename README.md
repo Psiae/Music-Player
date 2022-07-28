@@ -3,7 +3,7 @@ App Name Coming Soon
 Simple Music Player `100% Made in Kotlin` with Jetpack Compose & AndroidX Media3.
 
 # Preview
-> Image Preview below will be update accordingly on any changes made
+> Image Preview below will be updated accordingly on any changes made
 
 > UI was removed for rework, background shown is taken from Device Home Background
 

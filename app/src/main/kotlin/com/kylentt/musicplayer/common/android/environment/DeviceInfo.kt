@@ -1,4 +1,4 @@
-package com.kylentt.musicplayer.common.android.environtment
+package com.kylentt.musicplayer.common.android.environment
 
 import android.app.ActivityManager
 import android.app.ActivityManager.MemoryInfo
@@ -41,7 +41,6 @@ class DeviceInfo @Inject constructor(@ApplicationContext context: Context) {
 	private inner class NotificationInfo
 
 	companion object {
-
 
 		val Context.screenWidthPixel: Int
 			get() = resources.displayMetrics.widthPixels

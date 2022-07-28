@@ -20,11 +20,13 @@ import coil.size.Scale
 import com.google.common.collect.ImmutableList
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.helper.image.CoilHelper
-import com.kylentt.musicplayer.common.android.environtment.DeviceInfo
+import com.kylentt.musicplayer.common.android.bitmap.bitmapfactory.BitmapSampler
+import com.kylentt.musicplayer.common.android.environment.DeviceInfo
 import com.kylentt.musicplayer.common.android.memory.maybeWaitForMemory
 import com.kylentt.musicplayer.common.coroutines.AutoCancelJob
 import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
 import com.kylentt.musicplayer.common.kotlin.comparable.clamp
+import com.kylentt.musicplayer.common.kotlin.coroutine.checkCancellation
 import com.kylentt.musicplayer.core.sdk.VersionHelper
 import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.isOngoing
 import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.isRepeatAll
@@ -39,8 +41,7 @@ import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemPr
 import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemPropertyHelper.mediaUri
 import com.kylentt.musicplayer.domain.musiclib.service.MusicLibraryService
 import com.kylentt.musicplayer.domain.musiclib.service.provider.MediaNotificationProvider
-import com.kylentt.musicplayer.ui.main.MainActivityDelegate
-import com.kylentt.musicplayer.ui.main.MainActivityDelegate.isAlive
+import com.kylentt.musicplayer.ui.main.MainActivity
 import kotlinx.coroutines.*
 import timber.log.Timber
 import kotlin.coroutines.coroutineContext
@@ -230,11 +231,11 @@ class MediaNotificationManager(
 
 	private inner class Provider(private val context: Context) : MediaNotification.Provider {
 
-		private val MediaItem.embedSize
-			get() = mediaMetadata.extras?.getFloat("embedSize") ?: -1f
+		private val MediaItem.embedSizeMB
+			get() = mediaMetadata.extras?.getFloat("embedSizeMB") ?: -1f
 
 		private fun MediaItem.putEmbedSize(mb: Float) {
-			mediaMetadata.extras?.putFloat("embedSize", mb.clamp(0f, Float.MAX_VALUE))
+			mediaMetadata.extras?.putFloat("embedSizeMB", mb.clamp(0f, Float.MAX_VALUE))
 		}
 
 		private val emptyItem = MediaItem.fromUri("empty")
@@ -382,7 +383,7 @@ class MediaNotificationManager(
 			cache: Boolean = false
 		): Pair<MediaItem, Bitmap?>? = withContext(this@MediaNotificationManager.appDispatchers.io) {
 			if (cache) {
-				if (item.embedSize > 1.5) {
+				if (item.embedSizeMB > 2) {
 					// Don't cache
 					return@withContext item to null
 				}
@@ -398,21 +399,41 @@ class MediaNotificationManager(
 					item.putEmbedSize(bytes.size.toFloat() / 1000000)
 				}
 
-				val (largeIconWidth: Int, largeIconHeight: Int) = 512 to 256 // chrome artwork use these size
+				ensureActive()
 
-				val largeIconSize = maxOf(largeIconWidth, largeIconHeight)
+				// if possible find sources that provide media style notification width and height
+				// 128 to 1024 is ideal
+				val reqSize = if (cache) 128 else 512
 
-				val reqSize = largeIconSize.let { if (cache) 128 else it }
+				val source: Any =
+					if (cache) {
+						BitmapSampler.ByteArray.toSampledBitmap(bytes, 0, bytes.size , reqSize, reqSize)
+							?: return@withContext item to null
+					} else {
+						bytes
+					}
+
+				val scale = if (cache) null else Scale.FILL
+
+				checkCancellation {
+					if (source is Bitmap) source.recycle()
+				}
 
 				// maybe create Fitter Class for some APIs version or Device that require some modification
 				// to have proper display
-				val squaredBitmap = coilHelper.loadSquaredBitmap(bytes, reqSize, Scale.FILL)
+				val squaredBitmap = coilHelper.loadSquaredBitmap(source, reqSize, scale)
 
 				Timber.d(
 					"squaredBitmap " +
-						"requestedSize: $reqSize " +
+						"requestedSize: ${
+							if (source is Bitmap) "${source.width}:${source.height}" else "$reqSize:$reqSize"
+						} " +
 						"to size: ${squaredBitmap?.width}:${squaredBitmap?.height}"
 				)
+
+				checkCancellation {
+					if (source is Bitmap) source.recycle()
+				}
 
 				item to squaredBitmap
 			} catch (oom: OutOfMemoryError) {
@@ -661,8 +682,7 @@ class MediaNotificationManager(
 						stateInteractor.stopForegroundService(true)
 						stateInteractor.stopService()
 
-						val state by MainActivityDelegate.stateDelegate
-						if (!state.isAlive()) stateInteractor.releaseService()
+						if (!MainActivity.Companion.Info.state.isAlive()) stateInteractor.releaseService()
 					}
 					?: throw IllegalStateException("Received Intent: $intent on Released State")
 			}

@@ -69,16 +69,24 @@ class MediaNotificationProvider(
 					)
 
 				val mediaItem = player.currentMediaItem.orEmpty()
-
 				Timber.d("provider ${mediaItem.mediaMetadata.albumArtist}")
 
 				setChannelId(channelId)
 				setContentIntent(contentIntent)
+
 				setContentTitle(
-					mediaItem.mediaMetadata.title ?: mediaItem.mediaMetadata.displayTitle ?: "<Unknown>"
+					if (!mediaItem.mediaMetadata.title.isNullOrEmpty()) {
+						mediaItem.mediaMetadata.title
+					} else {
+						mediaItem.mediaMetadata.displayTitle ?: "<Unknown>"
+					}
 				)
 				setContentText(
-					mediaItem.mediaMetadata.albumArtist ?: mediaItem.mediaMetadata.artist ?: "<Unknown>"
+					if (!mediaItem.mediaMetadata.albumArtist.isNullOrEmpty()) {
+						mediaItem.mediaMetadata.albumArtist
+					} else {
+						mediaItem.mediaMetadata.artist ?: "<Unknown>"
+					}
 				)
 				setSmallIcon(R.drawable.blu)
 

@@ -11,7 +11,7 @@ import com.kylentt.mediaplayer.helper.external.IntentWrapper
 import com.kylentt.mediaplayer.helper.external.MediaIntentHandler
 import com.kylentt.mediaplayer.helper.image.CoilHelper
 import com.kylentt.musicplayer.common.android.bitmap.bitmapfactory.BitmapSampler
-import com.kylentt.musicplayer.common.android.environtment.DeviceInfo
+import com.kylentt.musicplayer.common.android.environment.DeviceInfo
 import com.kylentt.musicplayer.common.android.memory.maybeWaitForMemory
 import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
 import com.kylentt.musicplayer.common.coroutines.safeCollect
@@ -24,9 +24,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import timber.log.Timber
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.ConcurrentMap
-import java.util.regex.Matcher
 import javax.inject.Inject
 import kotlin.coroutines.coroutineContext
 import kotlin.time.ExperimentalTime

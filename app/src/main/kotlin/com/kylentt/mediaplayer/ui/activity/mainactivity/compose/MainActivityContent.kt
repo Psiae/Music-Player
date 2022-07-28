@@ -413,18 +413,25 @@ fun NavWallpaper(
     )
 
     LaunchedEffect(scrollState.maxValue) {
-        (currentIndex.toFloat() / (size - 1) * scrollState.maxValue).toInt().let { px ->
-            scrollState.scrollTo(px)
-        }
+		val value =
+			if (scrollState.maxValue > 0 && size > 0 && currentIndex > 0) {
+				(currentIndex.toFloat() / (size - 1) * scrollState.maxValue).toInt()
+			} else {
+				0
+			}
+		scrollState.scrollTo(value = value)
     }
 
     LaunchedEffect(currentIndex) {
-        (currentIndex.toFloat() / (size - 1) * scrollState.maxValue).toInt().let { px ->
-            scrollState.animateScrollTo(
-                px,
-                animationSpec = SpringSpec(stiffness = Spring.StiffnessLow)
-            )
-        }
+		val value =
+			if (scrollState.maxValue > 0 && size > 0 && currentIndex > 0) {
+				(currentIndex.toFloat() / (size - 1) * scrollState.maxValue).toInt()
+			} else {
+				0
+			}
+		scrollState.animateScrollTo(value = value,
+			animationSpec = SpringSpec(stiffness = Spring.StiffnessLow)
+		)
     }
 }
 

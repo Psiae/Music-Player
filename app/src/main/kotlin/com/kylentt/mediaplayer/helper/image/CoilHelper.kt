@@ -59,6 +59,7 @@ private object CoilBitmapTransformer {
 			.size(size)
 			.transformations(centerCropType)
 			.diskCachePolicy(cachePolicy)
+			.precision(Precision.EXACT)
 
 		if (scale != null) req.scale(scale)
 

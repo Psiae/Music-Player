@@ -5,8 +5,6 @@ import android.os.Bundle
 import com.kylentt.musicplayer.R
 import com.kylentt.musicplayer.common.android.intent.isActionView
 import com.kylentt.musicplayer.ui.main.MainActivity
-import com.kylentt.musicplayer.ui.main.MainActivityDelegate
-import com.kylentt.musicplayer.ui.main.MainActivityDelegate.wasLaunched
 
 class ReceiverActivity : Activity() {
 
@@ -20,9 +18,8 @@ class ReceiverActivity : Activity() {
 	}
 
 	private fun launchMainActivity() {
-		val state by MainActivityDelegate.stateDelegate
-		MainActivity.Launcher.startActivity(this, intent)
-		if (!state.wasLaunched()) {
+		MainActivity.Companion.Launcher.launch(this, intent)
+		if (!MainActivity.Companion.Info.state.wasLaunched()) {
 			overridePendingTransition(R.anim.anim_stay_still, R.anim.anim_stay_still)
 		}
 	}

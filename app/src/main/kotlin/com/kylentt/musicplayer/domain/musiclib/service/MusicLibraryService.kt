@@ -28,8 +28,7 @@ import com.kylentt.musicplayer.domain.musiclib.service.manager.SessionManager
 import com.kylentt.musicplayer.domain.musiclib.service.manager.StateManager
 import com.kylentt.musicplayer.domain.musiclib.service.provider.SessionProvider
 import com.kylentt.musicplayer.ui.main.MainActivity
-import com.kylentt.musicplayer.ui.main.MainActivityDelegate
-import com.kylentt.musicplayer.ui.main.MainActivityDelegate.isAlive
+import com.kylentt.musicplayer.ui.main.MainActivity.MainState.Created.isAlive
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -195,7 +194,7 @@ class MusicLibraryService : MediaLibraryService() {
 
 		// probably would be nice to introduce something similar in musiclib package
 
-		if (!MainActivityDelegate.state.isAlive()) {
+		if (!MainActivity.Companion.Info.state.isAlive()) {
 			// could Leak
 			// TODO: CleanUp
 			notificationManagerService.cancelAll()

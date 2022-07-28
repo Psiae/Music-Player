@@ -1,6 +1,6 @@
 package com.kylentt.musicplayer.common.android.memory
 
-import com.kylentt.musicplayer.common.android.environtment.DeviceInfo
+import com.kylentt.musicplayer.common.android.environment.DeviceInfo
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlin.coroutines.coroutineContext

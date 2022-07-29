@@ -18,3 +18,7 @@ Simple Music Player `100% Made in Kotlin` with Jetpack Compose & AndroidX Media3
 | Dark Mode + Material You + AutoScroll background + MediaItem Metadata |
 | -------------- |
 | <img src="https://user-images.githubusercontent.com/94031495/181488641-af0437d8-d676-4c2b-bc2d-0615259131cc.png" width="180"> <img src="https://user-images.githubusercontent.com/94031495/181488687-a336de90-8e04-48c6-8d6c-5854508f84b1.png" width="180"> <img src="https://user-images.githubusercontent.com/94031495/181488720-da247248-da4d-496e-bfe1-619b0fe45712.png" width="180"> <img src="https://user-images.githubusercontent.com/94031495/181488752-f807d04c-42ee-4afa-beaa-d68a77667334.png" width="180"> <img src="https://user-images.githubusercontent.com/94031495/181488791-533f8d7d-d53e-4536-b8a6-65ee93f82b55.png" width="180"> |
+
+| Permission Page (base). Todo: replace with pager|
+| -------------- |
+| <img src="https://user-images.githubusercontent.com/94031495/181680651-c4e583f8-87a9-4b9e-aa82-c8fca9684f81.png" width="180"> <img src="https://user-images.githubusercontent.com/94031495/181680646-9bf0240e-941d-431e-b020-40470d22cca3.png" width="180"> |

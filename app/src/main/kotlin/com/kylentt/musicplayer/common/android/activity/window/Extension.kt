@@ -8,6 +8,7 @@ import androidx.core.view.WindowCompat
  * to not consider fitting for System Insets such as Status bar and Navigation bar
  */
 
-fun Window.disableDecorFitSystem(): Unit {
+fun Window.disableDecorFitSystem(): Window {
 	WindowCompat.setDecorFitsSystemWindows(this, false)
+	return this
 }

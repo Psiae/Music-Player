@@ -1,4 +1,4 @@
-package com.kylentt.musicplayer.ui.compose.util
+package com.kylentt.musicplayer.ui.util.compose
 
 import android.content.Context
 import android.content.pm.PackageManager
@@ -10,6 +10,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import com.google.accompanist.permissions.*
+import com.kylentt.musicplayer.BuildConfig
 import timber.log.Timber
 
 object PermissionHelper {
@@ -148,7 +149,13 @@ object PermissionHelper {
 					whenAllDenied(permissionStates)
 				}
 			}
-			else -> throw IllegalStateException()
+			else -> {
+				if (BuildConfig.DEBUG) {
+					throw IllegalStateException()
+				} else {
+					whenAllDenied(permissionStates)
+				}
+			}
 		}
 	}
 }

@@ -11,11 +11,11 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.kylentt.mediaplayer.domain.viewmodels.MainViewModel
 import com.kylentt.mediaplayer.domain.viewmodels.MediaViewModel
 import com.kylentt.mediaplayer.helper.external.IntentWrapper
-import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.MainActivityContent
 import com.kylentt.musicplayer.common.android.activity.disableWindowDecorFitSystemInsets
 import com.kylentt.musicplayer.common.android.intent.isActionMain
 import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
 import com.kylentt.musicplayer.core.app.delegates.device.StoragePermissionHelper
+import com.kylentt.musicplayer.ui.main.compose.MainContent
 import dagger.hilt.android.AndroidEntryPoint
 import timber.log.Timber
 import javax.inject.Inject
@@ -51,7 +51,9 @@ class MainActivity : ComponentActivity() {
 		setupSplashScreen()
 
 		// later
-		setContent { MainActivityContent() }
+		setContent {
+			MainContent()
+		}
 
 		return dispatchEvent(MainEvent.Create)
 	}
@@ -107,11 +109,9 @@ class MainActivity : ComponentActivity() {
 		installSplashScreen()
 	}
 
-
 	private fun dispatchEvent(event: MainEvent) {
 		Delegate.onEvent(this, event)
 	}
-
 
 	private inner class IntentHandler {
 		fun handleIntent(intent: Intent) {

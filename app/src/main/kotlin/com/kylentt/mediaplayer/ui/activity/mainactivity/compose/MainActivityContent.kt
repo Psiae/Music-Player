@@ -11,7 +11,6 @@ import android.graphics.Bitmap
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.RequiresPermission
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.Spring
@@ -61,8 +60,8 @@ import com.kylentt.mediaplayer.ui.compose.rememberWallpaperBitmapAsState
 import com.kylentt.musicplayer.R
 import com.kylentt.musicplayer.core.app.delegates.AppDelegate
 import com.kylentt.musicplayer.core.app.delegates.device.StoragePermissionHelper
-import com.kylentt.musicplayer.ui.compose.util.PermissionHelper
-import com.kylentt.musicplayer.ui.main.compose.theme.Material3Theme
+import com.kylentt.musicplayer.ui.util.compose.PermissionHelper
+import com.kylentt.musicplayer.ui.main.compose.theme.MainMaterial3Theme
 import com.kylentt.musicplayer.ui.main.compose.theme.color.ColorHelper
 import timber.log.Timber
 import kotlin.math.roundToInt
@@ -74,7 +73,7 @@ fun MainActivityContent(
 ) {
     val appSettings = mainViewModel.appSettings.collectAsState()
 
-    Material3Theme {
+    MainMaterial3Theme {
 
         PermissionHelper.RequirePermissions(
 			permissions = listOf(
@@ -91,8 +90,6 @@ fun MainActivityContent(
 			val permission =
 				StoragePermissionHelper.checkReadWriteStoragePermission(LocalContext.current)
 
-			require(permission) { "App Storage Permission is Not Granted" }
-
             with(mainViewModel) {
                 pendingStorageGranted.forEachClearSync()
                 pendingStorageIntent.forEachClearSync { mediaViewModel.handleMediaIntent(it) }
@@ -103,12 +100,8 @@ fun MainActivityContent(
     }
 }
 
-@RequiresPermission(anyOf = [
-    StoragePermissionHelper.Read_External_Storage,
-    StoragePermissionHelper.Write_External_Storage
-])
 @Composable
-private fun MainActivityRoot(
+fun MainActivityRoot(
     appSettings: AppSettings
 ) {
     val navController = rememberAnimatedNavController()
@@ -276,7 +269,7 @@ private fun showBottomNav(stack: NavBackStackEntry?): Boolean =
 
 @Suppress("NOTHING_TO_INLINE")
 @Composable
-private inline fun StorageDenied(state: MultiplePermissionsState) {
+inline fun StorageDenied(state: MultiplePermissionsState) {
 	val localContext = LocalContext.current
 
 	val permission = StoragePermissionHelper.checkReadWriteStoragePermission(localContext)

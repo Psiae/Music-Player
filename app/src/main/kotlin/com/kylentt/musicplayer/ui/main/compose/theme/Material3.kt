@@ -11,9 +11,10 @@ import androidx.compose.ui.unit.dp
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.google.android.material.color.DynamicColors
 import com.kylentt.musicplayer.ui.main.compose.theme.color.ColorHelper
+import com.kylentt.musicplayer.ui.main.compose.theme.text.MainTypography
 
 @Composable
-inline fun Material3Theme(
+inline fun MainMaterial3Theme(
 	darkTheme: Boolean = isSystemInDarkTheme(),
 	dynamic: Boolean = DynamicColors.isDynamicColorAvailable(),
 	crossinline content: @Composable () -> Unit
@@ -29,8 +30,13 @@ inline fun Material3Theme(
 		}
 	}
 
-	MaterialTheme(colorScheme = colorScheme) {
+	MaterialTheme(
+		colorScheme = colorScheme,
+		typography = MainTypography
+	) {
 		with(rememberSystemUiController()) {
+
+
 			setNavigationBarColor(
 				color = Color.Transparent,
 				navigationBarContrastEnforced = true,

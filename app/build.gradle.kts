@@ -218,6 +218,7 @@ dependencies {
         // Pager
         val vPager = "0.24.4-alpha"
         implementation("com.google.accompanist:accompanist-pager:$vPager")
+        implementation("com.google.accompanist:accompanist-pager-indicators:$vPager")
 
         // Navigation-Animation
         val vNavAnimation = "0.24.4-alpha"

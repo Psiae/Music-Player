@@ -5,3 +5,7 @@ fun <T> MutableCollection<T>.forEachClear(lock: Any? = null, action: (T) -> Unit
 	if (lock != null) synchronized(lock) { doAction() } else doAction()
 	clear()
 }
+
+fun <T : () -> Unit> MutableCollection<T>.doEachClear(lock: Any? = null) {
+	forEachClear(lock) { it() }
+}

@@ -12,10 +12,11 @@ import com.kylentt.musicplayer.common.android.activity.window.disableDecorFitSys
  */
 
 @kotlin.jvm.Throws(IllegalArgumentException::class)
-fun Activity.disableWindowDecorFitSystemInsets(): Unit {
+fun Activity.disableWindowDecorFitSystemInsets(): Activity {
 	requireNotNull(window) {
 		"Activity.window was null, " +
 			"try calling this function when of after onCreate(Bundle?) is called"
 	}
 	window.disableDecorFitSystem()
+	return this
 }

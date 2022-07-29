@@ -1,28 +1,35 @@
 package com.kylentt.musicplayer.ui.main.compose
 
-import androidx.activity.viewModels
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import com.kylentt.mediaplayer.domain.viewmodels.MainViewModel
-import com.kylentt.mediaplayer.domain.viewmodels.MediaViewModel
+import androidx.compose.ui.Modifier
 import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.MainActivityRoot
 import com.kylentt.musicplayer.common.kotlin.mutablecollection.doEachClear
 import com.kylentt.musicplayer.common.kotlin.mutablecollection.forEachClear
 import com.kylentt.musicplayer.ui.main.MainActivity
+import com.kylentt.musicplayer.ui.main.compose.MainProvider.ProvideViewModels
 import com.kylentt.musicplayer.ui.main.compose.theme.MainMaterial3Theme
+import com.kylentt.musicplayer.ui.main.compose.theme.color.ColorHelper
 
 @Composable
 fun MainActivity.MainContent() {
 	MainTheme {
-		Surface {
+		MainSurface {
 			MainEntry {
-				with(viewModels<MainViewModel>().value) {
-					pendingStorageGranted.doEachClear()
-					pendingStorageIntent.forEachClear { intent ->
-						viewModels<MediaViewModel>().value.handleMediaIntent(intent)
+				ProvideViewModels {
+					val mainViewModel = MainProvider.mainViewModel
+					val mediaViewModel = MainProvider.mediaViewModel
+					with(mainViewModel) {
+						pendingStorageGranted.doEachClear()
+						pendingStorageIntent.forEachClear(mediaViewModel::handleMediaIntent)
+						MainActivityRoot(appSettings.collectAsState().value)
 					}
-					MainActivityRoot(appSettings.collectAsState().value)
 				}
 			}
 		}
@@ -30,6 +37,15 @@ fun MainActivity.MainContent() {
 }
 
 @Composable
-private fun MainTheme(content: @Composable () -> Unit) {
+private fun MainTheme(content: @Composable () -> Unit) =
 	MainMaterial3Theme(content = content)
+
+@Composable
+private fun MainSurface(content: @Composable () -> Unit) {
+	Surface(
+		modifier = Modifier.fillMaxSize(),
+		color = MaterialTheme.colorScheme.surface,
+		content = content
+	)
 }
+

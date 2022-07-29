@@ -36,7 +36,6 @@ inline fun MainMaterial3Theme(
 	) {
 		with(rememberSystemUiController()) {
 
-
 			setNavigationBarColor(
 				color = Color.Transparent,
 				navigationBarContrastEnforced = true,

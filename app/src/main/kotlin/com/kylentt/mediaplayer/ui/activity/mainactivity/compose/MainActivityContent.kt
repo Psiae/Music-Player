@@ -60,6 +60,8 @@ import com.kylentt.mediaplayer.ui.compose.rememberWallpaperBitmapAsState
 import com.kylentt.musicplayer.R
 import com.kylentt.musicplayer.core.app.delegates.AppDelegate
 import com.kylentt.musicplayer.core.app.delegates.device.StoragePermissionHelper
+import com.kylentt.musicplayer.ui.main.compose.MainNavigator
+import com.kylentt.musicplayer.ui.main.compose.MainNavigator.ProvideNavHostController
 import com.kylentt.musicplayer.ui.util.compose.PermissionHelper
 import com.kylentt.musicplayer.ui.main.compose.theme.MainMaterial3Theme
 import com.kylentt.musicplayer.ui.main.compose.theme.color.ColorHelper
@@ -90,8 +92,8 @@ fun MainActivityContent(
 			val permission =
 				StoragePermissionHelper.checkReadWriteStoragePermission(LocalContext.current)
 
-            with(mainViewModel) {
-                pendingStorageGranted.forEachClearSync()
+			with(mainViewModel) {
+				pendingStorageGranted.forEachClearSync()
                 pendingStorageIntent.forEachClearSync { mediaViewModel.handleMediaIntent(it) }
             }
 
@@ -104,17 +106,17 @@ fun MainActivityContent(
 fun MainActivityRoot(
     appSettings: AppSettings
 ) {
-    val navController = rememberAnimatedNavController()
-
-    RootScaffold(
-        appSettings = appSettings,
-        navController = navController
-    ) { padding ->
-        AnimatedMainAppNavigator(
-            modifier = Modifier.padding(padding),
-            controller = navController
-        )
-    }
+	ProvideNavHostController(rememberAnimatedNavController()) {
+		RootScaffold(
+			appSettings = appSettings,
+			navController = MainNavigator.controller
+		) { padding ->
+			AnimatedMainAppNavigator(
+				modifier = Modifier.padding(padding),
+				controller = MainNavigator.controller
+			)
+		}
+	}
 }
 
 @Composable
@@ -325,7 +327,7 @@ private fun MainActivityNavWallpaper(
     val context = LocalContext.current
     val wpx = with(LocalDensity.current) { LocalConfiguration.current.screenWidthDp.dp.toPx() }
     val hpx = with(LocalDensity.current) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
-    val backgroundColor = MaterialTheme.colorScheme.background
+    val backgroundColor = MaterialTheme.colorScheme.surface
 
     val systemModeBitmap: () -> Bitmap = {
         Paint()
@@ -406,6 +408,8 @@ fun NavWallpaper(
     )
 
     LaunchedEffect(scrollState.maxValue) {
+		Timber.d("NavWallpaper Launched effect for scrollState.maxValue: ${scrollState.maxValue}")
+
 		val value =
 			if (scrollState.maxValue > 0 && size > 0 && currentIndex > 0) {
 				(currentIndex.toFloat() / (size - 1) * scrollState.maxValue).toInt()
@@ -416,6 +420,8 @@ fun NavWallpaper(
     }
 
     LaunchedEffect(currentIndex) {
+		Timber.d("NavWallpaper Launched effect for currentIndex: $currentIndex")
+
 		val value =
 			if (scrollState.maxValue > 0 && size > 0 && currentIndex > 0) {
 				(currentIndex.toFloat() / (size - 1) * scrollState.maxValue).toInt()

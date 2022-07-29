@@ -34,6 +34,14 @@ object PermissionHelper {
 		return checkContextPermission(context, permission.androidManifestString)
 	}
 
+	fun checkReadStoragePermission(context: Context): Boolean {
+		return checkContextPermission(context, Permission.READ_EXTERNAL_STORAGE)
+	}
+
+	fun checkWriteStoragePermission(context: Context): Boolean {
+		return checkContextPermission(context, Permission.WRITE_EXTERNAL_STORAGE)
+	}
+
 	private fun checkContextPermission(context: Context, permission: String): Boolean {
 		return ContextCompat.checkSelfPermission(
 			context,

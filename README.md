@@ -19,6 +19,10 @@ Simple Music Player `100% Made in Kotlin` with Jetpack Compose & AndroidX Media3
 | -------------- |
 | <img src="https://user-images.githubusercontent.com/94031495/181488641-af0437d8-d676-4c2b-bc2d-0615259131cc.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/181488687-a336de90-8e04-48c6-8d6c-5854508f84b1.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/181488720-da247248-da4d-496e-bfe1-619b0fe45712.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/181488752-f807d04c-42ee-4afa-beaa-d68a77667334.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/181488791-533f8d7d-d53e-4536-b8a6-65ee93f82b55.png" width="195"> |
 
-| Permission Page (base). Todo: replace with pager|
+| Permission Pager + Light Mode|
 | -------------- |
-| <img src="https://user-images.githubusercontent.com/94031495/181680651-c4e583f8-87a9-4b9e-aa82-c8fca9684f81.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/181680646-9bf0240e-941d-431e-b020-40470d22cca3.png" width="195"> |
+| <img src="https://user-images.githubusercontent.com/94031495/181788368-9fc3ee31-7582-49d2-a49b-babc61f2c251.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/181788379-6e9123a6-5556-47ab-af1a-613fe4fd7886.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/181788375-5d425c78-d0c0-474b-83c5-661da9ade444.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/181788378-d90b3b3f-4b7f-4f3d-bdd0-a209153e7c3f.png" width="195"> |
+
+| Permission Pager + Dark Mode|
+| -------------- |
+| <img src="https://user-images.githubusercontent.com/94031495/181788423-a2788c14-4c15-4609-860e-f40914db1e8e.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/181788425-516b7790-051e-4772-b176-16d9b5b7b273.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/181788430-3bc389b3-a7d8-4662-a480-047e7ed231a5.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/181788428-42687feb-aedd-45cc-8544-743d137c9534.png" width="195"> |

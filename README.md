@@ -21,8 +21,10 @@ Simple Music Player `100% Made in Kotlin` with Jetpack Compose & AndroidX Media3
 
 | Permission Pager + Light Mode|
 | -------------- |
-| <img src="https://user-images.githubusercontent.com/94031495/181788368-9fc3ee31-7582-49d2-a49b-babc61f2c251.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/181788379-6e9123a6-5556-47ab-af1a-613fe4fd7886.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/181788375-5d425c78-d0c0-474b-83c5-661da9ade444.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/181788378-d90b3b3f-4b7f-4f3d-bdd0-a209153e7c3f.png" width="195"> |
+| <img src="https://user-images.githubusercontent.com/94031495/181867588-5a80bdc8-4be6-47d2-8be9-86098257e395.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/181867589-6746d1a7-3415-41f4-a22d-7f08060c541c.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/181867590-2e418c87-d6cd-4303-b8d9-3cbb45224ce8.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/181867591-c7d20bc7-5b14-43b4-a4d0-b446244653a5.png" width="195"> |
 
 | Permission Pager + Dark Mode|
 | -------------- |
-| <img src="https://user-images.githubusercontent.com/94031495/181788423-a2788c14-4c15-4609-860e-f40914db1e8e.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/181788425-516b7790-051e-4772-b176-16d9b5b7b273.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/181788430-3bc389b3-a7d8-4662-a480-047e7ed231a5.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/181788428-42687feb-aedd-45cc-8544-743d137c9534.png" width="195"> |
+| <img src="https://user-images.githubusercontent.com/94031495/181867586-5d661af4-03f2-4911-9fb1-22141d7e69fc.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/181867587-bcf46f93-9aaa-4ae6-a531-5582efbe073d.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/181867593-dc71a6cf-9609-4786-bc66-ac8ba9d51b83.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/181867595-bc00fdf8-d0e7-46cf-a8ab-151b877a8128.png" width="195"> |
+
+credits: https://icons8.com/

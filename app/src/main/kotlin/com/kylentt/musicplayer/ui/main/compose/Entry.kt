@@ -3,6 +3,7 @@ package com.kylentt.musicplayer.ui.main.compose
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -11,31 +12,34 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.neverEqualPolicy
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.HorizontalPagerIndicator
 import com.google.accompanist.pager.rememberPagerState
-import com.google.accompanist.permissions.*
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
+import com.google.accompanist.permissions.shouldShowRationale
 import com.kylentt.musicplayer.R
 import com.kylentt.musicplayer.ui.main.compose.theme.MainMaterial3Theme
 import com.kylentt.musicplayer.ui.main.compose.theme.color.ColorHelper
 import com.kylentt.musicplayer.ui.util.compose.PermissionHelper
-import com.kylentt.musicplayer.ui.util.compose.RecomposeOnEvent
 
 class EntryViewModel() : ViewModel() {
-	var savedEntryPermission: Boolean? = null
+	var shouldPersistPager: Boolean? = null
 }
 
 private val entryViewModel
@@ -76,29 +80,18 @@ fun MainEntry(content: @Composable () -> Unit) {
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 private fun CheckEntryPermission(onGranted: @Composable () -> Unit) {
-	val context = LocalContext.current
 	val entryVM = entryViewModel
-	val granted = readStoragePermissionGranted
+	val readGranted = readStoragePermissionGranted
 
-	val allow = remember {
-		mutableStateOf(granted, structuralEqualityPolicy())
+	val entryAllowed = remember {
+		mutableStateOf(entryVM.shouldPersistPager != true && readGranted)
 	}
 
-	val rememberAllow = remember(allow.value) {
-		// Use ViewModel as it only retain on config changes
-		entryVM.savedEntryPermission = entryVM.savedEntryPermission ?: granted
-		allow.value
-	}
-
-	if (!allow.value || !rememberAllow) {
-		return EntryPermissionPager { allow.value = true }
+	if (!entryAllowed.value) {
+		return EntryPermissionPager { entryAllowed.value = true }
 	}
 
 	onGranted()
-	LocalLifecycleOwner.current.lifecycle.RecomposeOnEvent(onEvent = Lifecycle.Event.ON_RESUME) {
-		require(it == Lifecycle.Event.ON_RESUME)
-		allow.value = PermissionHelper.checkReadStoragePermission(context)
-	}
 }
 
 @OptIn(ExperimentalPagerApi::class)
@@ -106,15 +99,14 @@ private fun CheckEntryPermission(onGranted: @Composable () -> Unit) {
 @Composable
 private fun EntryPermissionPager(onGranted: () -> Unit) {
 
-	val context = LocalContext.current
-
 	val granted = remember {
 		mutableStateOf(false)
 	}
 
+	entryViewModel.shouldPersistPager = !granted.value
+
 	if (granted.value) {
-		onGranted()
-		return
+		return onGranted()
 	}
 
 	val allPermissionGranted = remember {
@@ -124,16 +116,20 @@ private fun EntryPermissionPager(onGranted: () -> Unit) {
 	val pagerState = rememberPagerState()
 
 	Column(
-		modifier = Modifier
-			.fillMaxWidth()
-			.fillMaxHeight(),
+		modifier = Modifier.fillMaxSize(),
 		verticalArrangement = Arrangement.Top,
 		horizontalAlignment = Alignment.CenterHorizontally
 	) {
+
+		val pagerHeightFraction = when(LocalContext.current.resources.configuration.orientation) {
+			Configuration.ORIENTATION_LANDSCAPE -> 0.75F
+			else -> 0.85F
+		}
+
 		HorizontalPager(
 			modifier = Modifier
 				.fillMaxWidth()
-				.fillMaxHeight(0.75f),
+				.fillMaxHeight(pagerHeightFraction),
 			count = pageItems.size,
 			state = pagerState,
 			verticalAlignment = Alignment.Top
@@ -172,28 +168,39 @@ private fun EntryPermissionPager(onGranted: () -> Unit) {
 				.all { isPermissionGranted(it.permissionString) }
 		}
 
-		HorizontalPagerIndicator(pagerState = pagerState)
-
-		Row(
+		Column(
 			modifier = Modifier.fillMaxSize(),
-			horizontalArrangement = Arrangement.Center,
-			verticalAlignment = Alignment.CenterVertically
+			verticalArrangement = Arrangement.Top,
+			horizontalAlignment = Alignment.CenterHorizontally
 		) {
-			AnimatedVisibility (
-				visible = allPermissionGranted.value,
+
+			Box(
+				modifier = Modifier.fillMaxSize(0.3F),
+				contentAlignment = Alignment.Center
 			) {
-				Button(
-					modifier = Modifier.fillMaxWidth(0.7f),
-					onClick = { granted.value = true },
-					colors = ButtonDefaults
-						.elevatedButtonColors(MaterialTheme.colorScheme.primaryContainer)
+				HorizontalPagerIndicator(pagerState = pagerState)
+			}
+
+			Row(
+				horizontalArrangement = Arrangement.Center,
+				verticalAlignment = Alignment.CenterVertically
+			) {
+				AnimatedVisibility (
+					visible = allPermissionGranted.value,
 				) {
-					val style = MaterialTheme.typography
-					Text(
-						text = "Let's Go",
-						color = ColorHelper.textColor(),
-						fontSize = style.titleMedium.fontSize
-					)
+					Button(
+						modifier = Modifier.fillMaxWidth(0.7f),
+						onClick = { granted.value = true },
+						colors = ButtonDefaults
+							.elevatedButtonColors(MaterialTheme.colorScheme.primaryContainer)
+					) {
+						val style = MaterialTheme.typography
+						Text(
+							text = "Let's Go",
+							color = ColorHelper.textColor(),
+							fontSize = style.titleMedium.fontSize
+						)
+					}
 				}
 			}
 		}
@@ -213,10 +220,15 @@ private inline fun PermissionPage(
 		horizontalAlignment = Alignment.CenterHorizontally,
 		verticalArrangement = Arrangement.Top
 	) {
+
+		val fraction = when(LocalContext.current.resources.configuration.orientation) {
+			Configuration.ORIENTATION_LANDSCAPE -> 0.7f
+			else -> 0.8f
+		}
+
 		Image(
 			modifier = Modifier
-				.fillMaxWidth(0.7f)
-				.fillMaxHeight(0.8f),
+				.fillMaxSize(fraction),
 			alignment = Alignment.BottomCenter,
 			painter = painterResource(id = resId),
 			contentDescription = "Image"
@@ -225,7 +237,8 @@ private inline fun PermissionPage(
 		Text(text = description, color = ColorHelper.textColor())
 
 		Box(
-			modifier = Modifier.fillMaxSize(),
+			modifier = Modifier
+				.fillMaxSize(),
 			contentAlignment = Alignment.Center
 		) {
 			Button(
@@ -265,7 +278,7 @@ private data class PermissionPageItem(
 )
 
 @Composable
-@Preview
+@Preview()
 private fun ReadStoragePermissionScreenPreview() {
 	MainMaterial3Theme(darkTheme = false) {
 		Surface {
@@ -277,8 +290,6 @@ private fun ReadStoragePermissionScreenPreview() {
 		}
 	}
 }
-
-
 
 @Composable
 @Preview

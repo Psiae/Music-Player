@@ -1,11 +1,8 @@
 package com.kylentt.musicplayer.ui.main.compose
 
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
@@ -15,7 +12,6 @@ import com.kylentt.musicplayer.common.kotlin.mutablecollection.forEachClear
 import com.kylentt.musicplayer.ui.main.MainActivity
 import com.kylentt.musicplayer.ui.main.compose.MainProvider.ProvideViewModels
 import com.kylentt.musicplayer.ui.main.compose.theme.MainMaterial3Theme
-import com.kylentt.musicplayer.ui.main.compose.theme.color.ColorHelper
 
 @Composable
 fun MainActivity.MainContent() {

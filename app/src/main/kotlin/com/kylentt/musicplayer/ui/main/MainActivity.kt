@@ -38,7 +38,8 @@ class MainActivity : ComponentActivity() {
 	private val mainVM: MainViewModel by viewModels()
 	private val mediaVM: MediaViewModel by viewModels()
 
-	private val storagePermission by StoragePermissionHelper
+	private val readStoragePermission
+		get() = StoragePermissionHelper.checkReadStoragePermission(this)
 
 	init {
 		dispatchEvent(MainEvent.Init)
@@ -117,7 +118,7 @@ class MainActivity : ComponentActivity() {
 		fun handleIntent(intent: Intent) {
 			val wrapped = IntentWrapper.fromIntent(intent)
 			if (!wrapped.shouldHandleIntent) return
-			if (!storagePermission) {
+			if (!readStoragePermission) {
 				mainVM.pendingStorageIntent.add(wrapped)
 				return
 			}

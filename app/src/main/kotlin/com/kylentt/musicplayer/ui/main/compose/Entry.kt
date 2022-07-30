@@ -60,10 +60,10 @@ private val settingIntent
 	}
 
 private val pageItems = listOf(
-	PermissionPageItem(readStoragePermissionString, R.drawable.read_folder_base_256, false,
+	PermissionPageItem(readStoragePermissionString, R.drawable.folder_search_base_256_blu_glass, false,
 		"Read Storage Permission"
 	),
-	PermissionPageItem(writeStoragePermissionString, R.drawable.write_folder_base_256, true,
+	PermissionPageItem(writeStoragePermissionString, R.drawable.folder_write_base_256, true,
 		"Write Storage Permission"
 	),
 )
@@ -129,7 +129,7 @@ private fun EntryPermissionPager(onGranted: () -> Unit) {
 		HorizontalPager(
 			modifier = Modifier
 				.fillMaxWidth()
-				.fillMaxHeight(0.85f),
+				.fillMaxHeight(0.75f),
 			count = pageItems.size,
 			state = pagerState,
 			verticalAlignment = Alignment.Top
@@ -211,7 +211,7 @@ private inline fun PermissionPage(
 	) {
 		Image(
 			modifier = Modifier
-				.fillMaxWidth(0.5f)
+				.fillMaxWidth(0.7f)
 				.fillMaxHeight(0.8f),
 			alignment = Alignment.BottomCenter,
 			painter = painterResource(id = resId),
@@ -265,7 +265,7 @@ private data class PermissionPageItem(
 private fun ReadStoragePermissionScreenPreview() {
 	MainMaterial3Theme(darkTheme = false) {
 		Surface {
-			PermissionPage(resId = R.drawable.read_folder_base_256,
+			PermissionPage(resId = R.drawable.folder_search_base_256_blu_glass,
 				description = "Read Storage Permission is Required",
 				isGranted = false
 			) {
@@ -281,7 +281,7 @@ private fun ReadStoragePermissionScreenPreview() {
 private fun ReadStoragePermissionScreenPreviewDark() {
 	MainMaterial3Theme(darkTheme = true) {
 		Surface {
-			PermissionPage(resId = R.drawable.read_folder_base_256,
+			PermissionPage(resId = R.drawable.folder_search_base_256_blu_glass,
 				description = "Read Storage Permission is Required",
 				isGranted = false
 			) {

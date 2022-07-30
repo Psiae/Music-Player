@@ -81,12 +81,16 @@ private fun CheckEntryPermission(onGranted: @Composable () -> Unit) {
 	val granted = readStoragePermissionGranted
 
 	val allow = remember {
-		// Use ViewModel as it only retain on config changes
-		entryVM.savedEntryPermission = entryVM.savedEntryPermission ?: granted
-		mutableStateOf(entryVM.savedEntryPermission!!, structuralEqualityPolicy())
+		mutableStateOf(granted, structuralEqualityPolicy())
 	}
 
-	if (!allow.value) {
+	val rememberAllow = remember(allow.value) {
+		// Use ViewModel as it only retain on config changes
+		entryVM.savedEntryPermission = entryVM.savedEntryPermission ?: granted
+		allow.value
+	}
+
+	if (!allow.value || !rememberAllow) {
 		return EntryPermissionPager { allow.value = true }
 	}
 

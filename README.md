@@ -26,3 +26,5 @@ Simple Music Player `100% Made in Kotlin` with Jetpack Compose & AndroidX Media3
 | Permission Pager + Dark Mode|
 | -------------- |
 | <img src="https://user-images.githubusercontent.com/94031495/181867586-5d661af4-03f2-4911-9fb1-22141d7e69fc.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/181867587-bcf46f93-9aaa-4ae6-a531-5582efbe073d.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/181867593-dc71a6cf-9609-4786-bc66-ac8ba9d51b83.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/181867595-bc00fdf8-d0e7-46cf-a8ab-151b877a8128.png" width="195"> |
+
+credits: https://icons8.com/

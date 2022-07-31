@@ -104,7 +104,9 @@ private fun EntryPermissionPager(onGranted: () -> Unit) {
 	val pagerState = rememberPagerState()
 
 	Column(
-		modifier = Modifier.fillMaxSize(),
+		modifier = Modifier
+			.navigationBarsPadding()
+			.fillMaxSize(),
 		verticalArrangement = Arrangement.Top,
 		horizontalAlignment = Alignment.CenterHorizontally
 	) {

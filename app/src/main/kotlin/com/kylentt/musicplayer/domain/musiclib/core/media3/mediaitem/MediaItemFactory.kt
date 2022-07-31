@@ -11,8 +11,11 @@ import androidx.media3.common.MediaItem.RequestMetadata
 import androidx.media3.common.MediaMetadata
 import com.kylentt.musicplayer.common.kotlin.string.setPrefix
 import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemPropertyHelper.mediaUri
+import org.jaudiotagger.audio.mp3.MP3File
 import timber.log.Timber
-import wseemann.media.FFmpegMediaMetadataRetriever
+import java.io.File
+import java.io.FileOutputStream
+import java.io.InputStream
 
 object MediaItemFactory {
 
@@ -104,15 +107,33 @@ object MediaItemFactory {
 	}
 
 	fun getEmbeddedImage(context: Context, uri: Uri): ByteArray? {
-		val mtr = FFmpegMediaMetadataRetriever()
 		return try {
-			mtr.setDataSource(context.applicationContext, uri)
-			mtr.embeddedPicture
+			val file = context.contentResolver.openInputStream(uri)
+				?.use { iStream ->
+					val cacheDir: File = context.externalCacheDir ?: return null
+					File.createTempFile("embedTemp_", null, cacheDir).apply {
+						iStream.writeToFile(this)
+					}
+				}
+				?: return null
+			val data = MP3File(file).iD3v2Tag.firstArtwork?.binaryData
+			file.delete()
+			data
 		} catch (e: Exception) {
-			Timber.w("Failed to get embeddedPicture Metadata from $uri\n${e}")
 			null
-		} finally {
-			mtr.release()
+		}
+	}
+
+	private fun InputStream.writeToFile(file: File, buffer: ByteArray = ByteArray(8192)) {
+		use { iStream ->
+			FileOutputStream(file).use { oStream ->
+				while (true) {
+					val byteCount = iStream.read(buffer)
+					if (byteCount < 0) break
+					oStream.write(buffer, 0, byteCount)
+				}
+				oStream.flush()
+			}
 		}
 	}
 

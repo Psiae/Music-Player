@@ -182,29 +182,6 @@ dependencies {
         implementation("io.coil-kt:coil-compose:$v")
     }
 
-
-    @Suppress("SpellCheckingInspection")
-    /* Github.Adonai */
-    dependencies {
-
-        // JAudioTagger
-        val vJAudioTagger = "2.3.15"
-        implementation("com.github.Adonai:jaudiotagger:$vJAudioTagger")
-    }
-
-    @Suppress("SpellCheckingInspection")
-    /* Github.wseeman */
-    dependencies {
-
-        // FFmpegMediaMetadataRetriever
-        implementation ("com.github.wseemann:FFmpegMediaMetadataRetriever-core:1.0.16")
-        implementation ("com.github.wseemann:FFmpegMediaMetadataRetriever-native-armeabi-v7a:1.0.16")
-        implementation ("com.github.wseemann:FFmpegMediaMetadataRetriever-native-x86:1.0.16")
-        implementation ("com.github.wseemann:FFmpegMediaMetadataRetriever-native-x86_64:1.0.16")
-        implementation ("com.github.wseemann:FFmpegMediaMetadataRetriever-native-arm64-v8a:1.0.16")
-    }
-
-
     @Suppress("SpellCheckingInspection")
     /* Google.accompanist */
     dependencies  {
@@ -246,6 +223,13 @@ dependencies {
     dependencies {
         val v = "31.0.1-android"
         implementation("com.google.guava:guava:$v")
+    }
+
+    @Suppress("SpellCheckingInspection")
+    /* Jthink.jaudiotagger */
+    dependencies {
+        val v = "3.0.1"
+        implementation("net.jthink:jaudiotagger:$v")
     }
 
     /* Instrumentation Test */

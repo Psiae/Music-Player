@@ -10,7 +10,6 @@ import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.MainActivityRoot
 import com.kylentt.musicplayer.common.kotlin.mutablecollection.doEachClear
 import com.kylentt.musicplayer.common.kotlin.mutablecollection.forEachClear
 import com.kylentt.musicplayer.ui.main.MainActivity
-import com.kylentt.musicplayer.ui.main.compose.MainProvider.ProvideViewModels
 import com.kylentt.musicplayer.ui.main.compose.theme.MainMaterial3Theme
 
 @Composable
@@ -18,7 +17,7 @@ fun MainActivity.MainContent() {
 	MainTheme {
 		MainSurface {
 			MainEntry {
-				ProvideViewModels {
+				MainProvider.ProvideViewModels {
 					val mainViewModel = MainProvider.mainViewModel
 					val mediaViewModel = MainProvider.mediaViewModel
 					with(mainViewModel) {
@@ -33,8 +32,7 @@ fun MainActivity.MainContent() {
 }
 
 @Composable
-private fun MainTheme(content: @Composable () -> Unit) =
-	MainMaterial3Theme(content = content)
+private fun MainTheme(content: @Composable () -> Unit) = MainMaterial3Theme(content = content)
 
 @Composable
 private fun MainSurface(content: @Composable () -> Unit) {

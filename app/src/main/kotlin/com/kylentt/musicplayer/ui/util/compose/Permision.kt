@@ -11,158 +11,123 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import com.google.accompanist.permissions.*
 import com.kylentt.musicplayer.BuildConfig
+import com.kylentt.musicplayer.common.android.context.PermissionHelper
+import com.kylentt.musicplayer.common.android.context.PermissionHelper.checkContextPermission
 import timber.log.Timber
 
-object PermissionHelper {
+@ExperimentalPermissionsApi
+@DoNotInline
+@Composable
+fun RequirePermission(
+	permission: PermissionHelper.Permission,
+	showRationale: @Composable (PermissionState) -> Unit,
+	whenDenied: @Composable (PermissionState) -> Unit,
+	whenGranted: @Composable (PermissionState) -> Unit
+) {
+	val context = LocalContext.current
 
-	sealed class Permission {
+	val currentStatus = checkContextPermission(context, permission)
 
-		object READ_EXTERNAL_STORAGE : Permission() {
-			override val androidManifestString: String
-				get() = android.Manifest.permission.READ_EXTERNAL_STORAGE
-		}
-
-		object WRITE_EXTERNAL_STORAGE : Permission() {
-			override val androidManifestString: String
-				get() = android.Manifest.permission.WRITE_EXTERNAL_STORAGE
-		}
-
-		abstract val androidManifestString: String
+	val requestResult = remember {
+		mutableStateOf(currentStatus, policy = neverEqualPolicy())
 	}
 
-	fun checkContextPermission(context: Context, permission: Permission): Boolean {
-		return checkContextPermission(context, permission.androidManifestString)
+	val permissionState = rememberPermissionState(
+		permission = permission.androidManifestString
+	) { result ->
+		requestResult.value = result
 	}
 
-	fun checkReadStoragePermission(context: Context): Boolean {
-		return checkContextPermission(context, Permission.READ_EXTERNAL_STORAGE)
-	}
+	Timber.d(
+		"RequirePermission Composable," +
+			"\nmanifest String: ${permission.androidManifestString}" +
+			"\nhasPermission: $currentStatus" +
+			"\nresult: ${requestResult.value}" +
+			"\nstatus: ${permissionState.status}"
+	)
 
-	fun checkWriteStoragePermission(context: Context): Boolean {
-		return checkContextPermission(context, Permission.WRITE_EXTERNAL_STORAGE)
-	}
-
-	private fun checkContextPermission(context: Context, permission: String): Boolean {
-		return ContextCompat.checkSelfPermission(
-			context,
-			permission
-		) == PackageManager.PERMISSION_GRANTED
-	}
-
-	@ExperimentalPermissionsApi
-	@DoNotInline
-	@Composable
-	fun RequirePermission(
-		permission: Permission,
-		showRationale: @Composable (PermissionState) -> Unit,
-		whenDenied: @Composable (PermissionState) -> Unit,
-		whenGranted: @Composable (PermissionState) -> Unit
-	) {
-		val context = LocalContext.current
-
-		val currentStatus = checkContextPermission(context, permission)
-
-		val requestResult = remember {
-			mutableStateOf(currentStatus, policy = neverEqualPolicy())
-		}
-
-		val permissionState = rememberPermissionState(
-			permission = permission.androidManifestString
-		) { result ->
-			requestResult.value = result
-		}
-
-		Timber.d(
-			"RequirePermission Composable," +
-				"\nmanifest String: ${permission.androidManifestString}" +
-				"\nhasPermission: $currentStatus" +
-				"\nresult: ${requestResult.value}" +
-				"\nstatus: ${permissionState.status}"
-		)
-
-		when {
-			currentStatus -> {
-				if (!permissionState.status.isGranted) {
-					Timber.e(
-						"Possible Inconsistency in @ExperimentalPermissionsApi " +
-							"for SinglePermissionState"
-					)
-				}
-				whenGranted(permissionState)
-			}
-			!requestResult.value -> {
-				if (permissionState.status.shouldShowRationale) {
-					showRationale(permissionState)
-				} else {
-					whenDenied(permissionState)
-				}
-			}
-			else -> {
-				throw IllegalStateException(
-					"Should Never Reach Here,"
-						+ "\npermissionResult = ${requestResult.value},"
-						+ "\nshouldShowRationale = ${permissionState.status.shouldShowRationale}"
+	when {
+		currentStatus -> {
+			if (!permissionState.status.isGranted) {
+				Timber.e(
+					"Possible Inconsistency in @ExperimentalPermissionsApi " +
+						"for SinglePermissionState"
 				)
 			}
+			whenGranted(permissionState)
+		}
+		!requestResult.value -> {
+			if (permissionState.status.shouldShowRationale) {
+				showRationale(permissionState)
+			} else {
+				whenDenied(permissionState)
+			}
+		}
+		else -> {
+			throw IllegalStateException(
+				"Should Never Reach Here,"
+					+ "\npermissionResult = ${requestResult.value},"
+					+ "\nshouldShowRationale = ${permissionState.status.shouldShowRationale}"
+			)
 		}
 	}
+}
 
-	@ExperimentalPermissionsApi
-	@DoNotInline
-	@Composable
-	fun RequirePermissions(
-		permissions: List<Permission>,
-		showRationale: @Composable (MultiplePermissionsState) -> Unit,
-		whenAllDenied: @Composable (MultiplePermissionsState) -> Unit,
-		whenAllGranted: @Composable (MultiplePermissionsState) -> Unit
+@ExperimentalPermissionsApi
+@DoNotInline
+@Composable
+fun RequirePermissions(
+	permissions: List<PermissionHelper.Permission>,
+	showRationale: @Composable (MultiplePermissionsState) -> Unit,
+	whenAllDenied: @Composable (MultiplePermissionsState) -> Unit,
+	whenAllGranted: @Composable (MultiplePermissionsState) -> Unit
+) {
+	val context = LocalContext.current
+
+	val currentStatus = permissions.associate {
+		it.androidManifestString to checkContextPermission(context, it)
+	}
+
+	val permissionResults = remember {
+		mutableStateOf(currentStatus.toMap(), policy = neverEqualPolicy())
+	}
+
+	val permissionStates = rememberMultiplePermissionsState(
+		permissions = permissions.map { it.androidManifestString }
 	) {
-		val context = LocalContext.current
+		permissionResults.value = it
+	}
 
-		val currentStatus = permissions.associate {
-			it.androidManifestString to checkContextPermission(context, it)
-		}
+	Timber.d(
+		"RequirePermissions Composable," +
+			"\nmanifest String: ${permissions.map { it.androidManifestString }}" +
+			"\nhasPermission: $currentStatus" +
+			"\nresult: ${permissionResults.value}" +
+			"\nstatus: ${permissionStates.allPermissionsGranted}"
+	)
 
-		val permissionResults = remember {
-			mutableStateOf(currentStatus.toMap(), policy = neverEqualPolicy())
-		}
-
-		val permissionStates = rememberMultiplePermissionsState(
-			permissions = permissions.map { it.androidManifestString }
-		) {
-			permissionResults.value = it
-		}
-
-		Timber.d(
-			"RequirePermissions Composable," +
-				"\nmanifest String: ${permissions.map { it.androidManifestString }}" +
-				"\nhasPermission: $currentStatus" +
-				"\nresult: ${permissionResults.value}" +
-				"\nstatus: ${permissionStates.allPermissionsGranted}"
-		)
-
-		when {
-			currentStatus.all { it.value } -> {
-				if (!permissionStates.allPermissionsGranted) {
-					Timber.w(
-						"Possible inconsistency in @ExperimentalPermissionsAPI "
-							+ "for MultiplePermissionState"
-					)
-				}
-				whenAllGranted(permissionStates)
+	when {
+		currentStatus.all { it.value } -> {
+			if (!permissionStates.allPermissionsGranted) {
+				Timber.w(
+					"Possible inconsistency in @ExperimentalPermissionsAPI "
+						+ "for MultiplePermissionState"
+				)
 			}
-			permissionResults.value.any { !it.value } -> {
-				if (permissionStates.shouldShowRationale) {
-					showRationale(permissionStates)
-				} else {
-					whenAllDenied(permissionStates)
-				}
+			whenAllGranted(permissionStates)
+		}
+		permissionResults.value.any { !it.value } -> {
+			if (permissionStates.shouldShowRationale) {
+				showRationale(permissionStates)
+			} else {
+				whenAllDenied(permissionStates)
 			}
-			else -> {
-				if (BuildConfig.DEBUG) {
-					throw IllegalStateException()
-				} else {
-					whenAllDenied(permissionStates)
-				}
+		}
+		else -> {
+			if (BuildConfig.DEBUG) {
+				throw IllegalStateException()
+			} else {
+				whenAllDenied(permissionStates)
 			}
 		}
 	}

@@ -1,10 +1,8 @@
 package com.kylentt.musicplayer.ui.main.compose
 
 import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
-import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.DrawableRes
@@ -12,17 +10,13 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.neverEqualPolicy
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
-import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.accompanist.pager.ExperimentalPagerApi
@@ -34,70 +28,64 @@ import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.permissions.shouldShowRationale
 import com.kylentt.musicplayer.R
+import com.kylentt.musicplayer.common.android.context.PermissionHelper
+import com.kylentt.musicplayer.common.android.context.rememberContextInfo
 import com.kylentt.musicplayer.ui.main.compose.theme.MainMaterial3Theme
 import com.kylentt.musicplayer.ui.main.compose.theme.color.ColorHelper
-import com.kylentt.musicplayer.ui.util.compose.PermissionHelper
 
 class EntryViewModel() : ViewModel() {
 	var shouldPersistPager: Boolean? = null
 }
 
-private val entryViewModel
-	@Composable get() = viewModel<EntryViewModel>()
+private val entryViewModel: EntryViewModel
+	@Composable
+	get() = viewModel()
 
-private val readStoragePermissionString
-	get() = PermissionHelper.Permission.READ_EXTERNAL_STORAGE.androidManifestString
-
-private val writeStoragePermissionString
-	get() = PermissionHelper.Permission.WRITE_EXTERNAL_STORAGE.androidManifestString
-
-private val readStoragePermissionGranted
-	@Composable get() = isPermissionGranted(readStoragePermissionString)
-
-private val writeStoragePermissionGranted
-	@Composable get() = isPermissionGranted(writeStoragePermissionString)
-
-private val settingIntent
-	@Composable get() = Intent().apply {
-		action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
-		data = "package:${LocalContext.current.packageName}".toUri()
-	}
+private val readStoragePermission = PermissionHelper.Permission.READ_EXTERNAL_STORAGE
+private val writeStoragePermission = PermissionHelper.Permission.WRITE_EXTERNAL_STORAGE
 
 private val pageItems = listOf(
-	PermissionPageItem(readStoragePermissionString, R.drawable.folder_search_base_256_blu_glass, false,
-		"Read Storage Permission"
+	PermissionPageItem(readStoragePermission, resId = R.drawable.folder_search_base_256_blu_glass,
+		optional = false, title = "Read Storage Permission"
 	),
-	PermissionPageItem(writeStoragePermissionString, R.drawable.folder_write_base_256, true,
-		"Write Storage Permission"
+	PermissionPageItem(writeStoragePermission, resId = R.drawable.folder_write_base_256,
+		optional = true, title = "Write Storage Permission"
 	),
 )
 
 @Composable
 fun MainEntry(content: @Composable () -> Unit) {
-	CheckEntryPermission(onGranted = content)
+	if (entryPermissionAsState().value) {
+		content()
+	}
 }
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
-private fun CheckEntryPermission(onGranted: @Composable () -> Unit) {
+private fun entryPermissionAsState(): State<Boolean> {
+
+	val contextInfo = rememberContextInfo()
+
 	val entryVM = entryViewModel
-	val readGranted = readStoragePermissionGranted
+	val readStorageGranted = contextInfo.readStorageAllowed
 
 	val entryAllowed = remember {
-		mutableStateOf(entryVM.shouldPersistPager != true && readGranted)
+		mutableStateOf(entryVM.shouldPersistPager != true && readStorageGranted)
 	}
 
 	if (!entryAllowed.value) {
-		return EntryPermissionPager { entryAllowed.value = true }
+		EntryPermissionPager { entryAllowed.value = true }
 	}
 
-	onGranted()
+	return entryAllowed
 }
 
 @OptIn(ExperimentalPagerApi::class)
 @ExperimentalPermissionsApi
 @Composable
 private fun EntryPermissionPager(onGranted: () -> Unit) {
+
+	val contextInfo = rememberContextInfo()
 
 	val granted = remember {
 		mutableStateOf(false)
@@ -138,9 +126,10 @@ private fun EntryPermissionPager(onGranted: () -> Unit) {
 				mutableStateOf(false, neverEqualPolicy())
 			}
 
-			val (permString: String, resId: Int, optional: Boolean, title: String) = pageItems[position]
+			val (perm: PermissionHelper.Permission, resId: Int, optional: Boolean, title: String) =
+				pageItems[position]
 
-			val state = rememberPermissionState(permission = permString) {
+			val state = rememberPermissionState(permission = perm.androidManifestString) {
 				result.value = it
 			}
 
@@ -148,8 +137,6 @@ private fun EntryPermissionPager(onGranted: () -> Unit) {
 				contract = ActivityResultContracts.StartActivityForResult(),
 				onResult = {}
 			)
-
-			val settingIntent = settingIntent
 
 			PermissionPage(
 				resId = resId,
@@ -159,13 +146,13 @@ private fun EntryPermissionPager(onGranted: () -> Unit) {
 				if (state.status.shouldShowRationale) {
 					state.launchPermissionRequest()
 				} else {
-					rememberLauncher.launch(settingIntent)
+					rememberLauncher.launch(contextInfo.settingIntent)
 				}
 			}
 
 			allPermissionGranted.value = pageItems
 				.filter { !it.optional }
-				.all { isPermissionGranted(it.permissionString) }
+				.all { contextInfo.isPermissionGranted(it.permission) }
 		}
 
 		Column(
@@ -182,6 +169,7 @@ private fun EntryPermissionPager(onGranted: () -> Unit) {
 			}
 
 			Row(
+				modifier = Modifier.fillMaxSize(),
 				horizontalArrangement = Arrangement.Center,
 				verticalAlignment = Alignment.CenterVertically
 			) {
@@ -271,7 +259,7 @@ private fun isPermissionGranted(
 }
 
 private data class PermissionPageItem(
-	val permissionString: String,
+	val permission: PermissionHelper.Permission,
 	@DrawableRes val resId: Int,
 	val optional: Boolean,
 	val title: String,

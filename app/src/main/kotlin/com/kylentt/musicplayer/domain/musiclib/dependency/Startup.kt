@@ -8,7 +8,9 @@ import com.kylentt.musicplayer.domain.musiclib.MusicLibrary
 
 class MusicLibraryInitializer : Initializer<Unit> {
 
-	override fun create(context: Context) = Unit
+	override fun create(context: Context) {
+		MusicLibrary.localAgent.connect()
+	}
 
 	override fun dependencies(): MutableList<Class<out Initializer<*>>> {
 		return mutableListOf(AgentInitializer::class.java)

@@ -16,6 +16,7 @@ import com.kylentt.musicplayer.domain.musiclib.util.addListener
 import com.kylentt.musicplayer.domain.musiclib.util.addResultListener
 import com.kylentt.musicplayer.domain.musiclib.util.withEach
 import java.util.concurrent.Executor
+import java.util.concurrent.Future
 
 class LibraryPlayer private constructor() {
 	private val localInjector = Injector()
@@ -24,6 +25,10 @@ class LibraryPlayer private constructor() {
 	constructor(agent: LibraryAgent) : this() {
 		localInjector.fuse(agent.injector)
 	}
+
+	fun connectService() = wrapper.connect()
+
+	fun prepare() = wrapper.connect { it.prepare() }
 
 	fun play() = wrapper.connect {
 		if (it.playbackState.isStateIdle()) {
@@ -76,7 +81,7 @@ private class MediaControllerWrapper(injector: Injector) {
 
 	private var state: WrapperState = WrapperState.NOTHING
 
-	fun connect(onConnected: (MediaController) -> Unit) {
+	fun connect(onConnected: (MediaController) -> Unit = {}) {
 		if (state == WrapperState.CONNECTED) {
 			return onConnected(mediaController)
 		}

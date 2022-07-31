@@ -48,7 +48,7 @@ class MediaViewModel @Inject constructor(
 	private var updateItemBitmapJobId: String? = null
 
   @MainThread
-  fun connectService() = Unit
+  fun connectService() = MusicLibrary.localAgent.connect()
 
   fun handleMediaIntent(intent: IntentWrapper) {
     viewModelScope.launch(dispatchers.computation) {
@@ -78,7 +78,7 @@ class MediaViewModel @Inject constructor(
 			ensureActive()
 			Timber.d("UpdateItemBitmap Dispatched For ${item.getDebugDescription()}")
 
-			maybeWaitForMemory(deviceInfo, 2000, 500) {
+			maybeWaitForMemory(1.5F, 2000, 500, deviceInfo) {
 				Timber.w("dispatchUpdateItemBitmap will wait due to low memory")
 			}
 

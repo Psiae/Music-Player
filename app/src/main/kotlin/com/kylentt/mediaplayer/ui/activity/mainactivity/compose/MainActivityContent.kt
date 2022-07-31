@@ -58,13 +58,14 @@ import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.ComposableExtens
 import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.theme.AppTypography
 import com.kylentt.mediaplayer.ui.compose.rememberWallpaperBitmapAsState
 import com.kylentt.musicplayer.R
+import com.kylentt.musicplayer.common.android.context.PermissionHelper
 import com.kylentt.musicplayer.core.app.delegates.AppDelegate
 import com.kylentt.musicplayer.core.app.delegates.device.StoragePermissionHelper
 import com.kylentt.musicplayer.ui.main.compose.MainNavigator
 import com.kylentt.musicplayer.ui.main.compose.MainNavigator.ProvideNavHostController
-import com.kylentt.musicplayer.ui.util.compose.PermissionHelper
 import com.kylentt.musicplayer.ui.main.compose.theme.MainMaterial3Theme
 import com.kylentt.musicplayer.ui.main.compose.theme.color.ColorHelper
+import com.kylentt.musicplayer.ui.util.compose.RequirePermissions
 import timber.log.Timber
 import kotlin.math.roundToInt
 
@@ -77,7 +78,7 @@ fun MainActivityContent(
 
     MainMaterial3Theme {
 
-        PermissionHelper.RequirePermissions(
+        RequirePermissions(
 			permissions = listOf(
 				PermissionHelper.Permission.READ_EXTERNAL_STORAGE,
 				PermissionHelper.Permission.WRITE_EXTERNAL_STORAGE,

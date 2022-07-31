@@ -18,6 +18,11 @@ class LibraryAgent private constructor() {
 
 	val mask = object : Mask {
 
+		override fun connect(): Mask {
+			session.player.connectService()
+			return this
+		}
+
 		override val dependency: Mask.Dependency = object : Mask.Dependency {
 			override fun provide(injector: Injector) = injector.fuse(injector)
 			override fun provide(vararg providers: Provider<Any>) = injector.addProvider(*providers)
@@ -36,6 +41,8 @@ class LibraryAgent private constructor() {
 	interface Mask {
 		val dependency: Dependency
 		val session: Session
+
+		fun connect(): Mask
 
 		interface Dependency {
 			fun provide(injector: Injector)

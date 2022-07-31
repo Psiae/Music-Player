@@ -342,7 +342,7 @@ class MediaNotificationManager(
 			val currentItem = player.currentMediaItem.orEmpty()
 			val getCurrentItemBitmap = currentItemBitmap
 
-			maybeWaitForMemory(deviceInfo, 2000, 500) {
+			maybeWaitForMemory(1.5F,2000, 500, deviceInfo) {
 				Timber.w("Notification Media Bitmap will wait due to low memory")
 			}
 

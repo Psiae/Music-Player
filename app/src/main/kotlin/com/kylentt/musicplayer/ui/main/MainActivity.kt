@@ -51,7 +51,6 @@ class MainActivity : ComponentActivity() {
 		super.onCreate(savedInstanceState)
 		setupSplashScreen()
 
-		// later
 		setContent {
 			MainContent()
 		}

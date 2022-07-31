@@ -1,20 +1,21 @@
 package com.kylentt.musicplayer.common.android.memory
 
+import android.app.ActivityManager.MemoryInfo
 import com.kylentt.musicplayer.common.android.environment.DeviceInfo
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlin.coroutines.coroutineContext
 
 suspend inline fun maybeWaitForMemory(
-	deviceInfo: DeviceInfo,
+	nThreshold: Float = 1.5F,
 	limitTime: Long,
 	checkInterval: Long,
+	getMemInfo: () -> MemoryInfo,
 	onWait: () -> Unit = {}
 ) {
-	val memInfo = deviceInfo.memoryInfo
-	if (memInfo.availMem < memInfo.threshold * 2) {
+	if (getMemInfo().availMem < getMemInfo().threshold * nThreshold) {
 		var spent = 0L
-		while (deviceInfo.memoryInfo.availMem < memInfo.threshold * 2 && spent < limitTime) {
+		while (getMemInfo().availMem < getMemInfo().threshold * nThreshold && spent < limitTime) {
 			coroutineContext.ensureActive()
 			onWait()
 			delay(checkInterval)
@@ -22,3 +23,13 @@ suspend inline fun maybeWaitForMemory(
 		}
 	}
 }
+
+suspend inline fun maybeWaitForMemory(
+	nThreshold: Float = 1.5F,
+	limitTime: Long,
+	checkInterval: Long,
+	deviceInfo: DeviceInfo,
+	onWait: () -> Unit = {}
+) = maybeWaitForMemory(nThreshold, limitTime, checkInterval, { deviceInfo.memoryInfo }, onWait)
+
+

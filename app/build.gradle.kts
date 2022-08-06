@@ -1,3 +1,5 @@
+import com.android.build.gradle.internal.packaging.defaultExcludes
+import org.jetbrains.kotlin.cli.jvm.main
 import java.util.Properties
 import java.io.FileInputStream
 
@@ -66,6 +68,8 @@ android {
     sourceSets.all {
         kotlin.srcDir("src/$name/kotlin")
     }
+
+
 
     namespace = "com.kylentt.musicplayer"
 }
@@ -226,11 +230,11 @@ dependencies {
     }
 
     @Suppress("SpellCheckingInspection")
-    /* Jthink.jaudiotagger */
-    dependencies {
+    // Jthink.jaudiotagger
+    /*dependencies {
         val v = "3.0.1"
         implementation("net.jthink:jaudiotagger:$v")
-    }
+    }*/
 
     /* Instrumentation Test */
     dependencies {

@@ -10,8 +10,8 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaItem.RequestMetadata
 import androidx.media3.common.MediaMetadata
 import com.kylentt.musicplayer.common.kotlin.string.setPrefix
+import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.mp3.MP3File
 import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemPropertyHelper.mediaUri
-import org.jaudiotagger.audio.mp3.MP3File
 import timber.log.Timber
 import java.io.File
 import java.io.FileOutputStream
@@ -116,10 +116,11 @@ object MediaItemFactory {
 					}
 				}
 				?: return null
-			val data = MP3File(file).iD3v2Tag.firstArtwork?.binaryData
+			val data = MP3File(file).iD3v2Tag?.firstArtwork?.binaryData
 			file.delete()
 			data
 		} catch (e: Exception) {
+			Timber.e("getEmbeddedImage exception: $e")
 			null
 		}
 	}

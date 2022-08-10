@@ -2025,12 +2025,7 @@ abstract class AbstractID3v2Tag : AbstractID3Tag, Tag {
 	}
 
 	override val firstArtwork: Artwork?
-		get() {
-			val artwork: List<Artwork> = artworkList ?: return null
-			return if (artwork.isNotEmpty()) {
-				artwork[0]
-			} else null
-		}
+		get() = artworkList?.firstOrNull()
 
 	/**
 	 * Create field and then set within tag itself

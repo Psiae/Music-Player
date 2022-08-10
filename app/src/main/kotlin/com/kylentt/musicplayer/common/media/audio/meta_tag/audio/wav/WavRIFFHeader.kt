@@ -21,7 +21,7 @@ package com.kylentt.musicplayer.common.media.audio.meta_tag.audio.wav
 import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadException
 import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.generic.Utils.readFileDataIntoBufferLE
 import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.generic.Utils.readFourBytesAsChars
-import org.jaudiotagger.audio.iff.IffHeaderChunk
+import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.iff.IffHeaderChunk
 import java.io.IOException
 import java.nio.channels.FileChannel
 

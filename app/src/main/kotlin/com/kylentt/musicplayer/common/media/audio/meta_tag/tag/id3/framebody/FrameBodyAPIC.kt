@@ -134,9 +134,9 @@ class FrameBodyAPIC : AbstractID3v2FrameBody, ID3v24FrameBody, ID3v23FrameBody {
 	 */
 	constructor(
 		textEncoding: Byte,
-		mimeType: String?,
+		mimeType: String,
 		pictureType: Byte,
-		description: String?,
+		description: String,
 		data: ByteArray?
 	) {
 		setObjectValue(DataTypes.OBJ_TEXT_ENCODING, textEncoding)
@@ -171,38 +171,22 @@ class FrameBodyAPIC : AbstractID3v2FrameBody, ID3v24FrameBody, ID3v23FrameBody {
 	 *
 	 * @param description
 	 */
-	var description: String?
-		get() = getObjectValue(DataTypes.OBJ_DESCRIPTION) as String
+	var description: String
+		get() = getObjectValue(DataTypes.OBJ_DESCRIPTION) as? String ?: ""
 		set(description) {
 			setObjectValue(DataTypes.OBJ_DESCRIPTION, description)
 		}
-	/**
-	 * Get mimetype
-	 *
-	 * @return a description of the image
-	 */
-	/**
-	 * Set mimeType
-	 *
-	 * @param mimeType
-	 */
-	var mimeType: String?
-		get() = getObjectValue(DataTypes.OBJ_MIME_TYPE) as String
+
+	/** The mime Type [null] may be null */
+	var mimeType: String
+		get() = getObjectValue(DataTypes.OBJ_MIME_TYPE) as? String ?: ""
 		set(mimeType) {
 			setObjectValue(DataTypes.OBJ_MIME_TYPE, mimeType)
 		}
-	/**
-	 * Get Image data
-	 *
-	 * @return
-	 */
-	/**
-	 * Set imageData
-	 *
-	 * @param imageData
-	 */
+
+	/** The imageData as [ByteArray], may be null */
 	var imageData: ByteArray?
-		get() = getObjectValue(DataTypes.OBJ_PICTURE_DATA) as ByteArray
+		get() = getObjectValue(DataTypes.OBJ_PICTURE_DATA) as? ByteArray
 		set(imageData) {
 			setObjectValue(DataTypes.OBJ_PICTURE_DATA, imageData)
 		}
@@ -217,10 +201,54 @@ class FrameBodyAPIC : AbstractID3v2FrameBody, ID3v24FrameBody, ID3v23FrameBody {
 	}
 
 	/**
-	 * @return picturetype
+	 * $-1	-1	 Invalid / Not Specified
+	 *
+	 * $00  0    Other
+	 *
+	 * $01  1    32x32 pixels 'file icon' (PNG only)
+	 *
+	 * $02  2    Other file icon
+	 *
+	 * $03  3    Cover (front)
+	 *
+	 * $04  4    Cover (back)
+	 *
+	 * $05  5    Leaflet page
+	 *
+	 * $06  6    Media (e.g. lable side of CD)
+	 *
+	 * $07  7    Lead artist/lead performer/soloist
+	 *
+	 * $08  8    Artist/performer
+	 *
+	 * $09  9    Conductor
+	 *
+	 * $0A  10   Band/Orchestra
+	 *
+	 * $0B  11   Composer
+	 *
+	 * $0C  12   Lyricist/text writer
+	 *
+	 * $0D  13   Recording Location
+	 *
+	 * $0E  14   During recording
+	 *
+	 * $0F  15   During performance
+	 *
+	 * $10  16   Movie/video screen capture
+	 *
+	 * $11  17   A bright coloured fish
+	 *
+	 * $12  18   Illustration
+	 *
+	 * $13  19   Band/artist logotype
+	 *
+	 * $14  20   Publisher/Studio logotype
+	 *
 	 */
+
 	val pictureType: Int
-		get() = (getObjectValue(DataTypes.OBJ_PICTURE_TYPE) as Long).toInt()
+		get() = (getObjectValue(DataTypes.OBJ_PICTURE_TYPE) as? Long)?.toInt() ?: -1
 
 	/**
 	 * If the description cannot be encoded using current encoder, change the encoder
@@ -263,26 +291,21 @@ class FrameBodyAPIC : AbstractID3v2FrameBody, ID3v24FrameBody, ID3v23FrameBody {
 	}
 
 	/**
-	 * @return true if imagedata  is held as a url rather than actually being imagedata
+	 * Whether the Image Data  is held as a url rather than actually being Image Data
 	 */
 	val isImageUrl: Boolean
-		get() = mimeType != null && mimeType == IMAGE_IS_URL
+		get() = mimeType == IMAGE_IS_URL
+
 
 	/**
-	 * @return the image url if there is otherwise return an empty String
+	 * The Image Url if there is any, otherwise empty String ```""```
 	 */
-	fun getImageUrl(): String {
-		return if (isImageUrl) {
-			String(
-				(getObjectValue(DataTypes.OBJ_PICTURE_DATA) as ByteArray),
-				0,
-				(getObjectValue(DataTypes.OBJ_PICTURE_DATA) as ByteArray).size,
-				StandardCharsets.ISO_8859_1
-			)
-		} else {
-			""
+	val imageUrl: String
+		get() {
+			if (!isImageUrl) return ""
+			val byteArray = getObjectValue(DataTypes.OBJ_PICTURE_DATA) as? ByteArray ?: return ""
+			return String(byteArray, 0, byteArray.size, StandardCharsets.ISO_8859_1)
 		}
-	}
 
 	companion object {
 		const val IMAGE_IS_URL = "-->"

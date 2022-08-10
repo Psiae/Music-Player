@@ -1,46 +1,46 @@
 package com.kylentt.musicplayer.ui.util.compose
 
-import android.content.Context
-import android.content.pm.PackageManager
 import androidx.annotation.DoNotInline
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.neverEqualPolicy
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.content.ContextCompat
 import com.google.accompanist.permissions.*
 import com.kylentt.musicplayer.BuildConfig
-import com.kylentt.musicplayer.common.android.context.PermissionHelper
-import com.kylentt.musicplayer.common.android.context.PermissionHelper.checkContextPermission
+import com.kylentt.musicplayer.common.android.context.rememberContextInfo
+import com.kylentt.musicplayer.core.app.permission.AndroidPermission
 import timber.log.Timber
 
 @ExperimentalPermissionsApi
 @DoNotInline
 @Composable
 fun RequirePermission(
-	permission: PermissionHelper.Permission,
+	permission: AndroidPermission,
 	showRationale: @Composable (PermissionState) -> Unit,
 	whenDenied: @Composable (PermissionState) -> Unit,
 	whenGranted: @Composable (PermissionState) -> Unit
 ) {
+
+	val contextInfo = rememberContextInfo()
+
 	val context = LocalContext.current
 
-	val currentStatus = checkContextPermission(context, permission)
+	val currentStatus = contextInfo.permission.isPermissionGranted(permission)
 
 	val requestResult = remember {
 		mutableStateOf(currentStatus, policy = neverEqualPolicy())
 	}
 
 	val permissionState = rememberPermissionState(
-		permission = permission.androidManifestString
+		permission = permission.manifestPath
 	) { result ->
 		requestResult.value = result
 	}
 
 	Timber.d(
 		"RequirePermission Composable," +
-			"\nmanifest String: ${permission.androidManifestString}" +
+			"\nmanifest String: ${permission.manifestPath}" +
 			"\nhasPermission: $currentStatus" +
 			"\nresult: ${requestResult.value}" +
 			"\nstatus: ${permissionState.status}"
@@ -77,15 +77,16 @@ fun RequirePermission(
 @DoNotInline
 @Composable
 fun RequirePermissions(
-	permissions: List<PermissionHelper.Permission>,
+	permissions: List<AndroidPermission>,
 	showRationale: @Composable (MultiplePermissionsState) -> Unit,
 	whenAllDenied: @Composable (MultiplePermissionsState) -> Unit,
 	whenAllGranted: @Composable (MultiplePermissionsState) -> Unit
 ) {
-	val context = LocalContext.current
+
+	val contextInfo = rememberContextInfo()
 
 	val currentStatus = permissions.associate {
-		it.androidManifestString to checkContextPermission(context, it)
+		it.manifestPath to contextInfo.isPermissionGranted(it)
 	}
 
 	val permissionResults = remember {
@@ -93,14 +94,14 @@ fun RequirePermissions(
 	}
 
 	val permissionStates = rememberMultiplePermissionsState(
-		permissions = permissions.map { it.androidManifestString }
+		permissions = permissions.map { it.manifestPath }
 	) {
 		permissionResults.value = it
 	}
 
 	Timber.d(
 		"RequirePermissions Composable," +
-			"\nmanifest String: ${permissions.map { it.androidManifestString }}" +
+			"\nmanifest String: ${permissions.map { it.manifestPath }}" +
 			"\nhasPermission: $currentStatus" +
 			"\nresult: ${permissionResults.value}" +
 			"\nstatus: ${permissionStates.allPermissionsGranted}"

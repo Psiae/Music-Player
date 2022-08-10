@@ -19,7 +19,23 @@ object BitmapSampler {
 			}
 	}
 
+	fun fillOptions(
+		source: java.io.File,
+		options: BitmapFactory.Options = BitmapFactory.Options()
+	): BitmapFactory.Options {
+		return options
+			.apply {
+				inJustDecodeBounds = true
+				BitmapFactory.decodeFile(source.absolutePath, options)
+				inJustDecodeBounds = false
+			}
+	}
+
 	private sealed class CalculationTarget {
+
+		object NONE : CalculationTarget() {
+			override fun shouldSubSample(options: Options, inSampleSize: Int): Boolean = false
+		}
 
 		data class SizeTarget(val width: Int, val height: Int) : CalculationTarget() {
 			override fun shouldSubSample(options: Options, inSampleSize: Int): Boolean {
@@ -50,6 +66,24 @@ object BitmapSampler {
 		}
 
 		abstract fun shouldSubSample(options: BitmapFactory.Options, inSampleSize: Int): Boolean
+	}
+
+	object File {
+		fun toSampledBitmap(
+			file: java.io.File
+		): Bitmap? = decodeToSampledBitmap(file, CalculationTarget.NONE)
+
+		private fun decodeToSampledBitmap(
+			source: java.io.File,
+			target: CalculationTarget
+		): Bitmap? {
+			return BitmapFactory.Options()
+				.run {
+					fillOptions(source, this)
+					inSampleSize = calculateInSampleSize(this, target)
+					BitmapFactory.decodeFile(source.absolutePath, this)
+				}
+		}
 	}
 
 	object ByteArray {

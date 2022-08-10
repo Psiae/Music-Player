@@ -38,7 +38,7 @@ class DsfFileReader : AudioFileReader2() {
 				val fmtChunkBuffer =
 					Utils.readFileDataIntoBufferLE(
 						fc,
-						IffHeaderChunk.SIGNATURE_LENGTH + org.jaudiotagger.audio.dsf.DsdChunk.CHUNKSIZE_LENGTH
+						IffHeaderChunk.SIGNATURE_LENGTH + DsdChunk.CHUNKSIZE_LENGTH
 					)
 				FmtChunk.readChunkHeader(fmtChunkBuffer)
 					?.readChunkData(dsd, fc)

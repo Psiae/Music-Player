@@ -669,21 +669,20 @@ open class ID3v22Tag : AbstractID3v2Tag {
 	 */
 	override val artworkList: List<Artwork>
 		get() {
-			val coverartList = getFields(FieldKey.COVER_ART)
-			val artworkList: MutableList<Artwork> = ArrayList(
-				coverartList!!.size
-			)
+			val coverartList = getFields(FieldKey.COVER_ART) ?: return emptyList()
+			val artworkList: MutableList<Artwork> = ArrayList(coverartList.size)
+
 			for (next in coverartList) {
-				val coverArt = (next as AbstractID3v2Frame?)!!.body as FrameBodyPIC?
+				val coverArt = (next as? AbstractID3v2Frame)?.body as? FrameBodyPIC ?: continue
 				val artwork = AndroidArtwork()
-				artwork.mimeType = ImageFormats.getMimeTypeForFormat(coverArt!!.formatType)
+				artwork.mimeType = ImageFormats.getMimeTypeForFormat(coverArt.formatType) ?: ""
 				artwork.pictureType = coverArt.pictureType
-				artwork.description = coverArt.description
+				artwork.description = coverArt.description ?: ""
 				if (coverArt.isImageUrl) {
 					artwork.isLinked = true
 					artwork.imageUrl = coverArt.getImageUrl()
 				} else {
-					artwork.binaryData = coverArt.imageData ?: byteArrayOf()
+					artwork.binaryData = coverArt.imageData
 				}
 				artworkList.add(artwork)
 			}

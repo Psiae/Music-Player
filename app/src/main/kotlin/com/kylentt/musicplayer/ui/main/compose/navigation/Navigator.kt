@@ -1,4 +1,4 @@
-package com.kylentt.musicplayer.ui.main.compose
+package com.kylentt.musicplayer.ui.main.compose.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider

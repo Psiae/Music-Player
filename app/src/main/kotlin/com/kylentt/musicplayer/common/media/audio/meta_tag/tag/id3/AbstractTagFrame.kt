@@ -63,10 +63,10 @@ abstract class AbstractTagFrame : AbstractTagItem {
 	 * @param frameBody the body datatype
 	 */
 	var body: AbstractTagFrameBody?
-		get() = frameBody
-		set(frameBody) {
-			this.frameBody = frameBody
-			this.frameBody!!.header = this
+		get() = this.frameBody
+		set(value) {
+			value?.header = this
+			frameBody = value
 		}
 
 	/**

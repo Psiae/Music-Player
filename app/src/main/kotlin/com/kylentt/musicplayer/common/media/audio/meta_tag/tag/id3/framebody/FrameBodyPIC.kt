@@ -184,7 +184,7 @@ class FrameBodyPIC : AbstractID3v2FrameBody, ID3v22FrameBody {
 	 * @return picturetype
 	 */
 	val pictureType: Int
-		get() = (getObjectValue(DataTypes.OBJ_PICTURE_TYPE) as Long).toInt()
+		get() = (getObjectValue(DataTypes.OBJ_PICTURE_TYPE) as? Long)?.toInt() ?: -1
 
 	/**
 	 * If the description cannot be encoded using current encoder, change the encoder

@@ -164,7 +164,13 @@ dependencies {
         implementation("androidx.navigation:navigation-compose:$vCompose")
     }
 
-    /* Androidx.Room */
+    /* Androidx.palette */
+    dependencies {
+        val v = "1.0.0"
+        implementation("androidx.palette:palette:$v")
+    }
+
+    /* Androidx.room */
     dependencies {
         val v = "2.4.2"
 
@@ -189,7 +195,7 @@ dependencies {
     @Suppress("SpellCheckingInspection")
     /* Google.accompanist */
     dependencies  {
-        val v = "0.24.3-alpha"
+        val v = "0.26.0-alpha"
         implementation("com.google.accompanist:accompanist-drawablepainter:$v")
         implementation("com.google.accompanist:accompanist-navigation-material:$v")
         implementation("com.google.accompanist:accompanist-permissions:$v")
@@ -197,13 +203,14 @@ dependencies {
         implementation("com.google.accompanist:accompanist-systemuicontroller:$v")
 
         // Pager
-        val vPager = "0.24.4-alpha"
-        implementation("com.google.accompanist:accompanist-pager:$vPager")
-        implementation("com.google.accompanist:accompanist-pager-indicators:$vPager")
+        implementation("com.google.accompanist:accompanist-pager:$v")
+        implementation("com.google.accompanist:accompanist-pager-indicators:$v")
 
-        // Navigation-Animation
-        val vNavAnimation = "0.24.4-alpha"
-        implementation("com.google.accompanist:accompanist-navigation-animation:$vNavAnimation")
+        // Swipe-refresh
+        implementation("com.google.accompanist:accompanist-swiperefresh:$v")
+
+        // Navigation
+        implementation("com.google.accompanist:accompanist-navigation-animation:$v")
     }
 
     /* Google.android */

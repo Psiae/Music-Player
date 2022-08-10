@@ -104,17 +104,13 @@ class MP3File : AudioFile {
 		if (loadOptions and LOAD_IDV1TAG != 0) {
 			logger.finer("Attempting to read id3v1tags")
 			try {
-				id3v1tag = ID3v11Tag(
-					newFile!!, file.name
-				)
+				id3v1tag = ID3v11Tag(newFile!!, file.name)
 			} catch (ex: TagNotFoundException) {
 				logger.config("No ids3v11 tag found")
 			}
 			try {
 				if (id3v1tag == null) {
-					id3v1tag = ID3v1Tag(
-						newFile!!, file.name
-					)
+					id3v1tag = ID3v1Tag(newFile!!, file.name)
 				}
 			} catch (ex: TagNotFoundException) {
 				logger.config("No id3v1 tag found")

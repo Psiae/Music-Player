@@ -35,11 +35,11 @@ class Injector {
 		mParents.add(injector)
 	}
 
-	inline fun <reified R : Any> inject(subclass: Boolean): Lazy<R> {
+	inline fun <reified R : Any> inject(subclass: Boolean = false): Lazy<R> {
 		return LazyValue(R::class.java, subclass)
 	}
 
-	inline fun <reified R> lateInject(subclass: Boolean): Lazy<R?> {
+	inline fun <reified R> lateInject(subclass: Boolean = false): Lazy<R?> {
 		return LateLazyValue(R::class.java, subclass)
 	}
 

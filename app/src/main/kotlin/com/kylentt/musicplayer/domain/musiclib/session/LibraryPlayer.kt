@@ -7,6 +7,7 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
+import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.isOngoing
 import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.isStateEnded
 import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.isStateIdle
 import com.kylentt.musicplayer.domain.musiclib.dependency.Injector
@@ -26,6 +27,12 @@ class LibraryPlayer private constructor() {
 		localInjector.fuse(agent.injector)
 	}
 
+	val position: Long
+		get() = wrapper.position
+
+	val duration: Long
+		get() = wrapper.duration
+
 	fun connectService() = wrapper.connect()
 
 	fun prepare() = wrapper.connect { it.prepare() }
@@ -38,6 +45,23 @@ class LibraryPlayer private constructor() {
 			if (it.hasNextMediaItem()) it.seekToNextMediaItem()
 			it.seekTo(0)
 		}
+		it.play()
+	}
+
+	fun play(item: MediaItem) = wrapper.connect {
+		if (it.currentMediaItem?.mediaId == item.mediaId) {
+			play()
+			return@connect
+		}
+
+		if (it.playbackState.isOngoing()) {
+			it.stop()
+			it.seekTo(0)
+		}
+
+		it.setMediaItem(item)
+		it.prepare()
+
 		it.play()
 	}
 
@@ -80,6 +104,12 @@ private class MediaControllerWrapper(injector: Injector) {
 	private val executor = Executor { it.run() }
 
 	private var state: WrapperState = WrapperState.NOTHING
+
+	val position: Long
+		get() = if (state != WrapperState.CONNECTED) 0 else mediaController.currentPosition
+
+	val duration: Long
+		get() = if (state != WrapperState.CONNECTED) 0 else mediaController.duration
 
 	fun connect(onConnected: (MediaController) -> Unit = {}) {
 		if (state == WrapperState.CONNECTED) {

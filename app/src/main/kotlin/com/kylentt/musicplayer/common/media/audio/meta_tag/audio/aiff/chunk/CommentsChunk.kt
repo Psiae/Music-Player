@@ -65,7 +65,7 @@ class CommentsChunk(
 	override fun readChunk(): Boolean {
 		val numComments = Utils.u(chunkData.short)
 
-		//For each comment
+		// For each comment
 		for (i in 0 until numComments) {
 			val timestamp = Utils.u(chunkData.int)
 			val jTimestamp = AiffUtil.timestampToDate(timestamp)

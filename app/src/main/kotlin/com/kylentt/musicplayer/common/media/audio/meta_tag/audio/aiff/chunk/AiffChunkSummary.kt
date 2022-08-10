@@ -4,7 +4,7 @@ import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.iff.ChunkSummar
 import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.aiff.AiffTag
 
 /**
- * AIFF Specific methods for ChunkSummarys
+ * AIFF Specific methods for ChunkSummary
  */
 object AiffChunkSummary {
 	/**
@@ -17,9 +17,10 @@ object AiffChunkSummary {
 	@JvmStatic
 	fun isOnlyMetadataTagsAfterStartingMetadataTag(tag: AiffTag): Boolean {
 		var firstId3Tag = false
-		for (cs in tag.getChunkSummaryList()) {
+
+		tag.getChunkSummaryList().forEach { cs ->
 			if (firstId3Tag) {
-				if (cs.chunkId != AiffChunkType.TAG.code) {
+				if (cs.chunkId != AiffChunkType.TAG.code){
 					return false
 				}
 			} else {
@@ -42,9 +43,10 @@ object AiffChunkSummary {
 	 */
 	@JvmStatic
 	fun getChunkBeforeStartingMetadataTag(tag: AiffTag): ChunkSummary? {
+
 		for (i in tag.getChunkSummaryList().indices) {
-			val cs = tag.getChunkSummaryList()[i]
-			if (cs.fileStartLocation == tag.startLocationInFileOfId3Chunk) {
+			val chunkSummary = tag.getChunkSummaryList()[i]
+			if (chunkSummary.fileStartLocation == tag.startLocationInFileOfId3Chunk) {
 				return tag.getChunkSummaryList()[i - 1]
 			}
 		}

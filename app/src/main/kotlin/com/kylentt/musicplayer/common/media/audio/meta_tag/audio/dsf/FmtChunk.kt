@@ -24,7 +24,7 @@ class FmtChunk private constructor(dataBuffer: ByteBuffer) {
 	@Throws(IOException::class)
 	fun readChunkData(dsd: DsdChunk, fc: FileChannel): GenericAudioHeader {
 		val sizeExcludingChunkHeader =
-			chunkSizeLength - (IffHeaderChunk.SIGNATURE_LENGTH + org.jaudiotagger.audio.dsf.DsdChunk.CHUNKSIZE_LENGTH)
+			chunkSizeLength - (IffHeaderChunk.SIGNATURE_LENGTH + DsdChunk.CHUNKSIZE_LENGTH)
 		val audioData = Utils.readFileDataIntoBufferLE(fc, sizeExcludingChunkHeader.toInt())
 		return readAudioInfo(dsd, audioData)
 	}

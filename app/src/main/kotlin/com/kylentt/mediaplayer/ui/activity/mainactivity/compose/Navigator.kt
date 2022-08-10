@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalAnimationApi::class)
+@file:OptIn(ExperimentalAnimationApi::class, ExperimentalAnimationApi::class)
 
 package com.kylentt.mediaplayer.ui.activity.mainactivity.compose
 
@@ -8,10 +8,10 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
 import androidx.navigation.navigation
-import com.google.accompanist.navigation.animation.AnimatedNavHost
-import com.google.accompanist.navigation.animation.composable
 import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.home.HomeScreen
+import com.kylentt.musicplayer.ui.main.compose.screens.library.Library
 
 sealed class Screen(
     val route: String,
@@ -41,10 +41,10 @@ fun AnimatedMainAppNavigator(
     modifier: Modifier = Modifier
 ) {
 
-    AnimatedNavHost(
+    NavHost(
         modifier = modifier,
         navController = controller,
-        startDestination = "HomeRoute"
+        startDestination = "HomeRoute",
     ) {
         addHomeRoute(controller)
         addSearchRoute(controller)
@@ -68,7 +68,7 @@ private fun NavGraphBuilder.addHomeRoute(
 private fun NavGraphBuilder.addHomeScreen(
     controller: NavHostController
 ) {
-    composable(
+	composable(
         route = Screen.Home.route
     ) {
         HomeScreen(
@@ -116,8 +116,10 @@ private fun NavGraphBuilder.addLibraryRoute(
 private fun NavGraphBuilder.addLibraryScreen(
     controller: NavHostController
 ) {
-    composable(route = Screen.Library.route) {
-
+    composable(
+		route = Screen.Library.route
+	) {
+		Library()
     }
 }
 

@@ -84,14 +84,10 @@ enum class AiffCompressionType(
 		private val lookup: MutableMap<String, AiffCompressionType> = HashMap()
 
 		init {
-			for (d in values()) {
-				lookup[d.code] = d
-			}
+			values().forEach { d -> lookup[d.code] = d }
 		}
 
 		@JvmStatic
-		fun getByCode(code: String): AiffCompressionType? {
-			return lookup[code]
-		}
+		fun getByCode(code: String): AiffCompressionType? = lookup[code]
 	}
 }

@@ -12,9 +12,9 @@ import com.kylentt.mediaplayer.domain.viewmodels.MainViewModel
 import com.kylentt.mediaplayer.domain.viewmodels.MediaViewModel
 import com.kylentt.mediaplayer.helper.external.IntentWrapper
 import com.kylentt.musicplayer.common.android.activity.disableWindowDecorFitSystemInsets
+import com.kylentt.musicplayer.common.android.context.ContextInfo
 import com.kylentt.musicplayer.common.android.intent.isActionMain
 import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
-import com.kylentt.musicplayer.core.app.delegates.device.StoragePermissionHelper
 import com.kylentt.musicplayer.ui.main.compose.MainContent
 import dagger.hilt.android.AndroidEntryPoint
 import timber.log.Timber
@@ -23,6 +23,8 @@ import kotlin.properties.ReadOnlyProperty
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+	private val contextInfo = ContextInfo(this)
 
 	private var mReleased: Boolean = false
 		set(value) {
@@ -39,16 +41,16 @@ class MainActivity : ComponentActivity() {
 	private val mediaVM: MediaViewModel by viewModels()
 
 	private val readStoragePermission
-		get() = StoragePermissionHelper.checkReadStoragePermission(this)
+		get() = contextInfo.permission.readExternalStorageAllowed
 
 	init {
 		dispatchEvent(MainEvent.Init)
 	}
 
 	override fun onCreate(savedInstanceState: Bundle?) {
+		super.onCreate(savedInstanceState)
 		checkLauncherIntent()
 		setupWindow()
-		super.onCreate(savedInstanceState)
 		setupSplashScreen()
 
 		setContent {
@@ -160,6 +162,7 @@ class MainActivity : ComponentActivity() {
 	}
 
 	private object Launcher {
+
 		fun startActivity(
 			context: Context,
 			intent: Intent? = null

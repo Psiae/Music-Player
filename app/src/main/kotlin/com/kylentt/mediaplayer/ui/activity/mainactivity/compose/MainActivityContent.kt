@@ -6,28 +6,21 @@
 
 package com.kylentt.mediaplayer.ui.activity.mainactivity.compose
 
-import android.content.Intent
 import android.graphics.Bitmap
-import android.provider.Settings
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.SpringSpec
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.*
+import androidx.compose.material.BottomNavigation
+import androidx.compose.material.BottomNavigationItem
 import androidx.compose.material.Icon
 import androidx.compose.material.ripple.LocalRippleTheme
 import androidx.compose.material.ripple.RippleAlpha
 import androidx.compose.material.ripple.RippleTheme
 import androidx.compose.material3.*
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,90 +31,67 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
-import com.google.accompanist.navigation.animation.rememberAnimatedNavController
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.MultiplePermissionsState
-import com.google.accompanist.permissions.PermissionState
-import com.google.accompanist.permissions.shouldShowRationale
 import com.kylentt.mediaplayer.core.app.settings.AppSettings
-import com.kylentt.mediaplayer.core.app.settings.WallpaperSettings
-import com.kylentt.mediaplayer.core.app.settings.WallpaperSettings.Source.*
 import com.kylentt.mediaplayer.domain.viewmodels.MainViewModel
 import com.kylentt.mediaplayer.domain.viewmodels.MediaViewModel
-import com.kylentt.mediaplayer.ui.activity.CollectionExtension.forEachClearSync
 import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.ComposableExtension.noPadding
 import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.theme.AppTypography
-import com.kylentt.mediaplayer.ui.compose.rememberWallpaperBitmapAsState
 import com.kylentt.musicplayer.R
-import com.kylentt.musicplayer.common.android.context.PermissionHelper
-import com.kylentt.musicplayer.core.app.delegates.AppDelegate
-import com.kylentt.musicplayer.core.app.delegates.device.StoragePermissionHelper
-import com.kylentt.musicplayer.ui.main.compose.MainNavigator
-import com.kylentt.musicplayer.ui.main.compose.MainNavigator.ProvideNavHostController
-import com.kylentt.musicplayer.ui.main.compose.theme.MainMaterial3Theme
+import com.kylentt.musicplayer.ui.main.compose.local.MainProvider
+import com.kylentt.musicplayer.ui.main.compose.navigation.MainNavigator
+import com.kylentt.musicplayer.ui.main.compose.navigation.MainNavigator.ProvideNavHostController
+import com.kylentt.musicplayer.ui.main.compose.screens.root.PlaybackControl
 import com.kylentt.musicplayer.ui.main.compose.theme.color.ColorHelper
-import com.kylentt.musicplayer.ui.util.compose.RequirePermissions
 import timber.log.Timber
 import kotlin.math.roundToInt
-
-@Composable
-fun MainActivityContent(
-    mainViewModel: MainViewModel = viewModel(),
-    mediaViewModel: MediaViewModel = viewModel()
-) {
-    val appSettings = mainViewModel.appSettings.collectAsState()
-
-    MainMaterial3Theme {
-
-        RequirePermissions(
-			permissions = listOf(
-				PermissionHelper.Permission.READ_EXTERNAL_STORAGE,
-				PermissionHelper.Permission.WRITE_EXTERNAL_STORAGE,
-			),
-            whenAllDenied = {
-				StorageDenied(state = it)
-			},
-            showRationale = {
-				/* Temporary */ StorageDenied(state = it)
-			},
-        ) {
-			val permission =
-				StoragePermissionHelper.checkReadWriteStoragePermission(LocalContext.current)
-
-			with(mainViewModel) {
-				pendingStorageGranted.forEachClearSync()
-                pendingStorageIntent.forEachClearSync { mediaViewModel.handleMediaIntent(it) }
-            }
-
-            MainActivityRoot(appSettings.value)
-        }
-    }
-}
 
 @Composable
 fun MainActivityRoot(
     appSettings: AppSettings
 ) {
-	ProvideNavHostController(rememberAnimatedNavController()) {
+	val mediaVM = MainProvider.mediaViewModel
+
+	ProvideNavHostController(rememberNavController()) {
 		RootScaffold(
 			appSettings = appSettings,
 			navController = MainNavigator.controller
 		) { padding ->
-			AnimatedMainAppNavigator(
-				modifier = Modifier.padding(padding),
-				controller = MainNavigator.controller
-			)
+			Box(
+				modifier = Modifier.fillMaxSize(),
+				contentAlignment = Alignment.BottomCenter
+			) {
+				Column {
+					StatusBarSpacer()
+					AnimatedMainAppNavigator(
+						modifier = Modifier
+							.padding(padding)
+						,
+						controller = MainNavigator.controller
+					)
+				}
+				PlaybackControl(mediaVM.playbackControlModel, padding.calculateBottomPadding())
+			}
 		}
 	}
+}
+
+@Composable
+private fun StatusBarSpacer() {
+	val height = LocalDensity.current.run {
+		WindowInsets.statusBars.getTop(this).toDp()
+	}
+	Spacer(Modifier.height(height))
 }
 
 @Composable
@@ -135,7 +105,9 @@ private fun RootScaffold(
     Scaffold(
         bottomBar = {
             if (showBottomNav(backStackEntry.value)) {
-                val backgroundColor = ColorHelper.tonePrimarySurface(elevation = 2.dp)
+				val elevation = if (isSystemInDarkTheme()) 2.dp else 8.dp
+
+                val backgroundColor = ColorHelper.tonePrimarySurface(elevation = elevation)
                     .copy(alpha = appSettings.navigationSettings.bnvSettings.visibility / 100)
                 RootBottomNavigation(
                     appSettings = appSettings,
@@ -159,13 +131,6 @@ private fun RootScaffold(
     ) {
         val isBnvTransparent = appSettings.navigationSettings.bnvSettings.visibility < 100
         val padding = if (isBnvTransparent) noPadding else it
-        if (appSettings.wallpaperSettings.mode == WallpaperSettings.Mode.NAVIGATION) {
-            MainActivityNavWallpaper(
-                modifier = Modifier.padding(padding),
-                backstackEntry = backStackEntry.value,
-                appSettings = appSettings
-            )
-        }
         content(padding)
     }
 }
@@ -220,9 +185,10 @@ private fun RootBottomNavigation(
                             alwaysShowLabel = true,
                             selected = item.screen == selectedItem,
                             icon = {
-                                MainBottomNavItemIcon(
-                                    item = item, selected = item.screen == selectedItem
-                                )
+								MainBottomNavItemIcon(
+									item = item,
+									selected = item.screen == selectedItem
+								)
                             },
                             label = {
                                 Text(
@@ -273,49 +239,6 @@ private fun AnimatedVisibilityText(visible: Boolean, text: String) {
 private fun showBottomNav(stack: NavBackStackEntry?): Boolean =
     MainBottomNavItems.map { it.screen }.find { it.route == stack?.destination?.route } != null
 
-
-@Suppress("NOTHING_TO_INLINE")
-@Composable
-inline fun StorageDenied(state: MultiplePermissionsState) {
-	val localContext = LocalContext.current
-
-	val permission = StoragePermissionHelper.checkReadWriteStoragePermission(localContext)
-
-	check(!permission)
-
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult(),
-        onResult = {}
-    )
-    val intent = Intent()
-        .apply {
-            action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
-            data = "package:${localContext.packageName}".toUri()
-        }
-    PermissionScreen(grantButtonText = "Grant Storage Permission") {
-		if (state.shouldShowRationale) {
-			state.launchMultiplePermissionRequest()
-		} else {
-			launcher.launch(intent)
-		}
-    }
-}
-
-@Suppress("NOTHING_TO_INLINE")
-@Composable
-private inline fun ShowStorageRationale(state: PermissionState) {
-    require(state.status.shouldShowRationale)
-
-	Timber.d("RequirePermission ShowStorageRationale")
-
-	val permission = StoragePermissionHelper.checkReadWriteStoragePermission(LocalContext.current)
-    check(!permission)
-
-	SideEffect {
-		state.launchPermissionRequest()
-    }
-}
-
 @Composable
 private fun MainActivityNavWallpaper(
     mediaViewModel: MediaViewModel = viewModel(),
@@ -348,7 +271,7 @@ private fun MainActivityNavWallpaper(
             }
     }
 
-    val wp = when(appSettings.wallpaperSettings.source) {
+    /*val wp = when(appSettings.wallpaperSettings.source) {
         DEVICE_WALLPAPER -> rememberWallpaperBitmapAsState().value
         MEDIA_ITEM -> mediaViewModel.mediaItemBitmap.collectAsState().value.bitmap
         SYSTEM_MODE -> systemModeBitmap()
@@ -379,7 +302,7 @@ private fun MainActivityNavWallpaper(
         fadeDuration = 500,
         size = MainBottomNavItems.size,
         currentIndex = currentIndex,
-    )
+    )*/
 }
 
 @Composable
@@ -442,6 +365,13 @@ fun NavWallpaper(
 sealed class MainBottomNavItem(
     val screen: Screen,
 ) {
+
+	class ResourceIcon(
+		screen: Screen,
+		@DrawableRes val unselectedId: Int,
+		@DrawableRes val selectedId: Int
+	): MainBottomNavItem(screen)
+
     class ImageVectorIcon(
         screen: Screen,
         val imageVector: ImageVector,
@@ -451,25 +381,25 @@ sealed class MainBottomNavItem(
 }
 
 private val MainBottomNavItems = listOf(
-    MainBottomNavItem.ImageVectorIcon(
+    MainBottomNavItem.ResourceIcon(
         screen = Screen.Home,
-        imageVector = AppDelegate.imageVectorFromDrawableId(R.drawable.home_outlined_base_512_24),
-        selectedImageVector = AppDelegate.imageVectorFromDrawableId(R.drawable.home_filled_base_512_24)
+        unselectedId = R.drawable.home_outlined_base_512_24,
+        selectedId = R.drawable.home_filled_base_512_24
     ),
-    MainBottomNavItem.ImageVectorIcon(
+    MainBottomNavItem.ResourceIcon(
         screen = Screen.Search,
-        imageVector = AppDelegate.imageVectorFromDrawableId(R.drawable.search_outlined_base_128_24),
-        selectedImageVector = AppDelegate.imageVectorFromDrawableId(R.drawable.search_filled_base_128_24)
+		unselectedId = R.drawable.search_outlined_base_128_24,
+		selectedId = R.drawable.search_filled_base_128_24
     ),
-    MainBottomNavItem.ImageVectorIcon(
+    MainBottomNavItem.ResourceIcon(
         screen = Screen.Library,
-        imageVector = AppDelegate.imageVectorFromDrawableId(R.drawable.library_outlined_base_128_24),
-        selectedImageVector = AppDelegate.imageVectorFromDrawableId(R.drawable.library_filled_base_128_24)
+		unselectedId = R.drawable.library_outlined_base_128_24,
+		selectedId = R.drawable.library_filled_base_128_24
     ),
-	MainBottomNavItem.ImageVectorIcon(
+	MainBottomNavItem.ResourceIcon(
 		screen = Screen.User,
-		imageVector = AppDelegate.imageVectorFromDrawableId(R.drawable.user_circle_outlined_base_512_24),
-		selectedImageVector = AppDelegate.imageVectorFromDrawableId(R.drawable.user_circle_filled_base_512_24)
+		unselectedId = R.drawable.user_circle_outlined_base_512_24,
+		selectedId = R.drawable.user_circle_filled_base_512_24
 	)
 )
 
@@ -479,14 +409,12 @@ private fun MainBottomNavItemIcon(
     selected: Boolean
 ) {
     val painter = when(item) {
-        is MainBottomNavItem.ImageVectorIcon -> {
-            rememberVectorPainter(image = item.imageVector)
-        }
+		is MainBottomNavItem.ResourceIcon -> painterResource(id = item.unselectedId)
+        is MainBottomNavItem.ImageVectorIcon -> rememberVectorPainter(image = item.imageVector)
     }
     val selectedPainter = when(item) {
-        is MainBottomNavItem.ImageVectorIcon -> {
-            rememberVectorPainter(image = item.selectedImageVector)
-        }
+		is MainBottomNavItem.ResourceIcon -> painterResource(id = item.selectedId)
+        is MainBottomNavItem.ImageVectorIcon -> rememberVectorPainter(image = item.selectedImageVector)
     }
     Icon(
         modifier = Modifier

@@ -1,6 +1,5 @@
 package com.kylentt.musicplayer.common.late
 
-import androidx.annotation.GuardedBy
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.musicplayer.BuildConfig
 import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
@@ -10,37 +9,67 @@ import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 
 /**
- * Lateinit val basically, any attempt to update the value is ignored
- * @param lock the Lock
- * @throws IllegalStateException on any attempt to get value when its not Initialized
- * @sample LateLazySample.testCase1
+ * Lazy delegate, but with initializer function instead of constructor
  */
 
-class LateLazy<T>(lock: Any? = null) : ReadOnlyProperty<Any?, T> {
+class LateLazy<T> @JvmOverloads constructor(lock: Any = Any()) : ReadOnlyProperty<Any?, T> {
+
+	/** Placeholder Object, because the initialized value may be null  */
 	private object EMPTY
 
-	private val localLock: Any = lock ?: this
+	/** The lock to synchronize initialization check between threads */
+	private val localLock: Any = lock
 
-	@GuardedBy("lock")
-	private var localValue: Any? = EMPTY
+	/** The value holder. [EMPTY] if not initialized  */
+	@Volatile private var localValue: Any? = EMPTY
+		set(value) {
+			require(field === EMPTY) {
+				"Latelazy failed, localValue was $field when trying to set $value"
+			}
+			field = value
+		}
 
-	private val value: T
-		@Suppress("UNCHECKED_CAST") get() = localValue as T
-
+	/** Whether [localValue] is already initialized */
 	val isInitialized
 		get() = localValue !== EMPTY
 
-	fun initializeValue(lazyValue: () -> T): T {
+	/**
+	 * The value.
+	 *
+	 * @throws ClassCastException if [localValue] is [EMPTY]
+	 */
+	val value: T
+		@Throws(ClassCastException::class)
+		get() {
+			if (!isInitialized) {
+				// The value is not yet initialized, check if its still being initialized.
+				// If not then ClassCastException will be thrown
+				sync()
+			}
+			@Suppress("UNCHECKED_CAST")
+			return localValue as T
+		}
+
+	/**
+	 * Try to get the value.
+	 *
+	 * Null if not yet initialized
+	 */
+	val valueOrNull: T?
+		get() = try { value } catch (e: ClassCastException) { null }
+
+	fun construct(lazyValue: () -> T): T {
 		if (!isInitialized) sync {
-			if (!isInitialized) localValue = lazyValue()
+			// check again if value is already initialized by the time it enters the lock
+			if (!isInitialized) {
+				// was not initialized, should be safe to invoke
+				localValue = lazyValue()
+			}
 		}
 		return value
 	}
 
-	override fun getValue(thisRef: Any?, property: KProperty<*>): T {
-		if (!isInitialized) sync()
-		return value
-	}
+	override fun getValue(thisRef: Any?, property: KProperty<*>): T = value
 
 	private fun sync(): Unit = sync { }
 	private fun <T> sync(block: () -> T): T = synchronized(localLock) { block() }
@@ -64,9 +93,9 @@ object LateLazySample {
 		val any2 = Any()
 		val any3 = Any()
 
-		initializer.initializeValue { any1 }
-		initializer.initializeValue { any2 }
-		initializer.initializeValue { any3 }
+		initializer.construct { any1 }
+		initializer.construct { any2 }
+		initializer.construct { any3 }
 
 		checkState(myObject === any1)
 	}
@@ -83,19 +112,19 @@ object LateLazySample {
 				val key = "c"
 				delay(100)
 				jobs.add(key)
-				initializer.initializeValue { key }
+				initializer.construct { key }
 			}
 			val b = async {
 				val key = "b"
 				delay(100)
 				jobs.add(key)
-				initializer.initializeValue { key }
+				initializer.construct { key }
 			}
 			val a = async {
 				val key = "a"
 				delay(100)
 				jobs.add(key)
-				initializer.initializeValue { key }
+				initializer.construct { key }
 			}
 
 			a.await()

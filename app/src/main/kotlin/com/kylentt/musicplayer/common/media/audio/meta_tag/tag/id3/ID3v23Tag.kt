@@ -841,29 +841,38 @@ class ID3v23Tag : AbstractID3v2Tag {
 		get() = instanceof
 
 	/**
-	 * {@inheritDoc}
+	 * The list of `Artwork` if any, otherwise an empty List
 	 */
 	override val artworkList: List<Artwork>
 		get() {
-			val coverartList = getFields(FieldKey.COVER_ART)
-			val artworkList: MutableList<Artwork> = ArrayList(
-				coverartList!!.size
-			)
-			for (next in coverartList) {
-				val coverArt = (next as AbstractID3v2Frame?)!!.body as FrameBodyAPIC?
-				val artwork = AndroidArtwork()
-				artwork.mimeType = coverArt!!.mimeType
-				artwork.pictureType = coverArt.pictureType
-				artwork.description = coverArt.description
-				if (coverArt.isImageUrl) {
-					artwork.isLinked = true
-					artwork.imageUrl = coverArt.getImageUrl()
-				} else {
-					artwork.binaryData = coverArt.imageData ?: byteArrayOf()
+			val coverArtFields = getFields(FieldKey.COVER_ART) ?: return emptyList()
+			val artworks = ArrayList<Artwork>(coverArtFields.size)
+
+			// Collection<E>.forEach { element: E -> } is preferred for iteration however
+			// for-Loop should be used instead for `continue&break` clarity
+			for (artField in coverArtFields) {
+				if (artField !is AbstractID3v2Frame) continue
+
+				val body = artField.body
+				if (body !is FrameBodyAPIC) continue
+
+				AndroidArtwork().run {
+					mimeType = body.mimeType
+					pictureType = body.pictureType
+					description = body.description
+
+					if (body.isImageUrl) {
+						isLinked = true
+						imageUrl = body.imageUrl
+					} else {
+						binaryData = body.imageData
+					}
+
+					artworks.add(this)
 				}
-				artworkList.add(artwork)
 			}
-			return artworkList
+
+			return artworks
 		}
 
 	/**
@@ -873,16 +882,17 @@ class ID3v23Tag : AbstractID3v2Tag {
 	override fun createField(artwork: Artwork?): TagField? {
 		val frame: AbstractID3v2Frame =
 			createFrame(getFrameAndSubIdFromGenericKey(FieldKey.COVER_ART).frameId)
-		val body = frame.body as FrameBodyAPIC?
+		val body = frame.body as? FrameBodyAPIC
+			?: return null
 		return if (!artwork!!.isLinked) {
-			body!!.setObjectValue(DataTypes.OBJ_PICTURE_DATA, artwork.binaryData)
+			body.setObjectValue(DataTypes.OBJ_PICTURE_DATA, artwork.binaryData)
 			body.setObjectValue(DataTypes.OBJ_PICTURE_TYPE, artwork.pictureType)
 			body.setObjectValue(DataTypes.OBJ_MIME_TYPE, artwork.mimeType)
 			body.setObjectValue(DataTypes.OBJ_DESCRIPTION, artwork.description)
 			frame
 		} else {
 			try {
-				body!!.setObjectValue(
+				body.setObjectValue(
 					DataTypes.OBJ_PICTURE_DATA,
 					artwork.imageUrl.toByteArray(charset("ISO-8859-1"))
 				)
@@ -908,8 +918,8 @@ class ID3v23Tag : AbstractID3v2Tag {
 	fun createArtworkField(data: ByteArray?, mimeType: String?): TagField {
 		val frame: AbstractID3v2Frame =
 			createFrame(getFrameAndSubIdFromGenericKey(FieldKey.COVER_ART).frameId)
-		val body = frame.body as FrameBodyAPIC?
-		body!!.setObjectValue(DataTypes.OBJ_PICTURE_DATA, data)
+		val body = frame.body as? FrameBodyAPIC ?: return frame
+		body.setObjectValue(DataTypes.OBJ_PICTURE_DATA, data)
 		body.setObjectValue(DataTypes.OBJ_PICTURE_TYPE, PictureTypes.DEFAULT_ID)
 		body.setObjectValue(DataTypes.OBJ_MIME_TYPE, mimeType)
 		body.setObjectValue(DataTypes.OBJ_DESCRIPTION, "")

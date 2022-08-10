@@ -1,4 +1,4 @@
-package com.kylentt.musicplayer.ui.main.compose
+package com.kylentt.musicplayer.ui.main.compose.local
 
 import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel

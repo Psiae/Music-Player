@@ -597,22 +597,20 @@ class Mp4Tag : AbstractTag() {
 
 	override val artworkList: List<Artwork>
 		get() {
-			val coverartList = get(Mp4FieldKey.ARTWORK)
-			val artworkList: MutableList<Artwork> = ArrayList(
-				coverartList!!.size
-			)
+			val coverartList = get(Mp4FieldKey.ARTWORK) ?: return emptyList()
+			val artworkList: MutableList<Artwork> = ArrayList(coverartList.size)
 			for (next in coverartList) {
-				val mp4CoverArt = next as Mp4TagCoverField?
+				val mp4CoverArt = next as? Mp4TagCoverField ?: continue
 				val artwork = AndroidArtwork()
-				artwork.binaryData = mp4CoverArt!!.data
-				artwork.mimeType = getMimeTypeForImageType(mp4CoverArt.fieldType)
+				artwork.binaryData = mp4CoverArt.data
+				artwork.mimeType = getMimeTypeForImageType(mp4CoverArt.fieldType) ?: ""
 				artworkList.add(artwork)
 			}
 			return artworkList
 		}
 
 	@Throws(KeyNotFoundException::class, FieldDataInvalidException::class)
-	override fun createCompilationField(origValue: Boolean): TagField? {
+	override fun createCompilationField(origValue: Boolean): TagField {
 		var value = ""
 		return if (origValue) {
 			value =

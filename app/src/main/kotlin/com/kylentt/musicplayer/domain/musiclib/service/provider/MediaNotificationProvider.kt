@@ -14,7 +14,7 @@ import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaStyleNotificationHelper
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.musicplayer.R
-import com.kylentt.musicplayer.core.app.delegates.AppDelegate
+import com.kylentt.musicplayer.core.app.AppDelegate
 import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.isOngoing
 import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.isStateBuffering
 import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemFactory.orEmpty
@@ -64,7 +64,7 @@ class MediaNotificationProvider(
 
 				val contentIntent = PendingIntent
 					.getActivity(
-						context, 445, AppDelegate.launcherIntent(),
+						context, 445, context.packageManager.getLaunchIntentForPackage(context.packageName),
 						PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
 					)
 

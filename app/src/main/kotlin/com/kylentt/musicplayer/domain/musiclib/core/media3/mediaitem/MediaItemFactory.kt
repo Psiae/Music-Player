@@ -1,5 +1,6 @@
 package com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem
 
+import android.content.ContentResolver
 import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.net.Uri
@@ -11,6 +12,8 @@ import androidx.media3.common.MediaItem.RequestMetadata
 import androidx.media3.common.MediaMetadata
 import com.kylentt.musicplayer.common.kotlin.string.setPrefix
 import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.mp3.MP3File
+import com.kylentt.musicplayer.common.media.audio.AudioFile
+import com.kylentt.musicplayer.core.app.AppDelegate
 import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemPropertyHelper.mediaUri
 import timber.log.Timber
 import java.io.File
@@ -18,6 +21,9 @@ import java.io.FileOutputStream
 import java.io.InputStream
 
 object MediaItemFactory {
+
+	val cacheDir
+		get() = AppDelegate.cacheManager.startupCacheDir
 
 	private const val ART_URI_PREFIX = "ART"
 
@@ -107,6 +113,16 @@ object MediaItemFactory {
 	}
 
 	fun getEmbeddedImage(context: Context, uri: Uri): ByteArray? {
+
+		Timber.d("getEmbeddedImage for $uri")
+
+		if (uri.scheme == ContentResolver.SCHEME_CONTENT) return run {
+			val af = AudioFile.Builder(context, uri, cacheDir).build()
+			af.file?.delete()
+			val embed = af.imageData
+			embed
+		}
+
 		return try {
 			val file = context.contentResolver.openInputStream(uri)
 				?.use { iStream ->
@@ -116,6 +132,7 @@ object MediaItemFactory {
 					}
 				}
 				?: return null
+
 			val data = MP3File(file).iD3v2Tag?.firstArtwork?.binaryData
 			file.delete()
 			data

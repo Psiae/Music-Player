@@ -471,8 +471,7 @@ class WavTagWriter(  //For logging
 		fc.position(IffHeaderChunk.SIGNATURE_LENGTH.toLong())
 		val bb = ByteBuffer.allocateDirect(IffHeaderChunk.SIZE_LENGTH)
 		bb.order(ByteOrder.LITTLE_ENDIAN)
-		val size = fc.size()
-			.toInt() - org.jaudiotagger.audio.iff.IffHeaderChunk.SIGNATURE_LENGTH - org.jaudiotagger.audio.iff.IffHeaderChunk.SIZE_LENGTH
+		val size = fc.size().toInt() - IffHeaderChunk.SIGNATURE_LENGTH - IffHeaderChunk.SIZE_LENGTH
 		bb.putInt(size)
 		bb.flip()
 		fc.write(bb)
@@ -666,8 +665,7 @@ class WavTagWriter(  //For logging
 			infoBuffer.rewind()
 
 			//Now Write INFO header
-			val infoHeaderBuffer =
-				ByteBuffer.allocate(org.jaudiotagger.audio.iff.IffHeaderChunk.SIGNATURE_LENGTH)
+			val infoHeaderBuffer = ByteBuffer.allocate(IffHeaderChunk.SIGNATURE_LENGTH)
 			infoHeaderBuffer.put(WavChunkType.INFO.code.toByteArray(StandardCharsets.US_ASCII))
 			infoHeaderBuffer.flip()
 

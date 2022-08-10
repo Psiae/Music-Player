@@ -28,8 +28,9 @@ import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.permissions.shouldShowRationale
 import com.kylentt.musicplayer.R
-import com.kylentt.musicplayer.common.android.context.PermissionHelper
+import com.kylentt.musicplayer.common.android.context.ContextInfo
 import com.kylentt.musicplayer.common.android.context.rememberContextInfo
+import com.kylentt.musicplayer.core.app.permission.AndroidPermission
 import com.kylentt.musicplayer.ui.main.compose.theme.MainMaterial3Theme
 import com.kylentt.musicplayer.ui.main.compose.theme.color.ColorHelper
 
@@ -41,8 +42,8 @@ private val entryViewModel: EntryViewModel
 	@Composable
 	get() = viewModel()
 
-private val readStoragePermission = PermissionHelper.Permission.READ_EXTERNAL_STORAGE
-private val writeStoragePermission = PermissionHelper.Permission.WRITE_EXTERNAL_STORAGE
+private val readStoragePermission = AndroidPermission.Read_External_Storage
+private val writeStoragePermission = AndroidPermission.Write_External_Storage
 
 private val pageItems = listOf(
 	PermissionPageItem(readStoragePermission, resId = R.drawable.folder_search_base_256_blu_glass,
@@ -67,14 +68,14 @@ private fun entryPermissionAsState(): State<Boolean> {
 	val contextInfo = rememberContextInfo()
 
 	val entryVM = entryViewModel
-	val readStorageGranted = contextInfo.readStorageAllowed
+	val readStorageGranted = contextInfo.permission.readExternalStorageAllowed
 
 	val entryAllowed = remember {
 		mutableStateOf(entryVM.shouldPersistPager != true && readStorageGranted)
 	}
 
 	if (!entryAllowed.value) {
-		EntryPermissionPager { entryAllowed.value = true }
+		EntryPermissionPager(contextInfo) { entryAllowed.value = true }
 	}
 
 	return entryAllowed
@@ -83,9 +84,7 @@ private fun entryPermissionAsState(): State<Boolean> {
 @OptIn(ExperimentalPagerApi::class)
 @ExperimentalPermissionsApi
 @Composable
-private fun EntryPermissionPager(onGranted: () -> Unit) {
-
-	val contextInfo = rememberContextInfo()
+private fun EntryPermissionPager(contextInfo: ContextInfo, onGranted: () -> Unit) {
 
 	val granted = remember {
 		mutableStateOf(false)
@@ -128,10 +127,10 @@ private fun EntryPermissionPager(onGranted: () -> Unit) {
 				mutableStateOf(false, neverEqualPolicy())
 			}
 
-			val (perm: PermissionHelper.Permission, resId: Int, optional: Boolean, title: String) =
+			val (perm: AndroidPermission, resId: Int, optional: Boolean, title: String) =
 				pageItems[position]
 
-			val state = rememberPermissionState(permission = perm.androidManifestString) {
+			val state = rememberPermissionState(permission = perm.manifestPath) {
 				result.value = it
 			}
 
@@ -148,7 +147,7 @@ private fun EntryPermissionPager(onGranted: () -> Unit) {
 				if (state.status.shouldShowRationale) {
 					state.launchPermissionRequest()
 				} else {
-					rememberLauncher.launch(contextInfo.settingIntent)
+					rememberLauncher.launch(contextInfo.commonIntent.appDetailSetting)
 				}
 			}
 
@@ -261,7 +260,7 @@ private fun isPermissionGranted(
 }
 
 private data class PermissionPageItem(
-	val permission: PermissionHelper.Permission,
+	val permission: AndroidPermission,
 	@DrawableRes val resId: Int,
 	val optional: Boolean,
 	val title: String,

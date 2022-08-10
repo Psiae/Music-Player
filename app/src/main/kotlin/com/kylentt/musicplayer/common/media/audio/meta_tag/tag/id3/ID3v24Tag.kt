@@ -1042,14 +1042,14 @@ class ID3v24Tag : AbstractID3v2Tag {
 				coverartList!!.size
 			)
 			for (next in coverartList) {
-				val coverArt = (next as AbstractID3v2Frame?)!!.body as FrameBodyAPIC?
+				val coverArt = (next as AbstractID3v2Frame?)?.body as? FrameBodyAPIC ?: continue
 				val artwork = AndroidArtwork()
-				artwork.mimeType = coverArt!!.mimeType
+				artwork.mimeType = coverArt.mimeType
 				artwork.pictureType = coverArt.pictureType
 				artwork.description = coverArt.description
 				if (coverArt.isImageUrl) {
 					artwork.isLinked = true
-					artwork.imageUrl = coverArt.getImageUrl()
+					artwork.imageUrl = coverArt.imageUrl
 				} else {
 					artwork.binaryData = coverArt.imageData
 				}

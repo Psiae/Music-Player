@@ -6,7 +6,7 @@ import androidx.startup.Initializer
 import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
 import com.kylentt.musicplayer.domain.musiclib.MusicLibrary
 
-class MusicLibraryInitializer : Initializer<Unit> {
+class MusicLibStartup : Initializer<Unit> {
 
 	override fun create(context: Context) {
 		MusicLibrary.localAgent.connect()
@@ -20,10 +20,8 @@ class MusicLibraryInitializer : Initializer<Unit> {
 class AgentInitializer : Initializer<Unit> {
 
 	override fun create(context: Context): Unit {
-		val provider = ValueProvider.args(
-			context.applicationContext as Application,
-			CoroutineDispatchers.DEFAULT
-		)
+		val provider =
+			ValueProvider.args(context.applicationContext as Application, CoroutineDispatchers.DEFAULT)
 
 		MusicLibrary.localAgent.dependency.provide(*provider)
 	}

@@ -10,6 +10,7 @@ import android.graphics.Bitmap
 import android.os.Build.VERSION_CODES
 import android.os.Bundle
 import androidx.annotation.RequiresApi
+import androidx.collection.LruCache
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.CommandButton
@@ -44,6 +45,7 @@ import com.kylentt.musicplayer.domain.musiclib.service.provider.MediaNotificatio
 import com.kylentt.musicplayer.ui.main.MainActivity
 import kotlinx.coroutines.*
 import timber.log.Timber
+import java.io.File
 import kotlin.coroutines.coroutineContext
 
 class MediaNotificationManager(
@@ -240,14 +242,13 @@ class MediaNotificationManager(
 
 		private val emptyItem = MediaItem.fromUri("empty")
 
+		private val lruCache: LruCache<String, Bitmap?> = LruCache(10000000)
 
 		// config later
 		private val cacheConfig
 			get() = true
 
 		private var currentItemBitmap: Pair<MediaItem, Bitmap?> = MediaItem.EMPTY to null
-		private var nextItemBitmap: Pair<MediaItem, Bitmap?> = MediaItem.EMPTY to null
-		private var previousItemBitmap: Pair<MediaItem, Bitmap?> = MediaItem.EMPTY to null
 
 		private val notificationProvider = MediaNotificationProvider(context, itemInfoIntentConverter)
 
@@ -265,8 +266,6 @@ class MediaNotificationManager(
 
 			notificationProvider.release()
 			currentItemBitmap = MediaItem.EMPTY to null
-			nextItemBitmap = MediaItem.EMPTY to null
-			previousItemBitmap = MediaItem.EMPTY to null
 
 			isReleased = true
 			Timber.d("MediaNotificationManager.Provider released()")
@@ -340,42 +339,17 @@ class MediaNotificationManager(
 			currentCompleted: suspend () -> Unit = {}
 		): Unit = withContext(this@MediaNotificationManager.appDispatchers.main) {
 			val currentItem = player.currentMediaItem.orEmpty()
-			val getCurrentItemBitmap = currentItemBitmap
+
+			lruCache.get(currentItem.mediaId)?.let { return@withContext currentCompleted() }
 
 			maybeWaitForMemory(1.5F,2000, 500, deviceInfo) {
 				Timber.w("Notification Media Bitmap will wait due to low memory")
 			}
 
-			currentItemBitmap = getItemBitmap(currentItem) ?: (emptyItem to null)
+			val get = getItemBitmap(currentItem) ?: (emptyItem to null)
+			get.second?.let { lruCache.put(get.first.mediaId, it) }
+			currentItemBitmap = get
 			currentCompleted()
-
-			if (!cacheConfig) return@withContext
-
-			val nextItem =
-				if (player.hasNextMediaItem()) {
-					player.getMediaItemAt(player.nextMediaItemIndex)
-				} else {
-					MediaItem.EMPTY
-				}
-
-			if (nextItem.mediaId != nextItemBitmap.first.mediaId) {
-				val currentIsNext = getCurrentItemBitmap.first.mediaId == nextItem.mediaId
-				if (currentIsNext) nextItemBitmap = getCurrentItemBitmap
-				nextItemBitmap = getItemBitmap(nextItem, cache = true) ?: (emptyItem to null)
-			}
-
-			val prevItem =
-				if (player.hasPreviousMediaItem()) {
-					player.getMediaItemAt(player.previousMediaItemIndex)
-				} else {
-					MediaItem.EMPTY
-				}
-
-			if (prevItem.mediaId != previousItemBitmap.first.mediaId) {
-				val currentIsPrevious = getCurrentItemBitmap.first.mediaId == prevItem.mediaId
-				if (currentIsPrevious) previousItemBitmap = getCurrentItemBitmap
-				previousItemBitmap = getItemBitmap(prevItem, cache = true) ?: (emptyItem to null)
-			}
 		}
 
 		private suspend fun getItemBitmap(
@@ -390,6 +364,16 @@ class MediaNotificationManager(
 			}
 
 			try {
+
+				val reqSize = if (cache) 128 else 512
+				val scale = if (cache) null else Scale.FILL
+
+				item.mediaMetadata.extras?.getString("cachedArtwork")?.let {
+					coilHelper.loadSquaredBitmap(File(it), reqSize, scale)?.let { bm ->
+						return@withContext item to bm
+					}
+				}
+
 				val bytes = MediaItemFactory.getEmbeddedImage(context, item)
 					?: return@withContext item to null
 
@@ -403,7 +387,7 @@ class MediaNotificationManager(
 
 				// if possible find sources that provide media style notification width and height
 				// 128 to 1024 is ideal
-				val reqSize = if (cache) 128 else 512
+
 
 				val source: Any =
 					if (cache) {
@@ -412,8 +396,6 @@ class MediaNotificationManager(
 					} else {
 						bytes
 					}
-
-				val scale = if (cache) null else Scale.FILL
 
 				checkCancellation {
 					if (source is Bitmap) source.recycle()
@@ -443,10 +425,9 @@ class MediaNotificationManager(
 
 		private fun getItemBitmap(player: Player): Bitmap? {
 			return player.currentMediaItem?.mediaId?.let { id ->
+				lruCache.get(id)?.let { return it }
 				when (id) {
 					currentItemBitmap.first.mediaId -> currentItemBitmap.second
-					nextItemBitmap.first.mediaId -> nextItemBitmap.second
-					previousItemBitmap.first.mediaId -> previousItemBitmap.second
 					else -> null
 				}
 			}

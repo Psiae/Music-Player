@@ -1,33 +1,27 @@
 package com.kylentt.mediaplayer.domain.viewmodels
 
-import android.graphics.Bitmap
 import androidx.annotation.MainThread
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
-import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
-import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.helper.external.IntentWrapper
 import com.kylentt.mediaplayer.helper.external.MediaIntentHandler
 import com.kylentt.mediaplayer.helper.image.CoilHelper
-import com.kylentt.musicplayer.common.android.bitmap.bitmapfactory.BitmapSampler
 import com.kylentt.musicplayer.common.android.environment.DeviceInfo
 import com.kylentt.musicplayer.common.android.memory.maybeWaitForMemory
 import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
 import com.kylentt.musicplayer.common.coroutines.safeCollect
 import com.kylentt.musicplayer.common.kotlin.coroutine.checkCancellation
+import com.kylentt.musicplayer.core.app.AppDelegate
 import com.kylentt.musicplayer.domain.musiclib.MusicLibrary
 import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemHelper
-import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemPropertyHelper.getDebugDescription
-import com.kylentt.musicplayer.domain.musiclib.entity.PlaybackState
+import com.kylentt.musicplayer.ui.main.compose.screens.root.PlaybackControlModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.MutableStateFlow
 import timber.log.Timber
+import java.io.File
 import javax.inject.Inject
-import kotlin.coroutines.coroutineContext
 import kotlin.time.ExperimentalTime
-import kotlin.time.measureTimedValue
 
 @HiltViewModel
 class MediaViewModel @Inject constructor(
@@ -38,17 +32,31 @@ class MediaViewModel @Inject constructor(
 	private val intentHandler: MediaIntentHandler
 ) : ViewModel() {
 
-  private val ioScope = viewModelScope + dispatchers.io
+	private val cacheManager = AppDelegate.cacheManager
+
+	private val ioScope = viewModelScope + dispatchers.io
 	private val computationScope = viewModelScope + dispatchers.computation
 
-  val mediaItemBitmap = MutableStateFlow(MediaItemBitmap.EMPTY)
-  val mediaPlaybackState = MutableStateFlow(PlaybackState.EMPTY)
+	private val positionStateFlow = MusicLibrary.localAgent.session.info.playbackPosition
 
-  private var updateItemBitmapJob = Job().job
-	private var updateItemBitmapJobId: String? = null
+	private val player = MusicLibrary.localAgent.session.player
 
-  @MainThread
-  fun connectService() = MusicLibrary.localAgent.connect()
+	private var positionCollectorJob = Job().job
+	private var updateArtJob = Job().job
+
+	val playbackControlModel = PlaybackControlModel()
+
+	init {
+		viewModelScope.launch(dispatchers.main) {
+			collectPlaybackState()
+		}
+		viewModelScope.launch(dispatchers.main) {
+			positionStateFlow.safeCollect { playbackControlModel.updatePosition(it) }
+		}
+	}
+
+	fun play() = player.play()
+	fun pause() = player.pause()
 
   fun handleMediaIntent(intent: IntentWrapper) {
     viewModelScope.launch(dispatchers.computation) {
@@ -57,26 +65,26 @@ class MediaViewModel @Inject constructor(
   }
 
   private suspend fun collectPlaybackState() {
-    Timber.d("MediaViewModel collectPlaybackState")
     MusicLibrary.localAgent.session.info.playbackState.safeCollect { playbackState ->
-      Timber.d("MediaViewModel collectPlaybackState collected for: " +
-        "\n${playbackState.mediaItem.getDebugDescription()}"
-      )
-			val get = mediaPlaybackState.value
-      mediaPlaybackState.value = playbackState
-      if (get.mediaItem !== playbackState.mediaItem) {
-        dispatchUpdateItemBitmap(playbackState.mediaItem)
-      }
+			Timber.d("collectPlaybackState")
+
+			val get = playbackControlModel.mediaItem
+
+			if (get !== playbackState.mediaItem) {
+				playbackControlModel.updateArt(null)
+				dispatchUpdateItemBitmap(playbackState.mediaItem)
+			}
+
+			playbackControlModel.updateBy(playbackState)
     }
   }
 
   @OptIn(ExperimentalTime::class)
 	@MainThread
   suspend fun dispatchUpdateItemBitmap(item: MediaItem) {
-		updateItemBitmapJob.cancel()
-    updateItemBitmapJob = ioScope.launch {
+		updateArtJob.cancel()
+    updateArtJob = ioScope.launch {
 			ensureActive()
-			Timber.d("UpdateItemBitmap Dispatched For ${item.getDebugDescription()}")
 
 			maybeWaitForMemory(1.5F, 2000, 500, deviceInfo) {
 				Timber.w("dispatchUpdateItemBitmap will wait due to low memory")
@@ -84,75 +92,24 @@ class MediaViewModel @Inject constructor(
 
 			try {
 
-				val measureGet = measureTimedValue {
-					itemHelper.getEmbeddedPicture(item)
+				Timber.d("itemHasExtra: ${item.mediaMetadata.extras}")
+
+				val bitmap = item.mediaMetadata.extras?.getString("cachedArtwork")?.let { file ->
+					coilHelper.loadBitmap(File(file), 500 ,500)
+				} ?: itemHelper.getEmbeddedPicture(item)?.let { bytes ->
+					coilHelper.loadBitmap(bytes, 500 ,500)
 				}
 
-				Timber.d("getEmbeddedPicture took ${measureGet.duration.inWholeMilliseconds}ms")
-
-				ensureActive()
-
-				val measureDecode = measureTimedValue {
-					measureGet.value?.let { bytes: ByteArray ->
-						val (expectWidth: Int, expectHeight: Int) =
-							BitmapSampler.fillOptions(bytes).run { outWidth to outHeight }
-						val (deviceWidth: Int, deviceHeight: Int) =
-							deviceInfo.screenWidthPixel to deviceInfo.screenHeightPixel
-						var x = 1
-						while ((expectWidth * expectHeight) / (x * x) > deviceWidth * deviceHeight ) { x *= 2 }
-						coilHelper.loadBitmap(bytes, expectWidth / x, expectHeight / x)
-					}
-				}
-
-				Timber.d("decodeByteArray with size: ${measureGet.value?.size} " +
-					"took ${measureDecode.duration.inWholeMilliseconds}ms" +
-					"\nsize: ${measureDecode.value?.width}:${measureDecode.value?.height}" +
-					"\nalloc: ${measureDecode.value?.allocationByteCount ?: "0 / null"}")
-
-				val bitmap = measureDecode.value
 
 				checkCancellation {
 					bitmap?.recycle()
 				}
 
 				withContext(dispatchers.main) {
-					if (!isActive) bitmap?.recycle()
-					ensureValidCurrentItem(item) { "dispatchUpdateItemBitmap inconsistent" }
-					mediaItemBitmap.value = MediaItemBitmap(item, bitmap)
-					Timber.d("UpdateItemBitmap Success For ${item.getDebugDescription()}")
-
-					updateItemBitmapJobId = null
+					playbackControlModel.updateArt(bitmap)
 				}
+
 			} catch (_: OutOfMemoryError) {}
 		}
 	}
-
-  @MainThread
-  private suspend inline fun ensureValidCurrentItem(item: MediaItem, msg: () -> Any) {
-    checkMainThread()
-    coroutineContext.ensureActive()
-    val current = mediaPlaybackState.value.mediaItem
-    checkState(item === current) {
-      "checkValidCurrentItem failed." +
-        "\nexpected : ${item.getDebugDescription()}" +
-        "\ncurrent: ${current.getDebugDescription()}" +
-        "\nmsg: ${msg()}"
-    }
-  }
-
-  init {
-    viewModelScope.launch(dispatchers.main) {
-      collectPlaybackState()
-    }
-  }
-
-}
-
-data class MediaItemBitmap(
-  val item: MediaItem,
-  val bitmap: Bitmap?
-) {
-  companion object {
-    val EMPTY = MediaItemBitmap(MediaItem.EMPTY, null)
-  }
 }

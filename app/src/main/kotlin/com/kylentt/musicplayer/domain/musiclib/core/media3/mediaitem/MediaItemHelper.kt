@@ -17,11 +17,11 @@ class MediaItemHelper(
 
 	fun buildFromMetadata(uri: Uri): MediaItem = MediaItemFactory.fromMetaData(context, uri)
 
-	fun getEmbeddedPicture(item: MediaItem): ByteArray? =
-		item.mediaUri?.let { getEmbeddedPicture(it) }
+	fun getEmbeddedPicture(item: MediaItem): ByteArray? = item.mediaUri?.let {
+		getEmbeddedPicture(it)
+	}
 
-	private fun getEmbeddedPicture(uri: Uri): ByteArray? =
-		MediaItemFactory.getEmbeddedImage(context, uri)
+	private fun getEmbeddedPicture(uri: Uri): ByteArray? = MediaItemFactory.getEmbeddedImage(context, uri)
 
 	init {
 		Preconditions.checkArgument(context is Application)

@@ -6,7 +6,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import timber.log.Timber
 
 @Composable
-fun Lifecycle.eventAsState(onEvent: Lifecycle.Event = Lifecycle.Event.ON_ANY): State<Lifecycle.Event> {
+inline fun Lifecycle.eventAsState(onEvent: Lifecycle.Event = Lifecycle.Event.ON_ANY): State<Lifecycle.Event> {
 	val event = remember { mutableStateOf(onEvent, policy = neverEqualPolicy()) }
 
 	DisposableEffect(key1 = this) {
@@ -19,17 +19,18 @@ fun Lifecycle.eventAsState(onEvent: Lifecycle.Event = Lifecycle.Event.ON_ANY): S
 		addObserver(observer)
 		onDispose { removeObserver(observer) }
 	}
+
 	return event
 }
 
 @Composable
-fun Lifecycle.RepeatOnEvent(
+inline fun Lifecycle.RepeatOnEvent(
 	onEvent: Lifecycle.Event,
 	block: @Composable (State<Lifecycle.Event>) -> Unit
 ) = block(eventAsState(onEvent))
 
 @Composable
-fun Lifecycle.RecomposeOnEvent(
+inline fun Lifecycle.RecomposeOnEvent(
 	onEvent: Lifecycle.Event,
 	block: @Composable (Lifecycle.Event) -> Unit
-) = RepeatOnEvent(onEvent) { block(it.value) }
+) = RepeatOnEvent(onEvent = onEvent) { block(it.value) }

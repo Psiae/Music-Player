@@ -32,22 +32,22 @@ import javax.inject.Singleton
  */
 
 data class MediaStoreSong @JvmOverloads constructor(
-  val album: String = "",
-  val albumArtUri: Uri = Uri.EMPTY,
+	val album: String = "",
+	val albumArtUri: Uri = Uri.EMPTY,
 	override val albumArtist: String = "",
-  val albumId: Long = -1,
-  val artist: String = "",
-  val artistId: Long = -1,
-  val byteSize: Long = -1,
-  val duration: Long = -1,
-  val data: String? = null,
-  val fileName: String = "",
-  val fileBucket: String = "",
-  val fileBuckedId: String = "",
-  val lastModified: Long = -1,
-  val mediaId: String = "",
-  val mediaUri: Uri = Uri.EMPTY,
-  val title: String = ""
+	val albumId: Long = -1,
+	val artist: String = "",
+	val artistId: Long = -1,
+	val byteSize: Long = -1,
+	val duration: Long = -1,
+	val data: String? = null,
+	val fileName: String = "",
+	val fileBucket: String = "",
+	val fileBuckedId: String = "",
+	val lastModified: Long = -1,
+	val mediaId: String = "",
+	override val songMediaUri: Uri = Uri.EMPTY,
+	val title: String = ""
 ) : SongEntity {
 
   override val mediaIdPrefix: String
@@ -65,8 +65,6 @@ data class MediaStoreSong @JvmOverloads constructor(
     get() = this.albumArtUri
   override val songMediaId: String
     get() = this.mediaIdPrefix + mediaId
-  override val songMediaUri: Uri
-    get() = this.mediaUri
 
   override val mediaItem by lazy {
     val artworkUri = MediaItemFactory.hideArtUri(songMediaArtworkUri)
@@ -263,7 +261,7 @@ class MediaStoreSourceImpl(
                 fileBuckedId = folderId.orEmpty(),
                 lastModified = dateModified,
                 mediaId = songId.orEmpty(),
-                mediaUri = songUri.toUri(),
+                songMediaUri = songUri.toUri(),
                 title = title.orEmpty()
               )
             )

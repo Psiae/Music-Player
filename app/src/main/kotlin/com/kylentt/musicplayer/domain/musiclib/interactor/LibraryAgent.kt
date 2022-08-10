@@ -13,9 +13,6 @@ class LibraryAgent private constructor() {
 		mLib = lib
 	}
 
-	val injector: Injector = Injector()
-	val session: MusicSession = MusicSession(this)
-
 	val mask = object : Mask {
 
 		override fun connect(): Mask {
@@ -37,6 +34,11 @@ class LibraryAgent private constructor() {
 				get() = this@LibraryAgent.session.sessionInfo
 		}
 	}
+
+	val injector: Injector = Injector()
+	val session: MusicSession = MusicSession(this)
+
+
 
 	interface Mask {
 		val dependency: Dependency

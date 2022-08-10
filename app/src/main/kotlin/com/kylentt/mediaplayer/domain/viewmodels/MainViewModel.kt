@@ -19,5 +19,4 @@ class MainViewModel @Inject constructor(
   val appSettings = protoRepo.appSettingSF
   val pendingStorageGranted = mutableListOf<() -> Unit>()
   val pendingStorageIntent = mutableListOf<IntentWrapper>()
-
 }

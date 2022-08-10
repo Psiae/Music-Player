@@ -331,7 +331,7 @@ class AsfTag @JvmOverloads constructor(val isCopyingFields: Boolean = false) : A
 				val coverArt = next as AsfTagCoverField
 				val artwork = AndroidArtwork()
 				artwork.binaryData = coverArt.rawImageData
-				artwork.mimeType = coverArt.mimeType
+				artwork.mimeType = coverArt.mimeType ?: ""
 				artwork.description = coverArt.description ?: ""
 				artwork.pictureType = coverArt.pictureType
 				artworkList.add(artwork)

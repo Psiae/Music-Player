@@ -1,7 +1,5 @@
 package com.kylentt.musicplayer.common.media.audio.meta_tag.tag.id3
 
-import org.jaudiotagger.tag.id3.ID3v24Frames
-
 /**
  * Orders frame Ids so that the most important frames are writtne first
  */

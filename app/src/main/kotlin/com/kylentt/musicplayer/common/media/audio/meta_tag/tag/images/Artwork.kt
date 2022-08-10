@@ -9,10 +9,10 @@ import java.io.IOException
  */
 interface Artwork {
 	var binaryData: ByteArray?
-	var mimeType: String?
-	var description: String?
-	var height: Int?
-	var width: Int?
+	var mimeType: String
+	var description: String
+	var height: Int
+	var width: Int
 
 	/**
 	 * Should be called when you wish to prime the artwork for saving

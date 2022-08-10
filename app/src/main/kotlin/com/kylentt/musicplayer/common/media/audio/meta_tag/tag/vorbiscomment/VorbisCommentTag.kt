@@ -55,17 +55,14 @@ class VorbisCommentTag
 	 * @param vendor
 	 */
 	var vendor: String?
-		get() = getFirst(org.jaudiotagger.tag.vorbiscomment.VorbisCommentFieldKey.VENDOR.fieldName)
+		get() = getFirst(VorbisCommentFieldKey.VENDOR.fieldName)
 		set(vendor) {
 			var vendor = vendor
 			if (vendor == null) {
 				vendor = DEFAULT_VENDOR
 			}
 			super.setField(
-				VorbisCommentTagField(
-					org.jaudiotagger.tag.vorbiscomment.VorbisCommentFieldKey.VENDOR.fieldName,
-					vendor
-				)
+				VorbisCommentTagField(VorbisCommentFieldKey.VENDOR.fieldName, vendor)
 			)
 		}
 
@@ -263,8 +260,8 @@ class VorbisCommentTag
 	 *
 	 * @return mimetype
 	 */
-	val artworkMimeType: String?
-		get() = this.getFirst(VorbisCommentFieldKey.COVERARTMIME)
+	val artworkMimeType: String
+		get() = this.getFirst(VorbisCommentFieldKey.COVERARTMIME) ?: ""
 
 	/**
 	 * Is this tag empty

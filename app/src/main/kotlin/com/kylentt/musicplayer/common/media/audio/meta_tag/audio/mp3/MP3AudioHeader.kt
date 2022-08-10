@@ -27,9 +27,9 @@ package com.kylentt.musicplayer.common.media.audio.meta_tag.audio.mp3
 import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.AudioHeader
 import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.SupportedFileFormat
 import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.InvalidAudioFrameException
+import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.generic.Utils
 import com.kylentt.musicplayer.common.media.audio.meta_tag.logging.ErrorMessage
 import com.kylentt.musicplayer.common.media.audio.meta_tag.logging.Hex
-import org.jaudiotagger.audio.generic.Utils
 import java.io.EOFException
 import java.io.File
 import java.io.FileInputStream

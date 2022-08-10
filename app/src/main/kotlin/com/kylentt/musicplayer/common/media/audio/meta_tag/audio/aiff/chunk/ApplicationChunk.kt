@@ -34,9 +34,12 @@ class ApplicationChunk(
 		 * string naming the application.  Otherwise, we
 		 * ignore the data.  ('pdos' is for Apple II
 		 * applications, 'stoc' for the entire non-Apple world.)
-		 */if (SIGNATURE_STOC == applicationSignature || SIGNATURE_PDOS == applicationSignature) {
+		 */
+
+		if (SIGNATURE_STOC == applicationSignature || SIGNATURE_PDOS == applicationSignature) {
 			applicationName = Utils.readPascalString(chunkData)
 		}
+
 		aiffHeader.addApplicationIdentifier("$applicationSignature: $applicationName")
 		return true
 	}

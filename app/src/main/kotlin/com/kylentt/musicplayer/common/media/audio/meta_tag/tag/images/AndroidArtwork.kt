@@ -13,13 +13,13 @@ import java.io.RandomAccessFile
 class AndroidArtwork : Artwork {
 
 	override var binaryData: ByteArray? = null
-	override var mimeType: String? = ""
-	override var description: String? = ""
+	override var mimeType: String = ""
+	override var description: String = ""
 	override var isLinked = false
 	override var imageUrl = ""
 	override var pictureType = -1
-	override var width: Int? = 0
-	override var height: Int? = 0
+	override var width: Int = 0
+	override var height: Int = 0
 
 	/**
 	 * Should be called when you wish to prime the artwork for saving
@@ -49,7 +49,7 @@ class AndroidArtwork : Artwork {
 		imageFile.read(imagedata)
 		imageFile.close()
 		binaryData = imagedata
-		mimeType = getMimeTypeForBinarySignature(imagedata)
+		mimeType = getMimeTypeForBinarySignature(imagedata) ?: ""
 		description = ""
 		pictureType = PictureTypes.DEFAULT_ID
 	}

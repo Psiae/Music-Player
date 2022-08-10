@@ -74,6 +74,7 @@ private fun LibraryContent() {
 	val storeOwner = context as ViewModelStoreOwner
 	val vm: LibraryViewModel = hiltViewModel(storeOwner)
 	val mediaVM: MediaViewModel = MainProvider.mediaViewModel
+	val mainVM = MainProvider.mainViewModel
 
 	val addPadding = mediaVM.playbackControlModel.showSelf
 	val localSongs = vm.localSongs
@@ -155,14 +156,12 @@ private fun LibraryContent() {
 						}
 					}
 				}
-				if (addPadding.value) {
-					items(2) {
-						Spacer(
-							modifier = Modifier
-								.fillMaxWidth()
-								.height(55.dp)
-						)
-					}
+				items(2) {
+					Spacer(
+						modifier = Modifier
+							.fillMaxWidth()
+							.height(mainVM.scrollableExtraSpacerDp.value)
+					)
 				}
 			}
 		}

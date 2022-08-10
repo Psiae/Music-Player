@@ -61,6 +61,7 @@ fun MainActivityRoot(
     appSettings: AppSettings
 ) {
 	val mediaVM = MainProvider.mediaViewModel
+	val mainVM = MainProvider.mainViewModel
 
 	ProvideNavHostController(rememberNavController()) {
 		RootScaffold(
@@ -74,9 +75,6 @@ fun MainActivityRoot(
 				Column {
 					StatusBarSpacer()
 					AnimatedMainAppNavigator(
-						modifier = Modifier
-							.padding(padding)
-						,
 						controller = MainNavigator.controller
 					)
 				}
@@ -101,6 +99,8 @@ private fun RootScaffold(
     content: @Composable (PaddingValues) -> Unit
 ) {
     val backStackEntry = navController.currentBackStackEntryAsState()
+
+	val mainVM = MainProvider.mainViewModel
 
     Scaffold(
         bottomBar = {
@@ -128,10 +128,11 @@ private fun RootScaffold(
                 )
             }
         }
-    ) {
-        val isBnvTransparent = appSettings.navigationSettings.bnvSettings.visibility < 100
-        val padding = if (isBnvTransparent) noPadding else it
+    ) { padding ->
         content(padding)
+		LaunchedEffect(key1 = padding) {
+			mainVM.bottomNavigationHeight.value = padding.calculateBottomPadding()
+		}
     }
 }
 
@@ -159,66 +160,79 @@ private fun RootBottomNavigation(
 ) {
     NoRipple {
 
-        Surface(
-            color = backgroundColor
-        ) {
-            Box(
-                modifier = Modifier
-					.fillMaxWidth()
-					.navigationBarsPadding(),
-            ) {
+		val themeColor = if (isSystemInDarkTheme()) Color.Black else Color.White
 
-                val contentColor = if (isSystemInDarkTheme()) {
-                    MaterialTheme.colorScheme.onSecondaryContainer
-                } else {
+		Column(
+			modifier = Modifier.background(
+				Brush.verticalGradient(
+					listOf(
+						backgroundColor,
+						backgroundColor,
+						backgroundColor.compositeOver(themeColor),
+						backgroundColor.compositeOver(themeColor)
+					)
+				)
+			),
+		) {
+			Box(
+				modifier = Modifier
+					.fillMaxWidth(),
+			) {
+
+				val contentColor = if (isSystemInDarkTheme()) {
 					MaterialTheme.colorScheme.onSecondaryContainer
-                }
+				} else {
+					MaterialTheme.colorScheme.onSecondaryContainer
+				}
 
-                BottomNavigation(
-                    modifier = modifier,
-                    elevation = 0.dp,
-                    backgroundColor = Color.Transparent,
-                    contentColor = contentColor,
-                ) {
-                    MainBottomNavItems.forEach { item ->
-                        BottomNavigationItem(
-                            alwaysShowLabel = true,
-                            selected = item.screen == selectedItem,
-                            icon = {
+				BottomNavigation(
+					modifier = modifier,
+					elevation = 0.dp,
+					backgroundColor = Color.Transparent,
+					contentColor = contentColor,
+				) {
+					MainBottomNavItems.forEach { item ->
+						BottomNavigationItem(
+							alwaysShowLabel = true,
+							selected = item.screen == selectedItem,
+							icon = {
 								MainBottomNavItemIcon(
 									item = item,
 									selected = item.screen == selectedItem
 								)
-                            },
-                            label = {
-                                Text(
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    fontWeight = AppTypography.labelMedium.fontWeight,
-                                    fontSize = AppTypography.labelMedium.fontSize,
-                                    fontStyle = AppTypography.labelMedium.fontStyle,
-                                    lineHeight = AppTypography.labelMedium.lineHeight,
-                                    text = item.screen.label
-                                )
-                            },
-                            onClick = { onItemClicked(item.screen) }
-                        )
-                    }
-                }
-            }
-        }
+							},
+							label = {
+								Text(
+									color = MaterialTheme.colorScheme.onSurface,
+									fontWeight = AppTypography.labelMedium.fontWeight,
+									fontSize = AppTypography.labelMedium.fontSize,
+									fontStyle = AppTypography.labelMedium.fontStyle,
+									lineHeight = AppTypography.labelMedium.lineHeight,
+									text = item.screen.label
+								)
+							},
+							onClick = { onItemClicked(item.screen) }
+						)
+					}
+				}
+			}
+			NavigationBarsSpacer()
+		}
     }
 }
 
 @Composable
 private fun NavigationBarsSpacer(modifier: Modifier = Modifier) {
-    Spacer(modifier = modifier
-        .then(Modifier
-            .height(
-                with(LocalDensity.current) {
-                    WindowInsets.navigationBars.getBottom(this).toDp()
-                }
-            )
-        )
+    Spacer(modifier = Modifier
+		.height(
+			with(LocalDensity.current) {
+				WindowInsets.navigationBars
+					.getBottom(this)
+					.toDp()
+			}
+		)
+		.fillMaxWidth()
+		.then(modifier)
     )
 }
 

@@ -55,7 +55,7 @@ data class BottomNavigationSettings(
     val DEFAULT: BottomNavigationSettings by lazy {
       val defAnimation = ItemAnimation.VISIBILITY
       val defAlignment = ItemAlignment.VERTICAL
-      val defVisibility = 100f
+      val defVisibility = 90f
       BottomNavigationSettings(defAnimation, defAlignment, defVisibility)
     }
   }

@@ -16,7 +16,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -32,11 +34,14 @@ import com.kylentt.musicplayer.R
 import com.kylentt.musicplayer.common.kotlin.comparable.clamp
 import com.kylentt.musicplayer.domain.musiclib.entity.PlaybackState
 import com.kylentt.musicplayer.domain.musiclib.entity.PlaybackState.Companion.isEmpty
+import com.kylentt.musicplayer.ui.main.compose.local.MainProvider
 import com.kylentt.musicplayer.ui.util.compose.NoRipple
 import kotlinx.coroutines.*
 
 @Composable
 fun PlaybackControl(model: PlaybackControlModel, bottomOffset: Dp) {
+
+	val mainVM = MainProvider.mainViewModel
 
 	val targetState =
 		if (model.showSelf.value) {
@@ -59,7 +64,19 @@ fun PlaybackControl(model: PlaybackControlModel, bottomOffset: Dp) {
 	}
 
 	if (animatedOffset.value > 0.dp) {
-		PlaybackControlBox(model, animatedOffset.value)
+		val density = LocalDensity.current.density
+
+		Box(
+			modifier = Modifier.onGloballyPositioned {
+				mainVM.playbackControlShownHeight.value =
+					(animatedOffset.value - bottomOffset) + (it.size.height / density).dp
+			}
+		) {
+			PlaybackControlBox(model, animatedOffset.value)
+		}
+
+	} else {
+		mainVM.playbackControlShownHeight.value = 0.dp
 	}
 }
 
@@ -210,8 +227,6 @@ private fun PlaybackControlBox(
 			)
 		}
 	}
-
-
 }
 
 @Composable
@@ -304,7 +319,7 @@ class PlaybackControlModel() {
 		if (bitmap != null) {
 			artJob = withContext(Dispatchers.IO) {
 				launch {
-					Palette.from(bitmap).generate().let {
+					Palette.from(bitmap).maximumColorCount(16).generate().let {
 						ensureActive()
 						mPalette.value = it
 					}

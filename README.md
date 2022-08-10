@@ -5,7 +5,11 @@ Simple Music Player `100% Made in Kotlin` with Jetpack Compose & AndroidX Media3
 # Preview
 > Image Preview below will be updated accordingly on any changes made
 
-> UI was removed for rework, background shown is taken from Device Home Background or current MediaItem Metadata
+| Dark Mode + Palette + mini Playback Control (Library screen is temporary) |
+| -------------- |
+| <img src="https://user-images.githubusercontent.com/94031495/183958377-e1e85537-17de-45c5-9fc4-6eb4b1d01682.png" width="195"> |
+
+> background shown is taken from Device Home Background or current MediaItem Metadata (removed temporarily)
 
 | Light Mode + Material You + AutoScroll background |
 | -------------- |

@@ -12,6 +12,7 @@ import com.kylentt.musicplayer.common.android.memory.maybeWaitForMemory
 import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
 import com.kylentt.musicplayer.common.coroutines.safeCollect
 import com.kylentt.musicplayer.common.kotlin.coroutine.checkCancellation
+import com.kylentt.musicplayer.common.kotlin.mutablecollection.forEachClear
 import com.kylentt.musicplayer.core.app.AppDelegate
 import com.kylentt.musicplayer.domain.musiclib.MusicLibrary
 import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemHelper
@@ -46,6 +47,7 @@ class MediaViewModel @Inject constructor(
 
 	val playbackControlModel = PlaybackControlModel()
 
+	val pendingStorageIntent = mutableListOf<IntentWrapper>()
 	init {
 		viewModelScope.launch(dispatchers.main) {
 			collectPlaybackState()
@@ -53,6 +55,10 @@ class MediaViewModel @Inject constructor(
 		viewModelScope.launch(dispatchers.main) {
 			positionStateFlow.safeCollect { playbackControlModel.updatePosition(it) }
 		}
+	}
+
+	fun readPermissionGranted() {
+		pendingStorageIntent.forEachClear(::handleMediaIntent)
 	}
 
 	fun play() = player.play()

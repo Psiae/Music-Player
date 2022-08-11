@@ -23,25 +23,25 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.MediaItem
 import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.google.accompanist.placeholder.placeholder
+import com.kylentt.mediaplayer.domain.viewmodels.MainViewModel
 import com.kylentt.mediaplayer.domain.viewmodels.MediaViewModel
 import com.kylentt.musicplayer.R
 import com.kylentt.musicplayer.common.kotlin.comparable.clamp
 import com.kylentt.musicplayer.domain.musiclib.entity.PlaybackState
 import com.kylentt.musicplayer.domain.musiclib.entity.PlaybackState.Companion.isEmpty
-import com.kylentt.musicplayer.ui.main.compose.local.MainProvider
 import com.kylentt.musicplayer.ui.util.compose.NoRipple
 import kotlinx.coroutines.*
 
 @Composable
 fun PlaybackControl(model: PlaybackControlModel, bottomOffset: Dp) {
 
-	val mainVM = MainProvider.mainViewModel
+	val mainVM: MainViewModel = viewModel()
 
 	val targetState =
 		if (model.showSelf.value) {
@@ -87,7 +87,7 @@ private fun PlaybackControlBox(
 	bottomOffset: Dp
 ) {
 
-	val mediaVM = hiltViewModel<MediaViewModel>()
+	val mediaVM: MediaViewModel = viewModel()
 
 	val context = LocalContext.current
 	val darkTheme = isSystemInDarkTheme()
@@ -95,18 +95,15 @@ private fun PlaybackControlBox(
 
 	val palette = model.palette.value
 
-	val cardBackgroundColor = remember(model.palette.value.hashCode()) {
-		if (palette != null) {
-			val int = palette.run {
-				if (darkTheme) {
-					getDarkVibrantColor(getMutedColor(getDominantColor(-1)))
-				} else {
-					getVibrantColor(getLightMutedColor(getDominantColor(-1)))
-				}
+	val cardBackgroundColor = remember(palette.hashCode()) {
+		val int = palette?.run {
+			if (darkTheme) {
+				getDarkVibrantColor(getMutedColor(getDominantColor(-1)))
+			} else {
+				getVibrantColor(getLightMutedColor(getDominantColor(-1)))
 			}
-			if (int != -1) return@remember Color(int)
-		}
-		defaultCardBackgroundColor
+		} ?: -1
+		if (int != -1) Color(int) else defaultCardBackgroundColor
 	}
 
 	Card(
@@ -158,7 +155,6 @@ private fun PlaybackControlBox(
 
 				val isCardDark = cardBackgroundColor.luminance() < 0.4f
 
-
 				Column(
 					modifier = Modifier.weight(1f, true),
 					verticalArrangement = Arrangement.SpaceEvenly,
@@ -184,8 +180,8 @@ private fun PlaybackControlBox(
 					)
 				}
 
-				val showPlay = !model.playing.value
-
+				// IsPlaying callback from mediaController is somewhat not accurate
+				val showPlay = model.showPlay.value
 				val playAvailable = model.playAvailable.value
 
 				val icon =
@@ -252,7 +248,7 @@ class PlaybackControlModel() {
 	private val mPalette = mutableStateOf<Palette?>(null)
 
 	private val mPlayAvailable = mutableStateOf<Boolean>(false)
-	private val mPlaying = mutableStateOf<Boolean>(false)
+	private val mShowPlay = mutableStateOf<Boolean>(false)
 	private val mPlaybackPosition = mutableStateOf<Long>(0)
 	private val mPlaybackDuration = mutableStateOf<Long>(0)
 
@@ -278,8 +274,8 @@ class PlaybackControlModel() {
 	val palette: State<Palette?>
 		get() = mPalette
 
-	val playing: State<Boolean>
-		get() = mPlaying
+	val showPlay: State<Boolean>
+		get() = mShowPlay
 
 	val playAvailable: State<Boolean>
 		get() = mPlayAvailable
@@ -303,9 +299,9 @@ class PlaybackControlModel() {
 		mPlaybackTitle.value = (metadata.title ?: metadata.albumTitle ?: "").toString()
 		mPlaybackArtist.value = (metadata.artist ?: metadata.albumArtist ?: "").toString()
 		mPlaybackDuration.value = state.duration
-		mPlaying.value = state.playing
+		mShowPlay.value = !state.playing || !state.playWhenReady
 		mPlayAvailable.value = !state.playWhenReady
-		mShowSelf.value = !state.isEmpty
+		mShowSelf.value = !state.isEmpty && state.mediaItem !== MediaItem.EMPTY
 	}
 
 	fun updatePosition(duration: Long) {

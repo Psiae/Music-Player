@@ -32,7 +32,7 @@ class PlaybackManager : MusicLibraryService.ServiceComponent() {
 
 	override fun create(serviceDelegate: MusicLibraryService.ServiceDelegate) {
 		super.create(serviceDelegate)
-		val serviceProperty = serviceDelegate.propertyInteractor
+		val serviceProperty = serviceDelegate.property
 		val serviceJob = serviceProperty.serviceMainJob
 		managerJob = SupervisorJob(serviceJob)
 		mainScope = CoroutineScope(appDispatchers.main + managerJob)
@@ -70,9 +70,11 @@ class PlaybackManager : MusicLibraryService.ServiceComponent() {
 
 	private inner class PlayerPlaybackEventHandler {
 
+
+
 		suspend fun onPlaybackError(error: PlaybackException, player: Player) {
 			if (!isStarted) return
-			val currentContext = serviceDelegate.propertyInteractor.context ?: return
+			val currentContext = serviceDelegate.property.context ?: return
 
 			Timber.d("onPlaybackError, \nerror: ${error}\ncode: ${error.errorCode}\nplayer: $player")
 
@@ -97,7 +99,7 @@ class PlaybackManager : MusicLibraryService.ServiceComponent() {
 			error: PlaybackException
 		) = withContext(appDispatchers.mainImmediate) {
 			if (!isStarted) return@withContext
-			val currentContext = serviceDelegate.propertyInteractor.context ?: return@withContext
+			val currentContext = serviceDelegate.property.context ?: return@withContext
 
 			Preconditions.checkArgument(error.errorCode == PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND)
 
@@ -149,6 +151,10 @@ class PlaybackManager : MusicLibraryService.ServiceComponent() {
 	}
 
 	private inner class PlayerPlaybackListener : Player.Listener {
+
+		override fun onIsPlayingChanged(isPlaying: Boolean) {
+			Timber.d("onIsPlayingChanged: $isPlaying")
+		}
 		override fun onPlayerError(error: PlaybackException) = onPlaybackError(error)
 		override fun onPlaybackStateChanged(playbackState: Int) = onPlayerStateChanged(playbackState)
 	}

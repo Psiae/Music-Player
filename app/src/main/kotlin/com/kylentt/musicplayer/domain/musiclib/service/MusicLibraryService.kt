@@ -28,7 +28,6 @@ import com.kylentt.musicplayer.domain.musiclib.service.manager.SessionManager
 import com.kylentt.musicplayer.domain.musiclib.service.manager.StateManager
 import com.kylentt.musicplayer.domain.musiclib.service.provider.SessionProvider
 import com.kylentt.musicplayer.ui.main.MainActivity
-import com.kylentt.musicplayer.ui.main.MainActivity.MainState.Created.isAlive
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -339,10 +338,10 @@ class MusicLibraryService : MediaLibraryService() {
 	}
 
 	inner class ServiceDelegate {
-		val propertyInteractor = PropertyInteractor()
+		val property = Property()
 	}
 
-	inner class PropertyInteractor {
+	inner class Property {
 		private val service = this@MusicLibraryService
 
 		val context: Context? get() = if (baseContext != null) service else null

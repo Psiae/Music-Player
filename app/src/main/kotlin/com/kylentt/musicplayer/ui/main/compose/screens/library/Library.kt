@@ -1,5 +1,6 @@
 package com.kylentt.musicplayer.ui.main.compose.screens.library
 
+import androidx.activity.ComponentActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -22,17 +23,17 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.google.accompanist.placeholder.placeholder
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
+import com.kylentt.mediaplayer.domain.viewmodels.MainViewModel
 import com.kylentt.mediaplayer.domain.viewmodels.MediaViewModel
-import com.kylentt.musicplayer.ui.main.compose.local.MainProvider
 import com.kylentt.musicplayer.ui.main.compose.theme.color.ColorHelper
 import jp.wasabeef.transformers.coil.CenterCropTransformation
 import timber.log.Timber
@@ -70,13 +71,10 @@ private fun LibraryTopBar() {
 private fun LibraryContent() {
 	val context = LocalContext.current
 	val lifecycleOwner = LocalLifecycleOwner.current
+	val vm: LibraryViewModel = activityViewModel()
+	val mediaVM: MediaViewModel = activityViewModel()
+	val mainVM: MainViewModel = activityViewModel()
 
-	val storeOwner = context as ViewModelStoreOwner
-	val vm: LibraryViewModel = hiltViewModel(storeOwner)
-	val mediaVM: MediaViewModel = MainProvider.mediaViewModel
-	val mainVM = MainProvider.mainViewModel
-
-	val addPadding = mediaVM.playbackControlModel.showSelf
 	val localSongs = vm.localSongs
 
 	Timber.d("Library Content recomposed")
@@ -160,7 +158,7 @@ private fun LibraryContent() {
 					Spacer(
 						modifier = Modifier
 							.fillMaxWidth()
-							.height(mainVM.scrollableExtraSpacerDp.value)
+							.height(mainVM.bottomNavigatorHeight.value)
 					)
 				}
 			}
@@ -173,4 +171,11 @@ private fun LibraryContent() {
 			}
 		}
 	}
+}
+
+@Composable
+private inline fun <reified T: ViewModel>activityViewModel(): T {
+	val context = LocalContext.current
+	require(context is ComponentActivity)
+	return viewModel(context)
 }

@@ -120,13 +120,13 @@ class MainActivity : ComponentActivity() {
 			val wrapped = IntentWrapper.fromIntent(intent)
 			if (!wrapped.shouldHandleIntent) return
 			if (!readStoragePermission) {
-				mainVM.pendingStorageIntent.add(wrapped)
+				mediaVM.pendingStorageIntent.add(wrapped)
 				return
 			}
-			if (mainVM.pendingStorageIntent.isNotEmpty()) {
+			if (mediaVM.pendingStorageIntent.isNotEmpty()) {
 				// RequireStoragePermission Composable is recomposed OnResume,
 				// always after onNewIntent() that might call this function
-				mainVM.pendingStorageIntent.add(wrapped)
+				mediaVM.pendingStorageIntent.add(wrapped)
 				return
 			}
 			mediaVM.handleMediaIntent(wrapped)

@@ -68,6 +68,7 @@ private fun entryPermissionAsState(): State<Boolean> {
 	val contextInfo = rememberContextInfo()
 
 	val entryVM = entryViewModel
+
 	val readStorageGranted = contextInfo.permission.readExternalStorageAllowed
 
 	val entryAllowed = remember {

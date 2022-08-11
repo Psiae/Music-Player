@@ -97,8 +97,8 @@ class MediaNotificationManager(
 
 	private fun createImpl(serviceDelegate: MusicLibraryService.ServiceDelegate) {
 
-		val serviceJob = serviceDelegate.propertyInteractor.serviceMainJob
-		appDispatchers = serviceDelegate.propertyInteractor.serviceDispatchers
+		val serviceJob = serviceDelegate.property.serviceMainJob
+		appDispatchers = serviceDelegate.property.serviceDispatchers
 		mainScope = CoroutineScope(appDispatchers.main + serviceJob)
 	}
 

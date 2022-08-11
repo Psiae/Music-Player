@@ -45,10 +45,8 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.kylentt.mediaplayer.core.app.settings.AppSettings
 import com.kylentt.mediaplayer.domain.viewmodels.MainViewModel
 import com.kylentt.mediaplayer.domain.viewmodels.MediaViewModel
-import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.ComposableExtension.noPadding
 import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.theme.AppTypography
 import com.kylentt.musicplayer.R
-import com.kylentt.musicplayer.ui.main.compose.local.MainProvider
 import com.kylentt.musicplayer.ui.main.compose.navigation.MainNavigator
 import com.kylentt.musicplayer.ui.main.compose.navigation.MainNavigator.ProvideNavHostController
 import com.kylentt.musicplayer.ui.main.compose.screens.root.PlaybackControl
@@ -60,8 +58,7 @@ import kotlin.math.roundToInt
 fun MainActivityRoot(
     appSettings: AppSettings
 ) {
-	val mediaVM = MainProvider.mediaViewModel
-	val mainVM = MainProvider.mainViewModel
+	val mediaVM: MediaViewModel = viewModel()
 
 	ProvideNavHostController(rememberNavController()) {
 		RootScaffold(
@@ -100,7 +97,7 @@ private fun RootScaffold(
 ) {
     val backStackEntry = navController.currentBackStackEntryAsState()
 
-	val mainVM = MainProvider.mainViewModel
+	val mainVM: MainViewModel = viewModel()
 
     Scaffold(
         bottomBar = {

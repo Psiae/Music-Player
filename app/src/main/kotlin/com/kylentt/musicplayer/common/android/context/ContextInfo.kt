@@ -6,8 +6,13 @@ import androidx.compose.ui.platform.LocalContext
 import com.kylentt.musicplayer.common.android.intent.AndroidCommonIntent
 import com.kylentt.musicplayer.core.app.permission.AndroidPermission
 import com.kylentt.musicplayer.core.app.permission.AndroidPermissionInfo
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
 
-class ContextInfo(private val context: Context) {
+
+class ContextInfo @Inject constructor (
+	@ApplicationContext private val context: Context
+) {
 
 	val commonIntent = AndroidCommonIntent(context)
 	val permission = AndroidPermissionInfo(context)

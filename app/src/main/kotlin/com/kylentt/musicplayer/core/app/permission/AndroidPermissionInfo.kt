@@ -26,7 +26,6 @@ class AndroidPermissionInfo(private val context: Context) {
 	val readExternalStorageAllowed
 		get() = isPermissionGranted(AndroidPermission.Read_External_Storage)
 
-
 	fun isPermissionGranted(permission: AndroidPermission): Boolean {
 		return ContextCompat.checkSelfPermission(context, permission.manifestPath) == STATUS_GRANTED
 	}

@@ -33,17 +33,17 @@ class SessionManager(
 
 	override fun create(serviceDelegate: MusicLibraryService.ServiceDelegate) {
 		super.create(serviceDelegate)
-		val serviceJob = serviceDelegate.propertyInteractor.serviceMainJob
+		val serviceJob = serviceDelegate.property.serviceMainJob
 		sessionManagerJob = SupervisorJob(serviceJob)
 	}
 
 	override fun serviceDependencyInjected() {
 		super.serviceDependencyInjected()
 		val delegate = serviceDelegate
-		val context = delegate.propertyInteractor.context!!
+		val context = delegate.property.context!!
 		val callback = librarySessionCallback
 		val get = sessionProvider
-			.getNewLibrarySession(context, delegate.propertyInteractor.injectedPlayer, callback)
+			.getNewLibrarySession(context, delegate.property.injectedPlayer, callback)
 		sessionRegistry.changeLocalLibrarySession(get)
 	}
 

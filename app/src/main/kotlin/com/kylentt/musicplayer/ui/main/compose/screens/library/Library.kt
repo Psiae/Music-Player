@@ -28,6 +28,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import coil.request.ErrorResult
 import coil.request.ImageRequest
 import com.google.accompanist.placeholder.placeholder
 import com.google.accompanist.swiperefresh.SwipeRefresh
@@ -37,6 +38,7 @@ import com.kylentt.mediaplayer.domain.viewmodels.MediaViewModel
 import com.kylentt.musicplayer.ui.main.compose.theme.color.ColorHelper
 import jp.wasabeef.transformers.coil.CenterCropTransformation
 import timber.log.Timber
+import java.io.File
 
 @Composable
 fun Library() {
@@ -108,10 +110,16 @@ private fun LibraryContent() {
 					) {
 						Box(contentAlignment = Alignment.BottomCenter) {
 							val req = remember(data.hashCode()) {
+								if (data == null) return@remember null
+
 								ImageRequest.Builder(context)
 									.data(data)
 									.crossfade(true)
 									.transformations(CenterCropTransformation())
+									/*.listener(onError = { request: ImageRequest, result: ErrorResult ->
+										val reqData = request.data
+										if (reqData is File && !reqData.exists()) vm.requestRefresh()
+									})*/
 									.build()
 							}
 
@@ -122,6 +130,7 @@ private fun LibraryContent() {
 										visible = !item.isArtLoaded,
 										color = ColorHelper.tonePrimarySurface(elevation = 2.dp)
 									)
+
 								,
 								model = req,
 								contentDescription = null,

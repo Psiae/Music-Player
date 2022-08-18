@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
@@ -20,6 +21,10 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.ExperimentalTextApi
+import androidx.compose.ui.text.PlatformSpanStyle
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -37,6 +42,7 @@ import com.kylentt.musicplayer.domain.musiclib.entity.PlaybackState
 import com.kylentt.musicplayer.domain.musiclib.entity.PlaybackState.Companion.isEmpty
 import com.kylentt.musicplayer.ui.util.compose.NoRipple
 import kotlinx.coroutines.*
+import timber.log.Timber
 
 @Composable
 fun PlaybackControl(model: PlaybackControlModel, bottomOffset: Dp) {
@@ -80,7 +86,7 @@ fun PlaybackControl(model: PlaybackControlModel, bottomOffset: Dp) {
 	}
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class, ExperimentalTextApi::class)
 @Composable
 private fun PlaybackControlBox(
 	model: PlaybackControlModel,
@@ -108,7 +114,7 @@ private fun PlaybackControlBox(
 
 	Card(
 		modifier = Modifier
-			.height(60.dp)
+			.height(55.dp)
 			.fillMaxWidth()
 			.padding(start = 5.dp, end = 5.dp)
 			.offset(x = 0.dp, y = -bottomOffset),
@@ -120,15 +126,16 @@ private fun PlaybackControlBox(
 			contentAlignment = Alignment.BottomStart
 		) {
 			Row(
-				modifier = Modifier.fillMaxSize(),
+				modifier = Modifier
+					.fillMaxSize()
+					.padding(7.5.dp),
 				verticalAlignment = Alignment.CenterVertically,
 			) {
 				Card(
 					modifier = Modifier
 						.fillMaxHeight()
-						.padding(10.dp)
 						.aspectRatio(1f, true),
-					shape = RoundedCornerShape(5),
+					shape = RoundedCornerShape(10),
 				) {
 
 					val art = model.art.value
@@ -156,7 +163,10 @@ private fun PlaybackControlBox(
 				val isCardDark = cardBackgroundColor.luminance() < 0.4f
 
 				Column(
-					modifier = Modifier.weight(1f, true),
+					modifier = Modifier
+						.fillMaxHeight()
+						.padding(start = 10.dp, end = 10.dp)
+						.weight(1f, true),
 					verticalArrangement = Arrangement.SpaceEvenly,
 					horizontalAlignment = Alignment.Start,
 				) {
@@ -170,13 +180,13 @@ private fun PlaybackControlBox(
 						text = model.playbackTitle.value,
 						style = style,
 						maxLines = 1,
-						overflow = TextOverflow.Ellipsis
+						overflow = TextOverflow.Ellipsis,
 					)
 					Text(
 						text = model.playbackArtist.value,
 						style = style2,
 						maxLines = 1,
-						overflow = TextOverflow.Ellipsis
+						overflow = TextOverflow.Ellipsis,
 					)
 				}
 
@@ -194,19 +204,19 @@ private fun PlaybackControlBox(
 				NoRipple {
 
 					val interactionSource = remember { MutableInteractionSource() }
-					val pressed = interactionSource.collectIsPressedAsState()
-					val size by animateDpAsState(targetValue =  if (pressed.value) 18.dp else 22.dp)
+					val pressed by interactionSource.collectIsPressedAsState()
+					val size by animateDpAsState(targetValue =  if (pressed) 18.dp else 21.dp)
 
 					Icon(
 						modifier = Modifier
-							.weight(0.3f)
+							.weight(0.2f)
 							.size(size)
 							.clickable(
 								interactionSource = interactionSource,
 								indication = null
 							) {
 								if (showPlay) {
-									if (playAvailable) mediaVM.play()
+									mediaVM.play()
 								} else {
 									mediaVM.pause()
 								}
@@ -227,13 +237,15 @@ private fun PlaybackControlBox(
 
 @Composable
 private fun ProgressIndicator(position: Float, duration: Float) {
+	Timber.d("ProgressIndicator got pos: $position, duration: $duration")
+
 	val progress =
 		if (position == 0f || duration == 0f || position > duration) 0f else position / duration
 
 	LinearProgressIndicator(
 		modifier = Modifier
 			.fillMaxWidth()
-			.height((2.5).dp),
+			.height(2.dp),
 		progress = progress.clamp(0f, 1f),
 		trackColor = MaterialTheme.colorScheme.surfaceVariant,
 		color = if (isSystemInDarkTheme()) Color.White else Color.Black
@@ -333,8 +345,6 @@ class PlaybackControlModel() {
 			get() = this === placeHolder
 	}
 }
-
-
 enum class VISIBILITY {
 	VISIBLE,
 	GONE

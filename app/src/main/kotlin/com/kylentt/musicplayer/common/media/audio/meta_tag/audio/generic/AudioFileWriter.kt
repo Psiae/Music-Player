@@ -73,12 +73,12 @@ abstract class AudioFileWriter {
 	open fun delete(af: AudioFile) {
 		if (!VersionHelper.hasOreo()) throw UnsupportedOperationException()
 
-		val file = af.file!!.toPath()
+		val file = af.mFile!!.toPath()
 		if (TagOptionSingleton.instance.isCheckIsWritable && !Files.isWritable(file)) {
 			logger.severe(Permissions.displayPermissions(file))
 			throw CannotWriteException(ErrorMessage.GENERAL_DELETE_FAILED.getMsg(file))
 		}
-		if (af.file!!.length() <= MINIMUM_FILESIZE) {
+		if (af.mFile!!.length() <= MINIMUM_FILESIZE) {
 			throw CannotWriteException(
 				ErrorMessage.GENERAL_DELETE_FAILED_BECAUSE_FILE_IS_TOO_SMALL.getMsg(
 					file
@@ -94,12 +94,12 @@ abstract class AudioFileWriter {
 		var revert = false
 		try {
 			tempF = File.createTempFile(
-				af.file!!.name.replace('.', '_'),
+				af.mFile!!.name.replace('.', '_'),
 				TEMP_FILENAME_SUFFIX,
-				af.file!!.parentFile
+				af.mFile!!.parentFile
 			)
 			rafTemp = RandomAccessFile(tempF, WRITE_MODE)
-			raf = RandomAccessFile(af.file, WRITE_MODE)
+			raf = RandomAccessFile(af.mFile, WRITE_MODE)
 			raf.seek(0)
 			rafTemp.seek(0)
 			try {
@@ -115,40 +115,40 @@ abstract class AudioFileWriter {
 			}
 		} catch (e: Exception) {
 			revert = true
-			throw CannotWriteException("\"" + af.file!!.absolutePath + "\" :" + e, e)
+			throw CannotWriteException("\"" + af.mFile!!.absolutePath + "\" :" + e, e)
 		} finally {
 			// will be set to the remaining file.
-			var result = af.file
+			var result = af.mFile
 			try {
 				raf?.close()
 				rafTemp?.close()
 				if (tempF!!.length() > 0 && !revert) {
-					val deleteResult = af.file!!.delete()
+					val deleteResult = af.mFile!!.delete()
 					if (!deleteResult) {
 						logger.warning(
 							ErrorMessage.GENERAL_WRITE_FAILED_TO_DELETE_ORIGINAL_FILE.getMsg(
-								af.file!!.path,
+								af.mFile!!.path,
 								tempF.path
 							)
 						)
 						throw CannotWriteException(
 							ErrorMessage.GENERAL_WRITE_FAILED_TO_DELETE_ORIGINAL_FILE.getMsg(
-								af.file!!.path,
+								af.mFile!!.path,
 								tempF.path
 							)
 						)
 					}
-					val renameResult = tempF.renameTo(af.file!!)
+					val renameResult = tempF.renameTo(af.mFile!!)
 					if (!renameResult) {
 						logger.warning(
 							ErrorMessage.GENERAL_WRITE_FAILED_TO_RENAME_TO_ORIGINAL_FILE.getMsg(
-								af.file!!.path,
+								af.mFile!!.path,
 								tempF.path
 							)
 						)
 						throw CannotWriteException(
 							ErrorMessage.GENERAL_WRITE_FAILED_TO_RENAME_TO_ORIGINAL_FILE.getMsg(
-								af.file!!.path,
+								af.mFile!!.path,
 								tempF.path
 							)
 						)
@@ -179,7 +179,7 @@ abstract class AudioFileWriter {
 				}
 			} catch (ex: Exception) {
 				logger.severe(
-					"AudioFileWriter exception cleaning up delete:" + af.file!!.path +
+					"AudioFileWriter exception cleaning up delete:" + af.mFile!!.path +
 						" or" + tempF!!.absolutePath + ":" + ex
 				)
 			}
@@ -259,19 +259,19 @@ abstract class AudioFileWriter {
 				return
 			}
 		} catch (re: CannotReadException) {
-			throw CannotWriteException(ErrorMessage.GENERAL_WRITE_FAILED.getMsg(af.file!!.path))
+			throw CannotWriteException(ErrorMessage.GENERAL_WRITE_FAILED.getMsg(af.mFile!!.path))
 		}
-		val file = af.file!!.toPath()
+		val file = af.mFile!!.toPath()
 		if (TagOptionSingleton.instance.isCheckIsWritable && !Files.isWritable(file)) {
 			logger.severe(Permissions.displayPermissions(file))
-			logger.severe(ErrorMessage.GENERAL_WRITE_FAILED.getMsg(af.file!!.path))
+			logger.severe(ErrorMessage.GENERAL_WRITE_FAILED.getMsg(af.mFile!!.path))
 			throw CannotWriteException(
 				ErrorMessage.GENERAL_WRITE_FAILED_TO_OPEN_FILE_FOR_EDITING.getMsg(
 					file
 				)
 			)
 		}
-		if (af.file!!.length() <= MINIMUM_FILESIZE) {
+		if (af.mFile!!.length() <= MINIMUM_FILESIZE) {
 			logger.severe(ErrorMessage.GENERAL_WRITE_FAILED_BECAUSE_FILE_IS_TOO_SMALL.getMsg(file))
 			throw CannotWriteException(
 				ErrorMessage.GENERAL_WRITE_FAILED_BECAUSE_FILE_IS_TOO_SMALL.getMsg(
@@ -292,7 +292,7 @@ abstract class AudioFileWriter {
 	// but would impose a performance overhead if the original file is on a networked drive
 	@Throws(CannotWriteException::class)
 	open fun write(af: AudioFile) {
-		logger.config("Started writing tag data for file:" + af.file!!.name)
+		logger.config("Started writing tag data for file:" + af.mFile!!.name)
 
 		// Prechecks
 		preCheckWrite(af)
@@ -310,33 +310,33 @@ abstract class AudioFileWriter {
 		// Create temporary File
 		newFile = try {
 			File.createTempFile(
-				af.file!!.name.replace('.', '_'),
+				af.mFile!!.name.replace('.', '_'),
 				TEMP_FILENAME_SUFFIX,
-				af.file!!.parentFile
+				af.mFile!!.parentFile
 			)
 		} // Unable to create temporary file, can happen in Vista if have Create
 		// Files/Write Data set to Deny
 		catch (ioe: IOException) {
-			if (ioe.message == FILE_NAME_TOO_LONG && af.file!!.name.length > FILE_NAME_TOO_LONG_SAFE_LIMIT) {
+			if (ioe.message == FILE_NAME_TOO_LONG && af.mFile!!.name.length > FILE_NAME_TOO_LONG_SAFE_LIMIT) {
 				try {
 					File.createTempFile(
-						af.file!!.name.substring(0, FILE_NAME_TOO_LONG_SAFE_LIMIT).replace('.', '_'),
+						af.mFile!!.name.substring(0, FILE_NAME_TOO_LONG_SAFE_LIMIT).replace('.', '_'),
 						TEMP_FILENAME_SUFFIX,
-						af.file!!.parentFile
+						af.mFile!!.parentFile
 					)
 				} catch (ioe2: IOException) {
 					logger.log(
 						Level.SEVERE,
 						ErrorMessage.GENERAL_WRITE_FAILED_TO_CREATE_TEMPORARY_FILE_IN_FOLDER.getMsg(
-							af.file!!.name,
-							af.file!!.parentFile.absolutePath
+							af.mFile!!.name,
+							af.mFile!!.parentFile.absolutePath
 						),
 						ioe2
 					)
 					throw CannotWriteException(
 						ErrorMessage.GENERAL_WRITE_FAILED_TO_CREATE_TEMPORARY_FILE_IN_FOLDER.getMsg(
-							af.file!!.name,
-							af.file!!.parentFile.absolutePath
+							af.mFile!!.name,
+							af.mFile!!.parentFile.absolutePath
 						)
 					)
 				}
@@ -344,15 +344,15 @@ abstract class AudioFileWriter {
 				logger.log(
 					Level.SEVERE,
 					ErrorMessage.GENERAL_WRITE_FAILED_TO_CREATE_TEMPORARY_FILE_IN_FOLDER.getMsg(
-						af.file!!.name,
-						af.file!!.parentFile.absolutePath
+						af.mFile!!.name,
+						af.mFile!!.parentFile.absolutePath
 					),
 					ioe
 				)
 				throw CannotWriteException(
 					ErrorMessage.GENERAL_WRITE_FAILED_TO_CREATE_TEMPORARY_FILE_IN_FOLDER.getMsg(
-						af.file!!.name,
-						af.file!!.parentFile.absolutePath
+						af.mFile!!.name,
+						af.mFile!!.parentFile.absolutePath
 					)
 				)
 			}
@@ -361,13 +361,13 @@ abstract class AudioFileWriter {
 		// Open temporary file and actual file for editing
 		try {
 			rafTemp = RandomAccessFile(newFile, WRITE_MODE)
-			raf = RandomAccessFile(af.file, WRITE_MODE)
+			raf = RandomAccessFile(af.mFile, WRITE_MODE)
 		} // Unable to write to writable file, can happen in Vista if have Create
 		// Folders/Append Data set to Deny
 		catch (ioe: IOException) {
 			logger.log(
 				Level.SEVERE,
-				ErrorMessage.GENERAL_WRITE_FAILED_TO_OPEN_FILE_FOR_EDITING.getMsg(af.file!!.absolutePath),
+				ErrorMessage.GENERAL_WRITE_FAILED_TO_OPEN_FILE_FOR_EDITING.getMsg(af.mFile!!.absolutePath),
 				ioe
 			)
 
@@ -380,7 +380,7 @@ abstract class AudioFileWriter {
 				logger.log(
 					Level.WARNING,
 					ErrorMessage.GENERAL_WRITE_PROBLEM_CLOSING_FILE_HANDLE.getMsg(
-						af.file,
+						af.mFile,
 						ioe.message
 					),
 					ioe2
@@ -399,7 +399,7 @@ abstract class AudioFileWriter {
 			}
 			throw CannotWriteException(
 				ErrorMessage.GENERAL_WRITE_FAILED_TO_OPEN_FILE_FOR_EDITING
-					.getMsg(af.file!!.absolutePath)
+					.getMsg(af.mFile!!.absolutePath)
 			)
 		}
 
@@ -421,7 +421,7 @@ abstract class AudioFileWriter {
 		} catch (e: Exception) {
 			logger.log(
 				Level.SEVERE,
-				ErrorMessage.GENERAL_WRITE_FAILED_BECAUSE.getMsg(af.file, e.message),
+				ErrorMessage.GENERAL_WRITE_FAILED_BECAUSE.getMsg(af.mFile, e.message),
 				e
 			)
 			try {
@@ -436,7 +436,7 @@ abstract class AudioFileWriter {
 				logger.log(
 					Level.WARNING,
 					ErrorMessage.GENERAL_WRITE_PROBLEM_CLOSING_FILE_HANDLE.getMsg(
-						af.file!!.absolutePath,
+						af.mFile!!.absolutePath,
 						ioe.message
 					),
 					ioe
@@ -457,7 +457,7 @@ abstract class AudioFileWriter {
 			}
 			throw CannotWriteException(
 				ErrorMessage.GENERAL_WRITE_FAILED_BECAUSE.getMsg(
-					af.file,
+					af.mFile,
 					e.message
 				)
 			)
@@ -474,7 +474,7 @@ abstract class AudioFileWriter {
 				logger.log(
 					Level.WARNING,
 					ErrorMessage.GENERAL_WRITE_PROBLEM_CLOSING_FILE_HANDLE.getMsg(
-						af.file!!.absolutePath,
+						af.mFile!!.absolutePath,
 						ioe.message
 					),
 					ioe
@@ -483,13 +483,13 @@ abstract class AudioFileWriter {
 		}
 
 		// Result held in this file
-		result = af.file!!
+		result = af.mFile!!
 
 		// If the temporary file was used
 		if (newFile.length() > 0) {
 			transferNewFileToOriginalFile(
 				newFile,
-				af.file!!,
+				af.mFile!!,
 				TagOptionSingleton.instance.isPreserveFileIdentity
 			)
 		} else {

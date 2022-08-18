@@ -45,7 +45,7 @@ import java.util.logging.Level
  * @author : Eric Farng
  * @version $Id$
  */
-class ID3v23Tag : AbstractID3v2Tag {
+class ID3v23Tag : ID3v2TagBase {
 
 	override val release: Byte
 		get() = RELEASE
@@ -108,7 +108,7 @@ class ID3v23Tag : AbstractID3v2Tag {
 	/**
 	 * Copy primitives applicable to v2.3
 	 */
-	override fun copyPrimitives(copyObj: AbstractID3v2Tag) {
+	override fun copyPrimitives(copyObj: ID3v2TagBase) {
 		logger.config("Copying primitives")
 		super.copyPrimitives(copyObj)
 		if (copyObj is ID3v23Tag) {

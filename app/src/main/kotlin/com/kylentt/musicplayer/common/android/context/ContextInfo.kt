@@ -15,9 +15,9 @@ class ContextInfo @Inject constructor (
 ) {
 
 	val commonIntent = AndroidCommonIntent(context)
-	val permission = AndroidPermissionInfo(context)
+	val permissionInfo = AndroidPermissionInfo(context)
 	fun isPermissionGranted(permission: AndroidPermission): Boolean {
-		return this.permission.isPermissionGranted(permission)
+		return permissionInfo.isPermissionGranted(permission)
 	}
 
 	companion object {

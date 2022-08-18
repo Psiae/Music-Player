@@ -29,7 +29,8 @@ class CacheManager private constructor(private val application: Application) {
 		File(cacheDir, imageCacheDir)
 	}
 
-	private val mBitmapCacheDir = File(mImageCacheDir, bitmapCacheDir)
+	private val mBitmapCacheDir
+		get() = File(mImageCacheDir, bitmapCacheDir)
 
 	val startupCacheDir: File
 		get() {
@@ -61,12 +62,12 @@ class CacheManager private constructor(private val application: Application) {
 			if (!it.exists()) it.mkdir()
 		}
 
+
 		val reqFile = File(reqDir, fileName).also {
 			if (it.exists()) it.delete()
+
 			it.createNewFile()
 		}
-
-		Timber.d("Registering bitmap of size: ${bitmap.byteCount} to CacheManager")
 
 		FileOutputStream(reqFile).use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
 		return reqFile

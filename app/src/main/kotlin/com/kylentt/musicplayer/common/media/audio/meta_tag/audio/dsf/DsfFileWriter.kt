@@ -23,7 +23,7 @@ import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.NoWr
 import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.generic.AudioFileWriter2
 import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.generic.Utils
 import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.Tag
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.id3.AbstractID3v2Tag
+import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.id3.ID3v2TagBase
 import com.kylentt.musicplayer.core.sdk.VersionHelper
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -66,7 +66,7 @@ class DsfFileWriter : AudioFileWriter2() {
 								//Remove Existing tag
 								fc.position(dsd.metadataOffset)
 								fc.truncate(fc.position())
-								val bb = convert(tag as AbstractID3v2Tag)
+								val bb = convert(tag as ID3v2TagBase)
 								fc.write(bb)
 								dsd.fileLength = fc.size()
 								fc.position(0)
@@ -77,7 +77,7 @@ class DsfFileWriter : AudioFileWriter2() {
 						} else {
 							fc.position(dsd.metadataOffset)
 							fc.truncate(fc.position())
-							val bb = convert(tag as AbstractID3v2Tag)
+							val bb = convert(tag as ID3v2TagBase)
 							fc.write(bb)
 							dsd.fileLength = fc.size()
 							fc.position(0)
@@ -87,7 +87,7 @@ class DsfFileWriter : AudioFileWriter2() {
 						//Write new tag and new offset and size
 						fc.position(fc.size())
 						dsd.metadataOffset = fc.size()
-						val bb = convert(tag as AbstractID3v2Tag)
+						val bb = convert(tag as ID3v2TagBase)
 						fc.write(bb)
 						dsd.fileLength = fc.size()
 						fc.position(0)
@@ -110,7 +110,7 @@ class DsfFileWriter : AudioFileWriter2() {
 	 * @throws UnsupportedEncodingException
 	 */
 	@Throws(UnsupportedEncodingException::class)
-	fun convert(tag: AbstractID3v2Tag): ByteBuffer {
+	fun convert(tag: ID3v2TagBase): ByteBuffer {
 		return try {
 			var baos = ByteArrayOutputStream()
 			var existingTagSize = tag.size.toLong()

@@ -30,8 +30,10 @@ import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.Inva
 import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.generic.Utils
 import com.kylentt.musicplayer.common.media.audio.meta_tag.logging.ErrorMessage
 import com.kylentt.musicplayer.common.media.audio.meta_tag.logging.Hex
+import timber.log.Timber
 import java.io.EOFException
 import java.io.File
+import java.io.FileDescriptor
 import java.io.FileInputStream
 import java.io.IOException
 import java.nio.ByteBuffer
@@ -255,6 +257,123 @@ open class MP3AudioHeader : AudioHeader {
 		}
 	}
 
+	constructor(seekFile: FileDescriptor, startByte: Long) {
+		if (!seek(seekFile, startByte)) {
+			throw InvalidAudioFrameException(null)
+		}
+	}
+
+	@Throws(IOException::class)
+	fun seek(seekFile: FileDescriptor, startByte: Long): Boolean {
+		//References to Xing/VRbi Header
+		var header: ByteBuffer?
+
+		//This is substantially faster than updating the file-channels position
+		val fis = FileInputStream(seekFile)
+		val fc = fis.channel
+
+		val length = fc.size()
+
+		//Read into Byte Buffer in Chunks
+		val bb = ByteBuffer.allocateDirect(FILE_BUFFER_SIZE)
+
+		//Move FileChannel to the starting position (skipping over tag if any)
+		fc.position(startByte)
+
+		//Update filePointerCount
+		var filePointerCount: Long = startByte
+
+		//Read from here into the byte buffer , doesn't move location of filepointer
+		fc.read(bb, startByte)
+		bb.flip()
+		var syncFound = false
+		try {
+			do {
+				//TODO remaining() is quite an expensive operation, isn't there a way we can work this out without
+				//interrogating the bytebuffer. Also this is rarely going to be true, and could be made less true
+				//by increasing FILE_BUFFER_SIZE
+				if (bb.remaining() <= MIN_BUFFER_REMAINING_REQUIRED) {
+					bb.clear()
+					fc.position(filePointerCount)
+					fc.read(bb, fc.position())
+					bb.flip()
+
+					val bbLimit = bb.limit()
+					if (bbLimit <= MIN_BUFFER_REMAINING_REQUIRED) {
+						//No mp3 exists
+						Timber.e("byteBuffer limit $bbLimit is less than or equal $MIN_BUFFER_REMAINING_REQUIRED")
+						return false
+					}
+				}
+				//MP3File.logger.finest("fc:"+fc.position() + "bb"+bb.position());
+				if (MPEGFrameHeader.isMPEGFrame(bb)) {
+					try {
+						mp3FrameHeader = MPEGFrameHeader.Companion.parseMPEGHeader(bb)
+						syncFound = true
+						//if(2==1) use this line when you want to test getting the next frame without using xing
+						if (
+							XingFrame.isXingFrame(bb, mp3FrameHeader).also { header = it } != null
+						) {
+							if (logger.isLoggable(Level.FINEST)) {
+								logger.finest("Found Possible XingHeader")
+							}
+							try {
+								//Parses Xing frame without modifying position of main buffer
+								mp3XingFrame = XingFrame.parseXingFrame(header!!)
+							} catch (ex: InvalidAudioFrameException) {
+								// We Ignore because even if Xing Header is corrupted
+								//doesn't mean file is corrupted
+							}
+							break
+						} else if (VbriFrame.isVbriFrame(bb, mp3FrameHeader).also { header = it } != null
+						) {
+							try {
+								//Parses Vbri frame without modifying position of main buffer
+								mp3VbriFrame = VbriFrame.Companion.parseVBRIFrame(header!!)
+							} catch (ex: InvalidAudioFrameException) {
+								// We Ignore because even if Vbri Header is corrupted
+								//doesn't mean file is corrupted
+							}
+							break
+						} else {
+							syncFound = isNextFrameValid(filePointerCount, bb, fc)
+							if (syncFound) {
+								break
+							}
+						}
+					} catch (ex: InvalidAudioFrameException) {
+						// We Ignore because likely to be incorrect sync bits ,
+						// will just continue in loop
+					}
+				}
+
+				//TODO position() is quite an expensive operation, isn't there a way we can work this out without
+				//interrogating the bytebuffer
+				bb.position(bb.position() + 1)
+				filePointerCount++
+			} while (!syncFound)
+		} catch (ex: EOFException) {
+			logger.log(Level.WARNING, "Reached end of file without finding sync match", ex)
+			syncFound = false
+		} catch (iox: IOException) {
+			logger.log(Level.SEVERE, "IOException occurred whilst trying to find sync", iox)
+			syncFound = false
+			throw iox
+		} finally {
+			fc?.close()
+			fis.close()
+		}
+
+		setFileSize(length)
+		mp3StartByte = filePointerCount
+		setTimePerFrame()
+		setNumberOfFrames()
+		setTrackLength()
+		setBitRate()
+		setEncoder()
+		return syncFound
+	}
+
 	/**
 	 * Returns true if the first MP3 frame can be found for the MP3 file
 	 *
@@ -298,8 +417,11 @@ open class MP3AudioHeader : AudioHeader {
 					fc.position(filePointerCount)
 					fc.read(bb, fc.position())
 					bb.flip()
-					if (bb.limit() <= MIN_BUFFER_REMAINING_REQUIRED) {
+
+					val bbLimit = bb.limit()
+					if (bbLimit <= MIN_BUFFER_REMAINING_REQUIRED) {
 						//No mp3 exists
+						Timber.e("byteBuffer limit $bbLimit is less than or equal $MIN_BUFFER_REMAINING_REQUIRED")
 						return false
 					}
 				}
@@ -392,6 +514,66 @@ open class MP3AudioHeader : AudioHeader {
 				logger.severe(seekFile.getName()+"length:"+startByte+"Difference:"+(filePointerCount - startByte));
 		}
 		*/return syncFound
+	}
+
+	@Throws(IOException::class)
+	private fun isNextFrameValid(
+		filePointerCount: Long,
+		bb: ByteBuffer,
+		fc: FileChannel
+	): Boolean {
+		var result = false
+		var currentPosition = bb.position()
+
+		//Our buffer is not large enough to fit in the whole of this frame, something must
+		//have gone wrong because frames are not this large, so just return false
+		//bad frame header
+		if (mp3FrameHeader!!.frameLength > FILE_BUFFER_SIZE - MIN_BUFFER_REMAINING_REQUIRED) {
+			logger.finer("Frame size is too large to be a frame:" + mp3FrameHeader!!.frameLength)
+			return false
+		}
+
+		//Check for end of buffer if not enough room get some more
+		if (bb.remaining() <= MIN_BUFFER_REMAINING_REQUIRED + mp3FrameHeader!!.frameLength) {
+			logger.finer("Buffer too small, need to reload, buffer size:" + bb.remaining())
+			bb.clear()
+			fc.position(filePointerCount)
+			fc.read(bb, fc.position())
+			bb.flip()
+			//So now original buffer has been replaced, so set current position to start of buffer
+			currentPosition = 0
+			//Not enough left
+			if (bb.limit() <= MIN_BUFFER_REMAINING_REQUIRED) {
+				//No mp3 exists
+				logger.finer("Nearly at end of file, no header found:")
+				return false
+			}
+
+			//Still Not enough left for next alleged frame size so giving up
+			if (bb.limit() <= MIN_BUFFER_REMAINING_REQUIRED + mp3FrameHeader!!.frameLength) {
+				//No mp3 exists
+				logger.finer("Nearly at end of file, no room for next frame, no header found:")
+				return false
+			}
+		}
+
+		//Position bb to the start of the alleged next frame
+		bb.position(bb.position() + mp3FrameHeader!!.frameLength)
+		if (MPEGFrameHeader.Companion.isMPEGFrame(bb)) {
+			result = try {
+				MPEGFrameHeader.Companion.parseMPEGHeader(bb)
+				logger.finer("Check next frame confirms is an audio header ")
+				true
+			} catch (ex: InvalidAudioFrameException) {
+				logger.finer("Check next frame has identified this is not an audio header")
+				false
+			}
+		} else {
+			logger.finer("isMPEGFrame has identified this is not an audio header")
+		}
+		//Set back to the start of the previous frame
+		bb.position(currentPosition)
+		return result
 	}
 
 	/**
@@ -560,12 +742,13 @@ open class MP3AudioHeader : AudioHeader {
 	}
 
 	protected fun setEncoder() {
+		val mp3XingFrame = this.mp3XingFrame
+		val mp3VbriFrame = this.mp3VbriFrame
 		if (mp3XingFrame != null) {
-			if (mp3XingFrame?.lameFrame != null) {
-				encoder = mp3XingFrame?.lameFrame?.encoder
-			}
+			val lameFrame = mp3XingFrame.lameFrame
+			if (lameFrame != null) encoder = lameFrame.encoder
 		} else if (mp3VbriFrame != null) {
-			encoder = mp3VbriFrame?.encoder
+			encoder = mp3VbriFrame.encoder
 		}
 	}
 

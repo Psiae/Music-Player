@@ -1,9 +1,11 @@
 package com.kylentt.musicplayer.common.coroutines
 
 import kotlinx.coroutines.CoroutineDispatcher
+import javax.annotation.concurrent.Immutable
 import javax.inject.Singleton
 
 @Singleton
+@Immutable
 data class CoroutineDispatchers(
 	val computation: CoroutineDispatcher,
 	val io: CoroutineDispatcher,
@@ -21,5 +23,4 @@ data class CoroutineDispatchers(
 			)
 		}
 	}
-
 }

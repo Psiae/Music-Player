@@ -46,13 +46,13 @@ import java.util.logging.Level
  * @author : Eric Farng
  * @version $Id$
  */
-open class ID3v22Tag : AbstractID3v2Tag {
+open class ID3v22Tag : ID3v2TagBase {
 	override val release: Byte
-		get() = Companion.release
+		get() = Companion.RELEASE
 	override val majorVersion: Byte
-		get() = Companion.majorVersion
+		get() = Companion.MAJOR_VERSION
 	override val revision: Byte
-		get() = Companion.revision
+		get() = Companion.REVISION
 
 	/**
 	 * @return is tag compressed
@@ -82,7 +82,7 @@ open class ID3v22Tag : AbstractID3v2Tag {
 	/**
 	 * Copy primitives applicable to v2.2
 	 */
-	override fun copyPrimitives(copyObj: AbstractID3v2Tag) {
+	override fun copyPrimitives(copyObj: ID3v2TagBase) {
 		logger.config("Copying primitives")
 		super.copyPrimitives(copyObj)
 
@@ -803,16 +803,16 @@ open class ID3v22Tag : AbstractID3v2Tag {
 		/**
 		 * Retrieve the Release
 		 */
-		val release: Byte = 2
+		val RELEASE: Byte = 2
 
 		/**
 		 * Retrieve the Major Version
 		 */
-		val majorVersion: Byte = 2
+		val MAJOR_VERSION: Byte = 2
 
 		/**
 		 * Retrieve the Revision
 		 */
-		val revision: Byte = 0
+		val REVISION: Byte = 0
 	}
 }

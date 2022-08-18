@@ -83,7 +83,7 @@ data class PlaybackState(
 						}
 					}
 
-					flow.update { it.copy(duration = player.duration) }
+					flow.update { it.copy(duration = player.duration.clamp(0, Long.MAX_VALUE)) }
 				}
 
 				override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {

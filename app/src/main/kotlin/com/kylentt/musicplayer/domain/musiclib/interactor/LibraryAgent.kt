@@ -1,22 +1,18 @@
 package com.kylentt.musicplayer.domain.musiclib.interactor
 
-import com.kylentt.musicplayer.domain.musiclib.MusicLibrary
+import com.kylentt.musicplayer.domain.musiclib.core.MusicLibrary
 import com.kylentt.musicplayer.domain.musiclib.dependency.Injector
 import com.kylentt.musicplayer.domain.musiclib.dependency.Provider
 import com.kylentt.musicplayer.domain.musiclib.session.LibraryPlayer
 import com.kylentt.musicplayer.domain.musiclib.session.MusicSession
 
-class LibraryAgent private constructor() {
-	private lateinit var mLib: MusicLibrary
+class LibraryAgent(private val library: MusicLibrary)  {
+	val context = library.context
 
-	constructor(lib: MusicLibrary) : this() {
-		mLib = lib
-	}
 
 	val mask = object : Mask {
 
 		override fun connect(): Mask {
-			session.player.connectService()
 			return this
 		}
 
@@ -37,8 +33,6 @@ class LibraryAgent private constructor() {
 
 	val injector: Injector = Injector()
 	val session: MusicSession = MusicSession(this)
-
-
 
 	interface Mask {
 		val dependency: Dependency

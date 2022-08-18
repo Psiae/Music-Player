@@ -1,9 +1,7 @@
 package com.kylentt.musicplayer.domain.musiclib.session
 
-import android.content.Context
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
-import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
 import com.kylentt.musicplayer.common.kotlin.comparable.clamp
 import com.kylentt.musicplayer.domain.musiclib.entity.PlaybackState
 import com.kylentt.musicplayer.domain.musiclib.interactor.LibraryAgent
@@ -11,7 +9,6 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import timber.log.Timber
-import kotlin.coroutines.coroutineContext
 
 class MusicSession(private val agent: LibraryAgent) {
 
@@ -53,7 +50,8 @@ class MusicSession(private val agent: LibraryAgent) {
 
 		private fun collectPosition() = mainScope.launch {
 			while (isActive) {
-				mPlaybackPosition.value = player.position.clamp(0L, Long.MAX_VALUE)
+				val pos = player.position.clamp(0L, playbackState.value.duration)
+				mPlaybackPosition.value = pos
 				delay(1000)
 			}
 		}

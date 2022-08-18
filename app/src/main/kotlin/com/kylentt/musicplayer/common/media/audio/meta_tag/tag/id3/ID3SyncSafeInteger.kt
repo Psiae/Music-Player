@@ -42,7 +42,10 @@ object ID3SyncSafeInteger {
 	fun bufferToValue(buffer: ByteArray): Int {
 		//Note Need to && with 0xff otherwise if value is greater than 128 we get a negative number
 		//when cast byte to int
-		return (buffer[0].toInt() and 0xff shl 21) + (buffer[1].toInt() and 0xff shl 14) + (buffer[2].toInt() and 0xff shl 7) + (buffer[3].toInt() and 0xff)
+		return (buffer[0].toInt() and 0xff shl 21) +
+			(buffer[1].toInt() and 0xff shl 14) +
+			(buffer[2].toInt() and 0xff shl 7) +
+			(buffer[3].toInt() and 0xff)
 	}
 
 	/**

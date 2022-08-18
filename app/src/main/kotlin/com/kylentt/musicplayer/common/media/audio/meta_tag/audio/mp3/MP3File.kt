@@ -12,7 +12,7 @@ import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.TagException
 import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.TagNotFoundException
 import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.TagOptionSingleton
 import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.id3.*
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.id3.AbstractID3v2Tag.Companion.getV2TagSizeIfExists
+import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.id3.ID3v2TagBase.Companion.getV2TagSizeIfExists
 import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.lyrics3.AbstractLyrics3
 import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.reference.ID3V2Version
 import com.kylentt.musicplayer.core.sdk.VersionHelper
@@ -53,7 +53,7 @@ class MP3File : AudioFile {
 	/**
 	 * the ID3v2 tag that this file contains.
 	 */
-	private var id3v2tag: AbstractID3v2Tag? = null
+	private var id3v2tag: ID3v2TagBase? = null
 
 	/**
 	 * @return a representation of tag as v24
@@ -99,6 +99,26 @@ class MP3File : AudioFile {
 	 * @param loadOptions
 	 * @throws IOException
 	 */
+
+	@Throws(IOException::class)
+	private fun readV1Tag(fd: FileDescriptor, loadOptions: Int) {
+		if (loadOptions and LOAD_IDV1TAG != 0) {
+			FileInputStream(fd).use { fis ->
+				val fc = fis.channel
+				try {
+					id3v1tag = ID3v11Tag(fc)
+				} catch (_: TagNotFoundException) {
+				}
+				try {
+					if (id3v1tag == null) {
+						id3v1tag = ID3v1Tag(fc)
+					}
+				} catch (_: TagNotFoundException) {
+				}
+			}
+		}
+	}
+
 	@Throws(IOException::class)
 	private fun readV1Tag(file: File, newFile: RandomAccessFile?, loadOptions: Int) {
 		if (loadOptions and LOAD_IDV1TAG != 0) {
@@ -132,7 +152,7 @@ class MP3File : AudioFile {
 	private fun readV2Tag(file: File, loadOptions: Int, startByte: Int) {
 		//We know where the actual Audio starts so load all the file from start to that point into
 		//a buffer then we can read the IDv2 information without needing any more File I/O
-		if (startByte >= AbstractID3v2Tag.TAG_HEADER_LENGTH) {
+		if (startByte >= ID3v2TagBase.TAG_HEADER_LENGTH) {
 			logger.finer("Attempting to read id3v2tags")
 			FileInputStream(file).use { fis ->
 				val bb = ByteBuffer.allocateDirect(startByte)
@@ -170,6 +190,43 @@ class MP3File : AudioFile {
 		}
 	}
 
+	@Throws(IOException::class, TagException::class)
+	private fun readV2Tag(fd: FileDescriptor, loadOptions: Int, startByte: Int) {
+		//We know where the actual Audio starts so load all the file from start to that point into
+		//a buffer then we can read the IDv2 information without needing any more File I/O
+		if (startByte >= ID3v2TagBase.TAG_HEADER_LENGTH) {
+			FileInputStream(fd).use { fis ->
+				val fc = fis.channel
+				val bb = ByteBuffer.allocateDirect(startByte)
+				fc.read(bb, 0)
+				bb.rewind()
+				if (loadOptions and LOAD_IDV2TAG != 0) {
+					try {
+						setID3v2Tag(ID3v24Tag(bb, ""))
+					} catch (ex: TagNotFoundException) {
+						Timber.d("No id3v24 Tag Found")
+					}
+					try {
+						if (id3v2tag == null) {
+							setID3v2Tag(ID3v23Tag(bb, ""))
+						}
+					} catch (ex: TagNotFoundException) {
+						Timber.d("No id3v23 Tag Found")
+					}
+					try {
+						if (id3v2tag == null) {
+							setID3v2Tag(ID3v22Tag(bb, ""))
+						}
+					} catch (ex: TagNotFoundException) {
+						Timber.d("No id3v22 Tag Found")
+					}
+				}
+			}
+		} else {
+			Timber.d("Not enough room for valid id3v2 tag:$startByte")
+		}
+	}
+
 	/**
 	 *
 	 * @param startByte
@@ -181,7 +238,30 @@ class MP3File : AudioFile {
 	 * otherwise
 	 */
 	@Throws(IOException::class)
-	private fun isFilePortionNull(startByte: Int, endByte: Int): Boolean {
+	private fun isFilePortionNull(fileDescriptor: FileDescriptor, startByte: Int, endByte: Int): Boolean {
+		logger.config("Checking file portion:" + Hex.asHex(startByte) + ":" + Hex.asHex(endByte))
+		var fis: FileInputStream? = null
+		var fc: FileChannel? = null
+		try {
+			fis = FileInputStream(fileDescriptor)
+			fc = fis.channel
+			fc.position(startByte.toLong())
+			val bb = ByteBuffer.allocateDirect(endByte - startByte)
+			fc.read(bb)
+			while (bb.hasRemaining()) {
+				if (bb.get().toInt() != 0) {
+					return false
+				}
+			}
+		} finally {
+			fc?.close()
+			fis?.close()
+		}
+		return true
+	}
+
+	@Throws(IOException::class)
+	private fun isFilePortionNull(file: File, startByte: Int, endByte: Int): Boolean {
 		logger.config("Checking file portion:" + Hex.asHex(startByte) + ":" + Hex.asHex(endByte))
 		var fis: FileInputStream? = null
 		var fc: FileChannel? = null
@@ -215,111 +295,120 @@ class MP3File : AudioFile {
 	 */
 	@Throws(IOException::class, InvalidAudioFrameException::class)
 	private fun checkAudioStart(
+		fd: FileDescriptor,
 		startByte: Long,
 		firstHeaderAfterTag: MP3AudioHeader
 	): MP3AudioHeader {
 		val headerOne: MP3AudioHeader
 		val headerTwo: MP3AudioHeader
-		logger.warning(
-			ErrorMessage.MP3_ID3TAG_LENGTH_INCORRECT.getMsg(
-				file?.path,
-				Hex.asHex(startByte),
-				Hex.asHex(firstHeaderAfterTag.mp3StartByte)
-			)
-		)
+
 
 		//because we cant agree on start location we reread the audioheader from the start of the file, at least
 		//this way we cant overwrite the audio although we might overwrite part of the tag if we write this file
 		//back later
-		headerOne = MP3AudioHeader(file!!, 0)
-		logger.config("Checking from start:$headerOne")
+		headerOne = MP3AudioHeader(fd, 0)
 
 		//Although the id3 tag size appears to be incorrect at least we have found the same location for the start
 		//of audio whether we start searching from start of file or at the end of the alleged of file so no real
 		//problem
 		return if (firstHeaderAfterTag.mp3StartByte == headerOne.mp3StartByte) {
-			logger.config(
-				ErrorMessage.MP3_START_OF_AUDIO_CONFIRMED.getMsg(
-					file?.path,
-					Hex.asHex(headerOne.mp3StartByte)
-				)
-			)
 			firstHeaderAfterTag
 		} else {
 
 			//We get a different value if read from start, can't guarantee 100% correct lets do some more checks
-			logger.config(
-				ErrorMessage.MP3_RECALCULATED_POSSIBLE_START_OF_MP3_AUDIO.getMsg(
-					file?.path,
-					Hex.asHex(headerOne.mp3StartByte)
-				)
-			)
 
 			//Same frame count so probably both audio headers with newAudioHeader being the first one
 			if (firstHeaderAfterTag.numberOfFrames == headerOne.numberOfFrames) {
-				logger.warning(
-					ErrorMessage.MP3_RECALCULATED_START_OF_MP3_AUDIO.getMsg(
-						file?.path,
-						Hex.asHex(
-							headerOne.mp3StartByte
-						)
-					)
-				)
 				return headerOne
 			}
 
 			//If the size reported by the tag header is a little short and there is only nulls between the recorded value
 			//and the start of the first audio found then we stick with the original header as more likely that currentHeader
 			//DataInputStream not really a header
-			if (isFilePortionNull(startByte.toInt(), firstHeaderAfterTag.mp3StartByte.toInt())) {
+			if (isFilePortionNull(fd, startByte.toInt(), firstHeaderAfterTag.mp3StartByte.toInt())) {
 				return firstHeaderAfterTag
 			}
 
 			//Skip to the next header (header 2, counting from start of file)
 			headerTwo = MP3AudioHeader(
-				file!!, headerOne.mp3StartByte
+				fd, headerOne.mp3StartByte
 					+ headerOne.mp3FrameHeader!!.frameLength
 			)
 
 			//It matches the header we found when doing the original search from after the ID3Tag therefore it
 			//seems that newAudioHeader was a false match and the original header was correct
 			if (headerTwo.mp3StartByte == firstHeaderAfterTag.mp3StartByte) {
-				logger.warning(
-					ErrorMessage.MP3_START_OF_AUDIO_CONFIRMED.getMsg(
-						file?.path,
-						Hex.asHex(
-							firstHeaderAfterTag.mp3StartByte
-						)
-					)
-				)
 				return firstHeaderAfterTag
 			}
 
 			//It matches the frameCount the header we just found so lends weight to the fact that the audio does indeed start at new header
 			//however it maybe that neither are really headers and just contain the same data being misrepresented as headers.
 			if (headerTwo.numberOfFrames == headerOne.numberOfFrames) {
-				logger.warning(
-					ErrorMessage.MP3_RECALCULATED_START_OF_MP3_AUDIO.getMsg(
-						file?.path,
-						Hex.asHex(
-							headerOne.mp3StartByte
-						)
-					)
-				)
 				headerOne
 			} else {
-				logger.warning(
-					ErrorMessage.MP3_RECALCULATED_START_OF_MP3_AUDIO.getMsg(
-						file?.path,
-						Hex.asHex(
-							firstHeaderAfterTag.mp3StartByte
-						)
-					)
-				)
 				firstHeaderAfterTag
 			}
 		}
 	}
+
+	@Throws(IOException::class, InvalidAudioFrameException::class)
+	private fun checkAudioStart(
+		file: File,
+		startByte: Long,
+		firstHeaderAfterTag: MP3AudioHeader
+	): MP3AudioHeader {
+		val headerOne: MP3AudioHeader
+		val headerTwo: MP3AudioHeader
+
+
+		//because we cant agree on start location we reread the audioheader from the start of the file, at least
+		//this way we cant overwrite the audio although we might overwrite part of the tag if we write this file
+		//back later
+		headerOne = MP3AudioHeader(file, 0)
+
+		//Although the id3 tag size appears to be incorrect at least we have found the same location for the start
+		//of audio whether we start searching from start of file or at the end of the alleged of file so no real
+		//problem
+		return if (firstHeaderAfterTag.mp3StartByte == headerOne.mp3StartByte) {
+			firstHeaderAfterTag
+		} else {
+
+			//We get a different value if read from start, can't guarantee 100% correct lets do some more checks
+
+			//Same frame count so probably both audio headers with newAudioHeader being the first one
+			if (firstHeaderAfterTag.numberOfFrames == headerOne.numberOfFrames) {
+				return headerOne
+			}
+
+			//If the size reported by the tag header is a little short and there is only nulls between the recorded value
+			//and the start of the first audio found then we stick with the original header as more likely that currentHeader
+			//DataInputStream not really a header
+			if (isFilePortionNull(file, startByte.toInt(), firstHeaderAfterTag.mp3StartByte.toInt())) {
+				return firstHeaderAfterTag
+			}
+
+			//Skip to the next header (header 2, counting from start of file)
+			headerTwo = MP3AudioHeader(
+				file, headerOne.mp3StartByte
+					+ headerOne.mp3FrameHeader!!.frameLength
+			)
+
+			//It matches the header we found when doing the original search from after the ID3Tag therefore it
+			//seems that newAudioHeader was a false match and the original header was correct
+			if (headerTwo.mp3StartByte == firstHeaderAfterTag.mp3StartByte) {
+				return firstHeaderAfterTag
+			}
+
+			//It matches the frameCount the header we just found so lends weight to the fact that the audio does indeed start at new header
+			//however it maybe that neither are really headers and just contain the same data being misrepresented as headers.
+			if (headerTwo.numberOfFrames == headerOne.numberOfFrames) {
+				headerOne
+			} else {
+				firstHeaderAfterTag
+			}
+		}
+	}
+
 	/**
 	 * Creates a new MP3File dataType and parse the tag from the given file
 	 * Object, files can be opened read only if required.
@@ -354,6 +443,48 @@ class MP3File : AudioFile {
 			return (lyrics3tag != null);
 	}
 	*/
+
+	@JvmOverloads
+	constructor(fileDescriptor: FileDescriptor, loadOptions: Int = LOAD_ALL, readOnly: Boolean = false) {
+		try {
+			//Read ID3v2 tag size (if tag exists) to allow audioHeader parsing to skip over tag
+			val tagSizeReportedByHeader = getV2TagSizeIfExists(fileDescriptor)
+			logger.config("TagHeaderSize:" + Hex.asHex(tagSizeReportedByHeader))
+
+			audioHeader = try {
+				MP3AudioHeader(fileDescriptor, tagSizeReportedByHeader)
+			} catch (e: InvalidAudioFrameException) {
+				null
+			}
+
+			Timber.d("try creating MP3File for: $mFile, createdAudioHeader")
+
+			//If the audio header is not straight after the end of the tag then search from start of file
+			if (audioHeader != null && tagSizeReportedByHeader != (audioHeader as MP3AudioHeader).mp3StartByte) {
+				audioHeader = checkAudioStart(fileDescriptor, tagSizeReportedByHeader, audioHeader as MP3AudioHeader)
+			}
+
+			//Read v1 tags (if any)
+			readV1Tag(fileDescriptor, loadOptions)
+
+			//Read v2 tags (if any)
+			if (audioHeader != null) {
+				readV2Tag(fileDescriptor, loadOptions, (audioHeader as MP3AudioHeader).mp3StartByte.toInt())
+			}
+
+			//If we have a v2 tag use that, if we do not but have v1 tag use that
+			//otherwise use nothing
+			//TODO:if have both should we merge
+			//rather than just returning specific ID3v22 tag, would it be better to return v24 version ?
+			if (iD3v2Tag != null) {
+				tag = iD3v2Tag
+			} else if (id3v1tag != null) {
+				tag = id3v1tag
+			}
+		} finally {
+		}
+	}
+
 	/**
 	 * Creates a new MP3File datatype and parse the tag from the given file
 	 * Object.
@@ -368,7 +499,7 @@ class MP3File : AudioFile {
 	constructor(file: File, loadOptions: Int = LOAD_ALL, readOnly: Boolean = false) {
 		var newFile: RandomAccessFile? = null
 		try {
-			this.file = file
+			this.mFile = file
 
 			Timber.d("try creating MP3File for: $file")
 
@@ -379,31 +510,27 @@ class MP3File : AudioFile {
 
 			//Read ID3v2 tag size (if tag exists) to allow audioHeader parsing to skip over tag
 			val tagSizeReportedByHeader = getV2TagSizeIfExists(file)
-			logger.config("TagHeaderSize:" + Hex.asHex(tagSizeReportedByHeader))
-			audioHeader = MP3AudioHeader(file, tagSizeReportedByHeader)
+
+			audioHeader = try {
+				MP3AudioHeader(file, tagSizeReportedByHeader)
+			} catch (e: InvalidAudioFrameException) {
+				null
+			}
 
 			Timber.d("try creating MP3File for: $file, createdAudioHeader")
 
 			//If the audio header is not straight after the end of the tag then search from start of file
-			if (tagSizeReportedByHeader != (audioHeader as MP3AudioHeader).mp3StartByte) {
-				logger.config("First header found after tag:$audioHeader")
-				audioHeader = checkAudioStart(tagSizeReportedByHeader, audioHeader as MP3AudioHeader)
-				Timber.d("try creating MP3File for: $file, reCreatedAudioHeader")
+			if (audioHeader != null && tagSizeReportedByHeader != (audioHeader as MP3AudioHeader).mp3StartByte) {
+				audioHeader = checkAudioStart(file, tagSizeReportedByHeader, audioHeader as MP3AudioHeader)
 			}
-
-			Timber.d("try creating MP3File for: $file, reading V1Tag")
 
 			//Read v1 tags (if any)
 			readV1Tag(file, newFile, loadOptions)
 
-			Timber.d("try creating MP3File for: $file, V1Tag read")
-
-			Timber.d("try creating MP3File for: $file, reading V2Tag")
-
 			//Read v2 tags (if any)
-			readV2Tag(file, loadOptions, (audioHeader as MP3AudioHeader).mp3StartByte.toInt())
-
-			Timber.d("try creating MP3File for: $file, V2Tag read")
+			if (audioHeader != null) {
+				readV2Tag(file, loadOptions, (audioHeader as MP3AudioHeader).mp3StartByte.toInt())
+			}
 
 			//If we have a v2 tag use that, if we do not but have v1 tag use that
 			//otherwise use nothing
@@ -434,10 +561,7 @@ class MP3File : AudioFile {
 			val startByte = getV2TagSizeIfExists(file)
 			var audioHeader = MP3AudioHeader(file, startByte)
 			if (startByte != audioHeader.mp3StartByte) {
-				logger.config(
-					"First header found after tag:$audioHeader"
-				)
-				audioHeader = checkAudioStart(startByte, audioHeader)
+				audioHeader = checkAudioStart(file, startByte, audioHeader)
 			}
 			audioHeader.mp3StartByte
 		} catch (iafe: InvalidAudioFrameException) {
@@ -465,7 +589,7 @@ class MP3File : AudioFile {
 		if (startByte >= 0) {
 
 			//Read byte into buffer
-			val fis = FileInputStream(file)
+			val fis = FileInputStream(mFile)
 			val fc = fis.channel
 			val bb = ByteBuffer.allocate(startByte)
 			fc.read(bb)
@@ -604,7 +728,7 @@ class MP3File : AudioFile {
 	fun getHash(algorithm: String?, bufferSize: Int): ByteArray {
 		if (!VersionHelper.hasOreo()) TODO("Require API >= 26")
 
-		val mp3File = file
+		val mp3File = mFile
 		val startByte = getMP3StartByte(mp3File!!)
 		var id3v1TagSize = 0
 		if (hasID3v1Tag()) {
@@ -630,7 +754,7 @@ class MP3File : AudioFile {
 		return digest.digest()
 	}
 
-	val iD3v2Tag: AbstractID3v2Tag?
+	val iD3v2Tag: ID3v2TagBase?
 		get() = id3v2tag
 
 	/**
@@ -640,7 +764,7 @@ class MP3File : AudioFile {
 	 *
 	 * @param id3v2tag
 	 */
-	fun setID3v2Tag(id3v2tag: AbstractID3v2Tag?) {
+	fun setID3v2Tag(id3v2tag: ID3v2TagBase?) {
 		this.id3v2tag = id3v2tag
 		iD3v2TagAsv24 = if (id3v2tag is ID3v24Tag) {
 			this.id3v2tag as ID3v24Tag?
@@ -649,7 +773,7 @@ class MP3File : AudioFile {
 		}
 	}
 
-	fun setID3v2TagAs24(id3v2tag: AbstractID3v2Tag?) {
+	fun setID3v2TagAs24(id3v2tag: ID3v2TagBase?) {
 		this.id3v2tag = ID3v24Tag(id3v2tag)
 	}
 
@@ -660,7 +784,7 @@ class MP3File : AudioFile {
 	 * @param id3v2tag
 	 */
 	//TODO temp its rather messy
-	fun setID3v2TagOnly(id3v2tag: AbstractID3v2Tag?) {
+	fun setID3v2TagOnly(id3v2tag: ID3v2TagBase?) {
 		this.id3v2tag = id3v2tag
 		iD3v2TagAsv24 = null
 	}
@@ -712,13 +836,13 @@ class MP3File : AudioFile {
 	 */
 	@Throws(FileNotFoundException::class, IOException::class)
 	fun delete(mp3tag: AbstractTag) {
-		val raf = RandomAccessFile(file, "rw")
+		val raf = RandomAccessFile(mFile, "rw")
 		mp3tag.delete(raf)
 		raf.close()
 		if (mp3tag is ID3v1Tag) {
 			id3v1tag = null
 		}
-		if (mp3tag is AbstractID3v2Tag) {
+		if (mp3tag is ID3v2TagBase) {
 			id3v2tag = null
 		}
 	}
@@ -787,7 +911,7 @@ class MP3File : AudioFile {
 	 */
 	@JvmOverloads
 	@Throws(IOException::class)
-	fun save(fileToSave: File = file!!) {
+	fun save(fileToSave: File = mFile!!) {
 		//Ensure we are dealing with absolute filepaths not relative ones
 		val file = fileToSave.absoluteFile
 		logger.config("Saving  : " + file.path)
@@ -866,7 +990,7 @@ class MP3File : AudioFile {
 	 */
 	override fun displayStructureAsXML(): String {
 		createXMLStructureFormatter()
-		structureFormatter!!.openHeadingElement("file", file!!.absolutePath)
+		structureFormatter!!.openHeadingElement("file", mFile!!.absolutePath)
 		if (iD3v1Tag != null) {
 			iD3v1Tag!!.createStructure()
 		}
@@ -882,7 +1006,7 @@ class MP3File : AudioFile {
 	 */
 	override fun displayStructureAsPlainText(): String {
 		createPlainTextStructureFormatter()
-		structureFormatter!!.openHeadingElement("file", file!!.absolutePath)
+		structureFormatter!!.openHeadingElement("file", mFile!!.absolutePath)
 		if (iD3v1Tag != null) {
 			iD3v1Tag!!.createStructure()
 		}
@@ -904,7 +1028,7 @@ class MP3File : AudioFile {
 			if (value is ID3v1Tag) {
 				iD3v1Tag = value
 			} else {
-				setID3v2Tag(value as AbstractID3v2Tag)
+				setID3v2Tag(value as ID3v2TagBase)
 			}
 		}
 
@@ -944,7 +1068,7 @@ class MP3File : AudioFile {
 		get() {
 			val tag = tagOrCreateDefault
 			val convertedTag: Tag? =
-				convertID3Tag(tag as AbstractID3v2Tag, TagOptionSingleton.instance.iD3V2Version)
+				convertID3Tag(tag as ID3v2TagBase, TagOptionSingleton.instance.iD3V2Version)
 			return convertedTag ?: tag
 		}
 

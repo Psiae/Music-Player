@@ -2,35 +2,33 @@ package com.kylentt.musicplayer.ui.main.compose.screens.library
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.neverEqualPolicy
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.kylentt.mediaplayer.data.source.local.MediaStoreSong
-import com.kylentt.mediaplayer.data.source.local.MediaStoreSource
 import com.kylentt.musicplayer.common.android.bitmap.bitmapfactory.BitmapSampler
 import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
 import com.kylentt.musicplayer.common.media.audio.AudioFile
 import com.kylentt.musicplayer.core.app.AppDelegate
-import com.kylentt.musicplayer.domain.musiclib.MusicLibrary
+import com.kylentt.musicplayer.domain.musiclib.core.MusicLibrary
+import com.kylentt.musicplayer.domain.musiclib.source.mediastore.MediaStoreProvider
+import com.kylentt.musicplayer.domain.musiclib.entity.AudioEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.*
-import timber.log.Timber
 import javax.inject.Inject
 
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
 	@ApplicationContext val context: Context,
 	private val dispatchers: CoroutineDispatchers,
-	private val mediaStoreSource: MediaStoreSource
+	private val mediaStoreSource: MediaStoreProvider
 ) : ViewModel() {
 	private val player
 		get() = MusicLibrary.localAgent.session.player
 
-	private var mediaStoreSongs: List<MediaStoreSong> = emptyList()
+	private var mediaStoreSongs: List<AudioEntity> = emptyList()
 
 	private var mRefreshing = mutableStateOf(false)
 
@@ -43,25 +41,30 @@ class LibraryViewModel @Inject constructor(
 
 
 	fun playSong(local: LocalSongModel) {
-		mediaStoreSongs.find { it.songMediaId == local.id }?.let {
+		mediaStoreSongs.find { it.uid == local.id }?.let {
 			player.play(it.mediaItem)
 		}
 	}
 
 	fun validateLocalSongs(): Unit {
 		viewModelScope.launch(dispatchers.io) {
-			val get = mediaStoreSource.getMediaStoreSong()
+
+
+			val get = mediaStoreSource
+				.queryAudioEntity(true, true)
+				.filter { it.fileInfo.metadata.playable }
+
 			val local = _localSongModels.value
 
 			if (get.size != local.size) {
-				internalRefreshLocalSongs(false, get)
+				internalRefreshLocalSongs(get)
 				return@launch
 			}
 
 			get.forEach { song ->
-				local.find { it.id == song.songMediaId }
+				local.find { it.id == song.uid }
 					?: run {
-						internalRefreshLocalSongs(false, get)
+						internalRefreshLocalSongs( get)
 						return@launch
 					}
 			}
@@ -69,21 +72,23 @@ class LibraryViewModel @Inject constructor(
 	}
 
 	fun requestRefresh() = viewModelScope.launch(dispatchers.io) {
-		mRefreshing.value = true
-		internalRefreshLocalSongs(true)
-		mRefreshing.value = false
+		if (!mRefreshing.value) {
+			mRefreshing.value = true
+			internalRefreshLocalSongs()
+			mRefreshing.value = false
+		}
 	}
 
 	private suspend fun internalRefreshLocalSongs(
-		isRequest: Boolean,
-		maybeSongs: List<MediaStoreSong>? = null
+		maybeSongs: List<AudioEntity>? = null
 	) = withContext(dispatchers.io) {
 
-		val songs = maybeSongs ?: mediaStoreSource.getMediaStoreSong()
+		val songs = (maybeSongs ?: mediaStoreSource.queryAudioEntity(true, true))
+			.filter { it.fileInfo.metadata.playable }
 
 		withContext(dispatchers.main) {
 			mediaStoreSongs = songs
-			_localSongModels.value = songs.map { LocalSongModel(it.songMediaId, it.title) }
+			_localSongModels.value = songs.map { LocalSongModel(it.uid, it.fileInfo.metadata.title) }
 		}
 
 		val toRemove = cacheManager.retrieveAllImageCacheFile(Bitmap::class,"LibraryViewModel").toMutableList()
@@ -95,16 +100,14 @@ class LibraryViewModel @Inject constructor(
 				launch {
 
 					// Todo: Constants
-					val cached = cacheManager.retrieveImageCacheFile(song.songMediaId + song.lastModified, "LibraryViewModel")
+					val cached = cacheManager.retrieveImageCacheFile(song.uid + song.fileInfo.dateModified, "LibraryViewModel")
 
 					if (cached != null) {
 
 						toRemove.remove(cached)
 						song.mediaItem.mediaMetadata.extras?.putString("cachedArtwork", cached.absolutePath)
 
-						withContext(dispatchers.main) {
-							_localSongModels.value.forEach { if (it.id == song.songMediaId) it.updateArtwork(cached) }
-						}
+						_localSongModels.value.forEach { if (it.id == song.uid) it.updateArtwork(cached) }
 
 						return@launch
 					}
@@ -112,8 +115,7 @@ class LibraryViewModel @Inject constructor(
 
 					val embed: Any? = AudioFile.Builder(
 						context,
-						song.songMediaUri,
-						cacheManager.startupCacheDir
+						song.uri
 					).build().run { file?.delete()
 						val data = imageData
 
@@ -121,16 +123,14 @@ class LibraryViewModel @Inject constructor(
 							return@run null
 						}
 
-						BitmapSampler.ByteArray.toSampledBitmap(data, 0, data.size, 2000000)?.let {
-							val reg = cacheManager.registerImageToCache(it, song.songMediaId + song.lastModified, "LibraryViewModel")
+						BitmapSampler.ByteArray.toSampledBitmap(data, 0, data.size, 1000000)?.let {
+							val reg = cacheManager.registerImageToCache(it, song.fileInfo.fileName + song.fileInfo.dateModified, "LibraryViewModel")
 							song.mediaItem.mediaMetadata.extras?.putString("cachedArtwork", reg.absolutePath)
 							it
 						}
 					}
 
-					withContext(dispatchers.main) {
-						_localSongModels.value.forEach { if (it.id == song.songMediaId) it.updateArtwork(embed) }
-					}
+					_localSongModels.value.forEach { if (it.id == song.uid) it.updateArtwork(embed) }
 				}
 			}
 		}
@@ -143,19 +143,18 @@ class LibraryViewModel @Inject constructor(
 		val id: String,
 		val displayName: String
 	) {
-		object NO_ART
+		private object NO_ART
 
-		private val mState = mutableStateOf<Any?>(NO_ART)
+		private val mState = mutableStateOf<Any?>(null)
 
 		val artState: State<Any?>
 			get() = mState
 
 		val isArtLoaded
-			get() = artState.value !== NO_ART
+			get() = artState.value !== null
 
 		fun updateArtwork(art: Any?) {
-			Timber.d("update artwork to ${art?.javaClass}")
-			mState.value = art
+			mState.value = art ?: NO_ART
 		}
 	}
 }

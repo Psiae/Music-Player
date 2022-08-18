@@ -3,15 +3,18 @@ package com.kylentt.musicplayer.common.media.audio
 import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
+import android.os.ParcelFileDescriptor
 import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.mp3.MP3File
 import com.kylentt.musicplayer.common.media.audio.uri.AndroidFileBuilder
 import com.kylentt.musicplayer.common.media.audio.uri.ContentFileBuilder
 import com.kylentt.musicplayer.core.app.AppDelegate
 import java.io.File
+import java.io.FileDescriptor
 
 class AudioFile private constructor() {
 	private var mContext: Context? = null
 	private var mFile: File? = null
+	private var mFileDescriptor: FileDescriptor? = null
 	private var mp3File: MP3File? = null
 
 	val imageData: ByteArray?
@@ -26,6 +29,7 @@ class AudioFile private constructor() {
 	class Builder {
 		private var _context: Context? = null
 		private var _file: File? = null
+		private var _fileDescriptor: ParcelFileDescriptor? = null
 
 		private constructor()
 
@@ -50,10 +54,26 @@ class AudioFile private constructor() {
 			}
 		}
 
+		constructor(context: Context, uri: Uri) : this(context) {
+			val fd: ParcelFileDescriptor = when {
+				uri.scheme == ContentResolver.SCHEME_CONTENT -> context.contentResolver.openFileDescriptor(uri, "r")!!
+				else -> TODO("Uri not yet supported")
+			}
+
+			_fileDescriptor = fd
+		}
+
 		fun build(): AudioFile = AudioFile().apply {
 			mContext = _context
 			mFile = _file
-			mp3File = MP3File(mFile!!)
+			mFileDescriptor = _fileDescriptor?.fileDescriptor
+
+			when {
+				mFile != null -> mp3File = MP3File(mFile!!)
+				mFileDescriptor != null -> mp3File = MP3File(mFileDescriptor!!)
+			}
+
+			_fileDescriptor?.close()
 		}
 	}
 

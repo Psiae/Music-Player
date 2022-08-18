@@ -11,7 +11,7 @@ import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.generic.Utils
 import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.iff.IffHeaderChunk
 import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.Tag
 import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.TagException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.id3.AbstractID3v2Tag
+import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.id3.ID3v2TagBase
 import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.id3.ID3v22Tag
 import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.id3.ID3v23Tag
 import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.id3.ID3v24Tag
@@ -92,10 +92,10 @@ class DsfFileReader : AudioFileReader2() {
 					)
 				if (id3Chunk != null) {
 					val version =
-						id3Chunk.dataBuffer[AbstractID3v2Tag.FIELD_TAG_MAJOR_VERSION_POS].toInt()
+						id3Chunk.dataBuffer[ID3v2TagBase.FIELD_TAG_MAJOR_VERSION_POS].toInt()
 					try {
 						when (version) {
-							ID3v22Tag.majorVersion.toInt() -> ID3v22Tag(id3Chunk.dataBuffer, fileName)
+							ID3v22Tag.MAJOR_VERSION.toInt() -> ID3v22Tag(id3Chunk.dataBuffer, fileName)
 							ID3v23Tag.MAJOR_VERSION.toInt() -> ID3v23Tag(id3Chunk.dataBuffer, fileName)
 							ID3v24Tag.MAJOR_VERSION.toInt() -> ID3v24Tag(id3Chunk.dataBuffer, fileName)
 							else -> {

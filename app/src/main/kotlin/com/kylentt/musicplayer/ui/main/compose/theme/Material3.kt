@@ -1,6 +1,7 @@
 package com.kylentt.musicplayer.ui.main.compose.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
@@ -10,28 +11,18 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.google.android.material.color.DynamicColors
+import com.kylentt.musicplayer.core.sdk.VersionHelper
 import com.kylentt.musicplayer.ui.main.compose.theme.color.ColorHelper
 import com.kylentt.musicplayer.ui.main.compose.theme.text.MainTypography
 
 @Composable
-inline fun MainMaterial3Theme(
+fun MainMaterial3Theme(
 	darkTheme: Boolean = isSystemInDarkTheme(),
-	dynamic: Boolean = DynamicColors.isDynamicColorAvailable(),
-	crossinline content: @Composable () -> Unit
+	dynamic: Boolean = VersionHelper.hasSnowCone(),
+	content: @Composable () -> Unit
 ) {
-	val context = LocalContext.current
-
-	val colorScheme = when {
-		dynamic && DynamicColors.isDynamicColorAvailable() -> {
-			if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-		}
-		else -> {
-			if (darkTheme) DarkThemeColors else LightThemeColors
-		}
-	}
-
 	MaterialTheme(
-		colorScheme = colorScheme,
+		colorScheme = mainColorScheme(darkTheme = darkTheme, dynamic = dynamic),
 		typography = MainTypography
 	) {
 		with(rememberSystemUiController()) {
@@ -49,6 +40,26 @@ inline fun MainMaterial3Theme(
 		}
 		content()
 	}
+}
+
+@Composable
+private fun mainColorScheme(darkTheme: Boolean, dynamic: Boolean): ColorScheme {
+	return if (dynamic && DynamicColors.isDynamicColorAvailable()) {
+		dynamicColorScheme(darkTheme = darkTheme)
+	} else {
+		defaultColorScheme(darkTheme = darkTheme)
+	}
+}
+
+@Composable
+private fun dynamicColorScheme(darkTheme: Boolean): ColorScheme {
+	val context = LocalContext.current
+	return if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+}
+
+@Composable
+private fun defaultColorScheme(darkTheme: Boolean): ColorScheme {
+	return if (darkTheme) DarkThemeColors else LightThemeColors
 }
 
 

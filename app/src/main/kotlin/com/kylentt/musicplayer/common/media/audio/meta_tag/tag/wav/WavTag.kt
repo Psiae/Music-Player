@@ -87,7 +87,7 @@ class WavTag(private val wavOptions: WavOptions) : Tag, Id3SupportingTag {
 	/**
 	 * Sets the ID3 tag
 	 */
-	override var iD3Tag: AbstractID3v2Tag? = null
+	override var iD3Tag: ID3v2TagBase? = null
 
 	/**
 	 * Does the info tag exist, note it is created by default if one does not exist in file it was read from
@@ -516,7 +516,7 @@ class WavTag(private val wavOptions: WavOptions) : Tag, Id3SupportingTag {
 		 * @return
 		 */
 		@JvmStatic
-		fun createDefaultID3Tag(): AbstractID3v2Tag {
+		fun createDefaultID3Tag(): ID3v2TagBase {
 			if (TagOptionSingleton.instance.iD3V2Version === ID3V2Version.ID3_V24) {
 				return ID3v24Tag()
 			} else if (TagOptionSingleton.instance

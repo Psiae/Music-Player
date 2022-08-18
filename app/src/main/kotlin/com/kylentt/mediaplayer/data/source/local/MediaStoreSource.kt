@@ -2,6 +2,7 @@ package com.kylentt.mediaplayer.data.source.local
 
 import android.content.ContentUris
 import android.content.Context
+import android.content.res.AssetFileDescriptor
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
@@ -22,6 +23,7 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
+import java.io.FileDescriptor
 import javax.inject.Singleton
 
 /**
@@ -150,7 +152,8 @@ class MediaStoreSourceImpl(
   private val dispatchers: CoroutineDispatchers
 ) : MediaStoreSource {
 
-  override suspend fun getMediaStoreSong(): List<MediaStoreSong> = queryAudioColumn()
+
+	override suspend fun getMediaStoreSong(): List<MediaStoreSong> = queryAudioColumn()
 
   private suspend fun queryAudioColumn(): List<MediaStoreSong> =
     withContext(dispatchers.io) {
@@ -161,12 +164,12 @@ class MediaStoreSourceImpl(
 					if (VersionHelper.hasQ()) {
 						MediaStore.Audio.AudioColumns.BUCKET_DISPLAY_NAME
         	} else {
-         	 MediaStore.Audio.AudioColumns.DATA
+         	 	MediaStore.Audio.AudioColumns.DATA
         	}
 
         val songFolderId =
 					if (VersionHelper.hasQ()) {
-          MediaStore.Audio.AudioColumns.BUCKET_ID
+          	MediaStore.Audio.AudioColumns.BUCKET_ID
         	} else {
 						MediaStore.Audio.AudioColumns.DATA
 					}

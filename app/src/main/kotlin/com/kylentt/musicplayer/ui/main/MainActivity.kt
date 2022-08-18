@@ -15,7 +15,7 @@ import com.kylentt.musicplayer.common.android.activity.disableWindowDecorFitSyst
 import com.kylentt.musicplayer.common.android.context.ContextInfo
 import com.kylentt.musicplayer.common.android.intent.isActionMain
 import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
-import com.kylentt.musicplayer.ui.main.compose.MainContent
+import com.kylentt.musicplayer.ui.main.compose.ComposeContent
 import dagger.hilt.android.AndroidEntryPoint
 import timber.log.Timber
 import javax.inject.Inject
@@ -41,7 +41,7 @@ class MainActivity : ComponentActivity() {
 	private val mediaVM: MediaViewModel by viewModels()
 
 	private val readStoragePermission
-		get() = contextInfo.permission.readExternalStorageAllowed
+		get() = contextInfo.permissionInfo.readExternalStorageAllowed
 
 	init {
 		dispatchEvent(MainEvent.Init)
@@ -54,7 +54,7 @@ class MainActivity : ComponentActivity() {
 		setupSplashScreen()
 
 		setContent {
-			MainContent()
+			ComposeContent()
 		}
 
 		return dispatchEvent(MainEvent.Create)

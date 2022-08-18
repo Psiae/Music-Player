@@ -4,7 +4,7 @@ import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.AudioFile
 import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.iff.Chunk
 import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.iff.ChunkHeader
 import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.TagException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.id3.AbstractID3v2Tag
+import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.id3.ID3v2TagBase
 import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.id3.ID3v22Tag
 import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.id3.ID3v23Tag
 import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.id3.ID3v24Tag
@@ -38,9 +38,9 @@ class WavId3Chunk
 			return false
 		}
 		val version = chunkData.get().toInt()
-		val id3Tag: AbstractID3v2Tag
+		val id3Tag: ID3v2TagBase
 		when (version) {
-			ID3v22Tag.majorVersion.toInt() -> {
+			ID3v22Tag.MAJOR_VERSION.toInt() -> {
 				id3Tag = ID3v22Tag()
 				id3Tag.loggingFilename = loggingName
 			}
@@ -73,8 +73,8 @@ class WavId3Chunk
 	 */
 	@Throws(IOException::class)
 	private fun isId3v2Tag(headerData: ByteBuffer): Boolean {
-		for (i in 0 until AbstractID3v2Tag.FIELD_TAGID_LENGTH) {
-			if (headerData.get() != AbstractID3v2Tag.TAG_ID[i]) {
+		for (i in 0 until ID3v2TagBase.FIELD_TAGID_LENGTH) {
+			if (headerData.get() != ID3v2TagBase.TAG_ID[i]) {
 				return false
 			}
 		}

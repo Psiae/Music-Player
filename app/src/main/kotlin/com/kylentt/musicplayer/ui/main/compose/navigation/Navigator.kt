@@ -8,6 +8,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 
 object MainNavigator {
+
 	val controller
 		@ReadOnlyComposable
 		@Composable

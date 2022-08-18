@@ -47,7 +47,7 @@ import java.util.logging.Level
  * @author : Eric Farng
  * @version $Id$
  */
-class ID3v24Tag : AbstractID3v2Tag {
+class ID3v24Tag : ID3v2TagBase {
 
 	override val release: Byte
 		get() = RELEASE
@@ -175,7 +175,7 @@ class ID3v24Tag : AbstractID3v2Tag {
 	 * Copy primitives applicable to v2.4, this is used when cloning a v2.4 datatype
 	 * and other objects such as v2.3 so need to check instanceof
 	 */
-	override fun copyPrimitives(copyObj: AbstractID3v2Tag) {
+	override fun copyPrimitives(copyObj: ID3v2TagBase) {
 		logger.config(
 			"$loggingFilename:Copying primitives"
 		)
@@ -343,10 +343,10 @@ class ID3v24Tag : AbstractID3v2Tag {
 			//Should use simpler copy constructor
 			if (mp3tag is ID3v24Tag) {
 				throw UnsupportedOperationException("$loggingFilename:Copy Constructor not called. Please type cast the argument")
-			} else if (mp3tag is AbstractID3v2Tag) {
+			} else if (mp3tag is ID3v2TagBase) {
 				loggingFilename = mp3tag.loggingFilename
 				copyPrimitives(mp3tag)
-				copyFrames((mp3tag as AbstractID3v2Tag?)!!)
+				copyFrames((mp3tag as ID3v2TagBase?)!!)
 			} else if (mp3tag is ID3v1Tag) {
 				// convert id3v1 tags.
 				val id3tag = mp3tag

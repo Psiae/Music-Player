@@ -1,7 +1,5 @@
-import com.android.build.gradle.internal.packaging.defaultExcludes
-import org.jetbrains.kotlin.cli.jvm.main
-import java.util.Properties
 import java.io.FileInputStream
+import java.util.*
 
 plugins {
     id("com.android.application")
@@ -49,7 +47,7 @@ android {
     }
 
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.1.1"
+        kotlinCompilerExtensionVersion = "1.3.0"
     }
 
     @Suppress("SpellCheckingInspection")
@@ -68,8 +66,6 @@ android {
     sourceSets.all {
         kotlin.srcDir("src/$name/kotlin")
     }
-
-
 
     namespace = "com.kylentt.musicplayer"
 }
@@ -192,6 +188,7 @@ dependencies {
         implementation("io.coil-kt:coil-compose:$v")
     }
 
+
     @Suppress("SpellCheckingInspection")
     /* Google.accompanist */
     dependencies  {
@@ -225,7 +222,7 @@ dependencies {
     dependencies {
 
         // Hilt-Android
-        val vHiltAndroid = "2.41"
+        val vHiltAndroid = "2.42"
         implementation("com.google.dagger:hilt-android:$vHiltAndroid")
         kapt("com.google.dagger:hilt-android-compiler:$vHiltAndroid")
     }

@@ -138,7 +138,7 @@ class AudioFileIO {
 	 */
 	@Throws(CannotReadException::class, CannotWriteException::class)
 	fun deleteTag(f: AudioFile) {
-		val ext = getExtension(f.file!!)
+		val ext = getExtension(f.mFile!!)
 		val afw = writers[ext]
 			?: throw CannotWriteException(
 				ErrorMessage.NO_DELETER_FOR_THIS_FORMAT.getMsg(
@@ -337,8 +337,8 @@ class AudioFileIO {
 		if (targetPath != null && !targetPath.isEmpty()) {
 			val destination = File("$targetPath.$ext")
 			try {
-				copyThrowsOnException(f.file, destination)
-				f.file = destination
+				copyThrowsOnException(f.mFile, destination)
+				f.mFile = destination
 			} catch (e: IOException) {
 				throw CannotWriteException("Error While Copying" + e.message)
 			}

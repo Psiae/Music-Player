@@ -50,7 +50,7 @@ import java.util.logging.Level
  * @author : Eric Farng
  * @version $Id$
  */
-abstract class AbstractID3v2Tag : AbstractID3Tag, Tag {
+abstract class ID3v2TagBase : AbstractID3Tag, Tag {
 	//Start location of this chunk
 	//TODO currently only used by ID3 embedded into Wav/Aiff but should be extended to mp3s
 	var startLocationInFile: Long? = null
@@ -124,14 +124,14 @@ abstract class AbstractID3v2Tag : AbstractID3Tag, Tag {
 	 *
 	 * @param copyObject
 	 */
-	protected constructor(copyObject: AbstractID3v2Tag?)
+	protected constructor(copyObject: ID3v2TagBase?)
 
 	/**
 	 * Copy primitives apply to all tags
 	 *
 	 * @param copyObject
 	 */
-	protected open fun copyPrimitives(copyObject: AbstractID3v2Tag) {
+	protected open fun copyPrimitives(copyObject: ID3v2TagBase) {
 		logger.config("Copying Primitives")
 		//Primitives type variables common to all IDv2 Tags
 		duplicateFrameId = copyObject.duplicateFrameId
@@ -147,7 +147,7 @@ abstract class AbstractID3v2Tag : AbstractID3Tag, Tag {
 	 * @param copyObject
 	 */
 	//TODO Copy Encrypted frames needs implementing
-	protected fun copyFrames(copyObject: AbstractID3v2Tag) {
+	protected fun copyFrames(copyObject: ID3v2TagBase) {
 		frameMap = LinkedHashMap()
 		encryptedFrameMap = LinkedHashMap()
 
@@ -709,7 +709,7 @@ abstract class AbstractID3v2Tag : AbstractID3Tag, Tag {
 	 * @return true if they are equivalent
 	 */
 	override fun equals(obj: Any?): Boolean {
-		if (obj !is AbstractID3v2Tag) {
+		if (obj !is ID3v2TagBase) {
 			return false
 		}
 		return frameMap == obj.frameMap && super.equals(obj)
@@ -2230,13 +2230,70 @@ abstract class AbstractID3v2Tag : AbstractID3Tag, Tag {
 		 * the tag header  and return the size of the tag (including header), if no such tag exists return
 		 * zero.
 		 *
+		 * @param fileDescriptor
+		 * @return the end of the tag in the file or zero if no tag exists.
+		 * @throws IOException
+		 */
+		@Throws(IOException::class)
+		fun getV2TagSizeIfExists(fileDescriptor: FileDescriptor): Long {
+			val bb: ByteBuffer?
+			var fis: FileInputStream? = null
+			var fc: FileChannel? = null
+
+			try {
+				fis = FileInputStream(fileDescriptor)
+				fc = fis.channel
+				bb = ByteBuffer.allocate(TAG_HEADER_LENGTH)
+
+				fc.read(bb)
+				bb.flip()
+
+				if (bb.limit() < TAG_HEADER_LENGTH) return 0
+			} finally {
+				fis?.close()
+				fc?.close()
+			}
+
+			if (bb == null) return 0
+
+			val tagIdentifier = ByteArray(FIELD_TAGID_LENGTH)
+			bb[tagIdentifier, 0, FIELD_TAGID_LENGTH]
+			if (!tagIdentifier.contentEquals(TAG_ID)) return 0
+
+			val majorVersion = bb.get()
+			if (majorVersion != ID3v22Tag.MAJOR_VERSION
+				&& majorVersion != ID3v23Tag.MAJOR_VERSION
+				&& majorVersion != ID3v24Tag.MAJOR_VERSION
+			) {
+				return 0
+			}
+
+			//Skip Minor Version
+			bb.get()
+
+			//Skip Flags
+			bb.get()
+
+			//Get size as recorded in frame header
+			var frameSize = ID3SyncSafeInteger.bufferToValue(bb)
+
+			//addField header size to frame size
+			frameSize += TAG_HEADER_LENGTH
+			return frameSize.toLong()
+		}
+
+		/**
+		 * Checks to see if the file contains an ID3tag and if so return its size as reported in
+		 * the tag header  and return the size of the tag (including header), if no such tag exists return
+		 * zero.
+		 *
 		 * @param file
 		 * @return the end of the tag in the file or zero if no tag exists.
 		 * @throws IOException
 		 */
 		@JvmStatic
 		@Throws(IOException::class)
-		fun getV2TagSizeIfExists(file: File?): Long {
+		fun getV2TagSizeIfExists(file: File): Long {
 			var fis: FileInputStream? = null
 			var fc: FileChannel? = null
 			var bb: ByteBuffer? = null
@@ -2266,7 +2323,7 @@ abstract class AbstractID3v2Tag : AbstractID3Tag, Tag {
 
 			//Is it valid Major Version
 			val majorVersion = bb.get()
-			if (majorVersion != ID3v22Tag.majorVersion && majorVersion != ID3v23Tag.MAJOR_VERSION && majorVersion != ID3v24Tag.MAJOR_VERSION) {
+			if (majorVersion != ID3v22Tag.MAJOR_VERSION && majorVersion != ID3v23Tag.MAJOR_VERSION && majorVersion != ID3v24Tag.MAJOR_VERSION) {
 				return 0
 			}
 

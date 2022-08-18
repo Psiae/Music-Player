@@ -1,11 +1,7 @@
 package com.kylentt.musicplayer.common.media.audio.meta_tag.audio
 
 import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.dsf.Dsf
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotWriteException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.NoReadPermissionsException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.ReadOnlyFileException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.generic.Permissions.displayPermissions
+import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.*
 import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.real.RealTag
 import com.kylentt.musicplayer.common.media.audio.meta_tag.logging.ErrorMessage
 import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.Tag
@@ -13,7 +9,7 @@ import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.TagOptionSingleto
 import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.aiff.AiffTag
 import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.asf.AsfTag
 import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.flac.FlacTag
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.id3.AbstractID3v2Tag
+import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.id3.ID3v2TagBase
 import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.id3.ID3v22Tag
 import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.id3.ID3v23Tag
 import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.id3.ID3v24Tag
@@ -25,9 +21,11 @@ import com.kylentt.musicplayer.core.sdk.VersionHelper
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.RandomAccessFile
-import java.nio.file.Files
+import java.nio.file.Path
 import java.util.*
 import java.util.logging.Logger
+import kotlin.io.path.isReadable
+import kotlin.io.path.isWritable
 
 /**
  *
@@ -62,7 +60,7 @@ open class AudioFile {
 	 *
 	 * The physical file that this instance represents.
 	 */
-	var file: File? = null
+	var mFile: File? = null
 	/**
 	 * Return audio header information
 	 * @return
@@ -118,7 +116,7 @@ open class AudioFile {
 	 * @param tag         the tag contained in this file or null if no tag exists
 	 */
 	constructor(f: File?, audioHeader: AudioHeader?, tag: Tag?) {
-		file = f
+		mFile = f
 		this.audioHeader = audioHeader
 		this.tag = tag
 	}
@@ -134,7 +132,7 @@ open class AudioFile {
 	 * @param tag         the tag contained in this file
 	 */
 	constructor(s: String?, audioHeader: AudioHeader?, tag: Tag?) {
-		file = File(s)
+		mFile = File(s)
 		this.audioHeader = audioHeader
 		this.tag = tag
 	}
@@ -172,7 +170,7 @@ open class AudioFile {
 	 * TODO Maybe this can be changed ?
 	 */
 	override fun toString(): String {
-		return """AudioFile ${file!!.absolutePath}  --------
+		return """AudioFile ${mFile!!.absolutePath}  --------
 ${audioHeader.toString()}
 ${if (tag == null) "" else tag.toString()}
 -------------------"""
@@ -186,9 +184,7 @@ ${if (tag == null) "" else tag.toString()}
 	 */
 	@Throws(FileNotFoundException::class)
 	fun checkFileExists(file: File) {
-		logger.config("Reading file:" + "path" + file.path + ":abs:" + file.absolutePath)
 		if (!file.exists()) {
-			logger.severe("Unable to find:" + file.path)
 			throw FileNotFoundException(ErrorMessage.UNABLE_TO_FIND_FILE.getMsg(file.path))
 		}
 	}
@@ -204,53 +200,28 @@ ${if (tag == null) "" else tag.toString()}
 	 */
 	@Throws(ReadOnlyFileException::class, FileNotFoundException::class, CannotReadException::class)
 	protected fun checkFilePermissions(file: File, readOnly: Boolean): RandomAccessFile {
-		if (!VersionHelper.hasOreo()) TODO("Implement API < 26")
-
-		val path = file.toPath()
-		val newFile: RandomAccessFile
 		checkFileExists(file)
 
-		// Unless opened as readonly the file must be writable
-		newFile = if (readOnly) {
-			//May not even be readable
-			if (!Files.isReadable(path)) {
-				logger.severe(
-					"Unable to read file:$path"
-				)
-				logger.severe(
-					displayPermissions(
-						path
-					)
-				)
-				throw NoReadPermissionsException(
-					ErrorMessage.GENERAL_READ_FAILED_DO_NOT_HAVE_PERMISSION_TO_READ_FILE.getMsg(
-						path
-					)
-				)
+		val raf: RandomAccessFile =
+			if (VersionHelper.hasOreo()) {
+				val path: Path = file.toPath()
+				if (readOnly) {
+					if (!path.isReadable()) throw NoReadPermissionsException()
+					RandomAccessFile(file, "r")
+				} else {
+					if (!path.isWritable()) throw NoWritePermissionsException()
+					RandomAccessFile(file, "rw")
+				}
+			} else {
+				if (readOnly) {
+					if (!file.canRead()) throw NoReadPermissionsException()
+					RandomAccessFile(file, "r")
+				} else {
+					if (!file.canWrite()) throw NoWritePermissionsException()
+					RandomAccessFile(file, "rw")
+				}
 			}
-			RandomAccessFile(file, "r")
-		} else {
-			if (TagOptionSingleton.instance.isCheckIsWritable && !Files.isWritable(path)
-			) {
-				logger.severe(
-					displayPermissions(
-						file.toPath()
-					)
-				)
-				logger.severe(
-					displayPermissions(
-						path
-					)
-				)
-				throw ReadOnlyFileException(
-					ErrorMessage.NO_PERMISSIONS_TO_WRITE_TO_FILE.getMsg(
-						path
-					)
-				)
-			}
-			RandomAccessFile(file, "rw")
-		}
-		return newFile
+		return raf
 	}
 
 	/**
@@ -278,7 +249,7 @@ ${if (tag == null) "" else tag.toString()}
 	open fun createDefaultTag(): Tag? {
 		var extension = ext
 		if (extension == null) {
-			val fileName = file!!.name
+			val fileName = mFile!!.name
 			extension = fileName.substring(fileName.lastIndexOf('.') + 1)
 			ext = extension
 		}
@@ -354,12 +325,9 @@ ${if (tag == null) "" else tag.toString()}
 
 			/* TODO Currently only works for Dsf We need additional check here for Wav and Aif because they wrap the ID3 tag so never return
 	 * null for getTag() and the wrapper stores the location of the existing tag, would that be broken if tag set to something else
-	 */return if (tag is AbstractID3v2Tag) {
+	 */return if (tag is ID3v2TagBase) {
 				val convertedTag: Tag? =
-					convertID3Tag(
-						tag as AbstractID3v2Tag?,
-						TagOptionSingleton.instance.iD3V2Version
-					)
+					convertID3Tag(tag, TagOptionSingleton.instance.iD3V2Version)
 				convertedTag ?: tag
 			} else {
 				tag
@@ -386,26 +354,32 @@ ${if (tag == null) "" else tag.toString()}
 	 *
 	 * @return null if no conversion necessary
 	 */
-	fun convertID3Tag(tag: AbstractID3v2Tag?, id3V2Version: ID3V2Version?): AbstractID3v2Tag? {
-		if (tag is ID3v24Tag) {
-			when (id3V2Version) {
-				ID3V2Version.ID3_V22 -> return ID3v22Tag(tag as ID3v24Tag?)
-				ID3V2Version.ID3_V23 -> return ID3v23Tag(tag as ID3v24Tag?)
-				ID3V2Version.ID3_V24 -> return null
+	fun convertID3Tag(tag: ID3v2TagBase, id3V2Version: ID3V2Version): ID3v2TagBase? {
+
+		when (tag) {
+			is ID3v24Tag -> {
+				when (id3V2Version) {
+					ID3V2Version.ID3_V22 -> return ID3v22Tag(tag)
+					ID3V2Version.ID3_V23 -> return ID3v23Tag(tag)
+					ID3V2Version.ID3_V24 -> return null
+				}
 			}
-		} else if (tag is ID3v23Tag) {
-			when (id3V2Version) {
-				ID3V2Version.ID3_V22 -> return ID3v22Tag(tag as ID3v23Tag?)
-				ID3V2Version.ID3_V23 -> return null
-				ID3V2Version.ID3_V24 -> return ID3v24Tag(tag as ID3v23Tag?)
+			is ID3v23Tag -> {
+				when (id3V2Version) {
+					ID3V2Version.ID3_V22 -> return ID3v22Tag(tag)
+					ID3V2Version.ID3_V23 -> return null
+					ID3V2Version.ID3_V24 -> return ID3v24Tag(tag)
+				}
 			}
-		} else if (tag is ID3v22Tag) {
-			when (id3V2Version) {
-				ID3V2Version.ID3_V22 -> return null
-				ID3V2Version.ID3_V23 -> return ID3v23Tag(tag as ID3v22Tag?)
-				ID3V2Version.ID3_V24 -> return ID3v24Tag(tag as ID3v22Tag?)
+			is ID3v22Tag -> {
+				when (id3V2Version) {
+					ID3V2Version.ID3_V22 -> return null
+					ID3V2Version.ID3_V23 -> return ID3v23Tag(tag)
+					ID3V2Version.ID3_V24 -> return ID3v24Tag(tag)
+				}
 			}
 		}
+
 		return null
 	}
 

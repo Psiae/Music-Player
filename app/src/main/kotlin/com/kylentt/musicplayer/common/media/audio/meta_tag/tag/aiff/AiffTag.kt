@@ -59,7 +59,7 @@ class AiffTag : Tag, Id3SupportingTag {
 	/**
 	 * Sets the ID3 tag
 	 */
-	override var iD3Tag: AbstractID3v2Tag? = null
+	override var iD3Tag: ID3v2TagBase? = null
 
 	//    private String loggingFilename="";
 	//    public AiffTag(String loggingFilename)
@@ -67,7 +67,7 @@ class AiffTag : Tag, Id3SupportingTag {
 	//        this.loggingFilename = loggingFilename;
 	//    }
 	constructor()
-	constructor(t: AbstractID3v2Tag?) {
+	constructor(t: ID3v2TagBase?) {
 		iD3Tag = t
 	}
 
@@ -340,7 +340,7 @@ class AiffTag : Tag, Id3SupportingTag {
 		 * @return
 		 */
 		@JvmStatic
-		fun createDefaultID3Tag(): AbstractID3v2Tag {
+		fun createDefaultID3Tag(): ID3v2TagBase {
 			if (TagOptionSingleton.instance.iD3V2Version === ID3V2Version.ID3_V24) {
 				return ID3v24Tag()
 			} else if (TagOptionSingleton.instance.iD3V2Version === ID3V2Version.ID3_V23) {

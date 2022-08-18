@@ -117,7 +117,7 @@ object MediaItemFactory {
 		Timber.d("getEmbeddedImage for $uri")
 
 		if (uri.scheme == ContentResolver.SCHEME_CONTENT) return run {
-			val af = AudioFile.Builder(context, uri, cacheDir).build()
+			val af = AudioFile.Builder(context, uri).build()
 			af.file?.delete()
 			val embed = af.imageData
 			embed

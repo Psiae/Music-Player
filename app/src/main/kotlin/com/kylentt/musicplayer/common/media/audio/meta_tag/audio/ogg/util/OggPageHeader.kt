@@ -21,7 +21,7 @@ package com.kylentt.musicplayer.common.media.audio.meta_tag.audio.ogg.util
 import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadException
 import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.generic.Utils.getIntLE
 import com.kylentt.musicplayer.common.media.audio.meta_tag.logging.ErrorMessage
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.id3.AbstractID3v2Tag.Companion.isId3Tag
+import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.id3.ID3v2TagBase.Companion.isId3Tag
 import java.io.IOException
 import java.io.RandomAccessFile
 import java.nio.ByteBuffer

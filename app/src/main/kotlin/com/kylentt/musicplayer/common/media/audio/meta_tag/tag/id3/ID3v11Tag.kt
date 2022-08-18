@@ -177,6 +177,17 @@ class ID3v11Tag : ID3v1Tag {
 		read(byteBuffer)
 	}
 
+	constructor(fc: FileChannel) {
+		val byteBuffer = ByteBuffer.allocate(TAG_LENGTH)
+		if (fc.size() < TAG_LENGTH) {
+			throw IOException("File not large enough to contain a tag")
+		}
+		fc.position(fc.position() - TAG_LENGTH)
+		fc.read(byteBuffer)
+		byteBuffer.flip()
+		read(byteBuffer)
+	}
+
 	/**
 	 * Creates a new ID3v11 datatype.
 	 *

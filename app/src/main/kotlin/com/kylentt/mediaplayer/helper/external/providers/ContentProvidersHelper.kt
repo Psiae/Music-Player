@@ -64,6 +64,8 @@ object ContentProvidersHelper {
 
 	@JvmStatic
 	fun isContentUriExist(context: Context, uri: Uri): Boolean {
+		Environment.getExternalStorageDirectory()
+
 		return try {
 			context.contentResolver.openInputStream(uri)!!.close()
 			true

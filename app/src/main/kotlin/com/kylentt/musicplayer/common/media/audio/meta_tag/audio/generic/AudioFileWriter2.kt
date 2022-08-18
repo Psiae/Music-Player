@@ -32,13 +32,13 @@ abstract class AudioFileWriter2 : AudioFileWriter() {
 	override fun delete(af: AudioFile) {
 		if (!VersionHelper.hasOreo()) throw UnsupportedOperationException()
 
-		val path = af.file!!.toPath()
+		val path = af.mFile!!.toPath()
 		if (TagOptionSingleton.instance.isCheckIsWritable && !Files.isWritable(path)) {
 			logger.severe(Permissions.displayPermissions(path))
 			throw CannotWriteException(ErrorMessage.GENERAL_DELETE_FAILED.getMsg(path))
 		}
 
-		if (af.file!!.length() <= MINIMUM_FILESIZE) {
+		if (af.mFile!!.length() <= MINIMUM_FILESIZE) {
 			throw CannotWriteException(
 				ErrorMessage.GENERAL_DELETE_FAILED_BECAUSE_FILE_IS_TOO_SMALL.getMsg(path)
 			)
@@ -56,17 +56,17 @@ abstract class AudioFileWriter2 : AudioFileWriter() {
 	override fun write(af: AudioFile) {
 		if (!VersionHelper.hasOreo()) throw UnsupportedOperationException()
 
-		val file = af.file!!.toPath()
+		val file = af.mFile!!.toPath()
 		if (TagOptionSingleton.instance.isCheckIsWritable && !Files.isWritable(file)) {
 			logger.severe(Permissions.displayPermissions(file))
-			logger.severe(ErrorMessage.GENERAL_WRITE_FAILED.getMsg(af.file!!.path))
+			logger.severe(ErrorMessage.GENERAL_WRITE_FAILED.getMsg(af.mFile!!.path))
 			throw CannotWriteException(
 				ErrorMessage.GENERAL_WRITE_FAILED_TO_OPEN_FILE_FOR_EDITING.getMsg(
 					file
 				)
 			)
 		}
-		if (af.file!!.length() <= MINIMUM_FILESIZE) {
+		if (af.mFile!!.length() <= MINIMUM_FILESIZE) {
 			throw CannotWriteException(
 				ErrorMessage.GENERAL_WRITE_FAILED_BECAUSE_FILE_IS_TOO_SMALL
 					.getMsg(file)

@@ -10,14 +10,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kylentt.mediaplayer.domain.viewmodels.MainViewModel
 import com.kylentt.mediaplayer.domain.viewmodels.MediaViewModel
 import com.kylentt.mediaplayer.ui.activity.mainactivity.compose.MainActivityRoot
-import com.kylentt.musicplayer.common.kotlin.mutablecollection.doEachClear
-import com.kylentt.musicplayer.common.kotlin.mutablecollection.forEachClear
 import com.kylentt.musicplayer.ui.main.MainActivity
+import com.kylentt.musicplayer.ui.main.compose.entry.MainEntry
 import com.kylentt.musicplayer.ui.main.compose.theme.MainMaterial3Theme
 
 @Composable
-fun MainActivity.MainContent() {
-	MainTheme {
+fun MainActivity.ComposeContent() {
+	MainTheme() {
 		MainEntry {
 			val mainViewModel: MainViewModel = viewModel()
 			val mediaViewModel: MediaViewModel = viewModel()
@@ -29,19 +28,14 @@ fun MainActivity.MainContent() {
 }
 
 @Composable
-private fun MainTheme(content: @Composable () -> Unit) {
-	MainMaterial3Theme {
-		MainSurface {
-			content()
-		}
-	}
-}
+private fun MainTheme(
+	content: @Composable () -> Unit
+) = MainMaterial3Theme { MainSurface(content = content) }
 
 @Composable
 private fun MainSurface(content: @Composable () -> Unit) {
 	Surface(
 		modifier = Modifier.fillMaxSize(),
-		color = MaterialTheme.colorScheme.surface,
 		content = content
 	)
 }

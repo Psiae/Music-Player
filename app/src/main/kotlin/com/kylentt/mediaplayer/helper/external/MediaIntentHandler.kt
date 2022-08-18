@@ -16,7 +16,7 @@ import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemFa
 import com.kylentt.mediaplayer.data.SongEntity
 import com.kylentt.mediaplayer.data.repository.MediaRepository
 import com.kylentt.mediaplayer.data.source.local.MediaStoreSong
-import com.kylentt.musicplayer.domain.musiclib.MusicLibrary
+import com.kylentt.musicplayer.domain.musiclib.core.MusicLibrary
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.external.providers.ContentProvidersHelper

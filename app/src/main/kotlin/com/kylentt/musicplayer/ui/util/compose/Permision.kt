@@ -26,7 +26,7 @@ fun RequirePermission(
 
 	val context = LocalContext.current
 
-	val currentStatus = contextInfo.permission.isPermissionGranted(permission)
+	val currentStatus = contextInfo.permissionInfo.isPermissionGranted(permission)
 
 	val requestResult = remember {
 		mutableStateOf(currentStatus, policy = neverEqualPolicy())

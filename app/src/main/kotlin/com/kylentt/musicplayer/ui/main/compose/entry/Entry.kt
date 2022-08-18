@@ -1,4 +1,4 @@
-package com.kylentt.musicplayer.ui.main.compose
+package com.kylentt.musicplayer.ui.main.compose.entry
 
 import android.content.Context
 import android.content.pm.PackageManager
@@ -46,10 +46,12 @@ private val readStoragePermission = AndroidPermission.Read_External_Storage
 private val writeStoragePermission = AndroidPermission.Write_External_Storage
 
 private val pageItems = listOf(
-	PermissionPageItem(readStoragePermission, resId = R.drawable.folder_search_base_256_blu_glass,
+	PermissionPageItem(
+		readStoragePermission, resId = R.drawable.folder_search_base_256_blu_glass,
 		optional = false, title = "Read Storage Permission"
 	),
-	PermissionPageItem(writeStoragePermission, resId = R.drawable.folder_write_base_256,
+	PermissionPageItem(
+		writeStoragePermission, resId = R.drawable.folder_write_base_256,
 		optional = true, title = "Write Storage Permission"
 	),
 )
@@ -69,7 +71,7 @@ private fun entryPermissionAsState(): State<Boolean> {
 
 	val entryVM = entryViewModel
 
-	val readStorageGranted = contextInfo.permission.readExternalStorageAllowed
+	val readStorageGranted = contextInfo.permissionInfo.readExternalStorageAllowed
 
 	val entryAllowed = remember {
 		mutableStateOf(entryVM.shouldPersistPager != true && readStorageGranted)

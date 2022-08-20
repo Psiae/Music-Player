@@ -20,6 +20,9 @@ open class AudioFileInfo protected constructor() {
 	open var fileSize: Int = -1
 		protected set
 
+	open var parentFileName: String = ""
+		protected set
+
 	open var mimeType: String = ""
 		protected set
 
@@ -29,33 +32,39 @@ open class AudioFileInfo protected constructor() {
 	open class Builder {
 		var absolutePath: String = empty.absolutePath
 		var dateAdded: Long = empty.dateAdded
+		var dateModified: Long = empty.dateModified
 		var fileExtension: String = empty.fileExtension
 		var fileName: String = empty.fileName
 		var fileSize: Int = empty.fileSize
-		var dateModified: Long = empty.dateModified
 		var mimeType: String = empty.mimeType
 		var metadata = empty.metadata
+		var parentFileName: String = empty.parentFileName
 
 		constructor()
 
 		constructor(audioFileInfo: AudioFileInfo) {
 			absolutePath = audioFileInfo.absolutePath
 			dateAdded = audioFileInfo.dateAdded
+			dateModified = audioFileInfo.dateModified
 			fileExtension = audioFileInfo.fileExtension
 			fileName = audioFileInfo.fileName
-			dateModified = audioFileInfo.dateModified
+			fileSize = audioFileInfo.fileSize
 			mimeType = audioFileInfo.mimeType
 			metadata = audioFileInfo.metadata
+			parentFileName = audioFileInfo.parentFileName
 		}
 
 		open fun build(): AudioFileInfo = AudioFileInfo()
 			.apply {
 				absolutePath = this@Builder.absolutePath
+				dateAdded = this@Builder.dateAdded
+				dateModified = this@Builder.dateModified
 				fileExtension = this@Builder.fileExtension
 				fileName = this@Builder.fileName
-				dateModified = this@Builder.dateModified
+				fileSize = this@Builder.fileSize
 				mimeType = this@Builder.mimeType
 				metadata = this@Builder.metadata
+				parentFileName = this@Builder.parentFileName
 			}
 	}
 

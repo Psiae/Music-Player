@@ -21,6 +21,8 @@ import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.external.providers.ContentProvidersHelper
 import com.kylentt.mediaplayer.helper.external.providers.DocumentProviderHelper
+import com.kylentt.musicplayer.domain.musiclib.entity.AudioEntity
+import com.kylentt.musicplayer.domain.musiclib.source.mediastore.MediaStoreProvider
 import kotlinx.coroutines.*
 import timber.log.Timber
 import java.io.File
@@ -50,7 +52,7 @@ interface MediaIntentHandler {
 class MediaIntentHandlerImpl(
     private val context: Context,
     private val dispatcher: CoroutineDispatchers,
-    private val mediaRepo: MediaRepository
+		private val mediaSource: MediaStoreProvider
 ) : MediaIntentHandler {
 
   private val actionViewHandler = ActionViewHandler()
@@ -101,14 +103,14 @@ class MediaIntentHandlerImpl(
       require(intent.isTypeAudio())
       withContext(dispatcher.io) {
         val defPath = async { getAudioPathFromContentUri(intent) }
-        val defSongs = async { mediaRepo.getMediaStoreSong() }
+        val defSongs = async { mediaSource.queryAudioEntity(true, true) }
 
         ensureActive()
 
         findMatchingMediaStoreData(defPath.await(), defSongs.await())
           ?.let { pair ->
             withContext(dispatcher.main) {
-              val (song: MediaStoreSong, list: List<MediaStoreSong>) = pair
+              val (song: AudioEntity, list: List<AudioEntity>) = pair
               ensureActive()
               playMediaItem(song, list, true)
             }
@@ -126,8 +128,8 @@ class MediaIntentHandlerImpl(
     }
 
     private fun playMediaItem(
-      song: SongEntity,
-      list: List<SongEntity>,
+      song: AudioEntity,
+      list: List<AudioEntity>,
       fadeOut: Boolean
     ) {
       checkMainThread()
@@ -502,23 +504,23 @@ class MediaIntentHandlerImpl(
 
   private suspend fun findMatchingMediaStoreData(
     predicate: String,
-    songs: List<MediaStoreSong>
-  ): Pair<MediaStoreSong, List<MediaStoreSong>>? {
+    songs: List<AudioEntity>
+  ): Pair<AudioEntity, List<AudioEntity>>? {
     return try {
       val storageString = ContentProvidersHelper.storageDirString
       val contentUris = ContentProvidersHelper.contentScheme
-      val songList = songs.ifEmpty { mediaRepo.getMediaStoreSong() }
+      val songList = songs.ifEmpty { mediaSource.queryAudioEntity(true, true) }
 
       Timber.d("findMatchingMediaStore with $predicate")
 
       when {
         predicate.startsWith(contentUris) -> {
-          val a = songList.find { it.songMediaUri.toString() == predicate }
+          val a = songList.find { it.uri.toString() == predicate }
           if (a != null) return Pair(a, songList)
         }
         !File(predicate).exists() -> return null
         predicate.startsWith(storageString) -> {
-          val a = songList.find { it.data == predicate }
+          val a = songList.find { it.fileInfo.absolutePath == predicate }
           if (a != null) return Pair(a, songList)
         }
       }

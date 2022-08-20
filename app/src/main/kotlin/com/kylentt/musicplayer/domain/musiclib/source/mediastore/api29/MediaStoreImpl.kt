@@ -15,8 +15,8 @@ internal class MediaStoreImpl29(private val context: Context) : MediaStoreImplBa
 	override val audioEntityQueryProjector = super.audioEntityQueryProjector
 
 
-	override val audioEntityFileInfoProjector = arrayOf(
-		*super.audioEntityFileInfoProjector,
+	override val audioFileInfoProjector = arrayOf(
+		*super.audioFileInfoProjector,
 		MediaColumns.BUCKET_DISPLAY_NAME,
 		MediaColumns.BUCKET_ID,
 		MediaColumns.DATE_EXPIRES,

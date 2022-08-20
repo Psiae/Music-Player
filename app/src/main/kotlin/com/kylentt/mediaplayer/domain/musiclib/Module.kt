@@ -7,6 +7,7 @@ import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.ExoPlayerFactory
 import com.kylentt.mediaplayer.data.repository.MediaRepository
 import com.kylentt.mediaplayer.helper.external.MediaIntentHandler
 import com.kylentt.mediaplayer.helper.external.MediaIntentHandlerImpl
+import com.kylentt.musicplayer.domain.musiclib.source.mediastore.MediaStoreProvider
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -25,9 +26,9 @@ object MusicLibraryModule {
 	fun provideMediaIntentHandler(
         @ApplicationContext context: Context,
         coroutineDispatchers: CoroutineDispatchers,
-        mediaRepository: MediaRepository
+        mediaStoreProvider: MediaStoreProvider
 	): MediaIntentHandler {
-		return MediaIntentHandlerImpl(context, coroutineDispatchers, mediaRepository)
+		return MediaIntentHandlerImpl(context, coroutineDispatchers, mediaStoreProvider)
 	}
 }
 

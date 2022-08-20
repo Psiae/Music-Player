@@ -1,5 +1,6 @@
 package com.kylentt.mediaplayer.data.source.local
 
+import android.content.ContentProvider
 import android.content.ContentUris
 import android.content.Context
 import android.content.res.AssetFileDescriptor

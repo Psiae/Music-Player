@@ -1,11 +1,12 @@
 package com.kylentt.musicplayer.domain.musiclib.source.mediastore
 
+import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.Context
 import android.database.Cursor
-import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.provider.BaseColumns
+import android.provider.MediaStore.Images.ImageColumns
 import android.provider.MediaStore.MediaColumns
 import com.kylentt.musicplayer.BuildConfig
 import com.kylentt.musicplayer.common.android.context.ContextInfo
@@ -29,7 +30,7 @@ internal abstract class MediaStoreImplBase(private val context: Context) {
 	/**
 	 * https://developer.android.com/reference/android/provider/MediaStore.MediaColumns
 	 */
-	protected open val audioEntityFileInfoProjector: Array<String> = arrayOf(
+	protected open val audioFileInfoProjector: Array<String> = arrayOf(
 		MediaColumns.DATA,
 		MediaColumns.DATE_ADDED,
 		MediaColumns.DATE_MODIFIED,
@@ -56,16 +57,16 @@ internal abstract class MediaStoreImplBase(private val context: Context) {
 		val projector = when {
 			fillFileInfo && fillMetadata -> arrayOf(
 				*audioEntityQueryProjector,
-				*audioEntityFileInfoProjector,
+				*audioFileInfoProjector,
 				*audioEntityMetadataInfoProjector
 			)
 			fillFileInfo -> arrayOf(
 				*audioEntityQueryProjector,
-				*audioEntityFileInfoProjector
+				*audioFileInfoProjector
 			)
 			fillMetadata -> arrayOf(
 				*audioEntityQueryProjector,
-				*audioEntityFileInfoProjector
+				*audioFileInfoProjector
 			)
 			else -> audioEntityQueryProjector
 		}
@@ -73,7 +74,7 @@ internal abstract class MediaStoreImplBase(private val context: Context) {
 		try {
 			context.contentResolver.query(
 				/* uri = */
-				android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+				MediaStoreInfo.Audio.EXTERNAL_CONTENT_URI,
 				/* projection = */
 				projector,
 				/* selection = */
@@ -81,7 +82,7 @@ internal abstract class MediaStoreImplBase(private val context: Context) {
 				/* selectionArgs = */
 				null,
 				/* sortOrder = */
-				android.provider.MediaStore.Audio.Media._ID,
+				android.provider.MediaStore.Audio.Media.DATE_ADDED,
 			)?.use { cursor ->
 				if (cursor.moveToFirst()) {
 					do {
@@ -134,13 +135,13 @@ internal abstract class MediaStoreImplBase(private val context: Context) {
 	): AudioFileInfo.Builder = withContext(dispatchers.io) {
 		if (!contextInfo.permissionInfo.readExternalStorageAllowed) throw ReadStoragePermissionException()
 
-		if (uri.scheme == MediaStoreInfo.contentScheme || uri.scheme == MediaStoreInfo.fileScheme) {
+		if (uri.scheme == ContentResolver.SCHEME_CONTENT || uri.scheme == ContentResolver.SCHEME_FILE) {
 			try {
 				context.contentResolver.query(
 					/* uri = */
 					uri,
 					/* projection = */
-					audioEntityFileInfoProjector,
+					audioFileInfoProjector,
 					/* selection = */
 					null,
 					/* selectionArgs = */
@@ -164,6 +165,9 @@ internal abstract class MediaStoreImplBase(private val context: Context) {
 		builder: AudioFileInfo.Builder,
 		fillMetadata: Boolean
 	): AudioFileInfo.Builder {
+		cursor.getColumnIndex(ImageColumns.BUCKET_DISPLAY_NAME).takeIf { it != -1 }
+			?.let { builder.parentFileName = cursor.getString(it) }
+
 		cursor.getColumnIndex(MediaColumns.DATA).takeIf { it != -1 }
 			?.let { builder.absolutePath = cursor.getString(it) }
 
@@ -195,7 +199,7 @@ internal abstract class MediaStoreImplBase(private val context: Context) {
 	): AudioFileMetadata.Builder {
 		if (!contextInfo.permissionInfo.readExternalStorageAllowed) throw ReadStoragePermissionException()
 
-		if (uri.scheme == MediaStoreInfo.contentScheme || uri.scheme == MediaStoreInfo.fileScheme) {
+		if (uri.scheme == ContentResolver.SCHEME_CONTENT || uri.scheme == ContentResolver.SCHEME_FILE) {
 			context.contentResolver.query(
 				/* uri = */
 				uri,
@@ -223,9 +227,6 @@ internal abstract class MediaStoreImplBase(private val context: Context) {
 
 		cursor.getColumnIndex(MediaColumns.ALBUM).takeIf { it != -1 }
 			?.let { builder.album = cursor.getString(it) }
-
-		cursor.getColumnIndex(MediaColumns.BITRATE).takeIf { it != -1 }
-			?.let { builder.bitRate = cursor.getInt(it) }
 
 		cursor.getColumnIndex(MediaColumns.DURATION).takeIf { it != -1 }
 			?.let { builder.durationMs = cursor.getLong(it) }

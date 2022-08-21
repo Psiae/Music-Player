@@ -4,6 +4,7 @@
 package com.kylentt.musicplayer.domain.musiclib.source.mediastore.api29
 
 import android.content.ContentResolver
+import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
@@ -441,6 +442,8 @@ internal abstract class MediaColumns : BaseColumns() {
 
 internal abstract class FileColumns : MediaColumns() {
 
+	val EXTERNAL_CONTENT_URI: Uri = MediaStore.Files.getContentUri("external")
+
 	/**
 	 * The MTP storage ID of the file
 	 *
@@ -521,139 +524,19 @@ internal abstract class FileColumns : MediaColumns() {
 	 */
 	val IS_DOWNLOAD = "is_download"
 
-	companion object {
+	companion object : FileColumns() {
 		// convenient reference
 	}
+}
 
-	/**
-	 * Download metadata columns.
-	 */
-	abstract class DownloadColumns : MediaColumns() {
+/**
+ * Audio metadata columns.
+ */
+internal abstract class AudioColumns private constructor() : MediaColumns() {
 
-		/**
-		 * Uri indicating where the item has been downloaded from.
-		 *
-		 * + "download_uri"
-		 * + type: String
-		 */
-		val DOWNLOAD_URI = MediaStore.DownloadColumns.DOWNLOAD_URI
-
-		/**
-		 * Uri indicating HTTP referer of [.DOWNLOAD_URI].
-		 *
-		 * + "referer_uri"
-		 * + type: String
-		 */
-		val REFERER_URI = MediaStore.DownloadColumns.REFERER_URI
-
-		/**
-		 * The description of the download.
-		 *
-		 * + "description"
-		 * + type: String
-		 * + removed
-		 *
-		 * @removed
-		 */
-		@Deprecated(message = "removed", level = DeprecationLevel.HIDDEN)
-		protected val DESCRIPTION = "description"
-
-		companion object : DownloadColumns() {
-			// convenient reference
-		}
-	}
-
-	abstract class ImageColumns : MediaColumns() {
-
-		/**
-		 * The description of the image
-		 *
-		 * + "description"
-		 * + type: String
-		 * + ReadOnly
-		 */
-		val DESCRIPTION = MediaStore.Images.ImageColumns.DESCRIPTION
-
-		/**
-		 * The picasa id of the image
-		 *
-		 * + "picasa_id"
-		 * + type: String
-		 *
-		 */
-		@Deprecated(
-			message =
-			"""
-				this value was only relevant for images hosted on Picasa, which are no longer supported.
-			""",
-			level = DeprecationLevel.WARNING
-		)
-		val PICASA_ID = MediaStore.Images.ImageColumns.PICASA_ID
-
-		/**
-		 * Whether the video should be published as public or private
-		 *
-		 * + "isprivate"
-		 * + type: Int
-		 */
-		val IS_PRIVATE = MediaStore.Images.ImageColumns.IS_PRIVATE
-
-		/**
-		 * The latitude where the image was captured.
-		 *
-		 * + "latitude"
-		 * + type: Float
-		 * + ReadOnly
-		 */
-		@Deprecated(
-			message =
-			"""
-				location details are no longer indexed for privacy
-        reasons, and this value is now always {@code null}.
-        You can still manually obtain location metadata using
-        {@link ExifInterface#getLatLong(float[])}.
-			""",
-			level = DeprecationLevel.WARNING
-		)
-		val LATITUDE = MediaStore.Images.ImageColumns.LATITUDE
-
-		/**
-		 * The longitude where the image was captured.
-		 *
-		 * + "longitude"
-		 * + type: Float
-		 * + ReadOnly
-		 */
-		@Deprecated(
-			message =
-			"""
-				location details are no longer indexed for privacy
-        reasons, and this value is now always {@code null}.
-         You can still manually obtain location metadata using
-         {@link ExifInterface#getLatLong(float[])}.
-			""",
-			level = DeprecationLevel.WARNING
-		)
-		val LONGITUDE = MediaStore.Images.ImageColumns.LONGITUDE
-
-		/**
-		 * The mini thumb id.
-		 *
-		 * + "mini_thumb_magic"
-		 * + type: Int
-		 *
-		 */
-		@Deprecated(
-			message =
-			"""
-				all thumbnails should be obtained via
-        {@link MediaStore.Images.Thumbnails#getThumbnail}, as this
-         value is no longer supported.
-			""",
-			level = DeprecationLevel.WARNING
-		)
-		val MINI_THUMB_MAGIC = MediaStore.Images.ImageColumns.MINI_THUMB_MAGIC
-	}
+	val DEFAULT_SORT_ORDER: String = MediaStore.Audio.Media.DEFAULT_SORT_ORDER
+	val INTERNAL_CONTENT_URI: Uri = MediaStore.Audio.Media.INTERNAL_CONTENT_URI
+	val EXTERNAL_CONTENT_URI: Uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
 
 	/**
 	 * A non human readable key calculated from the TITLE, used for
@@ -702,7 +585,7 @@ internal abstract class FileColumns : MediaColumns() {
 	 * + Hidden
 	 * @hide
 	 */
-	val ALBUM_ARTIST = MediaStore.Audio.AudioColumns.ALBUM_ARTIST
+	val ALBUM_ARTIST = "album_artist"
 
 	/**
 	 * Whether the song is part of a compilation
@@ -868,4 +751,572 @@ internal abstract class FileColumns : MediaColumns() {
 	 */
 	@Deprecated(message = "", level = DeprecationLevel.HIDDEN)
 	protected val TITLE_RESOURCE_URI = "title_resource_uri"
+
+	/**
+	 * Audio genre metadata columns.
+	 */
+	abstract class GenresColumns : BaseColumns() {
+
+		val DEFAULT_SORT_ORDER: String = MediaStore.Audio.Genres.DEFAULT_SORT_ORDER
+		val INTERNAL_CONTENT_URI: Uri = MediaStore.Audio.Genres.INTERNAL_CONTENT_URI
+		val EXTERNAL_CONTENT_URI: Uri = MediaStore.Audio.Genres.EXTERNAL_CONTENT_URI
+
+		/**
+		 * The name of the genre
+		 *
+		 * + "name"
+		 * + type: String
+		 */
+		val NAME = MediaStore.Audio.GenresColumns.NAME
+		companion object : GenresColumns() {
+			// convenient reference
+		}
+	}
+
+	/**
+	 * Audio playlist metadata columns.
+	 */
+	abstract class PlaylistsColumns : BaseColumns() {
+
+		val DEFAULT_SORT_ORDER: String = MediaStore.Audio.Playlists.DEFAULT_SORT_ORDER
+		val INTERNAL_CONTENT_URI: Uri = MediaStore.Audio.Playlists.INTERNAL_CONTENT_URI
+		val EXTERNAL_CONTENT_URI: Uri = MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI
+
+		/**
+		 * The name of the playlist
+		 *
+		 * + "name"
+		 * + type: String
+		 */
+		val NAME = MediaStore.Audio.PlaylistsColumns.NAME
+
+		/**
+		 * Path to the playlist file on disk.
+		 *
+		 *
+		 * Note that apps may not have filesystem permissions to directly
+		 * access this path. Instead of trying to open this path directly,
+		 * apps should use
+		 * [ContentResolver.openFileDescriptor] to gain
+		 * access.
+		 *
+		 * + "_data"
+		 * + type: String
+		 *
+		 */
+		@Deprecated(
+			message =
+			"""
+				Apps may not have filesystem permissions to directly access this path.
+				Instead of trying to open this path directly,
+				apps should use {@link ContentResolver#openFileDescriptor(Uri, String)} to gain access.
+			""",
+			level = DeprecationLevel.WARNING
+		)
+		val DATA = MediaStore.Audio.PlaylistsColumns.DATA
+
+		/**
+		 * The time the media item was first added.
+		 *
+		 * + "date_added"
+		 * + type: Long
+		 * + ReadOnly
+		 */
+		@TimeUnitValue(TimeUnit.SECONDS)
+		val DATE_ADDED = MediaStore.Audio.PlaylistsColumns.DATE_ADDED
+
+		/**
+		 * The time the media item was last modified.
+		 *
+		 * + "date_modified"
+		 * + type: Long
+		 * + ReadOnly
+		 */
+		@TimeUnitValue(TimeUnit.SECONDS)
+		val DATE_MODIFIED = MediaStore.Audio.PlaylistsColumns.DATE_MODIFIED
+		companion object : PlaylistsColumns() {
+			// convenient reference
+		}
+	}
+
+	/**
+	 * Audio artist metadata columns.
+	 */
+	abstract class ArtistColumns private constructor() : BaseColumns() {
+
+		val DEFAULT_SORT_ORDER: String = MediaStore.Audio.Artists.DEFAULT_SORT_ORDER
+		val INTERNAL_CONTENT_URI: Uri = MediaStore.Audio.Artists.INTERNAL_CONTENT_URI
+		val EXTERNAL_CONTENT_URI: Uri = MediaStore.Audio.Artists.EXTERNAL_CONTENT_URI
+
+		/**
+		 * The artist who created the audio file, if any
+		 *
+		 * + "artist"
+		 * + type: String
+		 * + ReadOnly
+		 */
+		val ARTIST = MediaStore.Audio.ArtistColumns.ARTIST
+
+		/**
+		 * A non human readable key calculated from the ARTIST, used for
+		 * searching, sorting and grouping
+		 *
+		 * + "artist_key"
+		 * + type: String
+		 * + ReadOnly
+		 */
+		val ARTIST_KEY = MediaStore.Audio.ArtistColumns.ARTIST_KEY
+
+		/**
+		 * The number of albums in the database for this artist
+		 *
+		 * + "number_of_albums"
+		 * + type: String
+		 * + ReadOnly
+		 */
+		val NUMBER_OF_ALBUMS = MediaStore.Audio.ArtistColumns.NUMBER_OF_ALBUMS
+
+		/**
+		 * The number of albums in the database for this artist
+		 *
+		 * + "number_of_tracks"
+		 * + type: Int
+		 * + ReadOnly
+		 */
+		val NUMBER_OF_TRACKS = MediaStore.Audio.ArtistColumns.NUMBER_OF_TRACKS
+		companion object : ArtistColumns() {
+			// convenient reference
+		}
+	}
+
+	/**
+	 * Audio album metadata columns.
+	 */
+	abstract class AlbumColumns : BaseColumns() {
+
+		val DEFAULT_SORT_ORDER: String = MediaStore.Audio.Albums.DEFAULT_SORT_ORDER
+		val INTERNAL_CONTENT_URI: Uri = MediaStore.Audio.Albums.INTERNAL_CONTENT_URI
+		val EXTERNAL_CONTENT_URI: Uri = MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI
+
+		/**
+		 * The id for the album
+		 *
+		 * + "album_id"
+		 * + type: Int
+		 * + ReadOnly
+		 */
+		val ALBUM_ID = MediaStore.Audio.AlbumColumns.ALBUM_ID
+
+		/**
+		 * The album on which the audio file appears, if any
+		 *
+		 * + "album"
+		 * + type: Int
+		 * + ReadOnly
+		 */
+		val ALBUM = MediaStore.Audio.AlbumColumns.ALBUM
+
+		/**
+		 * The ID of the artist whose songs appear on this album.
+		 *
+		 * + "artist_id"
+		 * + type: Int
+		 * + ReadOnly
+		 */
+		val ARTIST_ID = MediaStore.Audio.AlbumColumns.ARTIST_ID
+
+		/**
+		 * The name of the artist whose songs appear on this album.
+		 *
+		 * + "artist"
+		 * + type: Int
+		 * + ReadOnly
+		 */
+		val ARTIST = MediaStore.Audio.Artists.ARTIST
+
+		/**
+		 * The number of songs on this album
+		 *
+		 * + "numsongs"
+		 * + type: Int
+		 * + ReadOnly
+		 */
+		val NUMBER_OF_SONGS = MediaStore.Audio.AlbumColumns.NUMBER_OF_SONGS
+
+		/**
+		 * This column is available when getting album info via artist,
+		 * and indicates the number of songs on the album by the given
+		 * artist.
+		 *
+		 * + "numsongs_by_artist"
+		 * + type: Int
+		 * + ReadOnly
+		 */
+		val NUMBER_OF_SONGS_FOR_ARTIST = MediaStore.Audio.AlbumColumns.NUMBER_OF_SONGS_FOR_ARTIST
+
+		/**
+		 * The year in which the earliest songs
+		 * on this album were released. This will often
+		 * be the same as [.LAST_YEAR], but for compilation albums
+		 * they might differ.
+		 *
+		 * + "minyear"
+		 * + type: Int
+		 * + ReadOnly
+		 */
+		val FIRST_YEAR = MediaStore.Audio.AlbumColumns.FIRST_YEAR
+
+		/**
+		 * The year in which the latest songs
+		 * on this album were released. This will often
+		 * be the same as [.FIRST_YEAR], but for compilation albums
+		 * they might differ.
+		 *
+		 * + "maxyear"
+		 * + type: Int
+		 * + ReadOnly
+		 */
+		val LAST_YEAR = MediaStore.Audio.AlbumColumns.LAST_YEAR
+		/**
+		 * A non human readable key calculated from the ALBUM, used for
+		 * searching, sorting and grouping
+		 *
+		 * + "album_key"
+		 * + type: Int
+		 * + ReadOnly
+		 */
+		val ALBUM_KEY = MediaStore.Audio.AlbumColumns.ALBUM_KEY
+
+		/**
+		 * Cached album art.
+		 *
+		 * + "album_art"
+		 * + type: String
+		 */
+		@Deprecated(
+			message =
+			"""
+				Apps may not have filesystem permissions to directly access this path.
+				Instead of trying to open this path directly,
+				apps should use {@link ContentResolver#loadThumbnail} to gain access.
+				""",
+			level = DeprecationLevel.WARNING
+		)
+		val ALBUM_ART = "album_art"
+		companion object {
+			// convenient reference
+		}
+	}
+
+	companion object : AudioColumns() {
+		// convenient reference
+	}
+}
+
+/**
+ * Download metadata columns.
+ */
+internal abstract class DownloadColumns private constructor() : MediaColumns() {
+
+	val INTERNAL_CONTENT_URI: Uri = MediaStore.Downloads.INTERNAL_CONTENT_URI
+	val EXTERNAL_CONTENT_URI: Uri = MediaStore.Downloads.EXTERNAL_CONTENT_URI
+
+	/**
+	 * Uri indicating where the item has been downloaded from.
+	 *
+	 * + "download_uri"
+	 * + type: String
+	 */
+	val DOWNLOAD_URI = MediaStore.DownloadColumns.DOWNLOAD_URI
+
+	/**
+	 * Uri indicating HTTP referer of [.DOWNLOAD_URI].
+	 *
+	 * + "referer_uri"
+	 * + type: String
+	 */
+	val REFERER_URI = MediaStore.DownloadColumns.REFERER_URI
+
+	/**
+	 * The description of the download.
+	 *
+	 * + "description"
+	 * + type: String
+	 * + removed
+	 *
+	 * @removed
+	 */
+	@Deprecated(message = "removed", level = DeprecationLevel.HIDDEN)
+	protected val DESCRIPTION = "description"
+
+	companion object : DownloadColumns() {
+		// convenient reference
+	}
+}
+
+internal abstract class ImageColumns private constructor() : MediaColumns() {
+
+	val DEFAULT_SORT_ORDER: String = MediaStore.Images.Media.DEFAULT_SORT_ORDER
+	val INTERNAL_CONTENT_URI: Uri = MediaStore.Images.Media.INTERNAL_CONTENT_URI
+	val EXTERNAL_CONTENT_URI: Uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+
+	/**
+	 * The description of the image
+	 *
+	 * + "description"
+	 * + type: String
+	 * + ReadOnly
+	 */
+	val DESCRIPTION = MediaStore.Images.ImageColumns.DESCRIPTION
+
+	/**
+	 * The picasa id of the image
+	 *
+	 * + "picasa_id"
+	 * + type: String
+	 *
+	 */
+	@Deprecated(
+		message =
+		"""
+				this value was only relevant for images hosted on Picasa, which are no longer supported.
+			""",
+		level = DeprecationLevel.WARNING
+	)
+	val PICASA_ID = MediaStore.Images.ImageColumns.PICASA_ID
+
+	/**
+	 * Whether the video should be published as public or private
+	 *
+	 * + "isprivate"
+	 * + type: Int
+	 */
+	val IS_PRIVATE = MediaStore.Images.ImageColumns.IS_PRIVATE
+
+	/**
+	 * The latitude where the image was captured.
+	 *
+	 * + "latitude"
+	 * + type: Float
+	 * + ReadOnly
+	 */
+	@Deprecated(
+		message =
+		"""
+				location details are no longer indexed for privacy
+        reasons, and this value is now always {@code null}.
+        You can still manually obtain location metadata using
+        {@link ExifInterface#getLatLong(float[])}.
+			""",
+		level = DeprecationLevel.WARNING
+	)
+	val LATITUDE = MediaStore.Images.ImageColumns.LATITUDE
+
+	/**
+	 * The longitude where the image was captured.
+	 *
+	 * + "longitude"
+	 * + type: Float
+	 * + ReadOnly
+	 */
+	@Deprecated(
+		message =
+		"""
+				location details are no longer indexed for privacy
+        reasons, and this value is now always {@code null}.
+         You can still manually obtain location metadata using
+         {@link ExifInterface#getLatLong(float[])}.
+			""",
+		level = DeprecationLevel.WARNING
+	)
+	val LONGITUDE = MediaStore.Images.ImageColumns.LONGITUDE
+
+	/**
+	 * The mini thumb id.
+	 *
+	 * + "mini_thumb_magic"
+	 * + type: Int
+	 *
+	 */
+	@Deprecated(
+		message =
+		"""
+				all thumbnails should be obtained via
+        {@link MediaStore.Images.Thumbnails#getThumbnail}, as this
+         value is no longer supported.
+			""",
+		level = DeprecationLevel.WARNING
+	)
+	val MINI_THUMB_MAGIC = MediaStore.Images.ImageColumns.MINI_THUMB_MAGIC
+}
+
+internal abstract class VideoColumns : MediaColumns() {
+
+	val DEFAULT_SORT_ORDER: String = MediaStore.Video.Media.DEFAULT_SORT_ORDER
+	val INTERNAL_CONTENT_URI: Uri = MediaStore.Video.Media.INTERNAL_CONTENT_URI
+	val EXTERNAL_CONTENT_URI: Uri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+
+	/**
+	 * The artist who created the video file, if any
+	 *
+	 * + "artist"
+	 * + type: String
+	 * + ReadOnly
+	 */
+	val ARTIST = MediaStore.Video.VideoColumns.ARTIST
+
+	/**
+	 * The album the video file is from, if any
+	 *
+	 * + "album"
+	 * + type: String
+	 * + ReadOnly
+	 */
+	val ALBUM = MediaStore.Video.VideoColumns.ALBUM
+
+	/**
+	 * The resolution of the video file, formatted as "XxY"
+	 *
+	 * + "resolution"
+	 * + type: String
+	 * + ReadOnly
+	 */
+	val RESOLUTION = MediaStore.Video.VideoColumns.RESOLUTION
+
+	/**
+	 * The description of the video recording
+	 *
+	 * + "description"
+	 * + type: String
+	 * + ReadOnly
+	 */
+	val DESCRIPTION = MediaStore.Video.VideoColumns.DESCRIPTION
+
+	/**
+	 * Whether the video should be published as public or private
+	 *
+	 * + "isprivate"
+	 * + type: String
+	 */
+	val IS_PRIVATE = MediaStore.Video.VideoColumns.IS_PRIVATE
+
+	/**
+	 * The user-added tags associated with a video
+	 *
+	 * + "tags"
+	 * + type: String
+	 */
+	val TAGS = MediaStore.Video.VideoColumns.TAGS
+
+	/**
+	 * The YouTube category of the video
+	 *
+	 * + "category"
+	 * + type: String
+	 */
+	val CATEGORY = MediaStore.Video.VideoColumns.CATEGORY
+
+	/**
+	 * The language of the video
+	 *
+	 * + "language"
+	 * + type: String
+	 */
+	val LANGUAGE = MediaStore.Video.VideoColumns.LANGUAGE
+
+	/**
+	 * The latitude where the video was captured.
+	 *
+	 * + "latitude"
+	 * + type: Float
+	 * + ReadOnly
+	 */
+	@Deprecated(
+		message =
+		"""
+			location details are no longer indexed for privacy reasons,
+			and this value is now always {@code null}.
+      You can still manually obtain location metadata using {@link ExifInterface#getLatLong(float[])}.
+		""",
+		level = DeprecationLevel.WARNING
+	)
+	val LATITUDE = MediaStore.Video.VideoColumns.LATITUDE
+
+	/**
+	 * The longitude where the video was captured.
+	 *
+	 * + "longitude"
+	 * + type: Float
+	 * + ReadOnly
+	 */
+	@Deprecated(
+		message =
+		"""
+			location details are no longer indexed for privacy reasons,
+			and this value is now always {@code null}.
+      You can still manually obtain location metadata using {@link ExifInterface#getLatLong(float[])}.
+		""",
+		level = DeprecationLevel.WARNING
+	)
+	val LONGITUDE = MediaStore.Video.VideoColumns.LONGITUDE
+
+	/**
+	 * The mini thumb id.
+	 *
+	 * + "mini_thumb_magic"
+	 * + type: Int
+	 */
+	@Deprecated(
+		message =
+		"""
+			all thumbnails should be obtained via {@link MediaStore.Images.Thumbnails#getThumbnail},
+			as this value is no longer supported.
+		""",
+		level = DeprecationLevel.WARNING
+	)
+	val MINI_THUMB_MAGIC = MediaStore.Video.VideoColumns.MINI_THUMB_MAGIC
+
+	/**
+	 * The position within the video item at which playback should be
+	 * resumed.
+	 *
+	 * + "bookmark"
+	 * + type: Int
+	 */
+	@TimeUnitValue(TimeUnit.MILLISECONDS)
+	val BOOKMARK = MediaStore.Video.VideoColumns.BOOKMARK
+
+	/**
+	 * The standard of color aspects
+	 *
+	 * + "color_standard"
+	 * + type: Int
+	 * + ReadOnly
+	 * @hide
+	 */
+	protected val COLOR_STANDARD = "color_standard"
+
+	/**
+	 * The transfer of color aspects
+	 *
+	 * + "color_transfer"
+	 * + type: Int
+	 * +ReadOnly
+	 * @hide
+	 */
+	protected val COLOR_TRANSFER = "color_transfer"
+
+	/**
+	 * The range of color aspects
+	 *
+	 * + "color_range"
+	 * + type: Int
+	 * + ReadOnly
+	 * @hide
+	 */
+	protected val COLOR_RANGE = "color_range"
+
+	companion object : VideoColumns() {
+		// convenient reference
+	}
 }

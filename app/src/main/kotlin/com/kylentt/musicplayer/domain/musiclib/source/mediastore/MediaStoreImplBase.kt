@@ -15,6 +15,7 @@ import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
 import com.kylentt.musicplayer.domain.musiclib.audiofile.AudioFileInfo
 import com.kylentt.musicplayer.domain.musiclib.audiofile.AudioFileMetadata
 import com.kylentt.musicplayer.domain.musiclib.entity.AudioEntity
+import com.kylentt.musicplayer.domain.musiclib.source.mediastore.api28.AudioColumns
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 
@@ -74,7 +75,7 @@ internal abstract class MediaStoreImplBase(private val context: Context) {
 		try {
 			context.contentResolver.query(
 				/* uri = */
-				MediaStoreInfo.Audio.EXTERNAL_CONTENT_URI,
+				AudioColumns.EXTERNAL_CONTENT_URI,
 				/* projection = */
 				projector,
 				/* selection = */

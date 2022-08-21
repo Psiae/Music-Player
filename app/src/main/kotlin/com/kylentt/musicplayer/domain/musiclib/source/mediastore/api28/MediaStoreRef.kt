@@ -2,10 +2,14 @@ package com.kylentt.musicplayer.domain.musiclib.source.mediastore.api28
 
 import android.content.ContentResolver
 import android.os.Build
+import android.provider.DocumentsProvider
 import android.provider.MediaStore
 import androidx.annotation.RequiresApi
+import androidx.core.content.FileProvider
 import com.kylentt.musicplayer.domain.musiclib.annotation.TimeUnitValue
 import com.kylentt.musicplayer.domain.musiclib.source.mediastore.api1.BaseColumns
+import java.io.FileInputStream
+import java.nio.channels.FileChannel
 import java.util.concurrent.TimeUnit
 
 /**

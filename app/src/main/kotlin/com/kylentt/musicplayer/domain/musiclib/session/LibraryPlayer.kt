@@ -14,6 +14,9 @@ class LibraryPlayer(private val agent: LibraryAgent) {
 	val position: Long
 		get() = wrapper.position
 
+	val bufferedPosition: Long
+		get() = wrapper.bufferedPosition
+
 	val duration: Long
 		get() = wrapper.duration
 

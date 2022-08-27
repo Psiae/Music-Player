@@ -19,6 +19,7 @@ class MusicSession(private val agent: LibraryAgent) {
 
 		private val mPlaybackPosition = MutableStateFlow(0L)
 		private val mPlaybackDuration = MutableStateFlow(0L)
+		private val mPlaybackBufferedPosition = MutableStateFlow(0L)
 
 		private var positionCollectorJob = collectPosition()
 
@@ -27,6 +28,9 @@ class MusicSession(private val agent: LibraryAgent) {
 
 		override val playbackPosition: StateFlow<Long>
 			get() = mPlaybackPosition
+
+		override val playbackBufferedPosition: StateFlow<Long>
+			get() = mPlaybackBufferedPosition
 
 		private val playerListener = object : Player.Listener {
 			override fun onPositionDiscontinuity(
@@ -50,8 +54,8 @@ class MusicSession(private val agent: LibraryAgent) {
 
 		private fun collectPosition() = mainScope.launch {
 			while (isActive) {
-				val pos = player.position.clamp(0L, playbackState.value.duration)
-				mPlaybackPosition.value = pos
+				mPlaybackPosition.value = player.position.clamp(0L, playbackState.value.duration)
+				mPlaybackBufferedPosition.value = player.bufferedPosition.clamp(0L, playbackState.value.duration)
 				delay(1000)
 			}
 		}
@@ -60,5 +64,6 @@ class MusicSession(private val agent: LibraryAgent) {
 	interface SessionInfo {
 		val playbackState: StateFlow<PlaybackState>
 		val playbackPosition: StateFlow<Long>
+		val playbackBufferedPosition: StateFlow<Long>
 	}
 }

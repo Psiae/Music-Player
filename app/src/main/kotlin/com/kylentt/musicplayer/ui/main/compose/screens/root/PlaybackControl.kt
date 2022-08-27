@@ -11,7 +11,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
@@ -21,7 +20,6 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -29,6 +27,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.MediaItem
 import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
+import coil.request.CachePolicy
 import coil.request.ImageRequest
 import com.google.accompanist.placeholder.placeholder
 import com.kylentt.mediaplayer.domain.viewmodels.MainViewModel
@@ -144,6 +143,7 @@ private fun PlaybackControlBox(
 						ImageRequest.Builder(context)
 							.crossfade(true)
 							.data(art)
+							.memoryCachePolicy(CachePolicy.ENABLED)
 							.build()
 					}
 
@@ -230,44 +230,56 @@ private fun PlaybackControlBox(
 
 			ProgressIndicator(
 				position = model.playbackPosition.value.toFloat(),
+				bufferedPosition = model.bufferedPosition.value.toFloat(),
 				duration = model.playbackDuration.value.toFloat(),
-				buffering = model.buffering.value,
+				loading = model.loading.value
 			) {
-				model.checkBufferingState()
+				model.checkLoadingState()
 			}
 		}
 	}
 }
 
 @Composable
-private fun ProgressIndicator(position: Float, duration: Float, buffering: Boolean, checkBuffering: () -> Boolean) {
+private fun ProgressIndicator(
+	position: Float,
+	bufferedPosition: Float,
+	duration: Float,
+	loading: Boolean,
+	checkLoadingState: () -> Boolean
+) {
+
 	Timber.d(
 		message = """
-			ProgressIndicator got pos: $position,
+			ProgressIndicator got pos: $position, bufferedPos: $bufferedPosition
 			duration: $duration,
-			buffering: $buffering
+			loading: $loading
 		"""
 	)
 
-	if (buffering) {
+	val darkTheme = isSystemInDarkTheme()
+	val surfaceVariant = MaterialTheme.colorScheme.surfaceVariant
+
+	if (loading) {
 
 		LinearProgressIndicator(
 			modifier = Modifier
 				.fillMaxWidth()
 				.heightIn(max = 2.dp),
 			trackColor = MaterialTheme.colorScheme.surfaceVariant,
-			color = if (isSystemInDarkTheme()) Color.White else Color.Black,
+			color = if (darkTheme) Color.White else Color.Black,
 			duration = 850 + 333 + 200 + 533,
 			secondLineHeadDelay = 850 + 333,
 			secondLineTailDuration = 533,
 			secondLineTailDelay = 850 + 333 + 300,
-			onTraverse = checkBuffering
+			continueTraverse = checkLoadingState
 		)
 
 	} else {
 
 		val progress by animateFloatAsState(
-			targetValue = if (position == 0f || duration == 0f || position > duration) 0f else position / duration
+			targetValue = if (position == 0f || duration == 0f || position > duration) 0f else position / duration,
+			animationSpec = tween(100)
 		)
 
 		LinearProgressIndicator(
@@ -275,18 +287,43 @@ private fun ProgressIndicator(position: Float, duration: Float, buffering: Boole
 				.fillMaxWidth()
 				.heightIn(max = 2.dp),
 			trackColor = MaterialTheme.colorScheme.surfaceVariant,
-			color = if (isSystemInDarkTheme()) Color.White else Color.Black,
+			color = if (darkTheme) Color.White else Color.Black,
 			progress = progress.clamp(0f, 1f)
 		)
 	}
 
+	val bufferedProgress by animateFloatAsState(
+		targetValue = when {
+			bufferedPosition == 0f || duration == 0f -> 0f
+			bufferedPosition > duration -> duration
+			else -> bufferedPosition / duration
+		},
+		animationSpec = tween(100)
+	)
 
+	val bufferProgressColor = remember {
+		(if (darkTheme) Color.White else Color.Black).copy(alpha = 0.25f)
+	}
+
+	val bufferProgressTrackColor = remember {
+		surfaceVariant.copy(alpha = 0.25f)
+	}
+
+	LinearProgressIndicator(
+		modifier = Modifier
+			.fillMaxWidth()
+			.heightIn(max = 2.dp),
+		trackColor = bufferProgressTrackColor,
+		color = bufferProgressColor,
+		progress = bufferedProgress.clamp(0f, 1f)
+	)
 }
 
 // Use ViewModel instead
 class PlaybackControlModel() {
 
 	private val mBuffering = mutableStateOf<Boolean>(value = false)
+	private val mBufferedPosition = mutableStateOf<Long>(0)
 
 	private var mShowSelf = mutableStateOf<Boolean>(false)
 	private val mArt = mutableStateOf<Any?>(null)
@@ -301,8 +338,13 @@ class PlaybackControlModel() {
 	private val mPlaybackTitle = mutableStateOf<String>("")
 	private val mPlaybackArtist = mutableStateOf<String>("")
 
+	private val mLoading = mutableStateOf(false)
+
 	val buffering: State<Boolean>
 		get() = mBuffering
+
+	val bufferedPosition: State<Long>
+		get() = mBufferedPosition
 
 	val playbackArtist: State<String>
 		get() = mPlaybackArtist
@@ -331,6 +373,9 @@ class PlaybackControlModel() {
 	val art: State<Any?>
 		get() = mArt
 
+	val loading: State<Boolean>
+		get() = mLoading
+
 
 	object NO_ART
 
@@ -353,24 +398,42 @@ class PlaybackControlModel() {
 	}
 
 	private var qBufferingState = false
+	private var qLoadingState = false
 
 	suspend fun updateIsBuffering(buffering: Boolean) {
 		qBufferingState = buffering
-		if (!waitAnimation()) mBuffering.value = qBufferingState
+		if (!waitBufferingAnimation()) mBuffering.value = qBufferingState
 	}
-	fun updatePosition(duration: Long) {
-		mPlaybackPosition.value = duration
+	fun updatePosition(position: Long) {
+		mPlaybackPosition.value = position
 	}
 
-	val scope = CoroutineScope(Dispatchers.Main)
+	fun updateBufferedPosition(bufferedPosition: Long) {
+		mBufferedPosition.value = bufferedPosition
+		updateLoadingState(bufferedPosition)
+	}
+
+	fun updateLoadingState(bufferedPosition: Long) {
+		qLoadingState = bufferedPosition == 0L
+		if (!waitLoadingAnimation()) mLoading.value = qLoadingState
+	}
 
 	fun checkBufferingState(): Boolean {
 		mBuffering.value = qBufferingState
 		return qBufferingState
 	}
 
-	private fun waitAnimation(): Boolean {
+	fun checkLoadingState(): Boolean {
+		mLoading.value = qLoadingState
+		return mLoading.value
+	}
+
+	private fun waitBufferingAnimation(): Boolean {
 		return mBuffering.value
+	}
+
+	private fun waitLoadingAnimation(): Boolean {
+		return mLoading.value
 	}
 
 	suspend fun updateArt(bitmap: Bitmap?) {

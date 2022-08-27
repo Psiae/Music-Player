@@ -41,6 +41,9 @@ internal class MediaControllerWrapper(private val context: Context) {
 	val position: Long
 		get() = maybeControllerValue(-1L) { controller -> controller.currentPosition }
 
+	val bufferedPosition: Long
+		get() = maybeControllerValue(-1) { controller -> controller.bufferedPosition }
+
 	val currentMediaItem: MediaItem?
 		get() = maybeControllerValue(null) { controller -> controller.currentMediaItem }
 

@@ -102,7 +102,7 @@ fun LinearProgressIndicator(
 	secondLineHeadDuration: Int = SecondLineHeadDuration,
 	secondLineTailDelay: Int = SecondLineTailDelay,
 	secondLineTailDuration: Int = SecondLineTailDuration,
-	onTraverse: () -> Boolean
+	continueTraverse: () -> Boolean
 ) {
 	val infiniteTransition = rememberInfiniteTransition()
 	// Fractional position of the 'head' and 'tail' of the two lines drawn, i.e. if the head is 0.8
@@ -167,7 +167,7 @@ fun LinearProgressIndicator(
 	val secondTraverse = secondLineHeadState == secondLineHeadTailState
 
 	val draw = remember(key1 = firstTraverse, key2 = secondTraverse) {
-		if (firstTraverse || secondTraverse) onTraverse() else true
+		if (firstTraverse || secondTraverse) continueTraverse() else true
 	}
 
 	Canvas(

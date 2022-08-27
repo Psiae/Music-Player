@@ -27,13 +27,16 @@ android {
     }
 
     buildTypes {
+
         release {
             isMinifyEnabled = true
             isDebuggable = false
+            resValue(type = "string", name = "app_name", "MusicPlayer")
         }
         debug {
             isMinifyEnabled = false
             isDebuggable = true
+            resValue(type = "string", name = "app_name", "MusicPlayer_Debug")
         }
     }
 

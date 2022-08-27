@@ -1,9 +1,8 @@
 package com.kylentt.musicplayer.domain.musiclib.annotation
 
 @Target(AnnotationTarget.PROPERTY, AnnotationTarget.PROPERTY_GETTER)
-annotation class StorageDataUnitValue(val unit: DataStorageUnit)
-
-enum class DataStorageUnit {
+annotation class StorageDataValue(val unit: StorageDataUnit)
+enum class StorageDataUnit {
 	BIT,
 	BYTE,
 	KB,

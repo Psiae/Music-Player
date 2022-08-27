@@ -28,7 +28,7 @@ fun MainMaterial3Theme(
 		with(rememberSystemUiController()) {
 
 			setNavigationBarColor(
-				color = Color.Transparent,
+				color = MaterialTheme.colorScheme.surface.copy(alpha = 0.01f),
 				navigationBarContrastEnforced = true,
 				darkIcons = !darkTheme
 			)

@@ -1,11 +1,11 @@
-package com.kylentt.musicplayer.domain.musiclib.source.mediastore.api1
+package com.kylentt.musicplayer.domain.musiclib.source.mediastore.base
 
 internal abstract class BaseColumns {
 	/**
 	 * The unique ID for a row.
 	 *
 	 * "_id"
-	 * Type: Long
+	 * type: Long
 	 */
 	val _ID: String = android.provider.BaseColumns._ID
 
@@ -13,7 +13,7 @@ internal abstract class BaseColumns {
 	 * The count of rows in a directory.
 	 *
 	 * "_count"
-	 * Type: Int
+	 * type: Int
 	 */
 	val _Count: String = android.provider.BaseColumns._COUNT
 

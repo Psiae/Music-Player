@@ -13,8 +13,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -22,9 +22,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.ExperimentalTextApi
-import androidx.compose.ui.text.PlatformSpanStyle
-import androidx.compose.ui.text.PlatformTextStyle
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -40,6 +37,7 @@ import com.kylentt.musicplayer.R
 import com.kylentt.musicplayer.common.kotlin.comparable.clamp
 import com.kylentt.musicplayer.domain.musiclib.entity.PlaybackState
 import com.kylentt.musicplayer.domain.musiclib.entity.PlaybackState.Companion.isEmpty
+import com.kylentt.musicplayer.ui.common.compose.LinearProgressIndicator
 import com.kylentt.musicplayer.ui.util.compose.NoRipple
 import kotlinx.coroutines.*
 import timber.log.Timber
@@ -86,7 +84,7 @@ fun PlaybackControl(model: PlaybackControlModel, bottomOffset: Dp) {
 	}
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class, ExperimentalTextApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PlaybackControlBox(
 	model: PlaybackControlModel,
@@ -109,7 +107,9 @@ private fun PlaybackControlBox(
 				getVibrantColor(getLightMutedColor(getDominantColor(-1)))
 			}
 		} ?: -1
-		if (int != -1) Color(int) else defaultCardBackgroundColor
+
+		val color = if (int != -1) Color(int) else defaultCardBackgroundColor
+		color.copy(alpha = 0.5f).compositeOver(defaultCardBackgroundColor)
 	}
 
 	Card(
@@ -227,33 +227,66 @@ private fun PlaybackControlBox(
 					)
 				}
 			}
+
 			ProgressIndicator(
 				position = model.playbackPosition.value.toFloat(),
-				duration = model.playbackDuration.value.toFloat()
-			)
+				duration = model.playbackDuration.value.toFloat(),
+				buffering = model.buffering.value,
+			) {
+				model.checkBufferingState()
+			}
 		}
 	}
 }
 
 @Composable
-private fun ProgressIndicator(position: Float, duration: Float) {
-	Timber.d("ProgressIndicator got pos: $position, duration: $duration")
-
-	val progress =
-		if (position == 0f || duration == 0f || position > duration) 0f else position / duration
-
-	LinearProgressIndicator(
-		modifier = Modifier
-			.fillMaxWidth()
-			.height(2.dp),
-		progress = progress.clamp(0f, 1f),
-		trackColor = MaterialTheme.colorScheme.surfaceVariant,
-		color = if (isSystemInDarkTheme()) Color.White else Color.Black
+private fun ProgressIndicator(position: Float, duration: Float, buffering: Boolean, checkBuffering: () -> Boolean) {
+	Timber.d(
+		message = """
+			ProgressIndicator got pos: $position,
+			duration: $duration,
+			buffering: $buffering
+		"""
 	)
+
+	if (buffering) {
+
+		LinearProgressIndicator(
+			modifier = Modifier
+				.fillMaxWidth()
+				.heightIn(max = 2.dp),
+			trackColor = MaterialTheme.colorScheme.surfaceVariant,
+			color = if (isSystemInDarkTheme()) Color.White else Color.Black,
+			duration = 850 + 333 + 200 + 533,
+			secondLineHeadDelay = 850 + 333,
+			secondLineTailDuration = 533,
+			secondLineTailDelay = 850 + 333 + 300,
+			onTraverse = checkBuffering
+		)
+
+	} else {
+
+		val progress by animateFloatAsState(
+			targetValue = if (position == 0f || duration == 0f || position > duration) 0f else position / duration
+		)
+
+		LinearProgressIndicator(
+			modifier = Modifier
+				.fillMaxWidth()
+				.heightIn(max = 2.dp),
+			trackColor = MaterialTheme.colorScheme.surfaceVariant,
+			color = if (isSystemInDarkTheme()) Color.White else Color.Black,
+			progress = progress.clamp(0f, 1f)
+		)
+	}
+
+
 }
 
 // Use ViewModel instead
 class PlaybackControlModel() {
+
+	private val mBuffering = mutableStateOf<Boolean>(value = false)
 
 	private var mShowSelf = mutableStateOf<Boolean>(false)
 	private val mArt = mutableStateOf<Any?>(null)
@@ -267,6 +300,9 @@ class PlaybackControlModel() {
 
 	private val mPlaybackTitle = mutableStateOf<String>("")
 	private val mPlaybackArtist = mutableStateOf<String>("")
+
+	val buffering: State<Boolean>
+		get() = mBuffering
 
 	val playbackArtist: State<String>
 		get() = mPlaybackArtist
@@ -311,13 +347,30 @@ class PlaybackControlModel() {
 		mPlaybackTitle.value = (metadata.title ?: metadata.albumTitle ?: "").toString()
 		mPlaybackArtist.value = (metadata.artist ?: metadata.albumArtist ?: "").toString()
 		mPlaybackDuration.value = state.duration
-		mShowPlay.value = !state.playing || !state.playWhenReady
 		mPlayAvailable.value = !state.playWhenReady
+		mShowPlay.value = !state.playing || !state.playWhenReady
 		mShowSelf.value = !state.isEmpty && state.mediaItem !== MediaItem.EMPTY
 	}
 
+	private var qBufferingState = false
+
+	suspend fun updateIsBuffering(buffering: Boolean) {
+		qBufferingState = buffering
+		if (!waitAnimation()) mBuffering.value = qBufferingState
+	}
 	fun updatePosition(duration: Long) {
 		mPlaybackPosition.value = duration
+	}
+
+	val scope = CoroutineScope(Dispatchers.Main)
+
+	fun checkBufferingState(): Boolean {
+		mBuffering.value = qBufferingState
+		return qBufferingState
+	}
+
+	private fun waitAnimation(): Boolean {
+		return mBuffering.value
 	}
 
 	suspend fun updateArt(bitmap: Bitmap?) {

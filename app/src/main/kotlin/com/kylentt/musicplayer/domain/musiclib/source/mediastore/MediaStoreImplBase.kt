@@ -6,6 +6,7 @@ import android.content.Context
 import android.database.Cursor
 import android.net.Uri
 import android.provider.BaseColumns
+import android.provider.MediaStore
 import android.provider.MediaStore.Images.ImageColumns
 import android.provider.MediaStore.MediaColumns
 import com.kylentt.musicplayer.BuildConfig
@@ -15,7 +16,6 @@ import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
 import com.kylentt.musicplayer.domain.musiclib.audiofile.AudioFileInfo
 import com.kylentt.musicplayer.domain.musiclib.audiofile.AudioFileMetadata
 import com.kylentt.musicplayer.domain.musiclib.entity.AudioEntity
-import com.kylentt.musicplayer.domain.musiclib.source.mediastore.api28.AudioColumns
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 
@@ -75,7 +75,7 @@ internal abstract class MediaStoreImplBase(private val context: Context) {
 		try {
 			context.contentResolver.query(
 				/* uri = */
-				AudioColumns.EXTERNAL_CONTENT_URI,
+				MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
 				/* projection = */
 				projector,
 				/* selection = */
@@ -92,7 +92,7 @@ internal abstract class MediaStoreImplBase(private val context: Context) {
 						val id = cursor.getColumnIndex(BaseColumns._ID).takeIf { it != -1 }
 							?.let { cursor.getLong(it) }.toString()
 
-						val uri = ContentUris.withAppendedId(MediaStoreInfo.Audio.EXTERNAL_CONTENT_URI, id.toLong())
+						val uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id.toLong())
 
 						val fileInfoBuilder = AudioFileInfo.Builder()
 

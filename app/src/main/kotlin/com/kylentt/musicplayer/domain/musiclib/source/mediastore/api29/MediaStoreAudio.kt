@@ -5,7 +5,7 @@ import android.net.Uri
 // TODO
 
 data class MediaStoreAudioEntity29(
-	val id: String,
+	val id: Long,
 	val uri: Uri,
 	val file: MediaStoreAudioFile29,
 	val metadata: MediaStoreAudioMetadata29

@@ -11,6 +11,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.kylentt.mediaplayer.domain.viewmodels.MainViewModel
 import com.kylentt.mediaplayer.domain.viewmodels.MediaViewModel
 import com.kylentt.mediaplayer.helper.external.IntentWrapper
+import com.kylentt.musicplayer.R
 import com.kylentt.musicplayer.common.android.activity.disableWindowDecorFitSystemInsets
 import com.kylentt.musicplayer.common.android.context.ContextInfo
 import com.kylentt.musicplayer.common.android.intent.isActionMain
@@ -56,6 +57,8 @@ class MainActivity : ComponentActivity() {
 		setContent {
 			ComposeContent()
 		}
+
+		getString(R.string.app_name)
 
 		return dispatchEvent(MainEvent.Create)
 	}

@@ -14,22 +14,22 @@ internal class MediaStoreImpl29(private val context: Context) : MediaStoreImplBa
 	override val contextInfo: ContextInfo = super.contextInfo
 
 	override val audioEntityQueryProjector = arrayOf(
-		MediaColumns._ID
+		MediaStore29.MediaColumns._ID
 	)
 
 	override val audioFileInfoProjector = arrayOf(
-		MediaColumns.DATA,
-		MediaColumns.DATE_ADDED,
-		MediaColumns.DATE_MODIFIED,
-		MediaColumns.DISPLAY_NAME,
-		MediaColumns.MIME_TYPE,
-		MediaColumns.SIZE
+		MediaStore29.Files.FileColumns.DATA,
+		MediaStore29.Files.FileColumns.DATE_ADDED,
+		MediaStore29.Files.FileColumns.DATE_MODIFIED,
+		MediaStore29.Files.FileColumns.DISPLAY_NAME,
+		MediaStore29.Files.FileColumns.MIME_TYPE,
+		MediaStore29.Files.FileColumns.SIZE
 	)
 
 	override val audioEntityMetadataInfoProjector: Array<String> = arrayOf(
-		AudioColumns.ARTIST,
-		AudioColumns.ALBUM,
-		AudioColumns.DURATION,
-		AudioColumns.TITLE,
+		MediaStore29.Audio.AudioColumns.ARTIST,
+		MediaStore29.Audio.AudioColumns.ALBUM,
+		MediaStore29.Audio.AudioColumns.DURATION,
+		MediaStore29.Audio.AudioColumns.TITLE,
 	)
 }

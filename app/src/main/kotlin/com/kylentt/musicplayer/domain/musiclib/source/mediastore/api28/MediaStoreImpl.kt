@@ -2,30 +2,27 @@ package com.kylentt.musicplayer.domain.musiclib.source.mediastore.api28
 
 import android.content.Context
 import com.kylentt.musicplayer.domain.musiclib.source.mediastore.MediaStoreImplBase
-import com.kylentt.musicplayer.domain.musiclib.source.mediastore.api1.BaseColumns
+import com.kylentt.musicplayer.domain.musiclib.source.mediastore.base.BaseColumns
 
 internal class MediaStoreImpl28(private val context: Context) : MediaStoreImplBase(context) {
-	override val audioEntityQueryProjector: Array<String> by lazy {
-		arrayOf(BaseColumns._ID)
-	}
 
-	override val audioFileInfoProjector: Array<String> by lazy {
-		arrayOf(
-			FileColumns.DATA,
-			FileColumns.DATE_ADDED,
-			FileColumns.DATE_MODIFIED,
-			FileColumns.DISPLAY_NAME,
-			FileColumns.MIME_TYPE,
-			FileColumns.SIZE
-		)
-	}
+	override val audioEntityQueryProjector: Array<String> = arrayOf(
+		BaseColumns._ID
+	)
 
-	override val audioEntityMetadataInfoProjector: Array<String> by lazy {
-		arrayOf(
-			AudioColumns.ALBUM,
-			AudioColumns.ARTIST,
-			AudioColumns.DURATION,
-			AudioColumns.TITLE
-		)
-	}
+	override val audioFileInfoProjector: Array<String> = arrayOf(
+		MediaStore28.Files.FileColumns.DATA,
+		MediaStore28.Files.FileColumns.DATE_ADDED,
+		MediaStore28.Files.FileColumns.DATE_MODIFIED,
+		MediaStore28.Files.FileColumns.DISPLAY_NAME,
+		MediaStore28.Files.FileColumns.MIME_TYPE,
+		MediaStore28.Files.FileColumns.SIZE
+	)
+
+	override val audioEntityMetadataInfoProjector: Array<String> = arrayOf(
+		MediaStore28.Audio.AudioColumns.ALBUM,
+		MediaStore28.Audio.AudioColumns.ARTIST,
+		MediaStore28.Audio.AudioColumns.DURATION,
+		MediaStore28.Audio.AudioColumns.TITLE
+	)
 }

@@ -3,7 +3,7 @@ package com.kylentt.musicplayer.domain.musiclib.service.manager
 import android.app.Notification
 import androidx.media3.common.Player
 import androidx.media3.session.MediaSession
-import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.isOngoing
+import com.kylentt.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isOngoing
 import com.kylentt.musicplayer.domain.musiclib.service.MusicLibraryService
 import com.kylentt.musicplayer.ui.main.MainActivity
 import com.kylentt.musicplayer.ui.main.MainActivity.MainState.Created.isAlive

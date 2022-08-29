@@ -1,4 +1,4 @@
-package com.kylentt.musicplayer.domain.musiclib.core.exoplayer
+package com.kylentt.musicplayer.domain.musiclib.player.exoplayer
 
 import com.kylentt.musicplayer.common.kotlin.comparable.clamp
 

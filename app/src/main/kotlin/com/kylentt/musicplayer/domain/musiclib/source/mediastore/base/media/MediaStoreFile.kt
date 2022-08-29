@@ -1,17 +1,13 @@
 package com.kylentt.musicplayer.domain.musiclib.source.mediastore.base.media
 
-import android.content.ContentResolver
 import android.provider.MediaStore
-import android.webkit.MimeTypeMap
-import com.kylentt.musicplayer.domain.musiclib.annotation.TimeUnitValue
-import com.kylentt.musicplayer.domain.musiclib.annotation.Experimental
 import com.kylentt.musicplayer.domain.musiclib.annotation.StorageDataUnit
 import com.kylentt.musicplayer.domain.musiclib.annotation.StorageDataValue
+import com.kylentt.musicplayer.domain.musiclib.annotation.TimeUnitValue
 import java.util.concurrent.TimeUnit
 
 /**
- * [GoogleSource](https://android.googlesource.com/platform/frameworks/base/+/refs/tags/android-7.0.0_r36/core/java/android/provider/MediaStore.java)
- * #546
+ * [GoogleSource](https://android.googlesource.com/platform/frameworks/base/+/refs/tags/android-7.0.0_r36/core/java/android/provider/MediaStore.java#471)
  */
 
 abstract class MediaStoreFile {
@@ -98,25 +94,4 @@ abstract class MediaStoreFile {
 	 */
 	@StorageDataValue(StorageDataUnit.BYTE)
 	abstract val size: Long
-
-	//
-	//	Undefined
-	//
-
-	/**
-	 * the actual file-extension of the file.
-	 *
-	 * Does Not actually defined in any [MediaStore] columns, however we can implicitly get it
-	 * by using [mimeType] or we can also substring either [fileNameWithExtension] or [absolutePath].
-	 *
-	 *
-	 * We can also find it by traversing the file, but our source of information should only be
-	 * [MediaStore], accuracy however takes priority so we might need to include internal
-	 * file resolver implementation for this kind of use case, marked as @Experimental for now
-	 *
-	 * @see [ContentResolver.getType]
-	 * @see [MimeTypeMap.getExtensionFromMimeType]
-	 */
-	@Experimental
-	abstract val fileExtension: String
 }

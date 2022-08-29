@@ -2,6 +2,7 @@ package com.kylentt.musicplayer.domain.musiclib.source.mediastore.api30
 
 import android.content.ContentResolver
 import android.media.ExifInterface
+import android.media.MediaFormat
 import android.media.MediaMetadataRetriever
 import android.os.Build
 import android.os.Environment
@@ -63,7 +64,7 @@ internal object MediaStore30 {
 			Apps may not have filesystem permissions to directly access this path.
 			Instead of trying to open this path directly,
 			apps should use {@link ContentResolver#openFileDescriptor(Uri, String)} to gain access.
-		""",
+			""",
 			level = DeprecationLevel.WARNING
 		)
 		val DATA = MediaStore.MediaColumns.DATA
@@ -153,7 +154,6 @@ internal object MediaStore30 {
 		 * This is a read-only column that is automatically computed.
 		 *
 		 * // METADATA_KEY_MIMETYPE is MIME_TYPE
-		 * // Promoted from FileColumns
 		 *
 		 * + "mime_type"
 		 * + type: String
@@ -751,6 +751,15 @@ internal object MediaStore30 {
 		 */
 
 		abstract class FileColumns : MediaColumns() {
+			// Promoted to MediaColumns:
+			/*
+				TITLE
+				DATE_TAKEN
+				ORIENTATION
+				BUCKET_ID
+				BUCKET_DISPLAY_NAME
+				GROUP_ID
+			*/
 
 			/**
 			 * The MTP storage ID of the file
@@ -1070,6 +1079,13 @@ internal object MediaStore30 {
 		 * Audio metadata columns.
 		 */
 		abstract class AudioColumns : MediaColumns() {
+			// Promoted to MediaColumns
+			/*
+				DURATION
+				ARTIST
+				COMPOSER
+				ALBUM
+			*/
 
 			/**
 			 * A non human readable key calculated from the TITLE, used for
@@ -1285,25 +1301,434 @@ internal object MediaStore30 {
 			 */
 			val TITLE_RESOURCE_URI = MediaStore.Audio.AudioColumns.TITLE_RESOURCE_URI
 
-			/**
-			 * Audio genre metadata columns.
-			 */
-			abstract class GenresColumns {
+			object Genres {
+
+				val DEFAULT_SORT_ORDER = MediaStore.Audio.Genres.DEFAULT_SORT_ORDER
+				val EXTERNAL_CONTENT_URI = MediaStore.Audio.Genres.EXTERNAL_CONTENT_URI
+				val INTERNAL_CONTENT_URI = MediaStore.Audio.Genres.INTERNAL_CONTENT_URI
+
 				/**
-				 * The name of the genre
-				 * + "name"
-				 * + type: String
+				 * Audio genre metadata columns.
 				 */
-				val NAME = MediaStore.Audio.GenresColumns.NAME
 
-				companion object : GenresColumns() {
-					// convenient reference
+				abstract class GenresColumns {
+					/**
+					 * The name of the genre
+					 * + "name"
+					 * + type: String
+					 */
+					val NAME = MediaStore.Audio.GenresColumns.NAME
+
+					companion object : GenresColumns() {
+						// convenient reference
+					}
+
 				}
-
 			}
 
+			object Playlists {
+
+				val DEFAULT_SORT_ORDER = MediaStore.Audio.Playlists.DEFAULT_SORT_ORDER
+				val EXTERNAL_CONTENT_URI = MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI
+				val INTERNAL_CONTENT_URI = MediaStore.Audio.Playlists.INTERNAL_CONTENT_URI
+
+				/**
+				 * Audio playlist metadata columns.
+				 */
+
+				abstract class PlaylistsColumns : MediaColumns() {
+					/**
+					 * The name of the playlist
+					 *
+					 * + "name"
+					 * + type: String
+					 */
+					val NAME = MediaStore.Audio.PlaylistsColumns.NAME
+
+					companion object : MediaColumns() {
+						// convenient reference
+					}
+
+				}
+			}
+
+			object Artist {
+
+				val DEFAULT_SORT_ORDER = MediaStore.Audio.Artists.DEFAULT_SORT_ORDER
+				val EXTERNAL_CONTENT_URI = MediaStore.Audio.Artists.EXTERNAL_CONTENT_URI
+				val INTERNAL_CONTENT_URI = MediaStore.Audio.Artists.INTERNAL_CONTENT_URI
+
+				abstract class ArtistsColumns : MediaColumns() {
+					/**
+					 * A non human readable key calculated from the ARTIST, used for
+					 * searching, sorting and grouping
+					 *
+					 * + "artist_key"
+					 * + type: String
+					 * + ReadOnly
+					 *
+					 * @see MediaStore.Audio.keyFor
+					 */
+					@Deprecated(
+						message =
+						"""
+							These keys are generated using java.util.Locale#ROOT,	which means they don't reflect
+							locale-specific sorting preferences. To apply locale-specific sorting preferences, use
+							ContentResolver#QUERY_ARG_SQL_SORT_ORDER with COLLATE LOCALIZED, or
+              ContentResolver#QUERY_ARG_SORT_LOCALE.
+						""",
+						level = DeprecationLevel.WARNING
+					)
+					val ARTIST_KEY = MediaStore.Audio.ArtistColumns.ARTIST_KEY
+
+					/**
+					 * The number of albums in the database for this artist
+					 *
+					 * + "number_of_albums"
+					 * + type: Int
+					 * + ReadOnly
+					 */
+					val NUMBER_OF_ALBUMS = MediaStore.Audio.ArtistColumns.NUMBER_OF_ALBUMS
+
+					/**
+					 * The number of albums in the database for this artist
+					 *
+					 * + "number_of_tracks"
+					 * + type: Int
+					 * + ReadOnly
+					 */
+					val NUMBER_OF_TRACKS = MediaStore.Audio.ArtistColumns.NUMBER_OF_TRACKS
+
+					companion object : ArtistsColumns() {
+						// convenient reference
+					}
+
+				}
+			}
+
+			object Album {
+
+				val DEFAULT_SORT_ORDER = MediaStore.Audio.Albums.DEFAULT_SORT_ORDER
+				val EXTERNAL_CONTENT_URI = MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI
+				val INTERNAL_CONTENT_URI = MediaStore.Audio.Albums.INTERNAL_CONTENT_URI
+
+				/**
+				 * Columns representing an album
+				 */
+				abstract class AlbumColumns : MediaColumns() {
+					/**
+					 * The id for the album
+					 *
+					 * + "album_id"
+					 * + type: Int
+					 * + ReadOnly
+					 */
+					val ALBUM_ID = MediaStore.Audio.AlbumColumns.ALBUM_ID
+
+					/**
+					 * The ID of the artist whose songs appear on this album.
+					 *
+					 * + "artist_id"
+					 * + type: Int
+					 * + ReadOnly
+					 */
+					val ARTIST_ID = MediaStore.Audio.AlbumColumns.ARTIST_ID
+
+					/**
+					 * A non human readable key calculated from the ARTIST, used for
+					 * searching, sorting and grouping
+					 *
+					 * + "artist_key"
+					 * + type: String
+					 * + ReadOnly
+					 *
+					 * @see MediaStore.Audio.keyFor
+					 */
+					@Deprecated(
+						message =
+						"""
+							These keys are generated using java.util.Locale#ROOT, which means they don't reflect
+							locale-specific sorting preferences. To apply locale-specific sorting preferences, use
+              ContentResolver#QUERY_ARG_SQL_SORT_ORDER with COLLATE LOCALIZED, or
+							ContentResolver#QUERY_ARG_SORT_LOCALE.
+						""",
+						level = DeprecationLevel.WARNING
+					)
+					val ARTIST_KEY = MediaStore.Audio.AlbumColumns.ARTIST_KEY
+
+					/**
+					 * The number of songs on this album
+					 *
+					 * + "numsongs"
+					 * + type: Int
+					 * + ReadOnly
+					 */
+					val NUMBER_OF_SONGS = MediaStore.Audio.AlbumColumns.NUMBER_OF_SONGS
+
+					/**
+					 * This column is available when getting album info via artist,
+					 * and indicates the number of songs on the album by the given
+					 * artist.
+					 *
+					 * + "numsongs_by_artist"
+					 * + type: Int
+					 * + ReadOnly
+					 */
+					val NUMBER_OF_SONGS_FOR_ARTIST = MediaStore.Audio.AlbumColumns.NUMBER_OF_SONGS_FOR_ARTIST
+
+					/**
+					 * The year in which the earliest songs
+					 * on this album were released. This will often
+					 * be the same as [.LAST_YEAR], but for compilation albums
+					 * they might differ.
+					 *
+					 * + "minyear"
+					 * + type: Int
+					 * + ReadOnly
+					 */
+					val FIRST_YEAR = MediaStore.Audio.AlbumColumns.FIRST_YEAR
+
+					/**
+					 * The year in which the latest songs
+					 * on this album were released. This will often
+					 * be the same as [.FIRST_YEAR], but for compilation albums
+					 * they might differ.
+					 *
+					 * + "maxyear"
+					 * + type: Int
+					 * + ReadOnly
+					 */
+					val LAST_YEAR = MediaStore.Audio.AlbumColumns.LAST_YEAR
+
+					/**
+					 * A non human readable key calculated from the ALBUM, used for
+					 * searching, sorting and grouping
+					 *
+					 * + "album_key"
+					 * + type: String
+					 * + ReadOnly
+					 *
+					 * @see MediaStore.Audio.keyFor
+					 */
+					@Deprecated(
+						message =
+						"""
+							These keys are generated using java.util.Locale#ROOT, which means they don't reflect
+							locale-specific sorting preferences. To apply locale-specific sorting preferences, use
+              ContentResolver#QUERY_ARG_SQL_SORT_ORDER with COLLATE LOCALIZED, or
+							ContentResolver#QUERY_ARG_SORT_LOCALE.
+						""",
+						level = DeprecationLevel.WARNING
+					)
+					val ALBUM_KEY = MediaStore.Audio.AlbumColumns.ALBUM_KEY
+
+					/**
+					 * Cached album art.
+					 *
+					 * + "album_art"
+					 * + type: String
+					 *
+					 */
+					@Deprecated(
+						message =
+						"""
+							Apps may not have filesystem permissions to directly access this path.
+							Instead of trying to open this path directly, apps should use
+							ContentResolver#loadThumbnail to gain access.
+						""",
+						level = DeprecationLevel.WARNING
+					)
+					val ALBUM_ART = MediaStore.Audio.AlbumColumns.ALBUM_ART
+
+					companion object : AlbumColumns() {
+						// convenient reference
+					}
+
+				}
+			}
 
 			companion object : AudioColumns() {
+				// convenient reference
+			}
+
+		}
+	}
+
+	/**
+	 * Collection of all media with MIME type of
+	 * ```
+	 * audio/`*`
+	 * ```
+	 */
+	object Video {
+
+		val DEFAULT_SORT_ORDER = MediaStore.Video.Media.DEFAULT_SORT_ORDER
+		val EXTERNAL_CONTENT_URI = MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+		val INTERNAL_CONTENT_URI = MediaStore.Video.Media.INTERNAL_CONTENT_URI
+
+		abstract class VideoColumns : MediaColumns() {
+			// Promoted to MediaColumns //
+			/*
+				DURATION
+				ARTIST
+				ALBUM
+				RESOLUTION
+				DATE_TAKEN
+				BUCKET_ID
+				BUCKET_DISPLAY_NAME
+				GROUP_ID
+			*/
+
+			/**
+			 * The description of the video recording
+			 *
+			 * + "description"
+			 * + type: String
+			 * + ReadOnly
+			 */
+			val DESCRIPTION = MediaStore.Video.VideoColumns.DESCRIPTION
+
+			/**
+			 * Whether the video should be published as public or private
+			 *
+			 * + "isprivate"
+			 * + type: Int
+			 * + ReadOnly
+			 */
+			val IS_PRIVATE = MediaStore.Video.VideoColumns.IS_PRIVATE
+
+			/**
+			 * The user-added tags associated with a video
+			 *
+			 * + "tags"
+			 * + type: String
+			 */
+			val TAGS = MediaStore.Video.VideoColumns.TAGS
+
+			/**
+			 * The YouTube category of the video
+			 *
+			 * + "category"
+			 * + type: String
+			 */
+			val CATEGORY = MediaStore.Video.VideoColumns.CATEGORY
+
+			/**
+			 * The language of the video
+			 *
+			 * + "language"
+			 * + type: String
+			 */
+			val LANGUAGE = MediaStore.Video.VideoColumns.LANGUAGE
+
+			/**
+			 * The latitude where the video was captured.
+			 *
+			 * + "latitude"
+			 * + type: Float
+			 * + ReadOnly
+			 */
+			@Deprecated(
+				message =
+				"""
+					location details are no longer indexed for privacy reasons, and this value is now always null.
+          You can still manually obtain location metadata using ExifInterface#getLatLong(float[]).
+				""",
+				level = DeprecationLevel.WARNING
+			)
+			val LATITUDE = MediaStore.Video.VideoColumns.LATITUDE
+
+			/**
+			 * The longitude where the video was captured.
+			 *
+			 * + "longitude"
+			 * + type: Float
+			 * + ReadOnly
+			 */
+			@Deprecated(
+				message =
+				"""
+					location details are no longer indexed for privacy reasons, and this value is now always null.
+          You can still manually obtain location metadata using ExifInterface#getLatLong(float[]).
+				""",
+				level = DeprecationLevel.WARNING
+			)
+			val LONGITUDE = MediaStore.Video.VideoColumns.LONGITUDE
+
+			/**
+			 * The mini thumb id.
+			 *
+			 * + "mini_thumb_magic"
+			 * + type: Int
+			 */
+			@Deprecated(
+				message =
+				"""
+					all thumbnails should be obtained via MediaStore.Images.Thumbnails#getThumbnail, as this
+          value is no longer supported.
+				""",
+				level = DeprecationLevel.WARNING
+			)
+			val MINI_THUMB_MAGIC = MediaStore.Video.VideoColumns.MINI_THUMB_MAGIC
+
+			/**
+			 * The position within the video item at which playback should be
+			 * resumed.
+			 *
+			 * + "bookmark"
+			 * + type: Long
+			 */
+			@TimeUnitValue(TimeUnit.MILLISECONDS)
+			val BOOKMARK = MediaStore.Video.VideoColumns.BOOKMARK
+
+			/**
+			 * The color standard of this media file, if available.
+			 *
+			 * + "color_standard"
+			 * + type: Int
+			 * + ReadOnly
+			 *
+			 * @see MediaFormat.COLOR_STANDARD_BT709
+			 *
+			 * @see MediaFormat.COLOR_STANDARD_BT601_PAL
+			 *
+			 * @see MediaFormat.COLOR_STANDARD_BT601_NTSC
+			 *
+			 * @see MediaFormat.COLOR_STANDARD_BT2020
+			 */
+			val COLOR_STANDARD = MediaStore.Video.VideoColumns.COLOR_STANDARD
+
+			/**
+			 * The color transfer of this media file, if available.
+			 *
+			 * + "color_transfer"
+			 * + type: Int
+			 * + ReadOnly
+			 *
+			 * @see MediaFormat.COLOR_TRANSFER_LINEAR
+			 *
+			 * @see MediaFormat.COLOR_TRANSFER_SDR_VIDEO
+			 *
+			 * @see MediaFormat.COLOR_TRANSFER_ST2084
+			 *
+			 * @see MediaFormat.COLOR_TRANSFER_HLG
+			 */
+			val COLOR_TRANSFER = MediaStore.Video.VideoColumns.COLOR_TRANSFER
+
+			/**
+			 * The color range of this media file, if available.
+			 *
+			 * + "color_range"
+			 * + type: Int
+			 * + ReadOnly
+			 *
+			 * @see MediaFormat.COLOR_RANGE_LIMITED
+			 *
+			 * @see MediaFormat.COLOR_RANGE_FULL
+			 */
+			val COLOR_RANGE = MediaStore.Video.VideoColumns.COLOR_RANGE
+
+			companion object : VideoColumns() {
 				// convenient reference
 			}
 

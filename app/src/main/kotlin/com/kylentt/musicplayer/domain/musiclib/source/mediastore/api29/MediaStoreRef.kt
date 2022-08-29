@@ -558,6 +558,10 @@ internal object MediaStore29 {
 		 * Audio metadata columns.
 		 */
 		internal abstract class AudioColumns private constructor() : MediaColumns() {
+			// Promoted to MediaColumns
+			/*
+				DURATION
+			*/
 
 			/**
 			 * A non human readable key calculated from the TITLE, used for
@@ -1103,6 +1107,14 @@ internal object MediaStore29 {
 		val EXTERNAL_CONTENT_URI: Uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
 
 		internal abstract class ImageColumns private constructor() : MediaColumns() {
+			// Promoted to MediaColumns
+			/*
+				DATE_TAKEN
+				ORIENTATION
+				BUCKET_ID
+				BUCKET_DISPLAY_NAME
+				GROUP_ID
+			 */
 
 			/**
 			 * The description of the image
@@ -1207,6 +1219,14 @@ internal object MediaStore29 {
 		val EXTERNAL_CONTENT_URI: Uri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI
 
 		internal abstract class VideoColumns : MediaColumns() {
+			// Promoted to MediaColumns
+			/*
+				DURATION
+				DATE_TAKEN
+				BUCKET_ID
+				BUCKET_DISPLAY_NAME
+				GROUP_ID
+			*/
 
 			/**
 			 * The artist who created the video file, if any

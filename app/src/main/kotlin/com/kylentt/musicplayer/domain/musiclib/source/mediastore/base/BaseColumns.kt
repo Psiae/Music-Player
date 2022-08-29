@@ -1,5 +1,8 @@
 package com.kylentt.musicplayer.domain.musiclib.source.mediastore.base
 
+/**
+ * [GoogleSource](https://android.googlesource.com/platform/frameworks/base/+/refs/tags/android-7.0.0_r36/core/java/android/provider/BaseColumns.java)
+ */
 internal abstract class BaseColumns {
 	/**
 	 * The unique ID for a row.

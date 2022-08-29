@@ -7,7 +7,7 @@ import com.kylentt.musicplayer.domain.musiclib.source.mediastore.base.audio.Medi
 
 /**
  * data class representing an Audio Entity
- * @see MediaStore28.MediaColumns._ID
+ * @see MediaStore28
  */
 data class MediaStoreAudioEntity28(
 	override val id: Long,
@@ -18,7 +18,7 @@ data class MediaStoreAudioEntity28(
 
 /**
  * data class representing an Audio File
- * @see MediaStore28.Files.FileColumns
+ * @see MediaStore28.Files
  */
 data class MediaStoreAudioFile28(
 	override val absolutePath: String,
@@ -28,7 +28,6 @@ data class MediaStoreAudioFile28(
 	override val dateModified: Long,
 	override val mediaType: String,
 	override val mimeType: String,
-	override val fileExtension: String,
 	override val fileName: String,
 	override val fileNameWithExtension: String,
 	override val size: Long,
@@ -36,7 +35,7 @@ data class MediaStoreAudioFile28(
 
 /**
  * data class representing an Audio File Metadata
- * @see MediaStore28.Audio.AudioColumns
+ * @see MediaStore28.Audio
  */
 data class MediaStoreAudioMetadata28(
 	override val artistId: Long,

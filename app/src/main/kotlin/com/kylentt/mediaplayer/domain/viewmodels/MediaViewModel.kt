@@ -15,7 +15,7 @@ import com.kylentt.musicplayer.common.kotlin.coroutine.checkCancellation
 import com.kylentt.musicplayer.common.kotlin.mutablecollection.forEachClear
 import com.kylentt.musicplayer.core.app.AppDelegate
 import com.kylentt.musicplayer.domain.musiclib.core.MusicLibrary
-import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.isStateBuffering
+import com.kylentt.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isStateBuffering
 import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemHelper
 import com.kylentt.musicplayer.ui.main.compose.screens.root.PlaybackControlModel
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -55,7 +55,10 @@ class MediaViewModel @Inject constructor(
 			collectPlaybackState()
 		}
 		viewModelScope.launch(dispatchers.main) {
-			positionStateFlow.safeCollect { playbackControlModel.updatePosition(it) }
+			positionStateFlow.safeCollect {
+				Timber.d("positionStateFlow collected $it")
+				playbackControlModel.updatePosition(it)
+			}
 		}
 		viewModelScope.launch(dispatchers.main) {
 			bufferedPositionStateFlow.safeCollect {

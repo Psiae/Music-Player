@@ -2,9 +2,9 @@ package com.kylentt.musicplayer.domain.musiclib.session
 
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
-import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.isOngoing
-import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.isStateEnded
-import com.kylentt.musicplayer.domain.musiclib.core.exoplayer.PlayerExtension.isStateIdle
+import com.kylentt.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isOngoing
+import com.kylentt.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isStateEnded
+import com.kylentt.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isStateIdle
 import com.kylentt.musicplayer.domain.musiclib.interactor.LibraryAgent
 import com.kylentt.musicplayer.domain.musiclib.player.MediaControllerWrapper
 

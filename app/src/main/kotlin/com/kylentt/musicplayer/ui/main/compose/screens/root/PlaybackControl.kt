@@ -259,64 +259,73 @@ private fun ProgressIndicator(
 
 	val darkTheme = isSystemInDarkTheme()
 	val surfaceVariant = MaterialTheme.colorScheme.surfaceVariant
+	val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
+	val background = MaterialTheme.colorScheme.background
 
-	if (loading) {
-
-		LinearProgressIndicator(
-			modifier = Modifier
-				.fillMaxWidth()
-				.heightIn(max = 2.dp),
-			trackColor = MaterialTheme.colorScheme.surfaceVariant,
-			color = if (darkTheme) Color.White else Color.Black,
-			duration = 850 + 333 + 200 + 533,
-			secondLineHeadDelay = 850 + 333,
-			secondLineTailDuration = 533,
-			secondLineTailDelay = 850 + 333 + 300,
-			continueTraverse = checkLoadingState
-		)
-
-	} else {
-
-		val progress by animateFloatAsState(
-			targetValue = if (position == 0f || duration == 0f || position > duration) 0f else position / duration,
-			animationSpec = tween(100)
-		)
-
-		LinearProgressIndicator(
-			modifier = Modifier
-				.fillMaxWidth()
-				.heightIn(max = 2.dp),
-			trackColor = MaterialTheme.colorScheme.surfaceVariant,
-			color = if (darkTheme) Color.White else Color.Black,
-			progress = progress.clamp(0f, 1f)
-		)
+	val backgroundTrackColor = remember {
+		surfaceVariant.copy(alpha = 0.5f).compositeOver(background)
 	}
 
-	val bufferedProgress by animateFloatAsState(
-		targetValue = when {
-			bufferedPosition == 0f || duration == 0f -> 0f
-			bufferedPosition > duration -> duration
-			else -> bufferedPosition / duration
-		},
-		animationSpec = tween(100)
-	)
+	Surface(
+		modifier = Modifier.fillMaxWidth().heightIn(2.dp),
+		color = backgroundTrackColor
+	) {
+		if (loading) {
 
-	val bufferProgressColor = remember {
-		(if (darkTheme) Color.White else Color.Black).copy(alpha = 0.25f)
+			LinearProgressIndicator(
+				modifier = Modifier
+					.fillMaxWidth()
+					.heightIn(max = 2.dp),
+				trackColor = Color.Transparent,
+				color = if (darkTheme) Color.White else Color.Black,
+				duration = 850 + 333 + 200 + 533,
+				firstLineHeadDelay = 0,
+				firstLineHeadDuration = 650,
+				firstLineTailDuration = 650 + 150,
+				secondLineHeadDelay = 850 + 333,
+				secondLineTailDuration = 433,
+				secondLineTailDelay = 850 + 333 + 300,
+				continueTraverse = checkLoadingState
+			)
+
+		} else {
+
+			val bufferedProgress by animateFloatAsState(
+				targetValue = when {
+					bufferedPosition == 0f || duration == 0f || bufferedPosition > duration -> 0f
+					else -> bufferedPosition / duration
+				},
+				animationSpec = tween(100)
+			)
+
+			val bufferProgressColor = remember {
+				onSurfaceVariant.copy(alpha = 0.5f)
+			}
+
+			LinearProgressIndicator(
+				modifier = Modifier
+					.fillMaxWidth()
+					.heightIn(max = 2.dp),
+				trackColor = Color.Transparent,
+				color = bufferProgressColor,
+				progress = bufferedProgress.clamp(0f, 1f)
+			)
+
+			val progress by animateFloatAsState(
+				targetValue = if (position == 0f || duration == 0f || position > duration) 0f else position / duration,
+				animationSpec = tween(100)
+			)
+
+			LinearProgressIndicator(
+				modifier = Modifier
+					.fillMaxWidth()
+					.heightIn(max = 2.dp),
+				trackColor = Color.Transparent,
+				color = if (darkTheme) Color.White else Color.Black,
+				progress = progress.clamp(0f, 1f)
+			)
+		}
 	}
-
-	val bufferProgressTrackColor = remember {
-		surfaceVariant.copy(alpha = 0.25f)
-	}
-
-	LinearProgressIndicator(
-		modifier = Modifier
-			.fillMaxWidth()
-			.heightIn(max = 2.dp),
-		trackColor = bufferProgressTrackColor,
-		color = bufferProgressColor,
-		progress = bufferedProgress.clamp(0f, 1f)
-	)
 }
 
 // Use ViewModel instead
@@ -400,6 +409,8 @@ class PlaybackControlModel() {
 	private var qBufferingState = false
 	private var qLoadingState = false
 
+	private val mainScope = CoroutineScope(Dispatchers.Main)
+
 	suspend fun updateIsBuffering(buffering: Boolean) {
 		qBufferingState = buffering
 		if (!waitBufferingAnimation()) mBuffering.value = qBufferingState
@@ -441,12 +452,10 @@ class PlaybackControlModel() {
 		artJob.cancel()
 
 		if (bitmap != null) {
-			artJob = withContext(Dispatchers.IO) {
-				launch {
-					Palette.from(bitmap).maximumColorCount(16).generate().let {
-						ensureActive()
-						mPalette.value = it
-					}
+			artJob = mainScope.launch {
+				Palette.from(bitmap).maximumColorCount(16).generate().let {
+					ensureActive()
+					mPalette.value = it
 				}
 			}
 		} else {

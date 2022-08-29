@@ -3,8 +3,7 @@ package com.kylentt.musicplayer.domain.musiclib.source.mediastore.base.media
 import java.util.Objects
 
 /**
- * [GoogleSource](https://android.googlesource.com/platform/frameworks/base/+/refs/tags/android-7.0.0_r36/core/java/android/provider/MediaStore.java)
- * #391
+ * [GoogleSource](https://android.googlesource.com/platform/frameworks/base/+/refs/tags/android-7.0.0_r36/core/java/android/provider/MediaStore.java#391)
  */
 
 abstract class MediaStoreMetadata internal constructor() {

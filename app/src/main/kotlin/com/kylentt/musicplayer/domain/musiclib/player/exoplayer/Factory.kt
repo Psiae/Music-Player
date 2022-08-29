@@ -1,10 +1,15 @@
-package com.kylentt.musicplayer.domain.musiclib.core.exoplayer
+package com.kylentt.musicplayer.domain.musiclib.player.exoplayer
 
 import android.content.Context
 import android.os.Looper
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.upstream.DefaultAllocator
+import com.kylentt.musicplayer.domain.musiclib.player.exoplayer.stream.LibLoadControl
+import timber.log.Timber
+import java.util.concurrent.TimeUnit
 
 object ExoPlayerFactory {
 
@@ -21,6 +26,7 @@ object ExoPlayerFactory {
 			setAudioAttributes(getMusicAudioAttributes(), handleAudioFocus)
 			setHandleAudioBecomingNoisy(handleAudioReroute)
 			setLooper(looper)
+			setLoadControl(LibLoadControl())
 			build()
 		}
 	}

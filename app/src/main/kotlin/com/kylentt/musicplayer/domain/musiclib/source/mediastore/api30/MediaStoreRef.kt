@@ -10,10 +10,10 @@ import android.provider.MediaStore
 import android.provider.MediaStore.Downloads
 import androidx.annotation.RequiresApi
 import com.kylentt.musicplayer.core.sdk.VersionHelper
+import com.kylentt.musicplayer.domain.musiclib.annotation.DurationValue
 import com.kylentt.musicplayer.domain.musiclib.annotation.StorageDataUnit
 import com.kylentt.musicplayer.domain.musiclib.annotation.StorageDataValue
-import com.kylentt.musicplayer.domain.musiclib.annotation.TimeUnitValue
-import com.kylentt.musicplayer.domain.musiclib.source.mediastore.base.BaseColumns
+import com.kylentt.musicplayer.domain.musiclib.source.mediastore.BaseColumns
 import java.io.File
 import java.util.concurrent.TimeUnit
 
@@ -32,7 +32,7 @@ internal object MediaStore30 {
 		}
 	}
 
-	internal abstract class MediaColumns : BaseColumns() {
+	abstract class MediaColumns : BaseColumns() {
 
 		/**
 		 * Absolute filesystem path to the media item on disk.
@@ -100,7 +100,7 @@ internal object MediaStore30 {
 		 * + type: Long
 		 * + ReadOnly
 		 */
-		@TimeUnitValue(TimeUnit.SECONDS)
+		@DurationValue(TimeUnit.SECONDS)
 		val DATE_ADDED = MediaStore.MediaColumns.DATE_ADDED
 
 		/**
@@ -111,7 +111,7 @@ internal object MediaStore30 {
 		 * + type: Long
 		 * + ReadOnly
 		 */
-		@TimeUnitValue(TimeUnit.SECONDS)
+		@DurationValue(TimeUnit.SECONDS)
 		val DATE_MODIFIED = MediaStore.MediaColumns.DATE_MODIFIED
 
 		/**
@@ -131,7 +131,7 @@ internal object MediaStore30 {
 		 * + type: Long
 		 * + ReadOnly
 		 */
-		@TimeUnitValue(TimeUnit.MILLISECONDS)
+		@DurationValue(TimeUnit.MILLISECONDS)
 		val DATE_TAKEN = MediaStore.MediaColumns.DATE_TAKEN
 
 		/**
@@ -222,7 +222,7 @@ internal object MediaStore30 {
 		 * + type: Long
 		 * + ReadOnly
 		 */
-		@TimeUnitValue(TimeUnit.SECONDS)
+		@DurationValue(TimeUnit.SECONDS)
 		val DATE_EXPIRES = MediaStore.MediaColumns.DATE_EXPIRES
 
 		/**
@@ -629,7 +629,7 @@ internal object MediaStore30 {
 		 * + type: Long
 		 * + ReadOnly
 		 */
-		@TimeUnitValue(TimeUnit.MILLISECONDS)
+		@DurationValue(TimeUnit.MILLISECONDS)
 		val DURATION = MediaStore.MediaColumns.DURATION
 
 		/**
@@ -1117,7 +1117,7 @@ internal object MediaStore30 {
 			 * + "bookmark"
 			 * + type: Long
 			 */
-			@TimeUnitValue(TimeUnit.MILLISECONDS)
+			@DurationValue(TimeUnit.MILLISECONDS)
 			val BOOKMARK = MediaStore.Audio.AudioColumns.BOOKMARK
 
 			/**
@@ -1678,7 +1678,7 @@ internal object MediaStore30 {
 			 * + "bookmark"
 			 * + type: Long
 			 */
-			@TimeUnitValue(TimeUnit.MILLISECONDS)
+			@DurationValue(TimeUnit.MILLISECONDS)
 			val BOOKMARK = MediaStore.Video.VideoColumns.BOOKMARK
 
 			/**

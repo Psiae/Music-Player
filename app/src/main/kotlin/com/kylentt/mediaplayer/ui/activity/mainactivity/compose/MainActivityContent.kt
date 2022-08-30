@@ -12,8 +12,12 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.SpringSpec
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.BottomNavigation
 import androidx.compose.material.BottomNavigationItem
 import androidx.compose.material.Icon
@@ -32,7 +36,9 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -108,10 +114,7 @@ private fun RootScaffold(
                 RootBottomNavigation(
                     appSettings = appSettings,
                     backgroundColor = backgroundColor,
-                    modifier = Modifier.fillMaxWidth(),
-                    selectedItem = MainBottomNavItems
-                        .map { it.screen }
-                        .find { it.route == backStackEntry.value!!.destination.route }!!,
+                    selectedItem = MainBottomNavItems.map { it.screen }.find { it.route == backStackEntry.value!!.destination.route }!!,
                     onItemClicked = { item ->
 						if (item.route != backStackEntry.value?.destination?.route) {
 							navController.navigate(item.route) {
@@ -152,7 +155,6 @@ private fun NoRipple(content: @Composable () -> Unit) {
 private fun RootBottomNavigation(
     appSettings: AppSettings,
     backgroundColor: Color,
-    modifier: Modifier,
     selectedItem: Screen,
     onItemClicked: (Screen) -> Unit
 ) {
@@ -160,55 +162,51 @@ private fun RootBottomNavigation(
 
 		val themeColor = if (isSystemInDarkTheme()) Color.Black else Color.White
 
-		Column(
-			modifier = Modifier.background(
-				Brush.verticalGradient(
-					listOf(
-						backgroundColor,
-						backgroundColor,
-						backgroundColor.compositeOver(themeColor),
-						backgroundColor.compositeOver(themeColor)
-					)
+		val backgroundBrush = remember {
+			Brush.verticalGradient(
+				listOf(
+					backgroundColor,
+					backgroundColor,
+					backgroundColor,
+					backgroundColor.compositeOver(themeColor)
 				)
-			),
+			)
+		}
+
+		Column(
+			modifier = Modifier.background(backgroundBrush),
+			verticalArrangement = Arrangement.Bottom
 		) {
-			Box(
-				modifier = Modifier
-					.fillMaxWidth(),
+
+			val contentColor = if (isSystemInDarkTheme()) {
+				MaterialTheme.colorScheme.onSecondaryContainer
+			} else {
+				MaterialTheme.colorScheme.onSecondaryContainer
+			}
+
+			BottomNavigation(
+				contentColor = contentColor,
+				backgroundColor = Color.Transparent,
+				elevation = 0.dp
 			) {
+				MainBottomNavItems.forEach { item ->
 
-				val contentColor = if (isSystemInDarkTheme()) {
-					MaterialTheme.colorScheme.onSecondaryContainer
-				} else {
-					MaterialTheme.colorScheme.onSecondaryContainer
-				}
+					val interactionSource = remember { MutableInteractionSource() }
+					val pressed by interactionSource.collectIsPressedAsState()
+					val sizeModifier by animateFloatAsState(targetValue = if (pressed) 0.9f else 1f)
 
-				BottomNavigation(
-					modifier = modifier,
-					elevation = 0.dp,
-					backgroundColor = Color.Transparent,
-					contentColor = contentColor,
-				) {
-					MainBottomNavItems.forEach { item ->
-						BottomNavigationItem(
-							alwaysShowLabel = true,
+					Box(
+						modifier = Modifier
+							.padding(start = 12.dp, end = 12.dp)
+							.weight(1f),
+						contentAlignment = Alignment.BottomCenter
+					) {
+						MainBottomNavItem(
+							item = item,
 							selected = item.screen == selectedItem,
-							icon = {
-								MainBottomNavItemIcon(
-									item = item,
-									selected = item.screen == selectedItem
-								)
-							},
-							label = {
-								Text(
-									color = MaterialTheme.colorScheme.onSurface,
-									fontWeight = AppTypography.labelMedium.fontWeight,
-									fontSize = AppTypography.labelMedium.fontSize,
-									fontStyle = AppTypography.labelMedium.fontStyle,
-									lineHeight = AppTypography.labelMedium.lineHeight,
-									text = item.screen.label
-								)
-							},
+							iconSizeModifier = sizeModifier,
+							textSizeModifier = sizeModifier,
+							interactionSource = interactionSource,
 							onClick = { onItemClicked(item.screen) }
 						)
 					}
@@ -220,7 +218,7 @@ private fun RootBottomNavigation(
 }
 
 @Composable
-private fun NavigationBarsSpacer(modifier: Modifier = Modifier) {
+private fun NavigationBarsSpacer() {
     Spacer(modifier = Modifier
 		.height(
 			with(LocalDensity.current) {
@@ -230,7 +228,6 @@ private fun NavigationBarsSpacer(modifier: Modifier = Modifier) {
 			}
 		)
 		.fillMaxWidth()
-		.then(modifier)
     )
 }
 
@@ -416,9 +413,13 @@ private val MainBottomNavItems = listOf(
 )
 
 @Composable
-private fun MainBottomNavItemIcon(
-    item: MainBottomNavItem,
-    selected: Boolean
+private fun MainBottomNavItem(
+	item: MainBottomNavItem,
+	selected: Boolean,
+	iconSizeModifier: Float = 1f,
+	textSizeModifier: Float = 1f,
+	interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+	onClick: () -> Unit
 ) {
     val painter = when(item) {
 		is MainBottomNavItem.ResourceIcon -> painterResource(id = item.unselectedId)
@@ -428,12 +429,46 @@ private fun MainBottomNavItemIcon(
 		is MainBottomNavItem.ResourceIcon -> painterResource(id = item.selectedId)
         is MainBottomNavItem.ImageVectorIcon -> rememberVectorPainter(image = item.selectedImageVector)
     }
-    Icon(
-        modifier = Modifier
-            .size(24.dp),
-        painter = if (selected) selectedPainter else painter,
-        contentDescription = null
-    )
+
+	Box(
+		modifier = Modifier.fillMaxHeight(),
+		contentAlignment = Alignment.BottomCenter
+	) {
+		Column(
+			modifier = Modifier
+				.selectable(
+					selected = selected,
+					interactionSource = interactionSource,
+					indication = null,
+					enabled = true,
+					role = Role.Tab,
+					onClick
+				)
+				.height(45.dp)
+			,
+			verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
+			horizontalAlignment = Alignment.CenterHorizontally
+		) {
+
+			Icon(
+				modifier = Modifier.size(24.dp * iconSizeModifier),
+				painter = if (selected) selectedPainter else painter,
+				contentDescription = null
+			)
+
+			Text(
+				color = MaterialTheme.colorScheme.onSurface,
+				fontWeight = MaterialTheme.typography.labelSmall.fontWeight,
+				fontSize = (MaterialTheme.typography.labelSmall.fontSize.value * textSizeModifier).sp,
+				fontStyle = MaterialTheme.typography.labelSmall.fontStyle,
+				lineHeight = MaterialTheme.typography.labelSmall.lineHeight,
+				letterSpacing = MaterialTheme.typography.labelSmall.letterSpacing,
+				text = item.screen.label
+			)
+
+			Spacer(modifier = Modifier.height(3.dp))
+		}
+	}
 }
 
 @Composable

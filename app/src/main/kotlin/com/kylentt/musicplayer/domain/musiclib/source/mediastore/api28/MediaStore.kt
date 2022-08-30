@@ -5,8 +5,8 @@ import android.os.Build
 import android.provider.MediaStore
 import androidx.annotation.RequiresApi
 import com.kylentt.musicplayer.core.sdk.VersionHelper
-import com.kylentt.musicplayer.domain.musiclib.annotation.TimeUnitValue
-import com.kylentt.musicplayer.domain.musiclib.source.mediastore.base.BaseColumns
+import com.kylentt.musicplayer.domain.musiclib.annotation.DurationValue
+import com.kylentt.musicplayer.domain.musiclib.source.mediastore.BaseColumns
 import java.util.concurrent.TimeUnit
 
 /**
@@ -22,7 +22,7 @@ internal object MediaStore28 {
 		}
 	}
 
-	internal abstract class MediaColumns : BaseColumns() {
+	abstract class MediaColumns : BaseColumns() {
 
 		/**
 		 * Path to the file on disk.
@@ -69,7 +69,7 @@ internal object MediaStore28 {
 		 * "date_added"
 		 * Type: Long
 		 */
-		@TimeUnitValue(TimeUnit.SECONDS)
+		@DurationValue(TimeUnit.SECONDS)
 		val DATE_ADDED: String = MediaStore.MediaColumns.DATE_ADDED
 
 		/**
@@ -80,7 +80,7 @@ internal object MediaStore28 {
 		 * "date_modified"
 		 * Type: Long
 		 */
-		@TimeUnitValue(TimeUnit.SECONDS)
+		@DurationValue(TimeUnit.SECONDS)
 		val DATE_MODIFIED: String = MediaStore.MediaColumns.DATE_MODIFIED
 
 		/**
@@ -137,14 +137,14 @@ internal object MediaStore28 {
 		 * Table also contains MediaColumns._ID, DATA, SIZE and DATE_MODIFIED.
 		 */
 
-		internal abstract class FileColumns private constructor() : MediaColumns() {
+		abstract class FileColumns : MediaColumns() {
 
 			/**
 			 * The media type (audio, video, image or playlist)
 			 * of the file, or 0 for not a media file
 			 *
 			 * "media_type"
-			 * Type: String
+			 * Type: Int
 			 */
 			val MEDIA_TYPE = MediaStore.Files.FileColumns.MEDIA_TYPE
 
@@ -221,7 +221,7 @@ internal object MediaStore28 {
 		val EXTERNAL_CONTENT_URI = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
 		val INTERNAL_CONTENT_URI = MediaStore.Images.Media.INTERNAL_CONTENT_URI
 
-		internal abstract class ImageColumns private constructor() : MediaColumns() {
+		abstract class ImageColumns : MediaColumns() {
 
 			/**
 			 * The description of the image
@@ -270,7 +270,7 @@ internal object MediaStore28 {
 			 * "datetaken"
 			 * Type: Int
 			 */
-			@TimeUnitValue(TimeUnit.MILLISECONDS)
+			@DurationValue(TimeUnit.MILLISECONDS)
 			val DATE_TAKEN = MediaStore.Images.ImageColumns.DATE_TAKEN
 
 			/**
@@ -325,7 +325,7 @@ internal object MediaStore28 {
 		 * Columns for audio file that show up in multiple tables.
 		 */
 
-		internal abstract class AudioColumns private constructor() : MediaColumns() {
+		abstract class AudioColumns : MediaColumns() {
 
 			/**
 			 * A non human readable key calculated from the TITLE, used for
@@ -582,7 +582,7 @@ internal object MediaStore28 {
 					 * + type: Long
 					 *
 					 */
-					@TimeUnitValue(TimeUnit.SECONDS)
+					@DurationValue(TimeUnit.SECONDS)
 					val DATE_ADDED = MediaStore.Audio.AudioColumns.DATE_ADDED
 
 					/**
@@ -593,7 +593,7 @@ internal object MediaStore28 {
 					 *  + "date_modified"
 					 *  + type: Long
 					 */
-					@TimeUnitValue(TimeUnit.SECONDS)
+					@DurationValue(TimeUnit.SECONDS)
 					val DATE_MODIFIED = MediaStore.Audio.AudioColumns.DATE_MODIFIED
 
 					companion object : PlaylistsColumns() {
@@ -769,7 +769,7 @@ internal object MediaStore28 {
 		val EXTERNAL_CONTENT_URI = MediaStore.Video.Media.EXTERNAL_CONTENT_URI
 		val INTERNAL_CONTENT_URI = MediaStore.Video.Media.INTERNAL_CONTENT_URI
 
-		internal abstract class VideoColumns : MediaColumns() {
+		abstract class VideoColumns : MediaColumns() {
 
 			/**
 			 * The duration of the video file, in ms
@@ -777,7 +777,7 @@ internal object MediaStore28 {
 			 * + "duration"
 			 * + type: Long
 			 */
-			@TimeUnitValue(TimeUnit.MILLISECONDS)
+			@DurationValue(TimeUnit.MILLISECONDS)
 			val DURATION = MediaStore.Video.VideoColumns.DURATION
 
 			/**
@@ -867,7 +867,7 @@ internal object MediaStore28 {
 			 * + "datetaken"
 			 * + type: Long
 			 */
-			@TimeUnitValue(TimeUnit.MILLISECONDS)
+			@DurationValue(TimeUnit.MILLISECONDS)
 			val DATE_TAKEN = MediaStore.Video.VideoColumns.DATE_TAKEN
 
 			/**

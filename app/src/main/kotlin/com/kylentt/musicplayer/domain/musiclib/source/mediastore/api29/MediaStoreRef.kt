@@ -13,8 +13,8 @@ import com.kylentt.musicplayer.core.sdk.VersionHelper
 import com.kylentt.musicplayer.domain.musiclib.annotation.StorageDataUnit
 import com.kylentt.musicplayer.domain.musiclib.annotation.OnlyAPI
 import com.kylentt.musicplayer.domain.musiclib.annotation.StorageDataValue
-import com.kylentt.musicplayer.domain.musiclib.annotation.TimeUnitValue
-import com.kylentt.musicplayer.domain.musiclib.source.mediastore.base.BaseColumns
+import com.kylentt.musicplayer.domain.musiclib.annotation.DurationValue
+import com.kylentt.musicplayer.domain.musiclib.source.mediastore.BaseColumns
 import java.util.concurrent.TimeUnit
 
 
@@ -31,7 +31,7 @@ internal object MediaStore29 {
 		}
 	}
 
-	internal abstract class MediaColumns : BaseColumns() {
+	abstract class MediaColumns : BaseColumns() {
 
 		/**
 		 * Absolute filesystem path to the media item on disk.
@@ -95,7 +95,7 @@ internal object MediaStore29 {
 		 * + ReadOnly
 		 * + In Second since Epoch time
 		 */
-		@TimeUnitValue(TimeUnit.SECONDS)
+		@DurationValue(TimeUnit.SECONDS)
 		val DATE_ADDED = MediaStore.MediaColumns.DATE_ADDED
 
 		/**
@@ -106,7 +106,7 @@ internal object MediaStore29 {
 		 * + ReadOnly
 		 * + In Second since Epoch time
 		 */
-		@TimeUnitValue(TimeUnit.SECONDS)
+		@DurationValue(TimeUnit.SECONDS)
 		val DATE_MODIFIED = MediaStore.MediaColumns.DATE_MODIFIED
 
 		/**
@@ -117,7 +117,7 @@ internal object MediaStore29 {
 		 * + ReadOnly
 		 * + In Millisecond since Epoch time
 		 */
-		@TimeUnitValue(TimeUnit.MILLISECONDS)
+		@DurationValue(TimeUnit.MILLISECONDS)
 		val DATE_TAKEN = MediaStore.MediaColumns.DATE_TAKEN
 
 		/**
@@ -200,7 +200,7 @@ internal object MediaStore29 {
 		 * + "date_expires"
 		 * + Type: Long
 		 */
-		@TimeUnitValue(TimeUnit.SECONDS)
+		@DurationValue(TimeUnit.SECONDS)
 		val DATE_EXPIRES = MediaStore.MediaColumns.DATE_EXPIRES
 
 		/**
@@ -404,7 +404,7 @@ internal object MediaStore29 {
 		 * + Type: Long
 		 * + ReadOnly
 		 */
-		@TimeUnitValue(TimeUnit.MILLISECONDS)
+		@DurationValue(TimeUnit.MILLISECONDS)
 		val DURATION = MediaStore.MediaColumns.DURATION
 
 		/**
@@ -448,7 +448,7 @@ internal object MediaStore29 {
 
 		private val EXTERNAL_CONTENT_URI: Uri = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL)
 
-		internal abstract class FileColumns : MediaColumns() {
+		abstract class FileColumns : MediaColumns() {
 
 			/**
 			 * The MTP storage ID of the file
@@ -557,7 +557,7 @@ internal object MediaStore29 {
 		/**
 		 * Audio metadata columns.
 		 */
-		internal abstract class AudioColumns private constructor() : MediaColumns() {
+		abstract class AudioColumns : MediaColumns() {
 			// Promoted to MediaColumns
 			/*
 				DURATION
@@ -580,7 +580,7 @@ internal object MediaStore29 {
 			 * + "bookmark"
 			 * + type: Long
 			 */
-			@TimeUnitValue(TimeUnit.MILLISECONDS)
+			@DurationValue(TimeUnit.MILLISECONDS)
 			val BOOKMARK = MediaStore.Audio.AudioColumns.BOOKMARK
 
 			/**
@@ -852,7 +852,7 @@ internal object MediaStore29 {
 					 * + type: Long
 					 * + ReadOnly
 					 */
-					@TimeUnitValue(TimeUnit.SECONDS)
+					@DurationValue(TimeUnit.SECONDS)
 					val DATE_ADDED = MediaStore.Audio.PlaylistsColumns.DATE_ADDED
 
 					/**
@@ -862,7 +862,7 @@ internal object MediaStore29 {
 					 * + type: Long
 					 * + ReadOnly
 					 */
-					@TimeUnitValue(TimeUnit.SECONDS)
+					@DurationValue(TimeUnit.SECONDS)
 					val DATE_MODIFIED = MediaStore.Audio.PlaylistsColumns.DATE_MODIFIED
 
 					companion object : PlaylistsColumns() {
@@ -880,7 +880,7 @@ internal object MediaStore29 {
 				/**
 				 * Audio artist metadata columns.
 				 */
-				abstract class ArtistColumns private constructor() : BaseColumns() {
+				abstract class ArtistColumns : BaseColumns() {
 
 					/**
 					 * The artist who created the audio file, if any
@@ -1064,7 +1064,7 @@ internal object MediaStore29 {
 		 * Download metadata columns.
 		 */
 
-		internal abstract class DownloadColumns private constructor() : MediaColumns() {
+		abstract class DownloadColumns : MediaColumns() {
 
 			/**
 			 * Uri indicating where the item has been downloaded from.
@@ -1106,7 +1106,7 @@ internal object MediaStore29 {
 		val INTERNAL_CONTENT_URI: Uri = MediaStore.Images.Media.INTERNAL_CONTENT_URI
 		val EXTERNAL_CONTENT_URI: Uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
 
-		internal abstract class ImageColumns private constructor() : MediaColumns() {
+		abstract class ImageColumns : MediaColumns() {
 			// Promoted to MediaColumns
 			/*
 				DATE_TAKEN
@@ -1218,7 +1218,7 @@ internal object MediaStore29 {
 		val INTERNAL_CONTENT_URI: Uri = MediaStore.Video.Media.INTERNAL_CONTENT_URI
 		val EXTERNAL_CONTENT_URI: Uri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI
 
-		internal abstract class VideoColumns : MediaColumns() {
+		abstract class VideoColumns : MediaColumns() {
 			// Promoted to MediaColumns
 			/*
 				DURATION
@@ -1355,7 +1355,7 @@ internal object MediaStore29 {
 			 * + "bookmark"
 			 * + type: Int
 			 */
-			@TimeUnitValue(TimeUnit.MILLISECONDS)
+			@DurationValue(TimeUnit.MILLISECONDS)
 			val BOOKMARK = MediaStore.Video.VideoColumns.BOOKMARK
 
 			/**

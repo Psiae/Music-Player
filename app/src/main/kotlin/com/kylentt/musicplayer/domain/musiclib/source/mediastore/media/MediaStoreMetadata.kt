@@ -1,4 +1,4 @@
-package com.kylentt.musicplayer.domain.musiclib.source.mediastore.base.media
+package com.kylentt.musicplayer.domain.musiclib.source.mediastore.media
 
 import java.util.Objects
 

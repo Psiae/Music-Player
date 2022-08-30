@@ -2,7 +2,7 @@ package com.kylentt.musicplayer.domain.musiclib.source.mediastore.api28
 
 import android.content.Context
 import com.kylentt.musicplayer.domain.musiclib.source.mediastore.MediaStoreImplBase
-import com.kylentt.musicplayer.domain.musiclib.source.mediastore.base.BaseColumns
+import com.kylentt.musicplayer.domain.musiclib.source.mediastore.BaseColumns
 
 internal class MediaStoreImpl28(private val context: Context) : MediaStoreImplBase(context) {
 

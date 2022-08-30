@@ -36,6 +36,7 @@ import com.kylentt.musicplayer.R
 import com.kylentt.musicplayer.common.kotlin.comparable.clamp
 import com.kylentt.musicplayer.domain.musiclib.entity.PlaybackState
 import com.kylentt.musicplayer.domain.musiclib.entity.PlaybackState.Companion.isEmpty
+import com.kylentt.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isStateBuffering
 import com.kylentt.musicplayer.ui.common.compose.LinearProgressIndicator
 import com.kylentt.musicplayer.ui.util.compose.NoRipple
 import kotlinx.coroutines.*
@@ -232,10 +233,8 @@ private fun PlaybackControlBox(
 				position = model.playbackPosition.value.toFloat(),
 				bufferedPosition = model.bufferedPosition.value.toFloat(),
 				duration = model.playbackDuration.value.toFloat(),
-				loading = model.loading.value
-			) {
-				model.checkLoadingState()
-			}
+				loading = model.buffering.value && model.bufferedPosition.value == 0L
+			)
 		}
 	}
 }
@@ -245,8 +244,7 @@ private fun ProgressIndicator(
 	position: Float,
 	bufferedPosition: Float,
 	duration: Float,
-	loading: Boolean,
-	checkLoadingState: () -> Boolean
+	loading: Boolean
 ) {
 
 	Timber.d(
@@ -267,10 +265,17 @@ private fun ProgressIndicator(
 	}
 
 	Surface(
-		modifier = Modifier.fillMaxWidth().heightIn(2.dp),
+		modifier = Modifier
+			.fillMaxWidth()
+			.heightIn(2.dp),
 		color = backgroundTrackColor
 	) {
-		if (loading) {
+
+		val shouldTraverse = remember {
+			mutableStateOf(false)
+		}
+
+		if (loading || shouldTraverse.value) {
 
 			LinearProgressIndicator(
 				modifier = Modifier
@@ -284,9 +289,11 @@ private fun ProgressIndicator(
 				firstLineTailDuration = 650 + 150,
 				secondLineHeadDelay = 850 + 333,
 				secondLineTailDuration = 433,
-				secondLineTailDelay = 850 + 333 + 300,
-				continueTraverse = checkLoadingState
-			)
+				secondLineTailDelay = 850 + 333 + 300
+			) {
+				shouldTraverse.value = loading
+				loading
+			}
 
 		} else {
 
@@ -347,8 +354,6 @@ class PlaybackControlModel() {
 	private val mPlaybackTitle = mutableStateOf<String>("")
 	private val mPlaybackArtist = mutableStateOf<String>("")
 
-	private val mLoading = mutableStateOf(false)
-
 	val buffering: State<Boolean>
 		get() = mBuffering
 
@@ -382,10 +387,6 @@ class PlaybackControlModel() {
 	val art: State<Any?>
 		get() = mArt
 
-	val loading: State<Boolean>
-		get() = mLoading
-
-
 	object NO_ART
 
 	private var artJob = Job().job
@@ -404,6 +405,7 @@ class PlaybackControlModel() {
 		mPlayAvailable.value = !state.playWhenReady
 		mShowPlay.value = !state.playing || !state.playWhenReady
 		mShowSelf.value = !state.isEmpty && state.mediaItem !== MediaItem.EMPTY
+		mBuffering.value = state.playerState.isStateBuffering()
 	}
 
 	private var qBufferingState = false
@@ -411,40 +413,12 @@ class PlaybackControlModel() {
 
 	private val mainScope = CoroutineScope(Dispatchers.Main)
 
-	suspend fun updateIsBuffering(buffering: Boolean) {
-		qBufferingState = buffering
-		if (!waitBufferingAnimation()) mBuffering.value = qBufferingState
-	}
 	fun updatePosition(position: Long) {
 		mPlaybackPosition.value = position
 	}
 
 	fun updateBufferedPosition(bufferedPosition: Long) {
 		mBufferedPosition.value = bufferedPosition
-		updateLoadingState(bufferedPosition)
-	}
-
-	fun updateLoadingState(bufferedPosition: Long) {
-		qLoadingState = bufferedPosition == 0L
-		if (!waitLoadingAnimation()) mLoading.value = qLoadingState
-	}
-
-	fun checkBufferingState(): Boolean {
-		mBuffering.value = qBufferingState
-		return qBufferingState
-	}
-
-	fun checkLoadingState(): Boolean {
-		mLoading.value = qLoadingState
-		return mLoading.value
-	}
-
-	private fun waitBufferingAnimation(): Boolean {
-		return mBuffering.value
-	}
-
-	private fun waitLoadingAnimation(): Boolean {
-		return mLoading.value
 	}
 
 	suspend fun updateArt(bitmap: Bitmap?) {

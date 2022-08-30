@@ -97,7 +97,7 @@ class LibraryViewModel @Inject constructor(
 
 			songs.forEach { song ->
 
-				launch {
+				viewModelScope.launch(dispatchers.io) {
 
 					// Todo: Constants
 					val cached = cacheManager.retrieveImageCacheFile(song.uid + song.fileInfo.dateModified, "LibraryViewModel")

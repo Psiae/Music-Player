@@ -11,16 +11,7 @@ data class MediaStoreAudioEntity29(
 	val metadata: MediaStoreAudioMetadata29
 )
 
-data class MediaStoreAudioFile29(
-	val bucketDisplayName: String,
-	val bucketId: Int,
-	val dateAdded: Int,
-	val dateModified: Int,
-	val fileAbsolutePath: String,
-	val fileExtension: String,
-	val fileName: String,
-	val fileSize: Int,
-)
+
 
 data class MediaStoreAudioMetadata29(
 	val artist: String,

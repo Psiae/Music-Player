@@ -1,16 +1,16 @@
-package com.kylentt.musicplayer.domain.musiclib.source.mediastore.base.media
+package com.kylentt.musicplayer.domain.musiclib.source.mediastore.media
 
 import android.provider.MediaStore
 import com.kylentt.musicplayer.domain.musiclib.annotation.StorageDataUnit
 import com.kylentt.musicplayer.domain.musiclib.annotation.StorageDataValue
-import com.kylentt.musicplayer.domain.musiclib.annotation.TimeUnitValue
+import com.kylentt.musicplayer.domain.musiclib.annotation.DurationValue
 import java.util.concurrent.TimeUnit
 
 /**
  * [GoogleSource](https://android.googlesource.com/platform/frameworks/base/+/refs/tags/android-7.0.0_r36/core/java/android/provider/MediaStore.java#471)
  */
 
-abstract class MediaStoreFile {
+abstract class MediaStoreFile internal constructor() {
 
 	/**
 	 * the absolute path of the file
@@ -20,33 +20,12 @@ abstract class MediaStoreFile {
 	abstract val absolutePath: String
 
 	/**
-	 * the bucket (folder) name of the file,
-	 * + computed from [absolutePath] if this column is not present
-	 *
-	 * @see [MediaStore.Images.ImageColumns.BUCKET_DISPLAY_NAME]
-	 */
-	abstract val bucketDisplayName: String
-
-	/**
-	 * the bucket (folder) id of the file,
-	 * + computed from [absolutePath] if this column is not present
-	 *
-	 * ```
-	 * val parentFile = File(absolutePath).parentFile ?: File("/")
-	 * parentFile.toString().lowerCase().hashCode()
-	 * ```
-	 *
-	 * @see [MediaStore.Images.ImageColumns.BUCKET_ID]
-	 */
-	abstract val bucketId: Long
-
-	/**
 	 * the `date-added` of this file,
 	 * the value represent elapsed [TimeUnit.SECONDS] since Unix Epoch Time.
 	 *
 	 * @see [MediaStore.Files.FileColumns.DATE_ADDED]
 	 */
-	@TimeUnitValue(TimeUnit.SECONDS)
+	@DurationValue(TimeUnit.SECONDS)
 	abstract val dateAdded: Long
 
 	/**
@@ -55,7 +34,7 @@ abstract class MediaStoreFile {
 	 *
 	 * @see [MediaStore.Files.FileColumns.DATE_MODIFIED]
 	 */
-	@TimeUnitValue(TimeUnit.SECONDS)
+	@DurationValue(TimeUnit.SECONDS)
 	abstract val dateModified: Long
 
 	/**
@@ -78,7 +57,7 @@ abstract class MediaStoreFile {
 	 *
 	 * @see [MediaStore.Files.FileColumns.MEDIA_TYPE]
 	 */
-	abstract val mediaType: String
+	abstract val mediaType: Int
 
 	/**
 	 * the Mime-Type of the file

@@ -12,7 +12,7 @@ class MediaStoreAudioEntity28 private constructor(
 	override val uri: Uri,
 	override val fileInfo: MediaStoreAudioFile28,
 	override val metadataInfo: MediaStoreAudioMetadata28,
-	override val queryInfo: MediaStoreAudioQuery28,
+	internal override val queryInfo: MediaStoreAudioQuery28,
 ) : MediaStoreAudioEntity() {
 
 	class Builder internal constructor() {

@@ -37,7 +37,7 @@ import com.kylentt.musicplayer.common.kotlin.comparable.clamp
 import com.kylentt.musicplayer.domain.musiclib.entity.PlaybackState
 import com.kylentt.musicplayer.domain.musiclib.entity.PlaybackState.Companion.isEmpty
 import com.kylentt.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isStateBuffering
-import com.kylentt.musicplayer.ui.common.compose.LinearProgressIndicator
+import com.kylentt.musicplayer.ui.common.compose.LinearIndeterminateProgressIndicator
 import com.kylentt.musicplayer.ui.util.compose.NoRipple
 import kotlinx.coroutines.*
 import timber.log.Timber
@@ -90,6 +90,8 @@ private fun PlaybackControlBox(
 	model: PlaybackControlModel,
 	bottomOffset: Dp
 ) {
+
+	Timber.d("PlaybackControlBox recomposed")
 
 	val mediaVM: MediaViewModel = viewModel()
 
@@ -230,9 +232,9 @@ private fun PlaybackControlBox(
 			}
 
 			ProgressIndicator(
-				position = model.playbackPosition.value.toFloat(),
-				bufferedPosition = model.bufferedPosition.value.toFloat(),
-				duration = model.playbackDuration.value.toFloat(),
+				position = model.playbackPosition,
+				bufferedPosition = model.bufferedPosition,
+				duration = model.playbackDuration,
 				loading = model.buffering.value && model.bufferedPosition.value == 0L
 			)
 		}
@@ -241,23 +243,16 @@ private fun PlaybackControlBox(
 
 @Composable
 private fun ProgressIndicator(
-	position: Float,
-	bufferedPosition: Float,
-	duration: Float,
+	position: State<Long>,
+	bufferedPosition: State<Long>,
+	duration: State<Long>,
 	loading: Boolean
 ) {
 
-	Timber.d(
-		message = """
-			ProgressIndicator got pos: $position, bufferedPos: $bufferedPosition
-			duration: $duration,
-			loading: $loading
-		"""
-	)
+	Timber.d("ProgressIndicator recomposed")
 
 	val darkTheme = isSystemInDarkTheme()
 	val surfaceVariant = MaterialTheme.colorScheme.surfaceVariant
-	val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
 	val background = MaterialTheme.colorScheme.background
 
 	val backgroundTrackColor = remember {
@@ -277,7 +272,7 @@ private fun ProgressIndicator(
 
 		if (loading || shouldTraverse.value) {
 
-			LinearProgressIndicator(
+			LinearIndeterminateProgressIndicator(
 				modifier = Modifier
 					.fillMaxWidth()
 					.heightIn(max = 2.dp),
@@ -296,43 +291,86 @@ private fun ProgressIndicator(
 			}
 
 		} else {
-
-			val bufferedProgress by animateFloatAsState(
-				targetValue = when {
-					bufferedPosition == 0f || duration == 0f || bufferedPosition > duration -> 0f
-					else -> bufferedPosition / duration
-				},
-				animationSpec = tween(100)
+			AnimatedBufferedProgressIndicator(
+				bufferedPosition = bufferedPosition.value,
+				duration = duration.value
 			)
-
-			val bufferProgressColor = remember {
-				onSurfaceVariant.copy(alpha = 0.5f)
-			}
-
-			LinearProgressIndicator(
-				modifier = Modifier
-					.fillMaxWidth()
-					.heightIn(max = 2.dp),
-				trackColor = Color.Transparent,
-				color = bufferProgressColor,
-				progress = bufferedProgress.clamp(0f, 1f)
-			)
-
-			val progress by animateFloatAsState(
-				targetValue = if (position == 0f || duration == 0f || position > duration) 0f else position / duration,
-				animationSpec = tween(100)
-			)
-
-			LinearProgressIndicator(
-				modifier = Modifier
-					.fillMaxWidth()
-					.heightIn(max = 2.dp),
-				trackColor = Color.Transparent,
-				color = if (darkTheme) Color.White else Color.Black,
-				progress = progress.clamp(0f, 1f)
+			AnimatedPlaybackProgressIndicator(
+				position = position.value,
+				duration = duration.value
 			)
 		}
 	}
+}
+
+@Composable
+private fun AnimatedBufferedProgressIndicator(
+	bufferedPosition: Long,
+	duration: Long
+) {
+
+	Timber.d("AnimatedBuffered ProgressIndicator recomposed")
+
+	val bufferedProgress by animateFloatAsState(
+		targetValue = when {
+			bufferedPosition == 0L || duration == 0L || bufferedPosition > duration -> 0f
+			else -> bufferedPosition.toFloat() / duration
+		},
+		animationSpec = tween(100)
+	)
+
+	BufferedProgressIndicator(bufferedProgress = bufferedProgress)
+}
+
+@Composable
+private fun BufferedProgressIndicator(
+	bufferedProgress: Float,
+) {
+	val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
+
+	val bufferProgressColor = remember {
+		onSurfaceVariant.copy(alpha = 0.5f)
+	}
+
+	LinearIndeterminateProgressIndicator(
+		modifier = Modifier
+			.fillMaxWidth()
+			.heightIn(max = 2.dp),
+		trackColor = Color.Transparent,
+		color = bufferProgressColor,
+		progress = bufferedProgress.clamp(0f, 1f)
+	)
+}
+
+@Composable
+private fun AnimatedPlaybackProgressIndicator(
+	position: Long,
+	duration: Long
+) {
+
+	Timber.d("AnimatedPlayback ProgressIndicator recomposed")
+
+	val progress by animateFloatAsState(
+		targetValue = when {
+			position == 0L || duration == 0L || position > duration -> 0f
+			else -> position.toFloat() / duration
+		},
+		animationSpec = tween(100)
+	)
+
+	PlaybackProgressIndicator(progress = progress)
+}
+
+@Composable
+private fun PlaybackProgressIndicator(progress: Float) {
+	LinearIndeterminateProgressIndicator(
+		modifier = Modifier
+			.fillMaxWidth()
+			.heightIn(max = 2.dp),
+		trackColor = Color.Transparent,
+		color = if (isSystemInDarkTheme()) Color.White else Color.Black,
+		progress = progress.clamp(0f, 1f)
+	)
 }
 
 // Use ViewModel instead
@@ -411,7 +449,8 @@ class PlaybackControlModel() {
 	private var qBufferingState = false
 	private var qLoadingState = false
 
-	private val mainScope = CoroutineScope(Dispatchers.Main)
+	private val mainScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+	private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
 	fun updatePosition(position: Long) {
 		mPlaybackPosition.value = position
@@ -421,12 +460,12 @@ class PlaybackControlModel() {
 		mBufferedPosition.value = bufferedPosition
 	}
 
-	suspend fun updateArt(bitmap: Bitmap?) {
+	fun updateArt(bitmap: Bitmap?) {
 		mArt.value = bitmap
 		artJob.cancel()
 
 		if (bitmap != null) {
-			artJob = mainScope.launch {
+			artJob = ioScope.launch {
 				Palette.from(bitmap).maximumColorCount(16).generate().let {
 					ensureActive()
 					mPalette.value = it

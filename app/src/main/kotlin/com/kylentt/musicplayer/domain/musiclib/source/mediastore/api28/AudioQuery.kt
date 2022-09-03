@@ -10,15 +10,27 @@ import com.kylentt.musicplayer.domain.musiclib.source.mediastore.audio.MediaStor
 
 class MediaStoreAudioQuery28 private constructor(
 	override val id: Long,
-	override val uri: Uri
+	override val uri: Uri,
+	override val albumId: Long,
+	override val artistId: Long,
+	override val version: Long
 ) : MediaStoreAudioQuery() {
 
 	class Builder internal constructor() {
 		var id: Long = Long.MIN_VALUE
 		var uri: Uri = Uri.EMPTY
+		var artistId: Long = Long.MIN_VALUE
+		var albumId: Long = Long.MIN_VALUE
+		var version: Long = Long.MIN_VALUE
 
 		internal fun build(): MediaStoreAudioQuery28 {
-			return MediaStoreAudioQuery28(id, uri)
+			return MediaStoreAudioQuery28(
+				id = id,
+				uri = uri,
+				artistId = artistId,
+				albumId = albumId,
+				version = version
+			)
 		}
 	}
 

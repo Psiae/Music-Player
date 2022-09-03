@@ -26,6 +26,12 @@ object VersionHelper {
 	fun hasSnowCone() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S   // Snow Cone    12      31
 
 	@JvmStatic
+	fun hasSnowConeV2() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S_V2
+
+	@JvmStatic
+	fun hasTiramisu() = Build.VERSION.SDK_INT >= 33
+
+	@JvmStatic
 	fun isNougat() = Build.VERSION.SDK_INT == Build.VERSION_CODES.N     // Nougat       7.0     24
 
 	@JvmStatic
@@ -48,5 +54,11 @@ object VersionHelper {
 
 	@JvmStatic
 	fun isSnowCone() = Build.VERSION.SDK_INT == Build.VERSION_CODES.S   // Snow Cone    12      31
+
+	@JvmStatic
+	fun isSnowConeV2() = Build.VERSION.SDK_INT == Build.VERSION_CODES.S_V2 // Snow Cone 12L     32
+
+	@JvmStatic
+	fun isTiramisu() = Build.VERSION.SDK_INT == 33                         // Tiramisu 	13      33
 
 }

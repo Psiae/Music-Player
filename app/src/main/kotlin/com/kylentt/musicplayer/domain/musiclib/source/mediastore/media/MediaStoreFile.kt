@@ -38,18 +38,11 @@ abstract class MediaStoreFile internal constructor() {
 	abstract val dateModified: Long
 
 	/**
-	 * the actual name of the file, without extension
+	 * the name of the file, including its extension
 	 *
 	 * @see [MediaStore.Files.FileColumns.DISPLAY_NAME]
 	 */
 	abstract val fileName: String
-
-	/**
-	 * the name of the file including its extension
-	 *
-	 * @see [MediaStore.Files.FileColumns.DISPLAY_NAME]
-	 */
-	abstract val fileNameWithExtension: String
 
 	/**
 	 * The media type (audio, video, image or playlist) of the file,

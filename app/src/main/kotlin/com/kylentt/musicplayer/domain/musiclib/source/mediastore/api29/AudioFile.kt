@@ -5,6 +5,7 @@ import com.kylentt.musicplayer.domain.musiclib.source.mediastore.audio.MediaStor
 
 /**
  * class representing Audio File Information on MediaStore API 29 / Android 10.0 / Android Q.
+ * @see MediaStore29.MediaColumns
  * @see MediaStore29.Files
  */
 class MediaStoreAudioFile29 private constructor(
@@ -34,7 +35,6 @@ class MediaStoreAudioFile29 private constructor(
 	override val dateAdded: Long,
 	override val dateModified: Long,
 	override val fileName: String,
-	override val fileNameWithExtension: String,
 	override val mimeType: String,
 	override val size: Long,
 ) : MediaStoreAudioFile() {
@@ -46,11 +46,10 @@ class MediaStoreAudioFile29 private constructor(
 		var dateAdded: Long = -1L
 		var dateModified: Long = -1L
 		var fileName: String = ""
-		var fileNameWithExtension: String = ""
 		var mimeType: String = ""
 		var size: Long = -1L
 
-		fun build(): MediaStoreAudioFile29 {
+		internal fun build(): MediaStoreAudioFile29 {
 			return MediaStoreAudioFile29(
 				absolutePath = absolutePath,
 				bucketDisplayName = bucketDisplayName,
@@ -58,11 +57,14 @@ class MediaStoreAudioFile29 private constructor(
 				dateAdded = dateAdded,
 				dateModified = dateModified,
 				fileName = fileName,
-				fileNameWithExtension = fileNameWithExtension,
 				mimeType = mimeType,
 				size = size
 			)
 		}
 
+	}
+
+	companion object {
+		val empty = Builder().build()
 	}
 }

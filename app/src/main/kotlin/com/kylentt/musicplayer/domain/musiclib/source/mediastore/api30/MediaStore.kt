@@ -4,6 +4,7 @@ import android.content.ContentResolver
 import android.media.ExifInterface
 import android.media.MediaFormat
 import android.media.MediaMetadataRetriever
+import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
@@ -744,7 +745,7 @@ internal object MediaStore30 {
 
 	object Files {
 
-		private val EXTERNAL_CONTENT_URI = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL)
+		private val EXTERNAL_CONTENT_URI: Uri? = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL)
 
 		/**
 		 * File metadata columns.

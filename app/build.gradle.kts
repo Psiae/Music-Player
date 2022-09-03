@@ -83,7 +83,7 @@ dependencies {
 
     /* Androidx.activity */
     dependencies {
-        val v = "1.5.0"
+        val v = "1.5.1"
         implementation("androidx.activity:activity-compose:$v")
     }
 
@@ -120,8 +120,8 @@ dependencies {
 
     /* Androidx.core */
     dependencies {
-        val vKTX = "1.8.0"
-        val vSplashScreen = "1.0.0-rc01"
+        val vKTX = "1.9.0-alpha02"
+        val vSplashScreen = "1.0.0"
 
         implementation("androidx.core:core-ktx:$vKTX")
         implementation("androidx.core:core-splashscreen:$vSplashScreen")
@@ -148,7 +148,7 @@ dependencies {
 
     /* Androidx.media3 */
     dependencies {
-        val v = "1.0.0-beta01"
+        val v = "1.0.0-beta02"
         implementation("androidx.media3:media3-exoplayer:$v")
         implementation("androidx.media3:media3-session:$v")
         implementation("androidx.media3:media3-common:$v")
@@ -171,7 +171,7 @@ dependencies {
 
     /* Androidx.room */
     dependencies {
-        val v = "2.4.2"
+        val v = "2.4.3"
 
         implementation("androidx.room:room-runtime:$v")
         implementation("androidx.room:room-ktx:$v")
@@ -186,7 +186,7 @@ dependencies {
 
     /* coil-kt */
     dependencies  {
-        val v = "2.1.0"
+        val v = "2.2.0"
         implementation("io.coil-kt:coil:$v")
         implementation("io.coil-kt:coil-compose:$v")
     }
@@ -217,7 +217,7 @@ dependencies {
     dependencies {
 
         // Exoplayer
-        val vExoPlayer = "2.18.0"
+        val vExoPlayer = "2.18.1"
         implementation("com.google.android.exoplayer:extension-mediasession:$vExoPlayer")
     }
 
@@ -225,23 +225,16 @@ dependencies {
     dependencies {
 
         // Hilt-Android
-        val vHiltAndroid = "2.42"
+        val vHiltAndroid = "2.43.2"
         implementation("com.google.dagger:hilt-android:$vHiltAndroid")
         kapt("com.google.dagger:hilt-android-compiler:$vHiltAndroid")
     }
 
     /* Google.guava */
     dependencies {
-        val v = "31.0.1-android"
+        val v = "31.1-android"
         implementation("com.google.guava:guava:$v")
     }
-
-    @Suppress("SpellCheckingInspection")
-    // Jthink.jaudiotagger
-    /*dependencies {
-        val v = "3.0.1"
-        implementation("net.jthink:jaudiotagger:$v")
-    }*/
 
     /* Instrumentation Test */
     dependencies {
@@ -277,11 +270,11 @@ dependencies {
     dependencies {
 
         // Coroutines-Guava
-        val vCoroutinesGuava = "1.6.1"
+        val vCoroutinesGuava = "1.6.4"
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-guava:$vCoroutinesGuava")
 
         // Serialization-Json
-        val vSerializationJson = "1.3.2"
+        val vSerializationJson = "1.4.0"
         implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$vSerializationJson")
     }
 

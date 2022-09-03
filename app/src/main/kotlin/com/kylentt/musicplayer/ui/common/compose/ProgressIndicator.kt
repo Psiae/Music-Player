@@ -1,22 +1,10 @@
 package com.kylentt.musicplayer.ui.common.compose
 
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.LinearProgressIndicator
-
-import androidx.compose.animation.core.CubicBezierEasing
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.SpringSpec
-import androidx.compose.animation.core.VectorConverter
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateValue
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.keyframes
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.progressSemantics
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -56,7 +44,7 @@ import kotlin.math.max
  * reached the area of the overall indicator yet
  */
 @Composable
-fun LinearProgressIndicator(
+fun LinearIndeterminateProgressIndicator(
 	progress: Float,
 	modifier: Modifier = Modifier,
 	color: Color = MaterialTheme.colorScheme.primary,
@@ -89,7 +77,7 @@ fun LinearProgressIndicator(
  * reached the area of the overall indicator yet
  */
 @Composable
-fun LinearProgressIndicator(
+fun LinearIndeterminateProgressIndicator(
 	modifier: Modifier = Modifier,
 	color: Color = MaterialTheme.colorScheme.primary,
 	trackColor: Color = MaterialTheme.colorScheme.surfaceVariant,
@@ -411,7 +399,7 @@ private fun DrawScope.drawIndeterminateCircularIndicator(
 }
 
 /**
- * Contains the default values used for [LinearProgressIndicator] and [CircularProgressIndicator].
+ * Contains the default values used for [LinearIndeterminateProgressIndicator] and [CircularProgressIndicator].
  */
 object ProgressIndicatorDefaults {
 	/**

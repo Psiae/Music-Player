@@ -1,6 +1,7 @@
 package com.kylentt.musicplayer.domain.musiclib.source.mediastore.api28
 
 import android.content.ContentResolver
+import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import androidx.annotation.RequiresApi
@@ -130,7 +131,7 @@ internal object MediaStore28 {
 
 	object Files {
 
-		private val EXTERNAL_CONTENT_URI = MediaStore.Files.getContentUri("external")
+		private val EXTERNAL_CONTENT_URI: Uri? = MediaStore.Files.getContentUri("external")
 
 		/**
 		 * Fields for master table for all media files.

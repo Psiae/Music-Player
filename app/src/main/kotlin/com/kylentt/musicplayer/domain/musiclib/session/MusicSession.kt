@@ -9,7 +9,7 @@ import com.kylentt.musicplayer.domain.musiclib.interactor.LibraryAgent
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import timber.log.Timber
+import kotlin.coroutines.coroutineContext
 
 class MusicSession(private val agent: LibraryAgent) {
 
@@ -19,9 +19,9 @@ class MusicSession(private val agent: LibraryAgent) {
 		val mainScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
 		private val mLoading = MutableStateFlow(false)
-		private val mPlaybackPosition = MutableStateFlow(0L)
-		private val mPlaybackDuration = MutableStateFlow(0L)
-		private val mPlaybackBufferedPosition = MutableStateFlow(0L)
+		private val mPlaybackPosition = MutableStateFlow(-1L)
+		private val mPlaybackDuration = MutableStateFlow(-1L)
+		private val mPlaybackBufferedPosition = MutableStateFlow(-1L)
 
 		private var positionCollectorJob = Job().apply { complete() }.job
 			set(value) {
@@ -45,18 +45,30 @@ class MusicSession(private val agent: LibraryAgent) {
 
 		private val playerListener = object : Player.Listener {
 
+			override fun onPositionDiscontinuity(
+				oldPosition: Player.PositionInfo,
+				newPosition: Player.PositionInfo,
+				reason: Int
+			) {
+				updatePlaybackPosition(newPosition.positionMs)
+			}
+
+			override fun onIsPlayingChanged(isPlaying: Boolean) {
+				if (isPlaying && !positionCollectorJob.isActive) startPositionCollector()
+			}
+
 			override fun onIsLoadingChanged(isLoading: Boolean) {
 				updatePlaybackBufferedPosition(player.bufferedPosition)
 				mLoading.value = isLoading
+
+				if (!bufferedPositionCollectorJob.isActive) {
+					startBufferedPositionCollector()
+				}
 			}
 
 			override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-				Timber.d("player callback: onMediaItemTransition $reason. playerPosition: ${player.position}, ${player.bufferedPosition}")
 				cancelPositionCollector()
 				cancelBufferedPositionCollector()
-
-				updatePlaybackPosition(0L)
-				updatePlaybackBufferedPosition(0L)
 
 				if (mediaItem != null) {
 					if (!positionCollectorJob.isActive) {
@@ -65,6 +77,9 @@ class MusicSession(private val agent: LibraryAgent) {
 					if (!bufferedPositionCollectorJob.isActive) {
 						startBufferedPositionCollector(0L)
 					}
+				} else {
+					updatePlaybackPosition(0L)
+					updatePlaybackBufferedPosition(0L)
 				}
 			}
 
@@ -86,33 +101,41 @@ class MusicSession(private val agent: LibraryAgent) {
 
 		private fun startPositionCollector(startPosition: Long = player.position) {
 			updatePlaybackPosition(startPosition)
-			positionCollectorJob = collectPosition()
+			positionCollectorJob = mainScope.launch {
+				delay(1000)
+				collectPosition()
+			}
 		}
 
 		private fun cancelPositionCollector() {
 			positionCollectorJob.cancel()
 		}
 
-		private fun startBufferedPositionCollector(startPosition: Long = player.position) {
+		private fun startBufferedPositionCollector(startPosition: Long = player.bufferedPosition) {
 			updatePlaybackBufferedPosition(startPosition)
-			bufferedPositionCollectorJob = collectBufferedPosition()
+			bufferedPositionCollectorJob = mainScope.launch {
+				delay(500)
+				collectBufferedPosition()
+			}
 		}
 
 		private fun cancelBufferedPositionCollector() {
 			bufferedPositionCollectorJob.cancel()
 		}
 
-		private fun collectPosition() = mainScope.launch {
-			while (isActive) {
-				delay(1000)
+		private suspend fun collectPosition() {
+			while (coroutineContext.isActive) {
 				updatePlaybackPosition(player.position)
+				if (playbackPosition.value >= playbackState.value.duration) break
+				delay(1000)
 			}
 		}
 
-		private fun collectBufferedPosition() = mainScope.launch {
-			while (isActive) {
-				delay(if (mLoading.value) 100 else 1000)
+		private suspend fun collectBufferedPosition() {
+			while (coroutineContext.isActive) {
 				updatePlaybackBufferedPosition(player.bufferedPosition)
+				if (playbackBufferedPosition.value >= playbackState.value.duration) break
+				delay(500)
 			}
 		}
 	}

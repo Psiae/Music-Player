@@ -22,6 +22,8 @@ abstract class MediaStoreAudioMetadata internal constructor() : MediaStoreMetada
 	@DurationValue(TimeUnit.MILLISECONDS)
 	abstract val durationMs: Long
 
+	abstract val genre: String
+
 	abstract val track: String
 
 	abstract val year: Int

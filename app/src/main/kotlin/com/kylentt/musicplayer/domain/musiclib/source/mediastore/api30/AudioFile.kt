@@ -34,7 +34,35 @@ class MediaStoreAudioFile30(
 	override val dateAdded: Long,
 	override val dateModified: Long,
 	override val fileName: String,
-	override val fileNameWithExtension: String,
 	override val mimeType: String,
 	override val size: Long,
-) : MediaStoreAudioFile()
+) : MediaStoreAudioFile() {
+
+	class Builder internal constructor() {
+		var absolutePath = ""
+		var bucketDisplayName = ""
+		var bucketId: Long = Long.MIN_VALUE
+		var dateAdded: Long = -1
+		var dateModified: Long = -1
+		var fileName: String = ""
+		var mimeType: String = ""
+		var size: Long = -1L
+
+		internal fun build(): MediaStoreAudioFile30 {
+			return MediaStoreAudioFile30(
+				absolutePath = absolutePath,
+				bucketDisplayName = bucketDisplayName,
+				bucketId = bucketId,
+				dateAdded = dateAdded,
+				dateModified = dateModified,
+				fileName = fileName,
+				mimeType = mimeType,
+				size = size
+			)
+		}
+	}
+
+	companion object {
+		val empty = Builder().build()
+	}
+}

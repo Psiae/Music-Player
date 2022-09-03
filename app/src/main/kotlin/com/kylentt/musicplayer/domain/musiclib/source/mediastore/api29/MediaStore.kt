@@ -3,7 +3,9 @@
 
 package com.kylentt.musicplayer.domain.musiclib.source.mediastore.api29
 
+import android.app.Activity
 import android.content.ContentResolver
+import android.content.Context
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -446,7 +448,7 @@ internal object MediaStore29 {
 
 	object Files {
 
-		private val EXTERNAL_CONTENT_URI: Uri = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL)
+		private val EXTERNAL_CONTENT_URI: Uri? = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL)
 
 		abstract class FileColumns : MediaColumns() {
 

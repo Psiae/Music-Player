@@ -7,6 +7,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.kylentt.mediaplayer.domain.viewmodels.MainViewModel
 import com.kylentt.mediaplayer.domain.viewmodels.MediaViewModel
@@ -57,8 +58,6 @@ class MainActivity : ComponentActivity() {
 		setContent {
 			ComposeContent()
 		}
-
-		getString(R.string.app_name)
 
 		return dispatchEvent(MainEvent.Create)
 	}

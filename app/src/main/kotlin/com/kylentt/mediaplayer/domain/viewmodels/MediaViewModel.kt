@@ -12,11 +12,10 @@ import com.kylentt.musicplayer.common.android.memory.maybeWaitForMemory
 import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
 import com.kylentt.musicplayer.common.coroutines.safeCollect
 import com.kylentt.musicplayer.common.kotlin.coroutine.checkCancellation
-import com.kylentt.musicplayer.common.kotlin.mutablecollection.forEachClear
+import com.kylentt.musicplayer.common.kotlin.collection.mutable.forEachClear
 import com.kylentt.musicplayer.core.app.AppDelegate
 import com.kylentt.musicplayer.domain.musiclib.core.MusicLibrary
-import com.kylentt.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isStateBuffering
-import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemHelper
+import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemHelper
 import com.kylentt.musicplayer.ui.main.compose.screens.root.PlaybackControlModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.*
@@ -27,11 +26,11 @@ import kotlin.time.ExperimentalTime
 
 @HiltViewModel
 class MediaViewModel @Inject constructor(
-	private val coilHelper: CoilHelper,
-	private val deviceInfo: DeviceInfo,
-	private val dispatchers: CoroutineDispatchers,
-	private val itemHelper: MediaItemHelper,
-	private val intentHandler: MediaIntentHandler
+    private val coilHelper: CoilHelper,
+    private val deviceInfo: DeviceInfo,
+    private val dispatchers: CoroutineDispatchers,
+    private val itemHelper: MediaItemHelper,
+    private val intentHandler: MediaIntentHandler
 ) : ViewModel() {
 
 	private val cacheManager = AppDelegate.cacheManager
@@ -39,10 +38,10 @@ class MediaViewModel @Inject constructor(
 	private val ioScope = viewModelScope + dispatchers.io
 	private val computationScope = viewModelScope + dispatchers.computation
 
-	private val positionStateFlow = MusicLibrary.localAgent.session.info.playbackPosition
-	private val bufferedPositionStateFlow = MusicLibrary.localAgent.session.info.playbackBufferedPosition
+	private val positionStateFlow = MusicLibrary.api.localAgent.session.info.playbackPosition
+	private val bufferedPositionStateFlow = MusicLibrary.api.localAgent.session.info.playbackBufferedPosition
 
-	private val player = MusicLibrary.localAgent.session.player
+	private val player = MusicLibrary.api.localAgent.session.player
 
 	private var positionCollectorJob = Job().job
 	private var updateArtJob = Job().job
@@ -81,7 +80,7 @@ class MediaViewModel @Inject constructor(
   }
 
   private suspend fun collectPlaybackState() {
-    MusicLibrary.localAgent.session.info.playbackState.safeCollect { playbackState ->
+    MusicLibrary.api.localAgent.session.info.playbackState.safeCollect { playbackState ->
 			Timber.d("collectPlaybackState")
 
 			val get = playbackControlModel.mediaItem
@@ -115,7 +114,6 @@ class MediaViewModel @Inject constructor(
 				} ?: itemHelper.getEmbeddedPicture(item)?.let { bytes ->
 					coilHelper.loadBitmap(bytes, 500 ,500)
 				}
-
 
 				checkCancellation {
 					bitmap?.recycle()

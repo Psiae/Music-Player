@@ -17,13 +17,13 @@ import com.kylentt.musicplayer.R
 import com.kylentt.musicplayer.core.app.AppDelegate
 import com.kylentt.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isOngoing
 import com.kylentt.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isStateBuffering
-import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemFactory.orEmpty
-import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemInfo
+import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory.orEmpty
+import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemInfo
 import timber.log.Timber
 
 class MediaNotificationProvider(
-	private val context: Context,
-	private var itemInfoIntentConverter: MediaItemInfo.IntentConverter? = null,
+    private val context: Context,
+    private var itemInfoIntentConverter: MediaItemInfo.IntentConverter? = null,
 ) {
 	private val actionBroadcastReceiver: BroadcastReceiver = ProviderBroadcastReceiver()
 	private var actionReceiver: ActionReceiver? = null

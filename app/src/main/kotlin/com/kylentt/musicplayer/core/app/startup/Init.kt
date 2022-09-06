@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.startup.Initializer
 import com.kylentt.musicplayer.BuildConfig
 import com.kylentt.musicplayer.core.app.AppDelegate
+import com.kylentt.musicplayer.core.app.startup.logger.TimberInitializer
+import com.kylentt.musicplayer.core.app.startup.medialib.MediaLibraryInitializer
 
 /**
  * Initializer Interface from [Initializer], specified in AndroidManifest.xml
@@ -14,13 +16,12 @@ import com.kylentt.musicplayer.core.app.AppDelegate
 
 class AppInitializer : Initializer<Unit> {
 
-	override fun create(context: Context) {
-		AppDelegate.deviceManager
-	}
+	override fun create(context: Context) {}
 	override fun dependencies(): MutableList<Class<out Initializer<*>>> {
 		with(mutableListOf<Class<out Initializer<*>>>()) {
 			if (BuildConfig.DEBUG) add(TimberInitializer::class.java)
 			add(AppDelegateInitializer::class.java)
+			add(MediaLibraryInitializer::class.java)
 			add(MusicLibraryInitializer::class.java)
 			return this
 		}

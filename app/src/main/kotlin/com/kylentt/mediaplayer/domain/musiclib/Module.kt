@@ -2,12 +2,12 @@ package com.kylentt.mediaplayer.domain.musiclib
 
 import android.content.Context
 import androidx.media3.exoplayer.ExoPlayer
-import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
-import com.kylentt.musicplayer.domain.musiclib.player.exoplayer.ExoPlayerFactory
-import com.kylentt.mediaplayer.data.repository.MediaRepository
 import com.kylentt.mediaplayer.helper.external.MediaIntentHandler
 import com.kylentt.mediaplayer.helper.external.MediaIntentHandlerImpl
-import com.kylentt.musicplayer.domain.musiclib.source.mediastore.MediaStoreProvider
+import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
+import com.kylentt.musicplayer.domain.musiclib.player.exoplayer.ExoPlayerFactory
+import com.kylentt.musicplayer.medialib.MediaLibrary
+import com.kylentt.musicplayer.medialib.api.provider.mediastore.MediaStoreProvider
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -23,10 +23,16 @@ object MusicLibraryModule {
 
 	@Provides
 	@Singleton
+	fun provideMediaStoreProvider(@ApplicationContext context: Context): MediaStoreProvider {
+		return MediaLibrary.construct(context).providers.mediaStore
+	}
+
+	@Provides
+	@Singleton
 	fun provideMediaIntentHandler(
-        @ApplicationContext context: Context,
-        coroutineDispatchers: CoroutineDispatchers,
-        mediaStoreProvider: MediaStoreProvider
+		@ApplicationContext context: Context,
+		coroutineDispatchers: CoroutineDispatchers,
+		mediaStoreProvider: MediaStoreProvider
 	): MediaIntentHandler {
 		return MediaIntentHandlerImpl(context, coroutineDispatchers, mediaStoreProvider)
 	}

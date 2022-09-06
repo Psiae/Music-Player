@@ -316,7 +316,7 @@ private fun AnimatedBufferedProgressIndicator(
 			bufferedPosition == 0L || duration == 0L || bufferedPosition > duration -> 0f
 			else -> bufferedPosition.toFloat() / duration
 		},
-		animationSpec = tween(100)
+		animationSpec = tween(250)
 	)
 
 	BufferedProgressIndicator(bufferedProgress = bufferedProgress)
@@ -441,7 +441,7 @@ class PlaybackControlModel() {
 		mPlaybackArtist.value = (metadata.artist ?: metadata.albumArtist ?: "").toString()
 		mPlaybackDuration.value = state.duration
 		mPlayAvailable.value = !state.playWhenReady
-		mShowPlay.value = !state.playing || !state.playWhenReady
+		mShowPlay.value = (!state.playing && !state.playerState.isStateBuffering())
 		mShowSelf.value = !state.isEmpty && state.mediaItem !== MediaItem.EMPTY
 		mBuffering.value = state.playerState.isStateBuffering()
 	}

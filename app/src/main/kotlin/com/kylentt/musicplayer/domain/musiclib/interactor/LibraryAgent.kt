@@ -1,14 +1,13 @@
 package com.kylentt.musicplayer.domain.musiclib.interactor
 
-import com.kylentt.musicplayer.domain.musiclib.core.MusicLibrary
+import android.content.Context
 import com.kylentt.musicplayer.domain.musiclib.dependency.Injector
 import com.kylentt.musicplayer.domain.musiclib.dependency.Provider
-import com.kylentt.musicplayer.domain.musiclib.session.LibraryPlayer
 import com.kylentt.musicplayer.domain.musiclib.session.MusicSession
+import com.kylentt.musicplayer.medialib.player.LibraryPlayer
 
-class LibraryAgent(private val library: MusicLibrary)  {
-	val context = library.context
-
+@Deprecated("TODO")
+class LibraryAgent(val context: Context)  {
 
 	val mask = object : Mask {
 

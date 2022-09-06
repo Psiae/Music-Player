@@ -14,12 +14,12 @@ import androidx.lifecycle.Lifecycle
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
-import com.kylentt.mediaplayer.domain.util.ContextBroadcastManager
+import com.kylentt.musicplayer.common.android.broadcast.ContextBroadcastManager
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.musicplayer.BuildConfig
 import com.kylentt.musicplayer.common.coroutines.safeCollect
-import com.kylentt.musicplayer.common.kotlin.mutablecollection.forEachClear
+import com.kylentt.musicplayer.common.kotlin.collection.mutable.forEachClear
 import com.kylentt.musicplayer.core.app.dependency.CoroutineModule
 import com.kylentt.musicplayer.core.sdk.VersionHelper
 import com.kylentt.musicplayer.domain.musiclib.service.manager.MediaNotificationManager

@@ -3,7 +3,7 @@ package com.kylentt.musicplayer.core.app
 import android.app.Application
 import android.content.Context
 import com.kylentt.musicplayer.common.android.context.ContextInfo
-import com.kylentt.musicplayer.common.late.LateLazy
+import com.kylentt.musicplayer.common.lazy.LazyConstructor
 import com.kylentt.musicplayer.core.app.cache.CacheManager
 import com.kylentt.musicplayer.core.app.device.DeviceManager
 import com.kylentt.musicplayer.core.app.permission.PermissionManager
@@ -25,7 +25,7 @@ class AppDelegate private constructor (context: Context) : ApplicationDelegate {
 	override val permissionManager = PermissionManager.get(mBase)
 
 	companion object {
-		private val delegate = LateLazy<AppDelegate>()
+		private val delegate = LazyConstructor<AppDelegate>()
 
 		val cacheManager
 			get() = delegate.value.cacheManager

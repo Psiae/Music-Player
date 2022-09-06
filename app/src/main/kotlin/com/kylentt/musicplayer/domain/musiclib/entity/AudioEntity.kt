@@ -5,9 +5,9 @@ import android.os.Bundle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import com.kylentt.musicplayer.domain.musiclib.audiofile.AudioFileInfo
-import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaMetadataHelper.putDisplayTitle
-import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaMetadataHelper.putFileName
-import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaMetadataHelper.putStoragePath
+import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaMetadataHelper.putDisplayTitle
+import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaMetadataHelper.putFileName
+import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaMetadataHelper.putStoragePath
 import java.io.File
 import java.util.Enumeration
 

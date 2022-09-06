@@ -11,9 +11,9 @@ import com.kylentt.mediaplayer.helper.external.providers.ContentProvidersHelper
 import com.kylentt.mediaplayer.helper.external.providers.DocumentProviderHelper
 import com.kylentt.musicplayer.core.app.dependency.CoroutineModule
 import com.kylentt.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isStateEnded
-import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemPropertyHelper.getDebugDescription
-import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemPropertyHelper.mediaUri
-import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaMetadataHelper.getStoragePath
+import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemPropertyHelper.getDebugDescription
+import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemPropertyHelper.mediaUri
+import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaMetadataHelper.getStoragePath
 import com.kylentt.musicplayer.domain.musiclib.service.MusicLibraryService
 import kotlinx.coroutines.*
 import timber.log.Timber

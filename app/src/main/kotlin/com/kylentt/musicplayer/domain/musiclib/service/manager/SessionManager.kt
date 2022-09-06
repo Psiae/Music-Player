@@ -11,8 +11,8 @@ import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.musicplayer.common.generic.ChangedNotNull
 import com.kylentt.musicplayer.core.app.dependency.CoroutineModule
-import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemFactory
-import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemPropertyHelper
+import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory
+import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemPropertyHelper
 import com.kylentt.musicplayer.domain.musiclib.service.MusicLibraryService
 import com.kylentt.musicplayer.domain.musiclib.service.provider.SessionProvider
 import kotlinx.coroutines.CoroutineScope
@@ -259,7 +259,7 @@ class SessionManager(
 
 				with(MediaItemPropertyHelper) {
 					val uri = it.mediaUri ?: return@forEach
-					val filled = MediaItemFactory.fillInLocalConfig(it, uri)
+					val filled = com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory.fillInLocalConfig(it, uri)
 					toReturn.add(filled)
 				}
 			}

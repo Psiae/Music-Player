@@ -12,11 +12,11 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaItem.RequestMetadata
 import androidx.media3.common.MediaMetadata
 import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
-import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemFactory
-import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemPropertyHelper.mediaUri
-import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaMetadataHelper.putDisplayTitle
-import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaMetadataHelper.putFileName
-import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaMetadataHelper.putStoragePath
+import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory
+import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemPropertyHelper.mediaUri
+import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaMetadataHelper.putDisplayTitle
+import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaMetadataHelper.putFileName
+import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaMetadataHelper.putStoragePath
 import com.kylentt.mediaplayer.data.SongEntity
 import com.kylentt.musicplayer.common.android.uri.orEmpty
 import com.kylentt.musicplayer.core.sdk.VersionHelper

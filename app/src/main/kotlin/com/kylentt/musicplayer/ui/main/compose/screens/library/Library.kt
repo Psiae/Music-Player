@@ -12,6 +12,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -93,7 +94,7 @@ private fun LibraryContent() {
 					.fillMaxWidth()
 					.fillMaxHeight()
 					.padding(top = 10.dp, start = 10.dp, end = 10.dp),
-				columns = GridCells.Fixed(2),
+				columns = GridCells.Adaptive(150.dp),
 				verticalArrangement = Arrangement.spacedBy(10.dp),
 				horizontalArrangement = Arrangement.spacedBy(10.dp)
 			) {
@@ -109,7 +110,8 @@ private fun LibraryContent() {
 						,
 					) {
 						Box(contentAlignment = Alignment.BottomCenter) {
-							val req = remember(data.hashCode()) {
+
+							val req = remember(data) {
 								if (data == null) return@remember null
 
 								ImageRequest.Builder(context)

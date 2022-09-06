@@ -35,11 +35,11 @@ import com.kylentt.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.
 import com.kylentt.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isRepeatOne
 import com.kylentt.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isStateEnded
 import com.kylentt.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isStateIdle
-import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemFactory
-import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemFactory.orEmpty
-import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemInfo
-import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemPropertyHelper.getDebugDescription
-import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemPropertyHelper.mediaUri
+import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory
+import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory.orEmpty
+import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemInfo
+import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemPropertyHelper.getDebugDescription
+import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemPropertyHelper.mediaUri
 import com.kylentt.musicplayer.domain.musiclib.service.MusicLibraryService
 import com.kylentt.musicplayer.domain.musiclib.service.provider.MediaNotificationProvider
 import com.kylentt.musicplayer.ui.main.MainActivity

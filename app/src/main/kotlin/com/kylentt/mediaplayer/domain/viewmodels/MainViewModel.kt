@@ -6,11 +6,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import com.kylentt.mediaplayer.data.repository.ProtoRepository
-import com.kylentt.mediaplayer.helper.external.IntentWrapper
-import com.kylentt.musicplayer.common.android.context.ContextInfo
-import com.kylentt.musicplayer.common.kotlin.mutablecollection.doEachClear
-import com.kylentt.musicplayer.common.kotlin.mutablecollection.forEachClear
-import com.kylentt.musicplayer.core.app.permission.AndroidPermission
+import com.kylentt.musicplayer.common.kotlin.collection.mutable.doEachClear
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 

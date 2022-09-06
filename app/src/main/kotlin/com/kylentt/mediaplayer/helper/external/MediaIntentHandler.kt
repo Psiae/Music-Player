@@ -10,19 +10,19 @@ import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.widget.Toast
 import androidx.core.net.toUri
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
-import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
-import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemFactory
-import com.kylentt.mediaplayer.data.SongEntity
-import com.kylentt.mediaplayer.data.repository.MediaRepository
-import com.kylentt.mediaplayer.data.source.local.MediaStoreSong
-import com.kylentt.musicplayer.domain.musiclib.core.MusicLibrary
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.external.providers.ContentProvidersHelper
 import com.kylentt.mediaplayer.helper.external.providers.DocumentProviderHelper
+import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
+import com.kylentt.musicplayer.medialib.api.provider.mediastore.MediaStoreProvider
+import com.kylentt.musicplayer.domain.musiclib.core.MusicLibrary
 import com.kylentt.musicplayer.domain.musiclib.entity.AudioEntity
-import com.kylentt.musicplayer.domain.musiclib.source.mediastore.MediaStoreProvider
+import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory
+import com.kylentt.musicplayer.medialib.internal.provider.mediastore.base.audio.MediaStoreAudioEntity
+import com.kylentt.musicplayer.medialib.media3.contract.MediaItemFactoryOf
 import kotlinx.coroutines.*
 import timber.log.Timber
 import java.io.File
@@ -103,14 +103,14 @@ class MediaIntentHandlerImpl(
       require(intent.isTypeAudio())
       withContext(dispatcher.io) {
         val defPath = async { getAudioPathFromContentUri(intent) }
-        val defSongs = async { mediaSource.queryAudioEntity(true, true) }
+        val defSongs = async { mediaSource.audioProvider.queryEntity() }
 
         ensureActive()
 
         findMatchingMediaStoreData(defPath.await(), defSongs.await())
           ?.let { pair ->
             withContext(dispatcher.main) {
-              val (song: AudioEntity, list: List<AudioEntity>) = pair
+              val (song: MediaStoreAudioEntity, list: List<MediaStoreAudioEntity>) = pair
               ensureActive()
               playMediaItem(song, list, true)
             }
@@ -128,12 +128,14 @@ class MediaIntentHandlerImpl(
     }
 
     private fun playMediaItem(
-      song: AudioEntity,
-      list: List<AudioEntity>,
+      song: MediaStoreAudioEntity,
+      list: List<MediaStoreAudioEntity>,
       fadeOut: Boolean
     ) {
       checkMainThread()
-      val itemList = list.map { it.mediaItem }
+			val factory = mediaSource.audioProvider.mediaItemFactory as MediaItemFactoryOf<MediaStoreAudioEntity>
+
+      val itemList = list.map { factory.createMediaItem(it) }
       val item = itemList[list.indexOf(song)]
       playMediaItem(item, itemList, fadeOut)
     }
@@ -144,8 +146,12 @@ class MediaIntentHandlerImpl(
       fadeOut: Boolean
     ) {
 			checkMainThread()
-			with(MusicLibrary.localAgent.session.player) {
-				setMediaItems(list, list.indexOf(item), 0)
+			with(MusicLibrary.api.localAgent.session.player) {
+				stop()
+				seekToDefaultPosition(0)
+				setMediaItems(list)
+				seekToMediaItem(list.indexOf(item), 0L)
+				prepare()
 				play()
 			}
 		}
@@ -504,12 +510,12 @@ class MediaIntentHandlerImpl(
 
   private suspend fun findMatchingMediaStoreData(
     predicate: String,
-    songs: List<AudioEntity>
-  ): Pair<AudioEntity, List<AudioEntity>>? {
+    songs: List<MediaStoreAudioEntity>
+  ): Pair<MediaStoreAudioEntity, List<MediaStoreAudioEntity>>? {
     return try {
       val storageString = ContentProvidersHelper.storageDirString
       val contentUris = ContentProvidersHelper.contentScheme
-      val songList = songs.ifEmpty { mediaSource.queryAudioEntity(true, true) }
+      val songList = songs.ifEmpty { mediaSource.audioProvider.queryEntity() }
 
       Timber.d("findMatchingMediaStore with $predicate")
 

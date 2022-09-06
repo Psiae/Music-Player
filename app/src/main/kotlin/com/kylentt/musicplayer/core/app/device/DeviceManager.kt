@@ -4,7 +4,7 @@ import android.app.Application
 import android.app.WallpaperManager
 import android.content.Context
 import android.graphics.drawable.Drawable
-import com.kylentt.musicplayer.common.late.LateLazy
+import com.kylentt.musicplayer.common.lazy.LazyConstructor
 import com.kylentt.musicplayer.core.app.permission.AndroidPermissionInfo
 
 class DeviceManager private constructor(private val context: Context) {
@@ -23,7 +23,7 @@ class DeviceManager private constructor(private val context: Context) {
 
 
 	companion object {
-		private val instance = LateLazy<DeviceManager>()
+		private val instance = LazyConstructor<DeviceManager>()
 		fun get(application: Application) = instance.construct { DeviceManager(application) }
 	}
 }

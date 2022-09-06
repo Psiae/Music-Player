@@ -3,8 +3,15 @@ package com.kylentt.musicplayer.domain.musiclib.entity
 import androidx.media3.common.*
 import com.kylentt.musicplayer.common.generic.sync
 import com.kylentt.musicplayer.common.kotlin.comparable.clamp
-import com.kylentt.musicplayer.domain.musiclib.core.media3.mediaitem.MediaItemFactory
-import com.kylentt.musicplayer.domain.musiclib.session.LibraryPlayer
+import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory
+import com.kylentt.musicplayer.medialib.player.LibraryPlayer
+import com.kylentt.musicplayer.medialib.player.LibraryPlayer.PlaybackState.Companion.toPlaybackStateInt
+import com.kylentt.musicplayer.medialib.player.event.IsPlayingChangedReason
+import com.kylentt.musicplayer.medialib.player.event.LibraryPlayerEventListener
+import com.kylentt.musicplayer.medialib.player.event.MediaItemTransitionReason
+import com.kylentt.musicplayer.medialib.player.event.PlayWhenReadyChangedReason
+import com.kylentt.musicplayer.medialib.player.playback.RepeatMode
+import com.kylentt.musicplayer.medialib.player.playback.RepeatMode.Companion.toRepeatModeInt
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
@@ -65,42 +72,51 @@ data class PlaybackState(
 
 		fun MutableStateFlow<PlaybackState>.byPlayerListener(
 			player: LibraryPlayer
-		): Player.Listener {
-			return object : Player.Listener {
+		): LibraryPlayerEventListener {
+			return object : LibraryPlayerEventListener {
 				val flow = this@byPlayerListener
 
-				override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-					val item = mediaItem ?: MediaItem.EMPTY
+				override fun onMediaItemTransition(
+					old: MediaItem?,
+					new: MediaItem?,
+					reason: MediaItemTransitionReason
+				) {
+					val item = new ?: MediaItem.EMPTY
 					val get = flow.value.mediaItem
 					if (item.mediaId == get.mediaId && get.localConfiguration != null) return
 					flow.update { it.copy(mediaItem = item) }
 				}
 
-				override fun onTimelineChanged(timeline: Timeline, reason: Int) {
+				override fun onTimelineChanged(old: Timeline, new: Timeline, reason: Int) {
 					if (reason == Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED) {
 						flow.update {
-							it.copy(mediaItems = player.getMediaItems())
+							it.copy(mediaItems = player.getAllMediaItems())
 						}
 					}
 
-					flow.update { it.copy(duration = player.duration.clamp(0, Long.MAX_VALUE)) }
+					flow.update { it.copy(duration = player.durationMs.clamp(0, Long.MAX_VALUE)) }
 				}
 
-				override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
-					flow.update { it.copy(playWhenReady = playWhenReady) }
+				override fun onPlayWhenReadyChanged(
+					playWhenReady: Boolean,
+					reason: PlayWhenReadyChangedReason
+				) {
+					flow.update { it.copy(playWhenReady = playWhenReady, playing = player.isPlaying) }
+					Timber.d("onIsPlayWhenReadyChanged MC, $playWhenReady : ${player.isPlaying}")
 				}
 
-				override fun onIsPlayingChanged(isPlaying: Boolean) {
+				override fun onIsPlayingChanged(isPlaying: Boolean, reason: IsPlayingChangedReason) {
 					flow.update { it.copy(playing = isPlaying) }
 					Timber.d("onIsPlayingChanged MC, $isPlaying")
 				}
 
-				override fun onRepeatModeChanged(repeatMode: Int) {
-					flow.update { it.copy(playerRepeatMode = repeatMode) }
+				override fun onRepeatModeChanged(old: RepeatMode, new: RepeatMode) {
+					flow.update { it.copy(playerRepeatMode = new.toRepeatModeInt) }
 				}
 
-				override fun onPlaybackStateChanged(playbackState: Int) {
-					flow.update { it.copy(playerState = playbackState) }
+				override fun onPlaybackStateChanged(state: LibraryPlayer.PlaybackState) {
+					flow.update { it.copy(playerState = state.toPlaybackStateInt) }
+					Timber.d("onPlaybackStateChanged MC, isPlaying: ${player.isPlaying}")
 				}
 			}
 		}

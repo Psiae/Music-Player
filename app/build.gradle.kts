@@ -230,6 +230,12 @@ dependencies {
         kapt("com.google.dagger:hilt-android-compiler:$vHiltAndroid")
     }
 
+    /* Google.firebase */
+    dependencies {
+        val vAuth = "21.0.8"
+        implementation("com.google.firebase:firebase-auth-ktx:$vAuth")
+    }
+
     /* Google.guava */
     dependencies {
         val v = "31.1-android"

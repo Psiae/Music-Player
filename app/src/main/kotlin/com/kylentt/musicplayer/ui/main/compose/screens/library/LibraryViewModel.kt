@@ -2,21 +2,27 @@ package com.kylentt.musicplayer.ui.main.compose.screens.library
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.neverEqualPolicy
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.media3.common.MediaItem
 import com.kylentt.musicplayer.common.android.bitmap.bitmapfactory.BitmapSampler
 import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
 import com.kylentt.musicplayer.common.media.audio.AudioFile
 import com.kylentt.musicplayer.core.app.AppDelegate
 import com.kylentt.musicplayer.domain.musiclib.core.MusicLibrary
-import com.kylentt.musicplayer.domain.musiclib.source.mediastore.MediaStoreProvider
-import com.kylentt.musicplayer.domain.musiclib.entity.AudioEntity
+import com.kylentt.musicplayer.medialib.MediaLibrary
+import com.kylentt.musicplayer.medialib.api.MediaLibraryAPI
+import com.kylentt.musicplayer.medialib.api.provider.mediastore.MediaStoreProvider
+import com.kylentt.musicplayer.medialib.internal.provider.mediastore.base.audio.MediaStoreAudioEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.*
+import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @HiltViewModel
@@ -25,10 +31,12 @@ class LibraryViewModel @Inject constructor(
 	private val dispatchers: CoroutineDispatchers,
 	private val mediaStoreSource: MediaStoreProvider
 ) : ViewModel() {
-	private val player
-		get() = MusicLibrary.localAgent.session.player
 
-	private var mediaStoreSongs: List<AudioEntity> = emptyList()
+	private val player
+		get() = MusicLibrary.api.localAgent.session.player
+
+	private var mediaStoreSongs: List<MediaStoreAudioEntity> = emptyList()
+	private var mediaItemList: List<MediaItem> = emptyList()
 
 	private var mRefreshing = mutableStateOf(false)
 
@@ -41,18 +49,21 @@ class LibraryViewModel @Inject constructor(
 
 
 	fun playSong(local: LocalSongModel) {
-		mediaStoreSongs.find { it.uid == local.id }?.let {
-			player.play(it.mediaItem)
+		mediaItemList.find { it.mediaId == local.id }?.let {
+			player.setMediaItems(listOf(it))
+			player.prepare()
+			player.play()
 		}
 	}
 
 	fun validateLocalSongs(): Unit {
+
 		viewModelScope.launch(dispatchers.io) {
 
-
 			val get = mediaStoreSource
-				.queryAudioEntity(true, true)
-				.filter { it.fileInfo.metadata.playable }
+				.audioProvider
+				.queryEntity()
+				.filter { it.metadataInfo.durationMs > 0 }
 
 			val local = _localSongModels.value
 
@@ -80,22 +91,27 @@ class LibraryViewModel @Inject constructor(
 	}
 
 	private suspend fun internalRefreshLocalSongs(
-		maybeSongs: List<AudioEntity>? = null
+		maybeSongs: List<MediaStoreAudioEntity>? = null
 	) = withContext(dispatchers.io) {
 
-		val songs = (maybeSongs ?: mediaStoreSource.queryAudioEntity(true, true))
-			.filter { it.fileInfo.metadata.playable }
+		val songs = (maybeSongs ?: mediaStoreSource.audioProvider.queryEntity()).filter {
+			it.metadataInfo.durationMs > 0 }
+		val mediaItems = songs.map {
+			val factory = mediaStoreSource.audioProvider.mediaItemFactory
+			factory.createMediaItem(it)
+		}
 
 		withContext(dispatchers.main) {
 			mediaStoreSongs = songs
-			_localSongModels.value = songs.map { LocalSongModel(it.uid, it.fileInfo.metadata.title) }
+			mediaItemList = mediaItems
+			_localSongModels.value = songs.map { LocalSongModel(it.uid, it.metadataInfo.title) }
 		}
 
 		val toRemove = cacheManager.retrieveAllImageCacheFile(Bitmap::class,"LibraryViewModel").toMutableList()
 
 		val deff = async {
 
-			songs.forEach { song ->
+			songs.forEachIndexed { index, song ->
 
 				viewModelScope.launch(dispatchers.io) {
 
@@ -105,9 +121,11 @@ class LibraryViewModel @Inject constructor(
 					if (cached != null) {
 
 						toRemove.remove(cached)
-						song.mediaItem.mediaMetadata.extras?.putString("cachedArtwork", cached.absolutePath)
+						mediaItems[index].mediaMetadata.extras?.putString("cachedArtwork", cached.absolutePath)
 
-						_localSongModels.value.forEach { if (it.id == song.uid) it.updateArtwork(cached) }
+						BitmapFactory.decodeFile(cached.absolutePath)?.let {
+							_localSongModels.value[index].updateArtwork(cached)
+						}
 
 						return@launch
 					}
@@ -125,12 +143,12 @@ class LibraryViewModel @Inject constructor(
 
 						BitmapSampler.ByteArray.toSampledBitmap(data, 0, data.size, 1000000)?.let {
 							val reg = cacheManager.registerImageToCache(it, song.fileInfo.fileName + song.fileInfo.dateModified, "LibraryViewModel")
-							song.mediaItem.mediaMetadata.extras?.putString("cachedArtwork", reg.absolutePath)
+							mediaItems[index].mediaMetadata.extras?.putString("cachedArtwork", reg.absolutePath)
 							it
 						}
 					}
 
-					_localSongModels.value.forEach { if (it.id == song.uid) it.updateArtwork(embed) }
+					_localSongModels.value[index].updateArtwork(embed)
 				}
 			}
 		}
@@ -145,16 +163,16 @@ class LibraryViewModel @Inject constructor(
 	) {
 		private object NO_ART
 
-		private val mState = mutableStateOf<Any?>(null)
+		private val mLoadedState = mutableStateOf<Any?>(null)
+		private val mLoadingState = mutableStateOf(false)
 
 		val artState: State<Any?>
-			get() = mState
+			get() = mLoadedState
 
 		val isArtLoaded
 			get() = artState.value !== null
-
 		fun updateArtwork(art: Any?) {
-			mState.value = art ?: NO_ART
+			mLoadedState.value = art ?: NO_ART
 		}
 	}
 }

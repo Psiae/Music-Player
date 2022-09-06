@@ -1,4 +1,4 @@
-package com.kylentt.musicplayer.medialib.internal.android
+package com.kylentt.musicplayer.medialib.android.internal
 
 import android.app.Application
 import android.content.Context

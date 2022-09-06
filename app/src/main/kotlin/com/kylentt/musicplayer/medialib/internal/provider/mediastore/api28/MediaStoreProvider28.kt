@@ -4,7 +4,7 @@ import com.kylentt.musicplayer.medialib.internal.provider.mediastore.MediaStoreC
 import com.kylentt.musicplayer.medialib.internal.provider.mediastore.api28.audio.AudioEntityProvider28
 import com.kylentt.musicplayer.medialib.internal.provider.mediastore.base.MediaStoreProviderBase
 
-class MediaStoreProvider28 internal constructor(private val context: MediaStoreContext) :
+internal class MediaStoreProvider28 internal constructor(private val context: MediaStoreContext) :
 	MediaStoreProviderBase() {
 	override val audioEntityProvider = AudioEntityProvider28(context)
 }

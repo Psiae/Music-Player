@@ -14,7 +14,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 
-class AudioEntityProvider28 internal constructor(private val context: MediaStoreContext) :
+internal class AudioEntityProvider28 internal constructor(private val context: MediaStoreContext) :
 	AudioEntityProvider<MediaStoreAudioEntity28, MediaStoreAudioFile28, MediaStoreAudioMetadata28, MediaStoreAudioQuery28> {
 
 	override val mediaItemFactory = MediaItemFactoryAudio28(context)

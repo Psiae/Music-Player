@@ -13,7 +13,7 @@ abstract class MediaItemFactory<
 	F : MediaStoreFile,
 	M : MediaStoreMetadata,
 	Q : MediaStoreQuery
-	> (context: MediaStoreContext) : MediaItemFactoryOf<E> {
+	> internal constructor(context: MediaStoreContext) : MediaItemFactoryOf<E> {
 
 	override fun createMediaItem(
 		from: E,

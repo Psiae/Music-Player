@@ -21,6 +21,7 @@ import com.kylentt.musicplayer.medialib.internal.provider.mediastore.base.audio.
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.async
+import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -47,8 +48,8 @@ class LibraryViewModel @Inject constructor(
 	val refreshing: State<Boolean> get() = mRefreshing
 	val localSongs: State<List<LocalSongModel>> get() = _localSongModels
 
-
-	fun playSong(local: LocalSongModel) {
+	fun playSong(local: LocalSongModel) = viewModelScope.launch {
+		val player = if (!player.connected) player.connect().await() else player
 		mediaItemList.find { it.mediaId == local.id }?.let {
 			player.setMediaItems(listOf(it))
 			player.prepare()

@@ -1,11 +1,11 @@
 package com.kylentt.musicplayer.medialib.internal.provider.mediastore
 
-import com.kylentt.musicplayer.medialib.internal.MediaLibraryContext
+import com.kylentt.musicplayer.medialib.api.provider.internal.ProvidersContext
 
-class MediaStoreContext private constructor(val libContext: MediaLibraryContext) {
-	val androidContext = libContext.android
+internal class MediaStoreContext private constructor(val parent: ProvidersContext) {
+	val androidContext = parent.android
 
-	internal class Builder(val libContext: MediaLibraryContext) {
-		fun build(): MediaStoreContext = MediaStoreContext(libContext)
+	internal class Builder(private val parent: ProvidersContext) {
+		fun build(): MediaStoreContext = MediaStoreContext(parent)
 	}
 }

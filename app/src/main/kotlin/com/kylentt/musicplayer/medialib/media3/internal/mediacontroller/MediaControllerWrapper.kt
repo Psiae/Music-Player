@@ -31,7 +31,12 @@ class MediaControllerWrapper internal constructor(
 	private val wrapped: WrappedMediaController = WrappedMediaController(playerContext)
 ) : LibraryPlayer by wrapped {
 
-	fun connect() = wrapped.connectMediaController()
+	fun connect(
+		onError: () -> Unit,
+		onConnected: () -> Unit
+	) = wrapped.connectMediaController(onConnected = onConnected, onError = onError)
+
+	fun isConnected(): Boolean = wrapped.isStateConnected()
 
 	internal class WrappedMediaController(private val playerContext: PlayerContext) : LibraryPlayer {
 		private var future: ListenableFuture<MediaController>? = null

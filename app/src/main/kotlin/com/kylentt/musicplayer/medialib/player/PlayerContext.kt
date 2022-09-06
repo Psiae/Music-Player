@@ -8,7 +8,7 @@ import com.kylentt.musicplayer.medialib.player.component.AudioRerouteHandler
 import com.kylentt.musicplayer.medialib.player.options.FallbackInfo
 import com.kylentt.musicplayer.medialib.player.playback.PlaybackControlInfo
 
-class PlayerContext private constructor(
+internal class PlayerContext private constructor(
 	private val libraryContext: MediaLibraryContext,
 	val audioAttributes: AudioAttributes,
 	val fallbackInfo: FallbackInfo,

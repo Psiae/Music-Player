@@ -16,9 +16,11 @@ import com.kylentt.musicplayer.common.kotlin.collection.mutable.forEachClear
 import com.kylentt.musicplayer.core.app.AppDelegate
 import com.kylentt.musicplayer.domain.musiclib.core.MusicLibrary
 import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemHelper
+import com.kylentt.musicplayer.medialib.player.LibraryPlayer
 import com.kylentt.musicplayer.ui.main.compose.screens.root.PlaybackControlModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.*
+import kotlinx.coroutines.guava.await
 import timber.log.Timber
 import java.io.File
 import javax.inject.Inject
@@ -70,7 +72,21 @@ class MediaViewModel @Inject constructor(
 		pendingStorageIntent.forEachClear(::handleMediaIntent)
 	}
 
-	fun play() = player.play()
+	fun play() = viewModelScope.launch {
+
+		val player = if (!player.connected) {
+			player.connect().await()
+		} else {
+			player
+		}
+
+		when {
+			player.playbackState.isIDLE() -> player.prepare()
+			player.playbackState.isENDED() -> player.seekToDefaultPosition()
+		}
+
+		player.play()
+	}
 	fun pause() = player.pause()
 
   fun handleMediaIntent(intent: IntentWrapper) {

@@ -99,5 +99,13 @@ interface LibraryPlayer {
 					ENDED -> Player.STATE_ENDED
 				}
 		}
+
+		fun isIDLE() = this === IDLE
+		fun isBUFFERING() = this === BUFFERING
+		fun isREADY() = this === READY
+		fun isENDED() = this === ENDED
+
+		fun shouldPrepare() = isIDLE()
+		fun shouldSeekDefault() = isENDED()
 	}
 }

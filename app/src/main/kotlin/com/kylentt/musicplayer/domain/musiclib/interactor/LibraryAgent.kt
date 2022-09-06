@@ -4,6 +4,7 @@ import android.content.Context
 import com.kylentt.musicplayer.domain.musiclib.dependency.Injector
 import com.kylentt.musicplayer.domain.musiclib.dependency.Provider
 import com.kylentt.musicplayer.domain.musiclib.session.MusicSession
+import com.kylentt.musicplayer.medialib.api.player.MediaController
 import com.kylentt.musicplayer.medialib.player.LibraryPlayer
 
 @Deprecated("TODO")
@@ -22,7 +23,7 @@ class LibraryAgent(val context: Context)  {
 
 		override val session: Mask.Session = object : Mask.Session {
 
-			override val player: LibraryPlayer
+			override val player: MediaController
 				get() = this@LibraryAgent.session.player
 
 			override val info: MusicSession.SessionInfo
@@ -45,7 +46,7 @@ class LibraryAgent(val context: Context)  {
 		}
 
 		interface Session {
-			val player: LibraryPlayer
+			val player: MediaController
 			val info: MusicSession.SessionInfo
 		}
 	}

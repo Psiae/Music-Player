@@ -5,7 +5,7 @@ import androidx.media3.common.MediaMetadata
 import com.kylentt.musicplayer.medialib.internal.provider.mediastore.MediaStoreContext
 import com.kylentt.musicplayer.medialib.internal.provider.mediastore.base.media.MediaItemFactory
 
-class MediaItemFactoryAudio28(private val context: MediaStoreContext) :
+internal class MediaItemFactoryAudio28 internal constructor(private val context: MediaStoreContext) :
 	MediaItemFactory<MediaStoreAudioEntity28, MediaStoreAudioFile28, MediaStoreAudioMetadata28, MediaStoreAudioQuery28>(
 		context
 	) {

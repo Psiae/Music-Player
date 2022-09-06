@@ -18,7 +18,7 @@ class ContextBroadcastManager(context: Context) {
 			if (value != null) {
 				check(field == null)
 			} else {
-				field!!.lifecycle.removeObserver(observer!!)
+				field?.lifecycle?.removeObserver(observer!!)
 			}
 			field = value
 		}

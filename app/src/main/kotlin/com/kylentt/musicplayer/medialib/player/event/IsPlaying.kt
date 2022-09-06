@@ -6,6 +6,6 @@ sealed class IsPlayingChangedReason {
 	object UNKNOWN : IsPlayingChangedReason()
 
 	/*data class*/ object PLAYBACK_STATE_CHANGED : IsPlayingChangedReason()
-	data class PLAY_WHEN_READY_CHANGED(val playWhenReady: Boolean) : IsPlayingChangedReason()
+	object PLAY_WHEN_READY_CHANGED : IsPlayingChangedReason()
 	data class PLAYBACK_SUPPRESSED(val reason: PlaybackSuppressionReason) : IsPlayingChangedReason()
 }

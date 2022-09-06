@@ -18,7 +18,7 @@ internal class ForwardingMediaController private constructor(
 	override val connected: Boolean
 		get() = wrapper.isConnected()
 
-	override fun connect(): ListenableFuture<MediaController> {
+	override fun connectService(): ListenableFuture<MediaController> {
 		if (currentFuture == null) { currentFuture = WrapperFuture() }
 		return currentFuture!!
 	}

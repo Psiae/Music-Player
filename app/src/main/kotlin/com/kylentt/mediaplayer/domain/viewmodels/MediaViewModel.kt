@@ -16,7 +16,6 @@ import com.kylentt.musicplayer.common.kotlin.collection.mutable.forEachClear
 import com.kylentt.musicplayer.core.app.AppDelegate
 import com.kylentt.musicplayer.domain.musiclib.core.MusicLibrary
 import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemHelper
-import com.kylentt.musicplayer.medialib.player.LibraryPlayer
 import com.kylentt.musicplayer.ui.main.compose.screens.root.PlaybackControlModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.*
@@ -75,7 +74,7 @@ class MediaViewModel @Inject constructor(
 	fun play() = viewModelScope.launch {
 
 		val player = if (!player.connected) {
-			player.connect().await()
+			player.connectService().await()
 		} else {
 			player
 		}

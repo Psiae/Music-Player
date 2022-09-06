@@ -14,8 +14,6 @@ import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
 import com.kylentt.musicplayer.common.media.audio.AudioFile
 import com.kylentt.musicplayer.core.app.AppDelegate
 import com.kylentt.musicplayer.domain.musiclib.core.MusicLibrary
-import com.kylentt.musicplayer.medialib.MediaLibrary
-import com.kylentt.musicplayer.medialib.api.MediaLibraryAPI
 import com.kylentt.musicplayer.medialib.api.provider.mediastore.MediaStoreProvider
 import com.kylentt.musicplayer.medialib.internal.provider.mediastore.base.audio.MediaStoreAudioEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -49,7 +47,7 @@ class LibraryViewModel @Inject constructor(
 	val localSongs: State<List<LocalSongModel>> get() = _localSongModels
 
 	fun playSong(local: LocalSongModel) = viewModelScope.launch {
-		val player = if (!player.connected) player.connect().await() else player
+		val player = if (!player.connected) player.connectService().await() else player
 		mediaItemList.find { it.mediaId == local.id }?.let {
 			player.setMediaItems(listOf(it))
 			player.prepare()

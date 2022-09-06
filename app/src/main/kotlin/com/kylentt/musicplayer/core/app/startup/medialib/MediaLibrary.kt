@@ -8,6 +8,7 @@ class MediaLibraryInitializer : Initializer<Unit> {
 
 	override fun create(context: Context): Unit {
 		requireNotNull(MediaLibraryAPI.current)
+		MediaLibraryAPI.current!!.serviceComponent.startService()
 	}
 
 	override fun dependencies(): MutableList<Class<out Initializer<*>>> {

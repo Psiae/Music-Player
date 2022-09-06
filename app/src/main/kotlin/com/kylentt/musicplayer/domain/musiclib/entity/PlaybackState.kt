@@ -107,7 +107,7 @@ data class PlaybackState(
 
 				override fun onIsPlayingChanged(isPlaying: Boolean, reason: IsPlayingChangedReason) {
 					flow.update { it.copy(playing = isPlaying) }
-					Timber.d("onIsPlayingChanged MC, $isPlaying")
+					Timber.d("onIsPlayingChanged MC, $isPlaying, onPlayer: ${player.isPlaying}, reason: $reason")
 				}
 
 				override fun onRepeatModeChanged(old: RepeatMode, new: RepeatMode) {
@@ -116,7 +116,7 @@ data class PlaybackState(
 
 				override fun onPlaybackStateChanged(state: LibraryPlayer.PlaybackState) {
 					flow.update { it.copy(playerState = state.toPlaybackStateInt) }
-					Timber.d("onPlaybackStateChanged MC, isPlaying: ${player.isPlaying}")
+					Timber.d("onPlaybackStateChanged MC, $state isPlaying: ${player.isPlaying}")
 				}
 			}
 		}

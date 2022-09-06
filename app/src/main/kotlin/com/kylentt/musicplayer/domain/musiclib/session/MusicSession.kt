@@ -7,6 +7,7 @@ import com.kylentt.musicplayer.common.kotlin.comparable.clamp
 import com.kylentt.musicplayer.domain.musiclib.entity.PlaybackState
 import com.kylentt.musicplayer.domain.musiclib.interactor.LibraryAgent
 import com.kylentt.musicplayer.medialib.api.MediaLibraryAPI
+import com.kylentt.musicplayer.medialib.api.player.MediaController
 import com.kylentt.musicplayer.medialib.internal.MediaLibraryContext
 import com.kylentt.musicplayer.medialib.media3.internal.mediacontroller.MediaControllerWrapper
 import com.kylentt.musicplayer.medialib.player.LibraryPlayer
@@ -22,8 +23,7 @@ import kotlin.coroutines.coroutineContext
 
 class MusicSession(private val agent: LibraryAgent) {
 
-	val player
-		get() = MediaLibraryAPI.current!!.sessionManager.get("DEBUG")!!.mediaController
+	val player: MediaController = MediaLibraryAPI.current!!.sessionComponent.manager.findSessionById("DEBUG")!!.mediaController
 
 	val sessionInfo = object : SessionInfo {
 		val mainScope = CoroutineScope(Dispatchers.Main + SupervisorJob())

@@ -9,14 +9,28 @@ class LibrarySession private constructor(private val context: SessionContext) {
 
 	val mediaController: MediaController get() = context.controller
 
-	class Builder(val id: String) {
+	class Builder internal constructor() {
+		private var mId: String = ""
+
+		val id: String
+			get() = mId
+
+		fun setId(id: String): Builder {
+			mId = id
+			return this
+		}
+
 		internal fun build(context: SessionContext): LibrarySession {
 			return LibrarySession(context)
 		}
 
-		fun build(api: MediaLibraryAPI): LibrarySession {
-			val contextBuilder = SessionContext.Builder(id)
-			return api.sessionManager.sessionBuilder.buildSession(this, contextBuilder.build())
+		fun buildUpon(): Builder {
+			val id = id
+
+			return Builder()
+				.apply {
+					setId(id)
+				}
 		}
 	}
 }

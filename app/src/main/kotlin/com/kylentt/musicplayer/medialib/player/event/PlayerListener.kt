@@ -13,6 +13,7 @@ import com.kylentt.musicplayer.medialib.player.event.MediaItemTransitionReason.C
 import com.kylentt.musicplayer.medialib.player.event.PlayWhenReadyChangedReason.Companion.asPlayWhenReadyChangedReason
 import com.kylentt.musicplayer.medialib.player.playback.RepeatMode
 import com.kylentt.musicplayer.medialib.player.playback.RepeatMode.Companion.asRepeatMode
+import com.kylentt.musicplayer.medialib.player.playback.RepeatMode.Companion.toRepeatModeInt
 
 interface LibraryPlayerEventListener {
 
@@ -102,80 +103,86 @@ interface LibraryPlayerEventListener {
 
 	companion object {
 		@Deprecated("Temporary")
-		inline val LibraryPlayerEventListener.asPlayerListener: Player.Listener
-			get() {
-				return object  : Player.Listener {
-					val delegated = this@asPlayerListener
+		fun LibraryPlayerEventListener.asPlayerListener(player: LibraryPlayer): Player.Listener {
+			return object : Player.Listener {
+				val delegated = this@asPlayerListener
 
-					override fun onAudioAttributesChanged(audioAttributes: AudioAttributes) {
-						delegated.onAudioAttributesChanged(audioAttributes, audioAttributes)
-					}
+				private var rememberIsPlaying = player.isPlaying
+				private var rememberTimeline = player.timeLine
+				private var rememberRepeatMode: Int = player.repeatMode.toRepeatModeInt
 
-					override fun onAvailableCommandsChanged(availableCommands: Player.Commands) {
-						delegated.onAvailableCommandsChanged(availableCommands)
-					}
+				override fun onAudioAttributesChanged(audioAttributes: AudioAttributes) {
+					delegated.onAudioAttributesChanged(audioAttributes, audioAttributes)
+				}
 
-					private var rememberOldItem: MediaItem? = null
-					override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-						delegated.onMediaItemTransition(rememberOldItem, mediaItem, reason.asMediaItemTransitionReason)
-						rememberOldItem = mediaItem
-					}
+				override fun onAvailableCommandsChanged(availableCommands: Player.Commands) {
+					delegated.onAvailableCommandsChanged(availableCommands)
+				}
 
-					private var rememberRepeatMode: Int = Player.REPEAT_MODE_OFF
-					override fun onRepeatModeChanged(repeatMode: Int) {
-						if (repeatMode != rememberRepeatMode) {
-							delegated.onRepeatModeChanged(rememberRepeatMode.asRepeatMode, repeatMode.asRepeatMode)
-							rememberRepeatMode = repeatMode
-						}
-					}
+				private var rememberOldItem: MediaItem? = null
+				override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+					delegated.onMediaItemTransition(rememberOldItem, mediaItem, reason.asMediaItemTransitionReason)
+					rememberOldItem = mediaItem
+				}
 
-					override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
-						delegated.onPlayWhenReadyChanged(playWhenReady, reason.asPlayWhenReadyChangedReason)
-					}
 
-					override fun onPlaybackStateChanged(playbackState: Int) {
-						val cast = playbackState.asPlaybackState
-						delegated.onPlaybackStateChanged(cast)
-
-						when {
-							cast != LibraryPlayer.PlaybackState.READY && rememberIsPlaying -> {
-								delegated.onIsPlayingChanged(false, IsPlayingChangedReason.PLAYBACK_STATE_CHANGED)
-							}
-							cast == LibraryPlayer.PlaybackState.READY && !rememberIsPlaying -> {
-								delegated.onIsPlayingChanged(true, IsPlayingChangedReason.PLAYBACK_STATE_CHANGED)
-							}
-						}
-					}
-
-					var rememberIsPlaying = false
-					override fun onIsPlayingChanged(isPlaying: Boolean) {
-						if (isPlaying != rememberIsPlaying) {
-							delegated.onIsPlayingChanged(isPlaying, IsPlayingChangedReason.UNKNOWN)
-							rememberIsPlaying = isPlaying
-						}
-					}
-
-					override fun onIsLoadingChanged(isLoading: Boolean) {
-						delegated.onIsLoadingChanged(isLoading)
-					}
-
-					var rememberTimeline = Timeline.EMPTY
-					override fun onTimelineChanged(timeline: Timeline, reason: Int) {
-						if (timeline != rememberTimeline) {
-							delegated.onTimelineChanged(rememberTimeline, timeline, reason)
-							rememberTimeline = timeline
-						}
-					}
-
-					override fun onPositionDiscontinuity(
-						oldPosition: PositionInfo,
-						newPosition: PositionInfo,
-						reason: Int
-					) {
-						delegated.onPositionDiscontinuity(oldPosition, newPosition, reason)
+				override fun onRepeatModeChanged(repeatMode: Int) {
+					if (repeatMode != rememberRepeatMode) {
+						delegated.onRepeatModeChanged(rememberRepeatMode.asRepeatMode, repeatMode.asRepeatMode)
+						rememberRepeatMode = repeatMode
 					}
 				}
+
+				override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+					delegated.onPlayWhenReadyChanged(playWhenReady, reason.asPlayWhenReadyChangedReason)
+
+					if (!playWhenReady && rememberIsPlaying) {
+						delegated.onIsPlayingChanged(false, IsPlayingChangedReason.PLAY_WHEN_READY_CHANGED)
+						rememberIsPlaying = false
+					}
+				}
+
+				override fun onPlaybackStateChanged(playbackState: Int) {
+					val cast = playbackState.asPlaybackState
+					delegated.onPlaybackStateChanged(cast)
+
+					when {
+						cast !== LibraryPlayer.PlaybackState.READY && rememberIsPlaying -> {
+							delegated.onIsPlayingChanged(false, IsPlayingChangedReason.PLAYBACK_STATE_CHANGED)
+							rememberIsPlaying = false
+						}
+					}
+				}
+
+
+				override fun onIsPlayingChanged(isPlaying: Boolean) {
+					if (isPlaying != rememberIsPlaying) {
+						delegated.onIsPlayingChanged(isPlaying, IsPlayingChangedReason.UNKNOWN)
+						rememberIsPlaying = isPlaying
+					}
+				}
+
+				override fun onIsLoadingChanged(isLoading: Boolean) {
+					delegated.onIsLoadingChanged(isLoading)
+				}
+
+
+				override fun onTimelineChanged(timeline: Timeline, reason: Int) {
+					if (timeline != rememberTimeline) {
+						delegated.onTimelineChanged(rememberTimeline, timeline, reason)
+						rememberTimeline = timeline
+					}
+				}
+
+				override fun onPositionDiscontinuity(
+					oldPosition: PositionInfo,
+					newPosition: PositionInfo,
+					reason: Int
+				) {
+					delegated.onPositionDiscontinuity(oldPosition, newPosition, reason)
+				}
 			}
+		}
 	}
 }
 

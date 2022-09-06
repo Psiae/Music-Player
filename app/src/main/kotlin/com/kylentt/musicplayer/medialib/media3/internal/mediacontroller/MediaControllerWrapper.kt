@@ -247,7 +247,7 @@ class MediaControllerWrapper internal constructor(
 		}
 
 		override fun addListener(listener: LibraryPlayerEventListener) {
-			val m = listener.asPlayerListener
+			val m = listener.asPlayerListener(this)
 			listeners.add(listener to m)
 			if (isStateConnected()) mediaController.addListener(m)
 		}

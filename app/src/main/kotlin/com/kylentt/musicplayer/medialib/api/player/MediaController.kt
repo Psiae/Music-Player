@@ -5,6 +5,6 @@ import com.kylentt.musicplayer.medialib.player.LibraryPlayer
 
 interface MediaController : LibraryPlayer {
 	val connected: Boolean
-	fun connect(): ListenableFuture<MediaController>
+	fun connectService(): ListenableFuture<MediaController>
 }
 

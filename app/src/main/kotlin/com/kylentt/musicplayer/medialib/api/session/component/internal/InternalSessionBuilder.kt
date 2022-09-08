@@ -5,7 +5,7 @@ import com.kylentt.musicplayer.medialib.api.player.ForwardingMediaController
 import com.kylentt.musicplayer.medialib.internal.MediaLibraryContext
 import com.kylentt.musicplayer.medialib.player.PlayerContext
 import com.kylentt.musicplayer.medialib.session.LibrarySession
-import com.kylentt.musicplayer.medialib.session.SessionContext
+import com.kylentt.musicplayer.medialib.session.internal.LibrarySessionContext
 
 internal class InternalSessionBuilder(private val context: MediaLibraryContext) : SessionBuilder {
 
@@ -17,9 +17,9 @@ internal class InternalSessionBuilder(private val context: MediaLibraryContext) 
 		return filledBuilder.build(sessionContext)
 	}
 
-	private fun createSessionContext(sessionBuilder: LibrarySession.Builder): SessionContext {
+	private fun createSessionContext(sessionBuilder: LibrarySession.Builder): LibrarySessionContext {
 		val playerContext = PlayerContext.Builder(context).build()
-		return SessionContext.Builder(sessionBuilder.id).build()
+		return LibrarySessionContext.Builder(sessionBuilder.id).build()
 			.apply {
 				attachLibraryContext(context)
 				attachController(ForwardingMediaController(playerContext))

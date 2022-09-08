@@ -7,6 +7,7 @@ import com.kylentt.mediaplayer.helper.external.MediaIntentHandlerImpl
 import com.kylentt.musicplayer.common.coroutines.AndroidCoroutineDispatchers
 import com.kylentt.musicplayer.domain.musiclib.player.exoplayer.ExoPlayerFactory
 import com.kylentt.musicplayer.medialib.MediaLibrary
+import com.kylentt.musicplayer.medialib.internal.RealMediaLibrary
 import com.kylentt.musicplayer.medialib.api.provider.mediastore.MediaStoreProvider
 import dagger.Module
 import dagger.Provides

@@ -116,7 +116,7 @@ class MediaViewModel @Inject constructor(
     updateArtJob = ioScope.launch {
 			ensureActive()
 
-			val lru = MediaLibrary.API!!.imageManager.sharedBitmapLru
+			val lru = MediaLibrary.API.imageRepository.sharedBitmapLru
 			val cached = lru.get(item.mediaId) ?: lru.get(item.mediaId + "500")
 
 			if (cached != null) {

@@ -1,13 +1,14 @@
 package com.kylentt.musicplayer.medialib.api.internal
 
 import com.kylentt.musicplayer.medialib.android.internal.AndroidContext
-import com.kylentt.musicplayer.medialib.api.provider.MediaProviders
+import com.kylentt.musicplayer.medialib.api.provider.RealMediaProviders
 import com.kylentt.musicplayer.medialib.api.provider.internal.ProvidersContext
 import com.kylentt.musicplayer.medialib.api.service.ApiServiceComponent
 import com.kylentt.musicplayer.medialib.api.service.internal.InternalServiceComponent
 import com.kylentt.musicplayer.medialib.api.session.component.internal.ApiSessionComponent
 import com.kylentt.musicplayer.medialib.api.session.component.internal.InternalSessionComponent
-import com.kylentt.musicplayer.medialib.image.ImageManager
+import com.kylentt.musicplayer.medialib.image.ImageRepository
+import com.kylentt.musicplayer.medialib.image.internal.RealImageRepository
 import com.kylentt.musicplayer.medialib.internal.MediaLibraryContext
 
 internal class ApiContext private constructor(
@@ -21,9 +22,9 @@ internal class ApiContext private constructor(
 	val apiServiceComponent = ApiServiceComponent(internalServiceComponent)
 	val apiSessionComponent = ApiSessionComponent(internalSessionComponent)
 
-	val imageManager: ImageManager = ImageManager(android)
+	val imageRepository: ImageRepository = RealImageRepository(android)
 
-	val mediaProviders: MediaProviders = MediaProviders(ProvidersContext(android))
+	val mediaProviders: RealMediaProviders = RealMediaProviders(ProvidersContext(android))
 
 	class Builder() {
 		private var mLibraryContext: MediaLibraryContext? = null

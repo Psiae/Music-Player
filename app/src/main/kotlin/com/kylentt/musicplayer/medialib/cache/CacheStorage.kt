@@ -13,7 +13,7 @@ interface CacheStorage<K: Any, V: Any> {
 	 * The maximum size it can hold,
 	 * usually size representation for [V] is used, as [Long]. Must be in accordance with [occupiedSize]
 	 *
-	 * e.g: [android.graphics.Bitmap] is represented by:
+	 * e.g: [android.graphics.Bitmap] is usually represented by:
 	 *
 	 * ```
 	 * android.graphics.Bitmap.getAllocationByteCount.toLong()
@@ -61,6 +61,8 @@ interface CacheStorage<K: Any, V: Any> {
 	 * @return the replaced value for the given key
 	 */
 	fun put(key: K, value: V): V?
+
+	fun putIfKeyAbsent(key: K, value: V): V?
 
 	/**
 	 * Remove the value: [V] from this storage.

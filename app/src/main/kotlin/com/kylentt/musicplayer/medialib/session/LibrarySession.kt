@@ -1,8 +1,9 @@
 package com.kylentt.musicplayer.medialib.session
 
 import com.kylentt.musicplayer.medialib.api.player.MediaController
+import com.kylentt.musicplayer.medialib.session.internal.LibrarySessionContext
 
-class LibrarySession private constructor(private val context: SessionContext) {
+class LibrarySession private constructor(private val context: LibrarySessionContext) {
 
 	val id: String = context.id
 
@@ -19,7 +20,7 @@ class LibrarySession private constructor(private val context: SessionContext) {
 			return this
 		}
 
-		internal fun build(context: SessionContext): LibrarySession {
+		internal fun build(context: LibrarySessionContext): LibrarySession {
 			return LibrarySession(context)
 		}
 

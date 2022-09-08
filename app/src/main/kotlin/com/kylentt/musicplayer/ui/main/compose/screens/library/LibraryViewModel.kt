@@ -14,9 +14,9 @@ import com.kylentt.musicplayer.common.coroutines.AndroidCoroutineDispatchers
 import com.kylentt.musicplayer.common.media.audio.AudioFile
 import com.kylentt.musicplayer.core.app.AppDelegate
 import com.kylentt.musicplayer.domain.musiclib.core.MusicLibrary
-import com.kylentt.musicplayer.medialib.api.MediaLibraryAPI
+import com.kylentt.musicplayer.medialib.MediaLibrary
 import com.kylentt.musicplayer.medialib.api.provider.mediastore.MediaStoreProvider
-import com.kylentt.musicplayer.medialib.internal.provider.mediastore.base.audio.MediaStoreAudioEntity
+import com.kylentt.musicplayer.medialib.android.provider.mediastore.base.audio.MediaStoreAudioEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.async
@@ -107,9 +107,17 @@ class LibraryViewModel @Inject constructor(
 			_localSongModels.value = songs.map { LocalSongModel(it.uid, it.metadataInfo.title) }
 		}
 
+		val api = MediaLibrary.API
+		val lru = api.imageRepository.sharedBitmapLru
+
 		val toRemove = cacheManager.retrieveAllImageCacheFile(Bitmap::class,"LibraryViewModel").toMutableList()
-		val toRemoveLru = songs.map { it.uid + it.fileInfo.dateModified }.toMutableList()
-		val api = MediaLibraryAPI.current!!
+
+		val fromLrus = songs.map {
+			val id = it.uid + it.fileInfo.dateModified
+			id to lru.get(id)
+		}
+
+		val toPutLru = mutableListOf<Pair<String, Bitmap>>()
 
 		val deff = async {
 
@@ -117,27 +125,27 @@ class LibraryViewModel @Inject constructor(
 
 				viewModelScope.launch(dispatchers.io) {
 
+					val cachedLru = fromLrus[index]
+
+					val fromLru =
+						if (cachedLru.second != null) {
+							_localSongModels.value[index].updateArtwork(cachedLru)
+							true
+						} else {
+							false
+						}
+
 					// Todo: Constants
 					val cachedFile = cacheManager.retrieveImageCacheFile(song.uid + song.fileInfo.dateModified, "LibraryViewModel")
 
 					if (cachedFile != null) {
-
 						toRemove.remove(cachedFile)
-						mediaItems[index].mediaMetadata.extras?.putString("cachedArtwork", cachedFile.absolutePath)
-
-
-						BitmapFactory.decodeFile(cachedFile.absolutePath)?.let {
-							_localSongModels.value[index].updateArtwork(cachedFile)
-							api.imageManager.sharedBitmapLru.put(song.uid + song.fileInfo.dateModified, it)
+						if (!fromLru) {
+							BitmapFactory.decodeFile(cachedFile.absolutePath)?.let {
+								_localSongModels.value[index].updateArtwork(cachedFile)
+								toPutLru.add(song.uid + song.fileInfo.dateModified to it)
+							}
 						}
-
-						return@launch
-					}
-
-					val cachedLru = api.imageManager.sharedBitmapLru.get(song.uid + song.fileInfo.dateModified)
-
-					if (cachedLru != null) {
-						_localSongModels.value[index].updateArtwork(cachedLru)
 						return@launch
 					}
 
@@ -154,7 +162,7 @@ class LibraryViewModel @Inject constructor(
 						BitmapSampler.ByteArray.toSampledBitmap(data, 0, data.size, 1000000)?.let {
 							val reg = cacheManager.registerImageToCache(it, song.fileInfo.fileName + song.fileInfo.dateModified, "LibraryViewModel")
 							mediaItems[index].mediaMetadata.extras?.putString("cachedArtwork", reg.absolutePath)
-							api.imageManager.sharedBitmapLru.put(song.uid + song.fileInfo.dateModified, it)
+							toPutLru.add(song.uid + song.fileInfo.dateModified to it)
 							it
 						}
 					}
@@ -165,7 +173,6 @@ class LibraryViewModel @Inject constructor(
 		}
 
 		deff.await()
-		toRemoveLru.forEach { api.imageManager.sharedBitmapLru.remove(it) }
 		toRemove.forEach { if (it.exists()) it.delete() }
 	}
 

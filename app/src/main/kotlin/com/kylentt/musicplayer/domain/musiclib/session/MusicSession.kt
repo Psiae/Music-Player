@@ -5,7 +5,8 @@ import androidx.media3.common.Player
 import com.kylentt.musicplayer.common.kotlin.comparable.clamp
 import com.kylentt.musicplayer.domain.musiclib.entity.PlaybackState
 import com.kylentt.musicplayer.domain.musiclib.interactor.LibraryAgent
-import com.kylentt.musicplayer.medialib.api.MediaLibraryAPI
+import com.kylentt.musicplayer.medialib.MediaLibrary
+import com.kylentt.musicplayer.medialib.api.RealMediaLibraryAPI
 import com.kylentt.musicplayer.medialib.api.player.MediaController
 import com.kylentt.musicplayer.medialib.player.event.IsPlayingChangedReason
 import com.kylentt.musicplayer.medialib.player.event.LibraryPlayerEventListener
@@ -17,7 +18,7 @@ import kotlin.coroutines.coroutineContext
 
 class MusicSession(private val agent: LibraryAgent) {
 
-	val player: MediaController = MediaLibraryAPI.current!!.sessions.manager.findSessionById("DEBUG")!!.mediaController
+	val player: MediaController = MediaLibrary.API.sessions.manager.findSessionById("DEBUG")!!.mediaController
 
 	val sessionInfo = object : SessionInfo {
 		val mainScope = CoroutineScope(Dispatchers.Main + SupervisorJob())

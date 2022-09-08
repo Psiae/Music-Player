@@ -78,9 +78,7 @@ private fun LibraryContent() {
 	val mediaVM: MediaViewModel = activityViewModel()
 	val mainVM: MainViewModel = activityViewModel()
 
-	val localSongs = vm.localSongs
-
-	Timber.d("Library Content recomposed")
+	Timber.d("LibraryContent recomposed")
 
 	SwipeRefresh(
 		state = rememberSwipeRefreshState(isRefreshing = vm.refreshing.value),
@@ -88,7 +86,12 @@ private fun LibraryContent() {
 		indicatorPadding = PaddingValues(top = 10.dp)
 	) {
 
+		Timber.d("LibraryContent SwipeRefresh recomposed")
+
 		Column {
+
+			Timber.d("LibraryContent Column recomposed")
+
 			LazyVerticalGrid(
 				modifier = Modifier
 					.fillMaxWidth()
@@ -98,7 +101,14 @@ private fun LibraryContent() {
 				verticalArrangement = Arrangement.spacedBy(10.dp),
 				horizontalArrangement = Arrangement.spacedBy(10.dp)
 			) {
+
+				Timber.d("LibraryContent Column Grid recomposed")
+
+				val localSongs = vm.localSongs
+
 				items(localSongs.value.size) {
+
+					Timber.d("LibraryContent Column Item $it recomposed")
 
 					val item = localSongs.value[it]
 					val data = item.artState.value

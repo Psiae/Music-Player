@@ -19,7 +19,7 @@ import com.kylentt.musicplayer.common.coroutines.AndroidCoroutineDispatchers
 import com.kylentt.musicplayer.medialib.api.provider.mediastore.MediaStoreProvider
 import com.kylentt.musicplayer.domain.musiclib.core.MusicLibrary
 import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory
-import com.kylentt.musicplayer.medialib.internal.provider.mediastore.base.audio.MediaStoreAudioEntity
+import com.kylentt.musicplayer.medialib.android.provider.mediastore.base.audio.MediaStoreAudioEntity
 import com.kylentt.musicplayer.medialib.media3.contract.MediaItemFactoryOf
 import kotlinx.coroutines.*
 import timber.log.Timber
@@ -126,9 +126,9 @@ class MediaIntentHandlerImpl(
     }
 
     private fun playMediaItem(
-      song: MediaStoreAudioEntity,
-      list: List<MediaStoreAudioEntity>,
-      fadeOut: Boolean
+			song: MediaStoreAudioEntity,
+			list: List<MediaStoreAudioEntity>,
+			fadeOut: Boolean
     ) {
       checkMainThread()
 			val factory = mediaSource.audioProvider.mediaItemFactory as MediaItemFactoryOf<MediaStoreAudioEntity>

@@ -1,10 +1,10 @@
 package com.kylentt.musicplayer.medialib.api.provider.mediastore
 
 import com.kylentt.musicplayer.core.sdk.VersionHelper
-import com.kylentt.musicplayer.medialib.internal.provider.mediastore.MediaStoreContext
-import com.kylentt.musicplayer.medialib.internal.provider.mediastore.api28.MediaStoreProvider28
-import com.kylentt.musicplayer.medialib.internal.provider.mediastore.base.MediaStoreProviderBase
-import com.kylentt.musicplayer.medialib.internal.provider.mediastore.base.audio.*
+import com.kylentt.musicplayer.medialib.android.provider.mediastore.MediaStoreContext
+import com.kylentt.musicplayer.medialib.android.provider.mediastore.api28.MediaStoreProvider28
+import com.kylentt.musicplayer.medialib.android.provider.mediastore.base.MediaStoreProviderBase
+import com.kylentt.musicplayer.medialib.android.provider.mediastore.base.audio.*
 
 class MediaStoreProvider internal constructor(private val context: MediaStoreContext) {
 

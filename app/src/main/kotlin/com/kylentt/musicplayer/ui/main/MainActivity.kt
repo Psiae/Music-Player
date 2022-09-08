@@ -15,6 +15,7 @@ import com.kylentt.musicplayer.common.android.activity.disableWindowDecorFitSyst
 import com.kylentt.musicplayer.common.android.context.ContextInfo
 import com.kylentt.musicplayer.common.android.intent.isActionMain
 import com.kylentt.musicplayer.common.coroutines.AndroidCoroutineDispatchers
+import com.kylentt.musicplayer.medialib.MediaLibrary
 import com.kylentt.musicplayer.ui.main.compose.ComposeContent
 import dagger.hilt.android.AndroidEntryPoint
 import timber.log.Timber
@@ -54,6 +55,8 @@ class MainActivity : ComponentActivity() {
 		checkLauncherIntent()
 		setupWindow()
 		setupSplashScreen()
+
+		MediaLibrary.API.service.startService()
 
 		setContent {
 			ComposeContent()

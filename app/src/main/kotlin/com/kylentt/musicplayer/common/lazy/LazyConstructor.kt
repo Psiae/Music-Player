@@ -13,9 +13,9 @@ class LazyConstructor<T> @JvmOverloads constructor(lock: Any = Any()) : Lazy<T> 
 	private val localLock: Any = lock
 
 	/** The value holder. [EMPTY] if not initialized  */
-	@Volatile private var localValue: Any? = EMPTY
+	private var localValue: Any? = EMPTY
 		set(value) {
-			require(field === EMPTY) {
+			require(field === EMPTY && Thread.holdsLock(localLock)) {
 				"Latelazy failed, localValue was $field when trying to set $value"
 			}
 			field = value
@@ -56,7 +56,7 @@ class LazyConstructor<T> @JvmOverloads constructor(lock: Any = Any()) : Lazy<T> 
 
 	fun construct(lazyValue: () -> T): T {
 		if (!isConstructed()) sync {
-			// check again if value is already initialized by the time it enters the lock
+			// check again if value is already initialized by the time it holds the lock
 			if (!isConstructed()) {
 				// was not initialized, should be safe to invoke
 				localValue = lazyValue()

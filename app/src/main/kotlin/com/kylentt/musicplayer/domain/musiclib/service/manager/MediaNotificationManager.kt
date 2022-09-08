@@ -41,8 +41,8 @@ import com.kylentt.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.
 import com.kylentt.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isStateIdle
 import com.kylentt.musicplayer.domain.musiclib.service.MusicLibraryService
 import com.kylentt.musicplayer.domain.musiclib.service.provider.MediaNotificationProvider
-import com.kylentt.musicplayer.medialib.api.MediaLibraryAPI
-import com.kylentt.musicplayer.medialib.cache.lru.DefaultLruCache
+import com.kylentt.musicplayer.medialib.MediaLibrary
+import com.kylentt.musicplayer.medialib.api.RealMediaLibraryAPI
 import com.kylentt.musicplayer.medialib.cache.lru.LruCache
 import com.kylentt.musicplayer.ui.main.MainActivity
 import kotlinx.coroutines.*
@@ -235,6 +235,8 @@ class MediaNotificationManager(
 
 	private inner class Provider(private val context: Context) : MediaNotification.Provider {
 
+		private val NO_BITMAP = Bitmap.createBitmap(1,1, Bitmap.Config.ALPHA_8)
+
 		private val MediaItem.embedSizeMB
 			get() = mediaMetadata.extras?.getFloat("embedSizeMB") ?: -1f
 
@@ -244,7 +246,8 @@ class MediaNotificationManager(
 
 		private val emptyItem = MediaItem.fromUri("empty")
 
-		private val lruCache: LruCache<String, Bitmap> = MediaLibraryAPI.current!!.imageManager.sharedBitmapLru
+		private val lruCache: LruCache<String, Bitmap> = MediaLibrary.API.imageRepository.sharedBitmapLru
+		private var localStored: Pair<String, Bitmap?> = "" to NO_BITMAP
 
 		// config later
 		private val cacheConfig
@@ -342,14 +345,22 @@ class MediaNotificationManager(
 		): Unit = withContext(this@MediaNotificationManager.appDispatchers.main) {
 			val currentItem = player.currentMediaItem.orEmpty()
 
-			lruCache.get(currentItem.mediaId + "500")?.let { return@withContext currentCompleted() }
+			val id = currentItem.mediaId + "500"
 
-			maybeWaitForMemory(1.5F,2000, 500, deviceInfo) {
+			lruCache.get(id)?.let {
+				localStored = id to it
+				return@withContext currentCompleted()
+			}
+
+			maybeWaitForMemory(1.5F,1000, 500, deviceInfo) {
 				Timber.w("Notification Media Bitmap will wait due to low memory")
 			}
 
 			val get = getItemBitmap(currentItem) ?: (emptyItem to null)
-			get.second?.let { lruCache.put(get.first.mediaId + "500", it) }
+			get.second?.let {
+				lruCache.put(id, it)
+				localStored = id to it
+			}
 			currentItemBitmap = get
 			currentCompleted()
 		}
@@ -427,9 +438,9 @@ class MediaNotificationManager(
 
 		private fun getItemBitmap(player: Player): Bitmap? {
 			return player.currentMediaItem?.mediaId?.let { id ->
-				lruCache.get(id + "500")?.let { return it }
 				when (id) {
 					currentItemBitmap.first.mediaId -> currentItemBitmap.second
+					localStored.first -> localStored.second
 					else -> null
 				}
 			}

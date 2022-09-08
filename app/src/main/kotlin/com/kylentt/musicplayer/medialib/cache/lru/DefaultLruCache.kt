@@ -3,27 +3,37 @@ package com.kylentt.musicplayer.medialib.cache.lru
 import com.kylentt.musicplayer.medialib.cache.CacheStorage
 import timber.log.Timber
 
-open class DefaultLruCache<K: Any, V: Any>(maxSize: Long) : LruCache<K, V> {
+typealias SizeResolver<K, V> = (key: K, value: V) -> Long
+
+open class DefaultLruCache<K: Any, V: Any>(
+	maxSize: Long,
+	protected val sizeResolver: SizeResolver<K, V> = { _, _ -> 1 }
+) : LruCache<K, V> {
 
 	/**
 	 * The Occupied size, never exceeds [_maxSize]
-	 *
-	 * @see [occupiedSize]
 	 */
-	private var _size: Long = 0
+	protected var _size: Long = 0
 		set(value) {
-			require(value <= _maxSize)
+			require(value in 0.._maxSize)
 			field = value
 		}
 
 	/**
 	 * The Maximum size of this Lru cache can hold
 	 */
-	private var _maxSize: Long = maxSize
+	protected var _maxSize: Long = maxSize
+		set(value) {
+			require(value > 0)
+			field = value
+		}
 
 	// Entries
-	private val lruEntries: LinkedHashMap<K, V> = LinkedHashMap(0, 0.75f, true)
+	protected val lruEntries: LinkedHashMap<K, V> = LinkedHashMap(0, 0.75f, true)
 
+	/**
+	 * The Maximum size of this Lru cache can hold
+	 */
 	override val maxSize: Long
 		@Synchronized get() = _maxSize
 
@@ -55,6 +65,11 @@ open class DefaultLruCache<K: Any, V: Any>(maxSize: Long) : LruCache<K, V> {
 	}
 
 	@Synchronized
+	override fun putIfKeyAbsent(key: K, value: V): V? {
+		return if (!lruEntries.containsKey(key)) put(key, value) else value
+	}
+
+	@Synchronized
 	override fun get(key: K): V? {
 		return lruEntries[key]
 	}
@@ -74,9 +89,9 @@ open class DefaultLruCache<K: Any, V: Any>(maxSize: Long) : LruCache<K, V> {
 		trimToMaxSize()
 	}
 
-	private fun checkCandidateSize(key: K, value: V): Long {
+	protected fun checkCandidateSize(key: K, value: V): Long {
 		val size = safeSizeOf(key, value)
-		require( size < maxSize) {
+		require( size < _maxSize) {
 			"""
 				Invalid Argument, candidate: $key | $value
 				size($size) was too big to insert
@@ -85,21 +100,16 @@ open class DefaultLruCache<K: Any, V: Any>(maxSize: Long) : LruCache<K, V> {
 		return size
 	}
 
-	private fun trimToMaxSize() {
-		while (_size > _maxSize) if (!removeVictim()) {
-			check(_size < _maxSize) { "Should never reach here." }
+	private fun trimToMaxSize() = trimToSize(_maxSize)
+
+	protected open fun trimToSize(size: Long) {
+		while (_size > size) if (!evictVictim()) {
+			check(_size <= size) { "Should never reach here." }
 			break
 		}
 	}
 
-	private fun trimToSize(size: Long) {
-		while (_size > size) if (!removeVictim()) {
-			check(_size < size) { "Should never reach here." }
-			break
-		}
-	}
-
-	private fun removeVictim(): Boolean {
+	protected open fun evictVictim(): Boolean {
 		val victim = lruEntries.entries.iterator().next()
 		val victimSize = safeSizeOf(victim.key, victim.value)
 		val result = remove(victim.key) != null
@@ -108,12 +118,8 @@ open class DefaultLruCache<K: Any, V: Any>(maxSize: Long) : LruCache<K, V> {
 		return result
 	}
 
-	open fun sizeOf(key: K, value: V): Long {
-		return 1
-	}
-
-	private fun safeSizeOf(key: K, value: V): Long {
-		val size = sizeOf(key, value)
+	protected open fun safeSizeOf(key: K, value: V): Long {
+		val size = sizeResolver(key, value)
 		require(size > -1) { "Invalid Size, $size" }
 		return size
 	}

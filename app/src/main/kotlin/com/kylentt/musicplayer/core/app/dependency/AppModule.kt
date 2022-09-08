@@ -3,7 +3,7 @@ package com.kylentt.musicplayer.core.app.dependency
 import android.app.NotificationManager
 import android.content.Context
 import coil.Coil
-import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
+import com.kylentt.musicplayer.common.coroutines.AndroidCoroutineDispatchers
 import com.kylentt.musicplayer.core.app.coroutines.AppScope
 import dagger.Module
 import dagger.Provides
@@ -29,11 +29,11 @@ object CoroutineModule {
 
 	@Provides
 	@Singleton
-	fun provideAppDispatchers(): CoroutineDispatchers = CoroutineDispatchers.DEFAULT
+	fun provideAppDispatchers(): AndroidCoroutineDispatchers = AndroidCoroutineDispatchers.DEFAULT
 
 	@Provides
 	@Singleton
-	fun provideAppScope(dispatchers: CoroutineDispatchers): AppScope =
+	fun provideAppScope(dispatchers: AndroidCoroutineDispatchers): AppScope =
 		with(dispatchers) {
 			AppScope(
 				ioScope = CoroutineScope(context = io + SupervisorJob()),

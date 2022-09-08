@@ -10,7 +10,7 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
 import com.kylentt.musicplayer.domain.musiclib.service.MusicLibraryService
-import com.kylentt.musicplayer.domain.musiclib.util.addResultListener
+import com.kylentt.musicplayer.medialib.util.addResultListener
 import java.util.concurrent.Executor
 
 internal class MediaControllerWrapper(private val context: Context) {

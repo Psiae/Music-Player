@@ -441,7 +441,7 @@ class PlaybackControlModel() {
 		mPlaybackArtist.value = (metadata.artist ?: metadata.albumArtist ?: "").toString()
 		mPlaybackDuration.value = state.duration
 		mPlayAvailable.value = !state.playWhenReady
-		mShowPlay.value = (!state.playing && !state.playerState.isStateBuffering())
+		mShowPlay.value = (!state.playing && (!state.playerState.isStateBuffering() && !state.playWhenReady ))
 		mShowSelf.value = !state.isEmpty && state.mediaItem !== MediaItem.EMPTY
 		mBuffering.value = state.playerState.isStateBuffering()
 	}

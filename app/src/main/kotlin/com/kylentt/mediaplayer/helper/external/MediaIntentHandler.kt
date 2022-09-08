@@ -10,16 +10,14 @@ import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.widget.Toast
 import androidx.core.net.toUri
-import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.external.providers.ContentProvidersHelper
 import com.kylentt.mediaplayer.helper.external.providers.DocumentProviderHelper
-import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
+import com.kylentt.musicplayer.common.coroutines.AndroidCoroutineDispatchers
 import com.kylentt.musicplayer.medialib.api.provider.mediastore.MediaStoreProvider
 import com.kylentt.musicplayer.domain.musiclib.core.MusicLibrary
-import com.kylentt.musicplayer.domain.musiclib.entity.AudioEntity
 import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory
 import com.kylentt.musicplayer.medialib.internal.provider.mediastore.base.audio.MediaStoreAudioEntity
 import com.kylentt.musicplayer.medialib.media3.contract.MediaItemFactoryOf
@@ -51,8 +49,8 @@ interface MediaIntentHandler {
 @Singleton
 class MediaIntentHandlerImpl(
     private val context: Context,
-    private val dispatcher: CoroutineDispatchers,
-		private val mediaSource: MediaStoreProvider
+    private val dispatcher: AndroidCoroutineDispatchers,
+    private val mediaSource: MediaStoreProvider
 ) : MediaIntentHandler {
 
   private val actionViewHandler = ActionViewHandler()

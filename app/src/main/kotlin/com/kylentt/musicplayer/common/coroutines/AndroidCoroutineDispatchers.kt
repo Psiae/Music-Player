@@ -6,7 +6,7 @@ import javax.inject.Singleton
 
 @Singleton
 @Immutable
-data class CoroutineDispatchers(
+data class AndroidCoroutineDispatchers(
 	val computation: CoroutineDispatcher,
 	val io: CoroutineDispatcher,
 	val main: CoroutineDispatcher,
@@ -16,7 +16,7 @@ data class CoroutineDispatchers(
 
 	companion object {
 		val DEFAULT = with(kotlinx.coroutines.Dispatchers) {
-			CoroutineDispatchers(
+			AndroidCoroutineDispatchers(
 				computation = Default, io = IO,
 				main = Main, mainImmediate = Main.immediate,
 				unconfined = Unconfined

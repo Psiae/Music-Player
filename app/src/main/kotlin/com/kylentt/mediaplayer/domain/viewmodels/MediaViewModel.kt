@@ -8,14 +8,14 @@ import com.kylentt.mediaplayer.helper.external.IntentWrapper
 import com.kylentt.mediaplayer.helper.external.MediaIntentHandler
 import com.kylentt.mediaplayer.helper.image.CoilHelper
 import com.kylentt.musicplayer.common.android.environment.DeviceInfo
-import com.kylentt.musicplayer.common.android.memory.maybeWaitForMemory
-import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
+import com.kylentt.musicplayer.common.coroutines.AndroidCoroutineDispatchers
 import com.kylentt.musicplayer.common.coroutines.safeCollect
 import com.kylentt.musicplayer.common.kotlin.coroutine.checkCancellation
 import com.kylentt.musicplayer.common.kotlin.collection.mutable.forEachClear
 import com.kylentt.musicplayer.core.app.AppDelegate
 import com.kylentt.musicplayer.domain.musiclib.core.MusicLibrary
 import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemHelper
+import com.kylentt.musicplayer.medialib.MediaLibrary
 import com.kylentt.musicplayer.ui.main.compose.screens.root.PlaybackControlModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.*
@@ -29,7 +29,7 @@ import kotlin.time.ExperimentalTime
 class MediaViewModel @Inject constructor(
     private val coilHelper: CoilHelper,
     private val deviceInfo: DeviceInfo,
-    private val dispatchers: CoroutineDispatchers,
+    private val dispatchers: AndroidCoroutineDispatchers,
     private val itemHelper: MediaItemHelper,
     private val intentHandler: MediaIntentHandler
 ) : ViewModel() {
@@ -116,8 +116,11 @@ class MediaViewModel @Inject constructor(
     updateArtJob = ioScope.launch {
 			ensureActive()
 
-			maybeWaitForMemory(1.5F, 2000, 500, deviceInfo) {
-				Timber.w("dispatchUpdateItemBitmap will wait due to low memory")
+			val lru = MediaLibrary.API!!.imageManager.sharedBitmapLru
+			val cached = lru.get(item.mediaId) ?: lru.get(item.mediaId + "500")
+
+			if (cached != null) {
+				return@launch playbackControlModel.updateArt(cached)
 			}
 
 			try {

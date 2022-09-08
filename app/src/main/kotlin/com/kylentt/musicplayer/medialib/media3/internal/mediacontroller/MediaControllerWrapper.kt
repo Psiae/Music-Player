@@ -12,7 +12,7 @@ import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
 import com.kylentt.musicplayer.common.kotlin.comparable.clamp
 import com.kylentt.musicplayer.domain.musiclib.service.MusicLibraryService
-import com.kylentt.musicplayer.domain.musiclib.util.addListener
+import com.kylentt.musicplayer.medialib.util.addListener
 import com.kylentt.musicplayer.medialib.player.LibraryPlayer
 import com.kylentt.musicplayer.medialib.player.LibraryPlayer.PlaybackState.Companion.asPlaybackState
 import com.kylentt.musicplayer.medialib.player.PlayerContext

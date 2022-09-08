@@ -1,9 +1,7 @@
 package com.kylentt.mediaplayer.data.source.local
 
-import android.content.ContentProvider
 import android.content.ContentUris
 import android.content.Context
-import android.content.res.AssetFileDescriptor
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
@@ -11,7 +9,7 @@ import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaItem.RequestMetadata
 import androidx.media3.common.MediaMetadata
-import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
+import com.kylentt.musicplayer.common.coroutines.AndroidCoroutineDispatchers
 import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory
 import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemPropertyHelper.mediaUri
 import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaMetadataHelper.putDisplayTitle
@@ -24,7 +22,6 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
-import java.io.FileDescriptor
 import javax.inject.Singleton
 
 /**
@@ -150,7 +147,7 @@ interface MediaStoreSource {
 @Singleton
 class MediaStoreSourceImpl(
   private val context: Context,
-  private val dispatchers: CoroutineDispatchers
+  private val dispatchers: AndroidCoroutineDispatchers
 ) : MediaStoreSource {
 
 

@@ -10,7 +10,6 @@ import android.graphics.Bitmap
 import android.os.Build.VERSION_CODES
 import android.os.Bundle
 import androidx.annotation.RequiresApi
-import androidx.collection.LruCache
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.CommandButton
@@ -24,24 +23,27 @@ import com.kylentt.mediaplayer.helper.image.CoilHelper
 import com.kylentt.musicplayer.common.android.bitmap.bitmapfactory.BitmapSampler
 import com.kylentt.musicplayer.common.android.environment.DeviceInfo
 import com.kylentt.musicplayer.common.android.memory.maybeWaitForMemory
+import com.kylentt.musicplayer.common.coroutines.AndroidCoroutineDispatchers
 import com.kylentt.musicplayer.common.coroutines.AutoCancelJob
-import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
 import com.kylentt.musicplayer.common.kotlin.comparable.clamp
 import com.kylentt.musicplayer.common.kotlin.coroutine.checkCancellation
 import com.kylentt.musicplayer.core.sdk.VersionHelper
+import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory
+import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory.orEmpty
+import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemInfo
+import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemPropertyHelper.getDebugDescription
+import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemPropertyHelper.mediaUri
 import com.kylentt.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isOngoing
 import com.kylentt.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isRepeatAll
 import com.kylentt.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isRepeatOff
 import com.kylentt.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isRepeatOne
 import com.kylentt.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isStateEnded
 import com.kylentt.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isStateIdle
-import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory
-import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory.orEmpty
-import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemInfo
-import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemPropertyHelper.getDebugDescription
-import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemPropertyHelper.mediaUri
 import com.kylentt.musicplayer.domain.musiclib.service.MusicLibraryService
 import com.kylentt.musicplayer.domain.musiclib.service.provider.MediaNotificationProvider
+import com.kylentt.musicplayer.medialib.api.MediaLibraryAPI
+import com.kylentt.musicplayer.medialib.cache.lru.DefaultLruCache
+import com.kylentt.musicplayer.medialib.cache.lru.LruCache
 import com.kylentt.musicplayer.ui.main.MainActivity
 import kotlinx.coroutines.*
 import timber.log.Timber
@@ -54,7 +56,7 @@ class MediaNotificationManager(
 	private lateinit var provider: Provider
 	private lateinit var dispatcher: Dispatcher
 
-	private lateinit var appDispatchers: CoroutineDispatchers
+	private lateinit var appDispatchers: AndroidCoroutineDispatchers
 	private lateinit var mainScope: CoroutineScope
 
 	private lateinit var coilHelper: CoilHelper
@@ -242,7 +244,7 @@ class MediaNotificationManager(
 
 		private val emptyItem = MediaItem.fromUri("empty")
 
-		private val lruCache: LruCache<String, Bitmap?> = LruCache(10000000)
+		private val lruCache: LruCache<String, Bitmap> = MediaLibraryAPI.current!!.imageManager.sharedBitmapLru
 
 		// config later
 		private val cacheConfig
@@ -340,14 +342,14 @@ class MediaNotificationManager(
 		): Unit = withContext(this@MediaNotificationManager.appDispatchers.main) {
 			val currentItem = player.currentMediaItem.orEmpty()
 
-			lruCache.get(currentItem.mediaId)?.let { return@withContext currentCompleted() }
+			lruCache.get(currentItem.mediaId + "500")?.let { return@withContext currentCompleted() }
 
 			maybeWaitForMemory(1.5F,2000, 500, deviceInfo) {
 				Timber.w("Notification Media Bitmap will wait due to low memory")
 			}
 
 			val get = getItemBitmap(currentItem) ?: (emptyItem to null)
-			get.second?.let { lruCache.put(get.first.mediaId, it) }
+			get.second?.let { lruCache.put(get.first.mediaId + "500", it) }
 			currentItemBitmap = get
 			currentCompleted()
 		}
@@ -425,7 +427,7 @@ class MediaNotificationManager(
 
 		private fun getItemBitmap(player: Player): Bitmap? {
 			return player.currentMediaItem?.mediaId?.let { id ->
-				lruCache.get(id)?.let { return it }
+				lruCache.get(id + "500")?.let { return it }
 				when (id) {
 					currentItemBitmap.first.mediaId -> currentItemBitmap.second
 					else -> null

@@ -1,6 +1,5 @@
 package com.kylentt.musicplayer.medialib.session
 
-import com.kylentt.musicplayer.medialib.api.MediaLibraryAPI
 import com.kylentt.musicplayer.medialib.api.player.MediaController
 
 class LibrarySession private constructor(private val context: SessionContext) {

@@ -1,4 +1,4 @@
-package com.kylentt.musicplayer.domain.musiclib.util
+package com.kylentt.musicplayer.medialib.util
 
 import com.google.common.util.concurrent.ListenableFuture
 import java.util.concurrent.Executor

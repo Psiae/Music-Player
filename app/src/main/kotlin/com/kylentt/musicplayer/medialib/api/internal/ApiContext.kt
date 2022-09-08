@@ -7,6 +7,7 @@ import com.kylentt.musicplayer.medialib.api.service.ApiServiceComponent
 import com.kylentt.musicplayer.medialib.api.service.internal.InternalServiceComponent
 import com.kylentt.musicplayer.medialib.api.session.component.internal.ApiSessionComponent
 import com.kylentt.musicplayer.medialib.api.session.component.internal.InternalSessionComponent
+import com.kylentt.musicplayer.medialib.image.ImageManager
 import com.kylentt.musicplayer.medialib.internal.MediaLibraryContext
 
 internal class ApiContext private constructor(
@@ -19,6 +20,8 @@ internal class ApiContext private constructor(
 
 	val apiServiceComponent = ApiServiceComponent(internalServiceComponent)
 	val apiSessionComponent = ApiSessionComponent(internalSessionComponent)
+
+	val imageManager: ImageManager = ImageManager(android)
 
 	val mediaProviders: MediaProviders = MediaProviders(ProvidersContext(android))
 

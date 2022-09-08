@@ -4,7 +4,7 @@ import android.content.ContentUris
 import android.database.Cursor
 import android.net.Uri
 import com.kylentt.musicplayer.common.android.context.ContextInfo
-import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
+import com.kylentt.musicplayer.common.coroutines.AndroidCoroutineDispatchers
 import com.kylentt.musicplayer.common.io.exception.android.NoReadExternalStoragePermissionException
 import com.kylentt.musicplayer.common.throwable.throwAll
 import com.kylentt.musicplayer.medialib.internal.provider.mediastore.MediaStoreContext
@@ -177,7 +177,7 @@ internal class AudioEntityProvider28 internal constructor(private val context: M
 	companion object {
 		private val uri_audio_external: Uri = MediaStore28.Audio.EXTERNAL_CONTENT_URI
 
-		private val ioDispatcher: CoroutineDispatcher = CoroutineDispatchers.DEFAULT.io
+		private val ioDispatcher: CoroutineDispatcher = AndroidCoroutineDispatchers.DEFAULT.io
 
 		/**
 		 * Projector to fill [MediaStoreAudioEntity28.queryInfo]

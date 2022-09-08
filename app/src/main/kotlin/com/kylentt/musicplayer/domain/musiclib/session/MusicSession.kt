@@ -2,28 +2,22 @@ package com.kylentt.musicplayer.domain.musiclib.session
 
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
-import androidx.media3.common.Timeline
 import com.kylentt.musicplayer.common.kotlin.comparable.clamp
 import com.kylentt.musicplayer.domain.musiclib.entity.PlaybackState
 import com.kylentt.musicplayer.domain.musiclib.interactor.LibraryAgent
 import com.kylentt.musicplayer.medialib.api.MediaLibraryAPI
 import com.kylentt.musicplayer.medialib.api.player.MediaController
-import com.kylentt.musicplayer.medialib.internal.MediaLibraryContext
-import com.kylentt.musicplayer.medialib.media3.internal.mediacontroller.MediaControllerWrapper
-import com.kylentt.musicplayer.medialib.player.LibraryPlayer
-import com.kylentt.musicplayer.medialib.player.PlayerContext
 import com.kylentt.musicplayer.medialib.player.event.IsPlayingChangedReason
 import com.kylentt.musicplayer.medialib.player.event.LibraryPlayerEventListener
 import com.kylentt.musicplayer.medialib.player.event.MediaItemTransitionReason
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import timber.log.Timber
 import kotlin.coroutines.coroutineContext
 
 class MusicSession(private val agent: LibraryAgent) {
 
-	val player: MediaController = MediaLibraryAPI.current!!.sessionComponent.manager.findSessionById("DEBUG")!!.mediaController
+	val player: MediaController = MediaLibraryAPI.current!!.sessions.manager.findSessionById("DEBUG")!!.mediaController
 
 	val sessionInfo = object : SessionInfo {
 		val mainScope = CoroutineScope(Dispatchers.Main + SupervisorJob())

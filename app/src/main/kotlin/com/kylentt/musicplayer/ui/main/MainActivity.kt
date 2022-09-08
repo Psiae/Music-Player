@@ -7,16 +7,14 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.kylentt.mediaplayer.domain.viewmodels.MainViewModel
 import com.kylentt.mediaplayer.domain.viewmodels.MediaViewModel
 import com.kylentt.mediaplayer.helper.external.IntentWrapper
-import com.kylentt.musicplayer.R
 import com.kylentt.musicplayer.common.android.activity.disableWindowDecorFitSystemInsets
 import com.kylentt.musicplayer.common.android.context.ContextInfo
 import com.kylentt.musicplayer.common.android.intent.isActionMain
-import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
+import com.kylentt.musicplayer.common.coroutines.AndroidCoroutineDispatchers
 import com.kylentt.musicplayer.ui.main.compose.ComposeContent
 import dagger.hilt.android.AndroidEntryPoint
 import timber.log.Timber
@@ -34,8 +32,10 @@ class MainActivity : ComponentActivity() {
 			field = value
 		}
 
+
+
 	@Inject
-	lateinit var coroutineDispatchers: CoroutineDispatchers
+	lateinit var androidCoroutineDispatchers: AndroidCoroutineDispatchers
 
 	private val intentHandler = IntentHandler()
 

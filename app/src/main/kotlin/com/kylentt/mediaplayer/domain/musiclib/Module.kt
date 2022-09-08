@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.media3.exoplayer.ExoPlayer
 import com.kylentt.mediaplayer.helper.external.MediaIntentHandler
 import com.kylentt.mediaplayer.helper.external.MediaIntentHandlerImpl
-import com.kylentt.musicplayer.common.coroutines.CoroutineDispatchers
+import com.kylentt.musicplayer.common.coroutines.AndroidCoroutineDispatchers
 import com.kylentt.musicplayer.domain.musiclib.player.exoplayer.ExoPlayerFactory
 import com.kylentt.musicplayer.medialib.MediaLibrary
 import com.kylentt.musicplayer.medialib.api.provider.mediastore.MediaStoreProvider
@@ -30,11 +30,11 @@ object MusicLibraryModule {
 	@Provides
 	@Singleton
 	fun provideMediaIntentHandler(
-		@ApplicationContext context: Context,
-		coroutineDispatchers: CoroutineDispatchers,
-		mediaStoreProvider: MediaStoreProvider
+        @ApplicationContext context: Context,
+        androidCoroutineDispatchers: AndroidCoroutineDispatchers,
+        mediaStoreProvider: MediaStoreProvider
 	): MediaIntentHandler {
-		return MediaIntentHandlerImpl(context, coroutineDispatchers, mediaStoreProvider)
+		return MediaIntentHandlerImpl(context, androidCoroutineDispatchers, mediaStoreProvider)
 	}
 }
 

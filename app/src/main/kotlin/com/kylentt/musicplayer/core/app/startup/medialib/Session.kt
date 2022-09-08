@@ -8,9 +8,9 @@ import com.kylentt.musicplayer.medialib.session.LibrarySession
 class LibrarySessionInitializer : Initializer<LibrarySession> {
 	override fun create(context: Context): LibrarySession {
 		val api = MediaLibraryAPI.current!!
-		val session = api.sessionComponent.builder.buildSession { setId("DEBUG") }
+		val session = api.sessions.builder.buildSession { setId("DEBUG") }
 		return session.also {
-			api.sessionComponent.manager.addSession(it)
+			api.sessions.manager.addSession(it)
 			it.mediaController.connectService()
 		}
 	}

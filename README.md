@@ -1,6 +1,20 @@
-App Name Coming Soon 
+App Name Coming Soon
+
+ <br>
 
 Simple Music Player `100% Made in Kotlin` with Jetpack Compose & AndroidX Media3.
+
+ <br>
+
+Development Status:
+> Refactoring, hence the mess, this will take quite a while until `mediaLib` package got enough `Shape` then the `UI` will be worked on.
+
+ <br>
+
+Addition:
+> Feel free to create an `issue` for any suggestion or question.
+
+ <br>
 
 # Preview
 > Image Preview below will be updated accordingly on any changes made

@@ -4,11 +4,9 @@ import android.content.Context
 import androidx.media3.exoplayer.ExoPlayer
 import com.kylentt.mediaplayer.helper.external.MediaIntentHandler
 import com.kylentt.mediaplayer.helper.external.MediaIntentHandlerImpl
-import com.kylentt.musicplayer.common.coroutines.AndroidCoroutineDispatchers
+import com.flammky.common.kotlin.coroutines.AndroidCoroutineDispatchers
 import com.kylentt.musicplayer.domain.musiclib.player.exoplayer.ExoPlayerFactory
-import com.kylentt.musicplayer.medialib.MediaLibrary
-import com.kylentt.musicplayer.medialib.internal.RealMediaLibrary
-import com.kylentt.musicplayer.medialib.api.provider.mediastore.MediaStoreProvider
+import com.kylentt.musicplayer.domain.musiclib.service.MusicLibraryService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -24,18 +22,31 @@ object MusicLibraryModule {
 
 	@Provides
 	@Singleton
-	fun provideMediaStoreProvider(@ApplicationContext context: Context): MediaStoreProvider {
-		return MediaLibrary.construct(context).providers.mediaStore
+	fun provideMediaStoreProvider(@ApplicationContext context: Context): com.flammky.android.medialib.temp.api.provider.mediastore.MediaStoreProvider {
+		return com.flammky.android.medialib.temp.MediaLibrary.construct(context, MusicLibraryService::class.java).providers.mediaStore
+	}
+
+	@Provides
+	@Singleton
+	fun provideImageRepository(@ApplicationContext context: Context): com.flammky.android.medialib.temp.image.ImageRepository {
+		return com.flammky.android.medialib.temp.MediaLibrary.construct(context, MusicLibraryService::class.java).imageRepository
 	}
 
 	@Provides
 	@Singleton
 	fun provideMediaIntentHandler(
-        @ApplicationContext context: Context,
-        androidCoroutineDispatchers: AndroidCoroutineDispatchers,
-        mediaStoreProvider: MediaStoreProvider
+		@ApplicationContext context: Context,
+		androidCoroutineDispatchers: AndroidCoroutineDispatchers,
+		mediaStoreProvider: com.flammky.android.medialib.temp.api.provider.mediastore.MediaStoreProvider
 	): MediaIntentHandler {
 		return MediaIntentHandlerImpl(context, androidCoroutineDispatchers, mediaStoreProvider)
+	}
+
+	@Provides
+	@Singleton
+	fun provideTestImageProvider(@ApplicationContext context: Context): com.flammky.android.medialib.temp.image.ImageProvider {
+		val lru = com.flammky.android.medialib.temp.MediaLibrary.construct(context, MusicLibraryService::class.java).imageRepository.sharedBitmapLru
+		return com.flammky.android.medialib.temp.image.internal.TestImageProvider(lru)
 	}
 }
 

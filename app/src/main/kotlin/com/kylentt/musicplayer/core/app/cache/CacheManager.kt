@@ -3,7 +3,7 @@ package com.kylentt.musicplayer.core.app.cache
 import android.app.Application
 import android.graphics.Bitmap
 import com.kylentt.musicplayer.BuildConfig
-import com.kylentt.musicplayer.common.lazy.LazyConstructor
+import com.flammky.common.kotlin.lazy.LazyConstructor
 import java.io.File
 import java.io.FileOutputStream
 import kotlin.reflect.KClass
@@ -104,7 +104,9 @@ class CacheManager private constructor(private val application: Application) {
 	companion object {
 		private val instance = LazyConstructor<CacheManager>()
 
-		fun get(application: Application) = instance.construct { CacheManager(application) }
+		fun get(application: Application) = instance.construct {
+			CacheManager(application)
+		}
 
 		private const val startupDir = "startupDir"
 		private const val imageCacheDir = "imageDir"

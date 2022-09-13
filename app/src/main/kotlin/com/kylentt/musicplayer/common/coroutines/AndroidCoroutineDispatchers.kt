@@ -1,5 +1,6 @@
 package com.kylentt.musicplayer.common.coroutines
 
+import com.flammky.common.kotlin.coroutines.AndroidCoroutineDispatchers
 import kotlinx.coroutines.CoroutineDispatcher
 import javax.annotation.concurrent.Immutable
 import javax.inject.Singleton

@@ -14,7 +14,6 @@ import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaStyleNotificationHelper
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.musicplayer.R
-import com.kylentt.musicplayer.core.app.AppDelegate
 import com.kylentt.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isOngoing
 import com.kylentt.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isStateBuffering
 import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory.orEmpty
@@ -145,7 +144,10 @@ class MediaNotificationProvider(
 				addAction(nextAction)
 				addAction(cancelOrStopAction)
 
-				setLargeIcon(largeIcon)
+				val fLargeIcon =
+					if (largeIcon == null || largeIcon.width < 64 || largeIcon.height < 64) null else largeIcon
+
+				setLargeIcon(fLargeIcon)
 
 				val dismissIntent = makeDismissPendingIntent(mediaItem)
 				setDeleteIntent(dismissIntent)

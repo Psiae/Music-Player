@@ -10,10 +10,10 @@ import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaItem.RequestMetadata
 import androidx.media3.common.MediaMetadata
-import com.kylentt.musicplayer.common.kotlin.string.setPrefix
+import com.flammky.common.kotlin.string.setPrefix
 import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.mp3.MP3File
-import com.kylentt.musicplayer.common.media.audio.AudioFile
-import com.kylentt.musicplayer.core.app.AppDelegate
+import com.flammky.common.media.audio.AudioFile
+import com.flammky.android.app.AppDelegate
 import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemPropertyHelper.mediaUri
 import timber.log.Timber
 import java.io.File

@@ -4,10 +4,10 @@ import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
 import android.os.ParcelFileDescriptor
+import com.flammky.android.app.AppDelegate
 import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.mp3.MP3File
 import com.kylentt.musicplayer.common.media.audio.uri.AndroidFileBuilder
 import com.kylentt.musicplayer.common.media.audio.uri.ContentFileBuilder
-import com.kylentt.musicplayer.core.app.AppDelegate
 import java.io.File
 import java.io.FileDescriptor
 

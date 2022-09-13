@@ -33,7 +33,7 @@ import com.google.accompanist.placeholder.placeholder
 import com.kylentt.mediaplayer.domain.viewmodels.MainViewModel
 import com.kylentt.mediaplayer.domain.viewmodels.MediaViewModel
 import com.kylentt.musicplayer.R
-import com.kylentt.musicplayer.common.kotlin.comparable.clamp
+import com.flammky.common.kotlin.comparable.clamp
 import com.kylentt.musicplayer.domain.musiclib.entity.PlaybackState
 import com.kylentt.musicplayer.domain.musiclib.entity.PlaybackState.Companion.isEmpty
 import com.kylentt.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isStateBuffering

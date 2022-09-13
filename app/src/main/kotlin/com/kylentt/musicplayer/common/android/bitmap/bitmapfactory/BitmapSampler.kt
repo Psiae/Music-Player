@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.BitmapFactory.Options
 import com.kylentt.musicplayer.common.android.bitmap.config.BitmapConfigInfo
+import timber.log.Timber
 
 object BitmapSampler {
 
@@ -39,16 +40,17 @@ object BitmapSampler {
 
 		data class SizeTarget(val width: Int, val height: Int) : CalculationTarget() {
 			override fun shouldSubSample(options: Options, inSampleSize: Int): Boolean {
-				return options.outHeight / (inSampleSize * 2) >= height
-					&& options.outWidth / (inSampleSize * 2) >= width
+				val nextLowerH = options.outHeight / (inSampleSize * 2) <= height
+				val nextLowerW = options.outWidth / (inSampleSize * 2) <= width
+				return !nextLowerH && !nextLowerW
 			}
 		}
 
 		data class MaxAlloc(val maxByte: Int) : CalculationTarget() {
 			override fun shouldSubSample(options: Options, inSampleSize: Int): Boolean {
-				val pixels = (options.outHeight * options.outWidth) / (inSampleSize * inSampleSize)
-				val currentAlloc = pixels * BitmapConfigInfo.getPixelSize(options.inPreferredConfig)
-				return currentAlloc >= maxByte
+				val currentPixels = (options.outHeight * options.outWidth) / (inSampleSize * inSampleSize)
+				val currentAlloc = currentPixels * BitmapConfigInfo.getPixelSize(options.inPreferredConfig)
+				return currentAlloc > maxByte
 			}
 		}
 
@@ -106,7 +108,15 @@ object BitmapSampler {
 			maxByteAlloc: Int
 		): Bitmap? {
 			val target = CalculationTarget.MaxAlloc(maxByteAlloc)
-			return decodeToSampledBitmap(array, offset, buffer, target)
+			val bm = decodeToSampledBitmap(array, offset, buffer, target)
+
+			val alloc = bm?.allocationByteCount ?: 0
+
+			Timber.d("toSampledBitmap from arr: ${array.size}, alloc: $alloc")
+
+			check(alloc <= maxByteAlloc)
+
+			return bm
 		}
 
 		fun toSampledBitmap(

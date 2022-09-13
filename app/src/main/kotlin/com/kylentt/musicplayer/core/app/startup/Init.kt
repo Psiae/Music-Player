@@ -3,7 +3,7 @@ package com.kylentt.musicplayer.core.app.startup
 import android.content.Context
 import androidx.startup.Initializer
 import com.kylentt.musicplayer.BuildConfig
-import com.kylentt.musicplayer.core.app.AppDelegate
+import com.flammky.android.app.AppDelegate
 import com.kylentt.musicplayer.core.app.startup.logger.TimberInitializer
 import com.kylentt.musicplayer.core.app.startup.medialib.MediaLibraryInitializer
 

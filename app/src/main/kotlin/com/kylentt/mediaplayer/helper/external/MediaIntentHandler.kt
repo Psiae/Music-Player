@@ -15,12 +15,10 @@ import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import com.kylentt.mediaplayer.helper.Preconditions.checkMainThread
 import com.kylentt.mediaplayer.helper.external.providers.ContentProvidersHelper
 import com.kylentt.mediaplayer.helper.external.providers.DocumentProviderHelper
-import com.kylentt.musicplayer.common.coroutines.AndroidCoroutineDispatchers
-import com.kylentt.musicplayer.medialib.api.provider.mediastore.MediaStoreProvider
+import com.flammky.common.kotlin.coroutines.AndroidCoroutineDispatchers
 import com.kylentt.musicplayer.domain.musiclib.core.MusicLibrary
 import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory
-import com.kylentt.musicplayer.medialib.android.provider.mediastore.base.audio.MediaStoreAudioEntity
-import com.kylentt.musicplayer.medialib.media3.contract.MediaItemFactoryOf
+import com.flammky.android.medialib.temp.provider.mediastore.base.audio.MediaStoreAudioEntity
 import kotlinx.coroutines.*
 import timber.log.Timber
 import java.io.File
@@ -50,7 +48,7 @@ interface MediaIntentHandler {
 class MediaIntentHandlerImpl(
     private val context: Context,
     private val dispatcher: AndroidCoroutineDispatchers,
-    private val mediaSource: MediaStoreProvider
+    private val mediaSource: com.flammky.android.medialib.temp.api.provider.mediastore.MediaStoreProvider
 ) : MediaIntentHandler {
 
   private val actionViewHandler = ActionViewHandler()
@@ -101,7 +99,7 @@ class MediaIntentHandlerImpl(
       require(intent.isTypeAudio())
       withContext(dispatcher.io) {
         val defPath = async { getAudioPathFromContentUri(intent) }
-        val defSongs = async { mediaSource.audioProvider.queryEntity() }
+        val defSongs = async { mediaSource.audio.query() }
 
         ensureActive()
 
@@ -126,12 +124,12 @@ class MediaIntentHandlerImpl(
     }
 
     private fun playMediaItem(
-			song: MediaStoreAudioEntity,
-			list: List<MediaStoreAudioEntity>,
-			fadeOut: Boolean
+        song: MediaStoreAudioEntity,
+        list: List<MediaStoreAudioEntity>,
+        fadeOut: Boolean
     ) {
       checkMainThread()
-			val factory = mediaSource.audioProvider.mediaItemFactory as MediaItemFactoryOf<MediaStoreAudioEntity>
+			val factory = mediaSource.audio.mediaItemFactory as com.flammky.android.medialib.temp.media3.contract.MediaItemFactoryOf<MediaStoreAudioEntity>
 
       val itemList = list.map { factory.createMediaItem(it) }
       val item = itemList[list.indexOf(song)]
@@ -513,7 +511,7 @@ class MediaIntentHandlerImpl(
     return try {
       val storageString = ContentProvidersHelper.storageDirString
       val contentUris = ContentProvidersHelper.contentScheme
-      val songList = songs.ifEmpty { mediaSource.audioProvider.queryEntity() }
+      val songList = songs.ifEmpty { mediaSource.audio.query() }
 
       Timber.d("findMatchingMediaStore with $predicate")
 

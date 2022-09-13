@@ -5,7 +5,7 @@ import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.Cann
 import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.InvalidAudioFrameException
 import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.NoWritePermissionsException
 import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.UnableToModifyFileException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.generic.Permissions.displayPermissions
+import com.flammky.common.media.audio.meta_tag.audio.generic.Permissions.displayPermissions
 import com.kylentt.musicplayer.common.media.audio.meta_tag.logging.*
 import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.Tag
 import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.TagException

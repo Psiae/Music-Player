@@ -8,14 +8,13 @@ import com.kylentt.mediaplayer.helper.external.IntentWrapper
 import com.kylentt.mediaplayer.helper.external.MediaIntentHandler
 import com.kylentt.mediaplayer.helper.image.CoilHelper
 import com.kylentt.musicplayer.common.android.environment.DeviceInfo
-import com.kylentt.musicplayer.common.coroutines.AndroidCoroutineDispatchers
+import com.flammky.common.kotlin.coroutines.AndroidCoroutineDispatchers
 import com.kylentt.musicplayer.common.coroutines.safeCollect
-import com.kylentt.musicplayer.common.kotlin.coroutine.checkCancellation
-import com.kylentt.musicplayer.common.kotlin.collection.mutable.forEachClear
-import com.kylentt.musicplayer.core.app.AppDelegate
+import com.flammky.common.kotlin.coroutine.checkCancellation
+import com.flammky.common.kotlin.collection.mutable.forEachClear
+import com.flammky.android.app.AppDelegate
 import com.kylentt.musicplayer.domain.musiclib.core.MusicLibrary
 import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemHelper
-import com.kylentt.musicplayer.medialib.MediaLibrary
 import com.kylentt.musicplayer.ui.main.compose.screens.root.PlaybackControlModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.*
@@ -27,11 +26,11 @@ import kotlin.time.ExperimentalTime
 
 @HiltViewModel
 class MediaViewModel @Inject constructor(
-    private val coilHelper: CoilHelper,
-    private val deviceInfo: DeviceInfo,
-    private val dispatchers: AndroidCoroutineDispatchers,
-    private val itemHelper: MediaItemHelper,
-    private val intentHandler: MediaIntentHandler
+	private val coilHelper: CoilHelper,
+	private val deviceInfo: DeviceInfo,
+	private val dispatchers: AndroidCoroutineDispatchers,
+	private val itemHelper: MediaItemHelper,
+	private val intentHandler: MediaIntentHandler,
 ) : ViewModel() {
 
 	private val cacheManager = AppDelegate.cacheManager
@@ -116,7 +115,7 @@ class MediaViewModel @Inject constructor(
     updateArtJob = ioScope.launch {
 			ensureActive()
 
-			val lru = MediaLibrary.API.imageRepository.sharedBitmapLru
+			val lru = com.flammky.android.medialib.temp.MediaLibrary.API.imageRepository.sharedBitmapLru
 			val cached = lru.get(item.mediaId) ?: lru.get(item.mediaId + "500")
 
 			if (cached != null) {
@@ -136,6 +135,8 @@ class MediaViewModel @Inject constructor(
 				checkCancellation {
 					bitmap?.recycle()
 				}
+
+				if (bitmap != null) lru.putIfKeyAbsent(item.mediaId + "500", bitmap)
 
 				withContext(dispatchers.main) {
 					playbackControlModel.updateArt(bitmap)

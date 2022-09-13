@@ -5,7 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.neverEqualPolicy
 import androidx.compose.runtime.remember
 import com.google.accompanist.permissions.*
-import com.kylentt.musicplayer.core.app.AppDelegate
+import com.flammky.android.app.AppDelegate
 import com.kylentt.musicplayer.core.app.permission.AndroidPermission
 import timber.log.Timber
 

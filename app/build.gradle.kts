@@ -75,6 +75,8 @@ android {
 
 dependencies {
 
+    implementation(project("MediaLib"))
+
     /* Android.material */
     dependencies {
         val v = "1.6.1"
@@ -195,7 +197,7 @@ dependencies {
     @Suppress("SpellCheckingInspection")
     /* Google.accompanist */
     dependencies  {
-        val v = "0.26.0-alpha"
+        val v = "0.25.1"
         implementation("com.google.accompanist:accompanist-drawablepainter:$v")
         implementation("com.google.accompanist:accompanist-navigation-material:$v")
         implementation("com.google.accompanist:accompanist-permissions:$v")

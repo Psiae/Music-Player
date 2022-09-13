@@ -12,7 +12,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,17 +28,16 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import coil.request.ErrorResult
 import coil.request.ImageRequest
 import com.google.accompanist.placeholder.placeholder
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.kylentt.mediaplayer.domain.viewmodels.MainViewModel
 import com.kylentt.mediaplayer.domain.viewmodels.MediaViewModel
+import com.kylentt.musicplayer.ui.main.compose.screens.library.old.LibraryViewModelOld
 import com.kylentt.musicplayer.ui.main.compose.theme.color.ColorHelper
 import jp.wasabeef.transformers.coil.CenterCropTransformation
 import timber.log.Timber
-import java.io.File
 
 @Composable
 fun Library() {
@@ -74,7 +72,7 @@ private fun LibraryTopBar() {
 private fun LibraryContent() {
 	val context = LocalContext.current
 	val lifecycleOwner = LocalLifecycleOwner.current
-	val vm: LibraryViewModel = activityViewModel()
+	val vm: LibraryViewModelOld = activityViewModel()
 	val mediaVM: MediaViewModel = activityViewModel()
 	val mainVM: MainViewModel = activityViewModel()
 
@@ -97,20 +95,24 @@ private fun LibraryContent() {
 					.fillMaxWidth()
 					.fillMaxHeight()
 					.padding(top = 10.dp, start = 10.dp, end = 10.dp),
-				columns = GridCells.Adaptive(150.dp),
+				columns = GridCells.Fixed(2),
 				verticalArrangement = Arrangement.spacedBy(10.dp),
 				horizontalArrangement = Arrangement.spacedBy(10.dp)
 			) {
 
+				items(2) { Spacer(Modifier) }
+
 				Timber.d("LibraryContent Column Grid recomposed")
 
-				val localSongs = vm.localSongs
+				val stateList = vm.localSongs
 
-				items(localSongs.value.size) {
+				val localSongs = ArrayList(stateList)
+
+				items(localSongs.size) {
 
 					Timber.d("LibraryContent Column Item $it recomposed")
 
-					val item = localSongs.value[it]
+					val item = localSongs[it]
 					val data = item.artState.value
 
 					Card(

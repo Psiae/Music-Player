@@ -1,7 +1,7 @@
 package com.kylentt.mediaplayer.data.source
 
 import android.content.Context
-import com.kylentt.musicplayer.common.coroutines.AndroidCoroutineDispatchers
+import com.flammky.common.kotlin.coroutines.AndroidCoroutineDispatchers
 import com.kylentt.mediaplayer.data.source.local.MediaStoreSource
 import com.kylentt.mediaplayer.data.source.local.MediaStoreSourceImpl
 import dagger.Module

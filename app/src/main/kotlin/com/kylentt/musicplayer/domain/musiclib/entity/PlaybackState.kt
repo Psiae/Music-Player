@@ -1,17 +1,11 @@
 package com.kylentt.musicplayer.domain.musiclib.entity
 
 import androidx.media3.common.*
-import com.kylentt.musicplayer.common.generic.sync
-import com.kylentt.musicplayer.common.kotlin.comparable.clamp
+import com.flammky.common.kotlin.generic.sync
+import com.flammky.common.kotlin.comparable.clamp
 import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory
-import com.kylentt.musicplayer.medialib.player.LibraryPlayer
-import com.kylentt.musicplayer.medialib.player.LibraryPlayer.PlaybackState.Companion.toPlaybackStateInt
-import com.kylentt.musicplayer.medialib.player.event.IsPlayingChangedReason
-import com.kylentt.musicplayer.medialib.player.event.LibraryPlayerEventListener
-import com.kylentt.musicplayer.medialib.player.event.MediaItemTransitionReason
-import com.kylentt.musicplayer.medialib.player.event.PlayWhenReadyChangedReason
-import com.kylentt.musicplayer.medialib.player.playback.RepeatMode
-import com.kylentt.musicplayer.medialib.player.playback.RepeatMode.Companion.toRepeatModeInt
+import com.flammky.android.medialib.temp.player.LibraryPlayer.PlaybackState.Companion.toPlaybackStateInt
+import com.flammky.android.medialib.temp.player.playback.RepeatMode.Companion.toRepeatModeInt
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
@@ -27,12 +21,12 @@ data class PlaybackState(
 	@Player.State val playerState: Int
 ) {
 
-	class StateFlow(player: LibraryPlayer) : kotlinx.coroutines.flow.StateFlow<PlaybackState> {
+	class StateFlow(player: com.flammky.android.medialib.temp.player.LibraryPlayer) : kotlinx.coroutines.flow.StateFlow<PlaybackState> {
 		private val mStateFlow = MutableStateFlow(EMPTY)
 
 		private val listenerImpl = mStateFlow.byPlayerListener(player)
 
-		private var mPlayer: LibraryPlayer? = null
+		private var mPlayer: com.flammky.android.medialib.temp.player.LibraryPlayer? = null
 			set(value) = sync {
 				if (field === value) return@sync
 				field?.removeListener(listenerImpl)
@@ -71,15 +65,16 @@ data class PlaybackState(
 		)
 
 		fun MutableStateFlow<PlaybackState>.byPlayerListener(
-			player: LibraryPlayer
-		): LibraryPlayerEventListener {
-			return object : LibraryPlayerEventListener {
+			player: com.flammky.android.medialib.temp.player.LibraryPlayer
+		): com.flammky.android.medialib.temp.player.event.LibraryPlayerEventListener {
+			return object :
+                com.flammky.android.medialib.temp.player.event.LibraryPlayerEventListener {
 				val flow = this@byPlayerListener
 
 				override fun onMediaItemTransition(
 					old: MediaItem?,
 					new: MediaItem?,
-					reason: MediaItemTransitionReason
+					reason: com.flammky.android.medialib.temp.player.event.MediaItemTransitionReason
 				) {
 					val item = new ?: MediaItem.EMPTY
 					val get = flow.value.mediaItem
@@ -99,22 +94,22 @@ data class PlaybackState(
 
 				override fun onPlayWhenReadyChanged(
 					playWhenReady: Boolean,
-					reason: PlayWhenReadyChangedReason
+					reason: com.flammky.android.medialib.temp.player.event.PlayWhenReadyChangedReason
 				) {
 					flow.update { it.copy(playWhenReady = playWhenReady, playing = player.isPlaying) }
 					Timber.d("onIsPlayWhenReadyChanged MC, $playWhenReady : ${player.isPlaying}")
 				}
 
-				override fun onIsPlayingChanged(isPlaying: Boolean, reason: IsPlayingChangedReason) {
+				override fun onIsPlayingChanged(isPlaying: Boolean, reason: com.flammky.android.medialib.temp.player.event.IsPlayingChangedReason) {
 					flow.update { it.copy(playing = isPlaying) }
 					Timber.d("onIsPlayingChanged MC, $isPlaying, onPlayer: ${player.isPlaying}, reason: $reason")
 				}
 
-				override fun onRepeatModeChanged(old: RepeatMode, new: RepeatMode) {
+				override fun onRepeatModeChanged(old: com.flammky.android.medialib.temp.player.playback.RepeatMode, new: com.flammky.android.medialib.temp.player.playback.RepeatMode) {
 					flow.update { it.copy(playerRepeatMode = new.toRepeatModeInt) }
 				}
 
-				override fun onPlaybackStateChanged(state: LibraryPlayer.PlaybackState) {
+				override fun onPlaybackStateChanged(state: com.flammky.android.medialib.temp.player.LibraryPlayer.PlaybackState) {
 					flow.update { it.copy(playerState = state.toPlaybackStateInt) }
 					Timber.d("onPlaybackStateChanged MC, $state isPlaying: ${player.isPlaying}")
 				}

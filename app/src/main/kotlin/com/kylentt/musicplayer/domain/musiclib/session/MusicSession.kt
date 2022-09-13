@@ -2,15 +2,9 @@ package com.kylentt.musicplayer.domain.musiclib.session
 
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
-import com.kylentt.musicplayer.common.kotlin.comparable.clamp
+import com.flammky.common.kotlin.comparable.clamp
 import com.kylentt.musicplayer.domain.musiclib.entity.PlaybackState
 import com.kylentt.musicplayer.domain.musiclib.interactor.LibraryAgent
-import com.kylentt.musicplayer.medialib.MediaLibrary
-import com.kylentt.musicplayer.medialib.api.RealMediaLibraryAPI
-import com.kylentt.musicplayer.medialib.api.player.MediaController
-import com.kylentt.musicplayer.medialib.player.event.IsPlayingChangedReason
-import com.kylentt.musicplayer.medialib.player.event.LibraryPlayerEventListener
-import com.kylentt.musicplayer.medialib.player.event.MediaItemTransitionReason
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,7 +12,7 @@ import kotlin.coroutines.coroutineContext
 
 class MusicSession(private val agent: LibraryAgent) {
 
-	val player: MediaController = MediaLibrary.API.sessions.manager.findSessionById("DEBUG")!!.mediaController
+	val player: com.flammky.android.medialib.temp.api.player.MediaController = com.flammky.android.medialib.temp.MediaLibrary.API.sessions.manager.findSessionById("DEBUG")!!.mediaController
 
 	val sessionInfo = object : SessionInfo {
 		val mainScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
@@ -48,13 +42,14 @@ class MusicSession(private val agent: LibraryAgent) {
 		override val playbackBufferedPosition: StateFlow<Long>
 			get() = mPlaybackBufferedPosition
 
-		private val playerListener = object : LibraryPlayerEventListener {
+		private val playerListener = object :
+			com.flammky.android.medialib.temp.player.event.LibraryPlayerEventListener {
 
 
 			override fun onMediaItemTransition(
 				old: MediaItem?,
 				new: MediaItem?,
-				reason: MediaItemTransitionReason
+				reason: com.flammky.android.medialib.temp.player.event.MediaItemTransitionReason
 			) {
 				cancelPositionCollector()
 				cancelBufferedPositionCollector()
@@ -72,7 +67,7 @@ class MusicSession(private val agent: LibraryAgent) {
 				}
 			}
 
-			override fun onIsPlayingChanged(isPlaying: Boolean, reason: IsPlayingChangedReason) {
+			override fun onIsPlayingChanged(isPlaying: Boolean, reason: com.flammky.android.medialib.temp.player.event.IsPlayingChangedReason) {
 				if (isPlaying && !positionCollectorJob.isActive) startPositionCollector()
 			}
 

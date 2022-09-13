@@ -1,7 +1,7 @@
 package com.kylentt.musicplayer.common.media.audio.meta_tag.audio.generic
 
 import android.util.Log
-import com.kylentt.musicplayer.common.kotlin.triple.to
+import com.flammky.common.kotlin.triple.triple
 import com.kylentt.musicplayer.core.sdk.VersionHelper
 import java.io.File
 import java.io.IOException
@@ -25,7 +25,7 @@ object Permissions {
 		sb.append("File $file permissions\n")
 		try {
 			val (read: Boolean, write: Boolean, execute: Boolean) = file.run {
-				canRead() to canWrite() to canExecute()
+				canRead() to canWrite() triple canExecute()
 			}
 
 			sb.append("\nread: $read")

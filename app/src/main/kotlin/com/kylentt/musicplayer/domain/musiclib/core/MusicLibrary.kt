@@ -1,7 +1,7 @@
 package com.kylentt.musicplayer.domain.musiclib.core
 
 import android.content.Context
-import com.kylentt.musicplayer.common.lazy.LazyConstructor
+import com.flammky.common.kotlin.lazy.LazyConstructor
 import com.kylentt.musicplayer.domain.musiclib.core.internal.ComponentModule
 import com.kylentt.musicplayer.domain.musiclib.core.public.MusicLibraryAPI
 

@@ -9,9 +9,8 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.kylentt.mediaplayer.helper.Preconditions.checkArgument
 import com.kylentt.mediaplayer.helper.Preconditions.checkState
-import com.kylentt.musicplayer.common.generic.ChangedNotNull
+import com.flammky.common.kotlin.generic.ChangedNotNull
 import com.kylentt.musicplayer.core.app.dependency.CoroutineModule
-import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory
 import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemPropertyHelper
 import com.kylentt.musicplayer.domain.musiclib.service.MusicLibraryService
 import com.kylentt.musicplayer.domain.musiclib.service.provider.SessionProvider
@@ -24,7 +23,7 @@ class SessionManager(
 	private val sessionProvider: SessionProvider
 ) : MusicLibraryService.ServiceComponent() {
 
-	private lateinit var sessionManagerJob: Job
+	private var sessionManagerJob: Job = Job().apply { complete() }
 
 	private val sessionRegistry = SessionRegistry()
 

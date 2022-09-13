@@ -12,10 +12,9 @@ import com.kylentt.mediaplayer.domain.viewmodels.MainViewModel
 import com.kylentt.mediaplayer.domain.viewmodels.MediaViewModel
 import com.kylentt.mediaplayer.helper.external.IntentWrapper
 import com.kylentt.musicplayer.common.android.activity.disableWindowDecorFitSystemInsets
-import com.kylentt.musicplayer.common.android.context.ContextInfo
-import com.kylentt.musicplayer.common.android.intent.isActionMain
-import com.kylentt.musicplayer.common.coroutines.AndroidCoroutineDispatchers
-import com.kylentt.musicplayer.medialib.MediaLibrary
+import com.flammky.android.medialib.temp.common.context.ContextInfo
+import com.flammky.android.medialib.temp.common.intent.isActionMain
+import com.flammky.common.kotlin.coroutines.AndroidCoroutineDispatchers
 import com.kylentt.musicplayer.ui.main.compose.ComposeContent
 import dagger.hilt.android.AndroidEntryPoint
 import timber.log.Timber
@@ -56,7 +55,7 @@ class MainActivity : ComponentActivity() {
 		setupWindow()
 		setupSplashScreen()
 
-		MediaLibrary.API.service.startService()
+		com.flammky.android.medialib.temp.MediaLibrary.API.service.startService()
 
 		setContent {
 			ComposeContent()

@@ -22,11 +22,10 @@ import com.kylentt.mediaplayer.helper.Preconditions.checkState
 import com.kylentt.mediaplayer.helper.image.CoilHelper
 import com.kylentt.musicplayer.common.android.bitmap.bitmapfactory.BitmapSampler
 import com.kylentt.musicplayer.common.android.environment.DeviceInfo
-import com.kylentt.musicplayer.common.android.memory.maybeWaitForMemory
-import com.kylentt.musicplayer.common.coroutines.AndroidCoroutineDispatchers
+import com.flammky.common.kotlin.coroutines.AndroidCoroutineDispatchers
 import com.kylentt.musicplayer.common.coroutines.AutoCancelJob
-import com.kylentt.musicplayer.common.kotlin.comparable.clamp
-import com.kylentt.musicplayer.common.kotlin.coroutine.checkCancellation
+import com.flammky.common.kotlin.comparable.clamp
+import com.flammky.common.kotlin.coroutine.checkCancellation
 import com.kylentt.musicplayer.core.sdk.VersionHelper
 import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory
 import com.kylentt.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory.orEmpty
@@ -41,9 +40,6 @@ import com.kylentt.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.
 import com.kylentt.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isStateIdle
 import com.kylentt.musicplayer.domain.musiclib.service.MusicLibraryService
 import com.kylentt.musicplayer.domain.musiclib.service.provider.MediaNotificationProvider
-import com.kylentt.musicplayer.medialib.MediaLibrary
-import com.kylentt.musicplayer.medialib.api.RealMediaLibraryAPI
-import com.kylentt.musicplayer.medialib.cache.lru.LruCache
 import com.kylentt.musicplayer.ui.main.MainActivity
 import kotlinx.coroutines.*
 import timber.log.Timber
@@ -246,8 +242,8 @@ class MediaNotificationManager(
 
 		private val emptyItem = MediaItem.fromUri("empty")
 
-		private val lruCache: LruCache<String, Bitmap> = MediaLibrary.API.imageRepository.sharedBitmapLru
-		private var localStored: Pair<String, Bitmap?> = "" to NO_BITMAP
+		private val lruCache: com.flammky.android.medialib.temp.cache.lru.LruCache<String, Bitmap> = com.flammky.android.medialib.temp.MediaLibrary.API.imageRepository.sharedBitmapLru
+		private var localStored: Pair<String, Bitmap> = "" to NO_BITMAP
 
 		// config later
 		private val cacheConfig
@@ -344,24 +340,9 @@ class MediaNotificationManager(
 			currentCompleted: suspend () -> Unit = {}
 		): Unit = withContext(this@MediaNotificationManager.appDispatchers.main) {
 			val currentItem = player.currentMediaItem.orEmpty()
-
-			val id = currentItem.mediaId + "500"
-
-			lruCache.get(id)?.let {
-				localStored = id to it
-				return@withContext currentCompleted()
-			}
-
-			maybeWaitForMemory(1.5F,1000, 500, deviceInfo) {
-				Timber.w("Notification Media Bitmap will wait due to low memory")
-			}
-
-			val get = getItemBitmap(currentItem) ?: (emptyItem to null)
-			get.second?.let {
-				lruCache.put(id, it)
-				localStored = id to it
-			}
-			currentItemBitmap = get
+			val id = currentItem.mediaId
+			val lruId = id + "500"
+			localStored = id to (lruCache.get(lruId) ?: getItemBitmap(currentItem)?.second ?: NO_BITMAP)
 			currentCompleted()
 		}
 
@@ -439,7 +420,6 @@ class MediaNotificationManager(
 		private fun getItemBitmap(player: Player): Bitmap? {
 			return player.currentMediaItem?.mediaId?.let { id ->
 				when (id) {
-					currentItemBitmap.first.mediaId -> currentItemBitmap.second
 					localStored.first -> localStored.second
 					else -> null
 				}

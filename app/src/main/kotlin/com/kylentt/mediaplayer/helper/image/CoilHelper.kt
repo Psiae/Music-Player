@@ -19,13 +19,12 @@ import coil.request.ImageRequest
 import coil.size.Precision
 import coil.size.Scale
 import com.kylentt.mediaplayer.helper.image.CoilHelper.CenterCropTransform.*
-import com.kylentt.musicplayer.common.kotlin.coroutine.checkCancellation
+import com.flammky.common.kotlin.coroutine.checkCancellation
 import dagger.hilt.android.qualifiers.ApplicationContext
 import jp.wasabeef.transformers.coil.CenterBottomCropTransformation
 import jp.wasabeef.transformers.coil.CenterCropTransformation
 import jp.wasabeef.transformers.coil.CenterTopCropTransformation
 import kotlinx.coroutines.ensureActive
-import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.coroutineContext
 

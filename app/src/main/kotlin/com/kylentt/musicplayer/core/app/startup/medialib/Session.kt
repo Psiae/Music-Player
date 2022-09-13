@@ -2,13 +2,10 @@ package com.kylentt.musicplayer.core.app.startup.medialib
 
 import android.content.Context
 import androidx.startup.Initializer
-import com.kylentt.musicplayer.medialib.MediaLibrary
-import com.kylentt.musicplayer.medialib.api.RealMediaLibraryAPI
-import com.kylentt.musicplayer.medialib.session.LibrarySession
 
-class LibrarySessionInitializer : Initializer<LibrarySession> {
-	override fun create(context: Context): LibrarySession {
-		val api = MediaLibrary.API
+class LibrarySessionInitializer : Initializer<com.flammky.android.medialib.temp.session.LibrarySession> {
+	override fun create(context: Context): com.flammky.android.medialib.temp.session.LibrarySession {
+		val api = com.flammky.android.medialib.temp.MediaLibrary.API
 		val session = api.sessions.builder.buildSession { setId("DEBUG") }
 		return session.also {
 			api.sessions.manager.addSession(it)
@@ -16,5 +13,6 @@ class LibrarySessionInitializer : Initializer<LibrarySession> {
 		}
 	}
 
-	override fun dependencies(): MutableList<Class<out Initializer<*>>> = mutableListOf(ApiInitializer::class.java)
+	override fun dependencies(): MutableList<Class<out Initializer<*>>> = mutableListOf(
+        ApiInitializer::class.java)
 }

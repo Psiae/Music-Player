@@ -1,5 +1,6 @@
 package com.kylentt.musicplayer.common.media.audio.meta_tag.audio.generic
 
+import com.flammky.common.media.audio.meta_tag.audio.generic.Permissions
 import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.AudioFile
 import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadException
 import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.InvalidAudioFrameException

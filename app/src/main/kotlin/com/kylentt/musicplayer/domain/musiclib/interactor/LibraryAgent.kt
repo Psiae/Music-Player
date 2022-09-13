@@ -4,8 +4,7 @@ import android.content.Context
 import com.kylentt.musicplayer.domain.musiclib.dependency.Injector
 import com.kylentt.musicplayer.domain.musiclib.dependency.Provider
 import com.kylentt.musicplayer.domain.musiclib.session.MusicSession
-import com.kylentt.musicplayer.medialib.api.player.MediaController
-import com.kylentt.musicplayer.medialib.player.LibraryPlayer
+import com.flammky.android.medialib.temp.api.player.MediaController
 
 @Deprecated("TODO")
 class LibraryAgent(val context: Context)  {

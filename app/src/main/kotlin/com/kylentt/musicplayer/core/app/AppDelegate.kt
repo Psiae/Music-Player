@@ -2,9 +2,10 @@ package com.kylentt.musicplayer.core.app
 
 import android.app.Application
 import android.content.Context
-import com.kylentt.musicplayer.common.android.context.ContextInfo
-import com.kylentt.musicplayer.common.lazy.LazyConstructor
-import com.kylentt.musicplayer.core.app.cache.CacheManager
+import com.flammky.android.app.ApplicationDelegate
+import com.flammky.android.app.cache.CacheManager
+import com.flammky.android.medialib.temp.common.context.ContextInfo
+import com.flammky.common.kotlin.lazy.LazyConstructor
 import com.kylentt.musicplayer.core.app.device.DeviceManager
 import com.kylentt.musicplayer.core.app.permission.PermissionManager
 
@@ -36,6 +37,8 @@ class AppDelegate private constructor (context: Context) : ApplicationDelegate {
 		val permissionManager
 			get() = delegate.value.permissionManager
 
-		infix fun provides(context: Context) = delegate.construct { AppDelegate(context) }
+		infix fun provides(context: Context) = delegate.construct {
+			AppDelegate(context)
+		}
 	}
 }

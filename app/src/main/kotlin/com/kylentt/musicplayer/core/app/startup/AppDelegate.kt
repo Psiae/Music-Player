@@ -2,7 +2,7 @@ package com.kylentt.musicplayer.core.app.startup
 
 import android.content.Context
 import androidx.startup.Initializer
-import com.kylentt.musicplayer.core.app.AppDelegate
+import com.flammky.android.app.AppDelegate
 
 class AppDelegateInitializer : Initializer<Unit> {
 

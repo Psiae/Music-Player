@@ -6,7 +6,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import com.kylentt.mediaplayer.data.repository.ProtoRepository
-import com.kylentt.musicplayer.common.kotlin.collection.mutable.doEachClear
+import com.flammky.common.kotlin.collection.mutable.doEachClear
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 

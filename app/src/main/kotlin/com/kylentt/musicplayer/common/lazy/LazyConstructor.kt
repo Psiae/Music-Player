@@ -21,9 +21,16 @@ class LazyConstructor<T> @JvmOverloads constructor(lock: Any = Any()) : Lazy<T> 
 			field = value
 		}
 
-	/** Whether [localValue] is already initialized */
+	/**
+	 *  Whether [localValue] is already initialized
+	 *  @see isConstructedAtomic
+	 */
 
 	fun isConstructed() = localValue !== EMPTY
+
+	/**
+	 * Whether [localValue] is already initialized, atomically
+	 */
 
 	fun isConstructedAtomic() = sync { isConstructed() }
 

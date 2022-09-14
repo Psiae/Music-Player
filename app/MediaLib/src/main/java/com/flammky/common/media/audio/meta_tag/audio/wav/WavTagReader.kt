@@ -16,21 +16,21 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
-package com.kylentt.musicplayer.common.media.audio.meta_tag.audio.wav
+package com.flammky.musicplayer.common.media.audio.meta_tag.audio.wav
 
 import com.flammky.android.core.sdk.VersionHelper
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.generic.Utils.readFileDataIntoBufferLE
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.iff.*
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.iff.IffHeaderChunk.ensureOnEqualBoundary
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.wav.chunk.WavCorruptChunkType
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.wav.chunk.WavId3Chunk
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.wav.chunk.WavListChunk
-import com.kylentt.musicplayer.common.media.audio.meta_tag.logging.Hex
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.TagOptionSingleton
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.wav.WavInfoTag
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.wav.WavTag
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.wav.WavTag.Companion.createDefaultID3Tag
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadException
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.generic.Utils.readFileDataIntoBufferLE
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.iff.*
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.iff.IffHeaderChunk.ensureOnEqualBoundary
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.wav.chunk.WavCorruptChunkType
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.wav.chunk.WavId3Chunk
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.wav.chunk.WavListChunk
+import com.flammky.musicplayer.common.media.audio.meta_tag.logging.Hex
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.TagOptionSingleton
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.wav.WavInfoTag
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.wav.WavTag
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.wav.WavTag.Companion.createDefaultID3Tag
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder

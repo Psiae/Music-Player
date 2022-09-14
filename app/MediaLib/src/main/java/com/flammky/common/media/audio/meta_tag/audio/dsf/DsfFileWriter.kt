@@ -16,15 +16,15 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
-package com.kylentt.musicplayer.common.media.audio.meta_tag.audio.dsf
+package com.flammky.musicplayer.common.media.audio.meta_tag.audio.dsf
 
 import com.flammky.android.core.sdk.VersionHelper
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotWriteException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.NoWritePermissionsException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.generic.AudioFileWriter2
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.generic.Utils
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.Tag
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.id3.ID3v2TagBase
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotWriteException
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.NoWritePermissionsException
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.generic.AudioFileWriter2
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.generic.Utils
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.Tag
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.id3.ID3v2TagBase
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.UnsupportedEncodingException

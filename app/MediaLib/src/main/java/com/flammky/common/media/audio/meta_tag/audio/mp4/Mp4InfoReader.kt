@@ -16,16 +16,16 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
-package com.kylentt.musicplayer.common.media.audio.meta_tag.audio.mp4
+package com.flammky.musicplayer.common.media.audio.meta_tag.audio.mp4
 
 import com.flammky.android.core.sdk.VersionHelper
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadVideoException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.generic.GenericAudioHeader
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.generic.Utils
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.mp4.atom.*
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.mp4.atom.Mp4BoxHeader.Companion.seekWithinLevel
-import com.kylentt.musicplayer.common.media.audio.meta_tag.logging.ErrorMessage
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadException
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadVideoException
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.generic.GenericAudioHeader
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.generic.Utils
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.mp4.atom.*
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.mp4.atom.Mp4BoxHeader.Companion.seekWithinLevel
+import com.flammky.musicplayer.common.media.audio.meta_tag.logging.ErrorMessage
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder

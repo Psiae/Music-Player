@@ -16,26 +16,26 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
-package com.kylentt.musicplayer.common.media.audio.meta_tag.audio.wav
+package com.flammky.musicplayer.common.media.audio.meta_tag.audio.wav
 
 import com.flammky.android.core.sdk.VersionHelper
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotWriteException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.NoWritePermissionsException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.generic.Utils.getSizeLEInt32
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.generic.Utils.isOddLength
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.iff.ChunkHeader
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.iff.ChunkSummary
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.iff.IffHeaderChunk
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.iff.PaddingChunkSummary
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.wav.chunk.WavChunkSummary.getChunkBeforeFirstMetadataTag
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.wav.chunk.WavChunkSummary.isOnlyMetadataTagsAfterStartingMetadataTag
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.wav.chunk.WavInfoIdentifier
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.wav.chunk.WavInfoIdentifier.Companion.getByFieldKey
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.*
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.wav.WavInfoTag
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.wav.WavTag
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.wav.WavTag.Companion.createDefaultID3Tag
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadException
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotWriteException
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.NoWritePermissionsException
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.generic.Utils.getSizeLEInt32
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.generic.Utils.isOddLength
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.iff.ChunkHeader
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.iff.ChunkSummary
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.iff.IffHeaderChunk
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.iff.PaddingChunkSummary
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.wav.chunk.WavChunkSummary.getChunkBeforeFirstMetadataTag
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.wav.chunk.WavChunkSummary.isOnlyMetadataTagsAfterStartingMetadataTag
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.wav.chunk.WavInfoIdentifier
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.wav.chunk.WavInfoIdentifier.Companion.getByFieldKey
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.*
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.wav.WavInfoTag
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.wav.WavTag
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.wav.WavTag.Companion.createDefaultID3Tag
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.UnsupportedEncodingException

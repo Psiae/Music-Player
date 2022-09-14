@@ -1,13 +1,13 @@
-package com.kylentt.musicplayer.common.media.audio.meta_tag.audio.generic
+package com.flammky.musicplayer.common.media.audio.meta_tag.audio.generic
 
 import com.flammky.android.core.sdk.VersionHelper
 import com.flammky.common.media.audio.meta_tag.audio.generic.Permissions
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.AudioFile
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotWriteException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.logging.ErrorMessage
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.Tag
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.TagOptionSingleton
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.AudioFile
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadException
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotWriteException
+import com.flammky.musicplayer.common.media.audio.meta_tag.logging.ErrorMessage
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.Tag
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.TagOptionSingleton
 import java.io.IOException
 import java.io.RandomAccessFile
 import java.nio.file.Files

@@ -6,10 +6,10 @@ inline fun <T> MutableCollection<T>.forEachClear(lock: Any?, crossinline action:
 	clear()
 }
 
-fun <T> MutableCollection<T>.forEachClear(action: (T) -> Unit) {
+inline fun <T> MutableCollection<T>.forEachClear(crossinline action: (T) -> Unit) {
 	forEachClear(null, action)
 }
 
-fun <T : () -> Unit> MutableCollection<T>.doEachClear(lock: Any? = null) {
+inline fun <T : () -> Unit> MutableCollection<T>.doEachClear(lock: Any? = null) {
 	forEachClear(lock) { it() }
 }

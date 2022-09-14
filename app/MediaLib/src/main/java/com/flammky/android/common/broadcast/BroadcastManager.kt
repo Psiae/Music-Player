@@ -12,6 +12,7 @@ import com.flammky.common.kotlin.collection.mutable.forEachClear
 
 @MainThread
 class ContextBroadcastManager(context: Context) {
+
 	private val broadcastReceivers = mutableListOf<Pair<BroadcastReceiver, MutableList<IntentFilter>>>()
 
 	private var lifecycleOwner: LifecycleOwner? = null
@@ -52,7 +53,8 @@ class ContextBroadcastManager(context: Context) {
 		flags: Int? = null
 	): Boolean {
 
-		val context = localContext ?: return false
+		val context = localContext
+			?: return false
 
 		if (flags != null && VersionHelper.hasOreo()) {
 			context.registerReceiver(receiver, intentFilter, flags)

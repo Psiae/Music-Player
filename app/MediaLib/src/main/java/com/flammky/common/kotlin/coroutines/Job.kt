@@ -1,11 +1,13 @@
-package com.kylentt.musicplayer.common.coroutines
+package com.flammky.common.kotlin.coroutines
 
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.job
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 
-class AutoCancelJob(initialValue: Job = Job().job) : ReadWriteProperty<Any?, Job> {
+class AutoCancelJob(
+	initialValue: Job = Job().apply { cancel() }
+) : ReadWriteProperty<Any?, Job> {
 
 	private var value = initialValue
 

@@ -6,3 +6,4 @@ fun String.addPrefix(prefix: String): String = prefix + this
 fun String.setPrefix(prefix: String): String {
 	return if (!startsWith(prefix)) { addPrefix(prefix) } else this
 }
+

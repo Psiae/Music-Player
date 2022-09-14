@@ -1,15 +1,15 @@
-package com.kylentt.musicplayer.common.media.audio.meta_tag.audio.mp4
+package com.flammky.musicplayer.common.media.audio.meta_tag.audio.mp4
 
 import com.flammky.android.core.sdk.VersionHelper
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.NullBoxIdException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.mp4.atom.Mp4BoxHeader
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.mp4.atom.Mp4MetaBox
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.mp4.atom.Mp4StcoBox
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.mp4.atom.NullPadding
-import com.kylentt.musicplayer.common.media.audio.meta_tag.logging.ErrorMessage
-import com.kylentt.musicplayer.common.media.audio.meta_tag.utils.tree.DefaultMutableTreeNode
-import com.kylentt.musicplayer.common.media.audio.meta_tag.utils.tree.DefaultTreeModel
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadException
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.NullBoxIdException
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.mp4.atom.Mp4BoxHeader
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.mp4.atom.Mp4MetaBox
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.mp4.atom.Mp4StcoBox
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.mp4.atom.NullPadding
+import com.flammky.musicplayer.common.media.audio.meta_tag.logging.ErrorMessage
+import com.flammky.musicplayer.common.media.audio.meta_tag.utils.tree.DefaultMutableTreeNode
+import com.flammky.musicplayer.common.media.audio.meta_tag.utils.tree.DefaultTreeModel
 import java.io.File
 import java.io.IOException
 import java.nio.ByteBuffer

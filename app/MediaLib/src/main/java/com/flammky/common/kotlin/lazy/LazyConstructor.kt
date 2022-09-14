@@ -6,17 +6,19 @@ package com.flammky.common.kotlin.lazy
 
 class LazyConstructor<T> @JvmOverloads constructor(lock: Any = Any()) : Lazy<T> {
 
-	/** Placeholder Object, delegated value may be null */
-	private object EMPTY
+	/**
+	 * Placeholder Object, delegated value may be null
+	 */
+	private object UNSET
 
 	/** The Lock */
 	private val localLock: Any = lock
 
-	/** The value holder. [EMPTY] if not initialized  */
-	private var localValue: Any? = EMPTY
+	/** The value holder. [UNSET] if not initialized  */
+	private var localValue: Any? = UNSET
 		set(value) {
-			require(field === EMPTY && Thread.holdsLock(localLock)) {
-				"Latelazy failed, localValue was $field when trying to set $value"
+			require(field === UNSET && Thread.holdsLock(localLock)) {
+				"Lazy Constructor failed, localValue was $field when trying to set $value"
 			}
 			field = value
 		}
@@ -26,7 +28,7 @@ class LazyConstructor<T> @JvmOverloads constructor(lock: Any = Any()) : Lazy<T> 
 	 *  @see isConstructedAtomic
 	 */
 
-	fun isConstructed() = localValue !== EMPTY
+	fun isConstructed() = localValue !== UNSET
 
 	/**
 	 * Whether [localValue] is already initialized, atomically
@@ -34,12 +36,12 @@ class LazyConstructor<T> @JvmOverloads constructor(lock: Any = Any()) : Lazy<T> 
 
 	fun isConstructedAtomic() = sync { isConstructed() }
 
-	override fun isInitialized(): Boolean = isConstructed()
+	override fun isInitialized(): Boolean = isConstructedAtomic()
 
 	/**
 	 * The value.
 	 *
-	 * @throws ClassCastException if [localValue] is [EMPTY]
+	 * @throws ClassCastException if [localValue] is [UNSET]
 	 */
 	override val value: T
 		@Throws(ClassCastException::class)

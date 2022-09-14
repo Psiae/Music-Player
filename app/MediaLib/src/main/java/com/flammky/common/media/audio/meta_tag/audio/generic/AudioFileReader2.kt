@@ -1,15 +1,15 @@
-package com.kylentt.musicplayer.common.media.audio.meta_tag.audio.generic
+package com.flammky.musicplayer.common.media.audio.meta_tag.audio.generic
 
 import com.flammky.android.core.sdk.VersionHelper
 import com.flammky.common.media.audio.meta_tag.audio.generic.Permissions
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.AudioFile
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.InvalidAudioFrameException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.NoReadPermissionsException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.ReadOnlyFileException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.logging.ErrorMessage
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.Tag
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.TagException
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.AudioFile
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadException
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.InvalidAudioFrameException
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.NoReadPermissionsException
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.ReadOnlyFileException
+import com.flammky.musicplayer.common.media.audio.meta_tag.logging.ErrorMessage
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.Tag
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.TagException
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException

@@ -16,18 +16,18 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
-package com.kylentt.musicplayer.common.media.audio.meta_tag.audio.generic
+package com.flammky.musicplayer.common.media.audio.meta_tag.audio.generic
 
 import com.flammky.android.core.sdk.VersionHelper
 import com.flammky.common.media.audio.meta_tag.audio.generic.Permissions
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.AudioFile
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotWriteException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.ModifyVetoException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.mp3.MP3File
-import com.kylentt.musicplayer.common.media.audio.meta_tag.logging.ErrorMessage
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.Tag
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.TagOptionSingleton
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.AudioFile
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadException
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotWriteException
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.ModifyVetoException
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.mp3.MP3File
+import com.flammky.musicplayer.common.media.audio.meta_tag.logging.ErrorMessage
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.Tag
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.TagOptionSingleton
 import java.io.*
 import java.nio.channels.FileChannel
 import java.nio.file.Files

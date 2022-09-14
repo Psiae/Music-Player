@@ -5,8 +5,8 @@ import android.content.Context
 import com.flammky.android.medialib.temp.common.context.ContextInfo
 import com.flammky.common.kotlin.lazy.LazyConstructor
 import com.flammky.android.app.cache.CacheManager
-import com.kylentt.musicplayer.core.app.device.DeviceManager
-import com.kylentt.musicplayer.core.app.permission.PermissionManager
+import com.flammky.musicplayer.core.app.device.DeviceManager
+import com.flammky.musicplayer.core.app.permission.PermissionManager
 
 
 interface ApplicationDelegate {

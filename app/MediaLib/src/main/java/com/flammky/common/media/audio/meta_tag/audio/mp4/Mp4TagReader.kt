@@ -16,22 +16,22 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
-package com.kylentt.musicplayer.common.media.audio.meta_tag.audio.mp4
+package com.flammky.musicplayer.common.media.audio.meta_tag.audio.mp4
 
 import com.flammky.android.core.sdk.VersionHelper
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.generic.Utils.getIntBE
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.generic.Utils.getString
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.mp4.atom.Mp4BoxHeader
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.mp4.atom.Mp4BoxHeader.Companion.seekWithinLevel
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.mp4.atom.Mp4MetaBox
-import com.kylentt.musicplayer.common.media.audio.meta_tag.logging.ErrorMessage
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.TagField
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.mp4.Mp4FieldKey
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.mp4.Mp4NonStandardFieldKey
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.mp4.Mp4Tag
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.mp4.atom.Mp4DataBox
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.mp4.field.*
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadException
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.generic.Utils.getIntBE
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.generic.Utils.getString
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.mp4.atom.Mp4BoxHeader
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.mp4.atom.Mp4BoxHeader.Companion.seekWithinLevel
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.mp4.atom.Mp4MetaBox
+import com.flammky.musicplayer.common.media.audio.meta_tag.logging.ErrorMessage
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.TagField
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.mp4.Mp4FieldKey
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.mp4.Mp4NonStandardFieldKey
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.mp4.Mp4Tag
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.mp4.atom.Mp4DataBox
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.mp4.field.*
 import java.io.IOException
 import java.io.UnsupportedEncodingException
 import java.nio.ByteBuffer

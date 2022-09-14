@@ -16,19 +16,19 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
-package com.kylentt.musicplayer.common.media.audio.meta_tag.audio.flac
+package com.flammky.musicplayer.common.media.audio.meta_tag.audio.flac
 
 import com.flammky.android.core.sdk.VersionHelper
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.flac.metadatablock.BlockType
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.flac.metadatablock.MetadataBlockDataPicture
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.flac.metadatablock.MetadataBlockHeader.Companion.readHeader
-import com.kylentt.musicplayer.common.media.audio.meta_tag.logging.Hex
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.InvalidFrameException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.flac.FlacTag
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.vorbiscomment.VorbisCommentReader
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.vorbiscomment.VorbisCommentTag
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.vorbiscomment.VorbisCommentTag.Companion.createNewTag
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadException
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.flac.metadatablock.BlockType
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.flac.metadatablock.MetadataBlockDataPicture
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.flac.metadatablock.MetadataBlockHeader.Companion.readHeader
+import com.flammky.musicplayer.common.media.audio.meta_tag.logging.Hex
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.InvalidFrameException
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.flac.FlacTag
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.vorbiscomment.VorbisCommentReader
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.vorbiscomment.VorbisCommentTag
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.vorbiscomment.VorbisCommentTag.Companion.createNewTag
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel

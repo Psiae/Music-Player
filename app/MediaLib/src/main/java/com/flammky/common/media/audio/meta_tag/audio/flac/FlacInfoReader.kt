@@ -16,15 +16,15 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
-package com.kylentt.musicplayer.common.media.audio.meta_tag.audio.flac
+package com.flammky.musicplayer.common.media.audio.meta_tag.audio.flac
 
 import com.flammky.android.core.sdk.VersionHelper
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.SupportedFileFormat
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.flac.metadatablock.BlockType
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.flac.metadatablock.MetadataBlockDataStreamInfo
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.flac.metadatablock.MetadataBlockHeader.Companion.readHeader
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.generic.Utils
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.SupportedFileFormat
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadException
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.flac.metadatablock.BlockType
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.flac.metadatablock.MetadataBlockDataStreamInfo
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.flac.metadatablock.MetadataBlockHeader.Companion.readHeader
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.generic.Utils
 import java.io.File
 import java.io.IOException
 import java.nio.channels.FileChannel

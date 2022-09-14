@@ -2,15 +2,15 @@
  * Created on 03.05.2015
  * Author: Veselin Markov.
  */
-package com.kylentt.musicplayer.common.media.audio.meta_tag.audio.dff
+package com.flammky.musicplayer.common.media.audio.meta_tag.audio.dff
 
 import com.flammky.android.core.sdk.VersionHelper
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.InvalidChunkException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.generic.AudioFileReader2
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.generic.GenericAudioHeader
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.generic.Utils
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.Tag
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadException
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.InvalidChunkException
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.generic.AudioFileReader2
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.generic.GenericAudioHeader
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.generic.Utils
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.Tag
 import java.io.IOException
 import java.nio.channels.FileChannel
 import java.nio.file.Path

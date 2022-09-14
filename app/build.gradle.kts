@@ -14,7 +14,7 @@ android {
     compileSdk = 32
 
     defaultConfig {
-        applicationId = "com.kylentt.musicplayer"
+        applicationId = "com.flammky.musicplayer"
         minSdk = 24
         targetSdk = 32
         versionCode = 1
@@ -70,7 +70,7 @@ android {
         kotlin.srcDir("src/$name/kotlin")
     }
 
-    namespace = "com.kylentt.musicplayer"
+    namespace = "com.flammky.musicplayer"
 }
 
 dependencies {

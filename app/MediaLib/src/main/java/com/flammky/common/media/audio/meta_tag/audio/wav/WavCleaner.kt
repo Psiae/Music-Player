@@ -1,10 +1,10 @@
-package com.kylentt.musicplayer.common.media.audio.meta_tag.audio.wav
+package com.flammky.musicplayer.common.media.audio.meta_tag.audio.wav
 
 import com.flammky.android.core.sdk.VersionHelper
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.iff.ChunkHeader
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.iff.IffHeaderChunk.ensureOnEqualBoundary
-import com.kylentt.musicplayer.common.media.audio.meta_tag.logging.Hex
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadException
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.iff.ChunkHeader
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.iff.IffHeaderChunk.ensureOnEqualBoundary
+import com.flammky.musicplayer.common.media.audio.meta_tag.logging.Hex
 import java.io.IOException
 import java.nio.ByteOrder
 import java.nio.channels.FileChannel

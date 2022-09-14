@@ -1,12 +1,15 @@
-package com.kylentt.musicplayer.common.coroutines
+package com.flammky.common.kotlin.coroutines
 
-import kotlinx.coroutines.ensureActive
+import com.flammky.common.kotlin.coroutine.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlin.coroutines.coroutineContext
 
-suspend inline fun <T> Flow<T>.safeCollect(crossinline block: suspend (T) -> Unit) {
+suspend fun <T> Flow<T>.safeCollect(
+	fallback: () -> Unit = {},
+	collect: suspend (T) -> Unit
+) {
 	collect {
-		coroutineContext.ensureActive()
-		block(it)
+		coroutineContext.ensureActive(fallback)
+		collect(it)
 	}
 }

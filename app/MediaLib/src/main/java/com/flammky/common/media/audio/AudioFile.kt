@@ -4,12 +4,13 @@ import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
 import android.os.ParcelFileDescriptor
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.mp3.MP3File
-import com.kylentt.musicplayer.common.media.audio.uri.AndroidFileBuilder
-import com.kylentt.musicplayer.common.media.audio.uri.ContentFileBuilder
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.mp3.MP3File
+import com.flammky.musicplayer.common.media.audio.uri.AndroidFileBuilder
+import com.flammky.musicplayer.common.media.audio.uri.ContentFileBuilder
 import com.flammky.android.app.AppDelegate
 import java.io.File
 import java.io.FileDescriptor
+import java.io.FileNotFoundException
 
 class AudioFile private constructor() {
 	private var mContext: Context? = null
@@ -24,7 +25,6 @@ class AudioFile private constructor() {
 
 	val file: File?
 		get() = mFile
-
 
 	class Builder {
 		private var _context: Context? = null
@@ -55,9 +55,13 @@ class AudioFile private constructor() {
 		}
 
 		constructor(context: Context, uri: Uri) : this(context) {
-			val fd: ParcelFileDescriptor = when {
-				uri.scheme == ContentResolver.SCHEME_CONTENT -> context.contentResolver.openFileDescriptor(uri, "r")!!
-				else -> TODO("Uri not yet supported")
+			val fd: ParcelFileDescriptor? = try {
+				when {
+					uri.scheme == ContentResolver.SCHEME_CONTENT -> context.contentResolver.openFileDescriptor(uri, "r")!!
+					else -> TODO("Uri not yet supported")
+				}
+			} catch (fnf: FileNotFoundException) {
+				null
 			}
 
 			_fileDescriptor = fd

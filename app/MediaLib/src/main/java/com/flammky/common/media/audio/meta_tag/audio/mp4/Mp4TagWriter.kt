@@ -16,24 +16,24 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
-package com.kylentt.musicplayer.common.media.audio.meta_tag.audio.mp4
+package com.flammky.musicplayer.common.media.audio.meta_tag.audio.mp4
 
 import com.flammky.android.core.sdk.VersionHelper
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotWriteException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.mp4.atom.Mp4BoxHeader
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.mp4.atom.Mp4FreeBox
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.mp4.atom.Mp4HdlrBox.Companion.createiTunesStyleHdlrBox
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.mp4.atom.Mp4MetaBox
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.mp4.atom.Mp4MetaBox.Companion.createiTunesStyleMetaBox
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.mp4.atom.Mp4StcoBox
-import com.kylentt.musicplayer.common.media.audio.meta_tag.logging.ErrorMessage
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.Tag
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.TagOptionSingleton
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.mp4.Mp4Tag
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.mp4.Mp4TagCreator
-import com.kylentt.musicplayer.common.media.audio.meta_tag.utils.ShiftData.shiftDataByOffsetToMakeSpace
-import com.kylentt.musicplayer.common.media.audio.meta_tag.utils.tree.DefaultMutableTreeNode
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadException
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotWriteException
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.mp4.atom.Mp4BoxHeader
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.mp4.atom.Mp4FreeBox
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.mp4.atom.Mp4HdlrBox.Companion.createiTunesStyleHdlrBox
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.mp4.atom.Mp4MetaBox
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.mp4.atom.Mp4MetaBox.Companion.createiTunesStyleMetaBox
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.mp4.atom.Mp4StcoBox
+import com.flammky.musicplayer.common.media.audio.meta_tag.logging.ErrorMessage
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.Tag
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.TagOptionSingleton
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.mp4.Mp4Tag
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.mp4.Mp4TagCreator
+import com.flammky.musicplayer.common.media.audio.meta_tag.utils.ShiftData.shiftDataByOffsetToMakeSpace
+import com.flammky.musicplayer.common.media.audio.meta_tag.utils.tree.DefaultMutableTreeNode
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.channels.SeekableByteChannel

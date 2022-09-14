@@ -1,24 +1,30 @@
 package com.flammky.android.medialib.temp.provider.mediastore.api28.audio
 
 import android.content.ContentUris
+import android.database.ContentObserver
 import android.database.Cursor
 import android.net.Uri
+import android.os.Handler
 import com.flammky.android.common.io.exception.NoReadExternalStoragePermissionException
+import com.flammky.android.common.kotlin.coroutines.AndroidCoroutineDispatchers
 import com.flammky.android.medialib.temp.common.context.ContextInfo
 import com.flammky.android.medialib.temp.provider.mediastore.MediaStoreContext
 import com.flammky.android.medialib.temp.provider.mediastore.api28.MediaStore28
 import com.flammky.android.medialib.temp.provider.mediastore.base.audio.AudioEntityProvider
-import com.flammky.common.kotlin.coroutines.AndroidCoroutineDispatchers
 import com.flammky.common.kotlin.throwable.throwAll
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import timber.log.Timber
+import java.util.concurrent.Executors
 
 internal class AudioEntityProvider28 internal constructor(private val context: MediaStoreContext) :
 	AudioEntityProvider<MediaStoreAudioEntity28, MediaStoreAudioFile28, MediaStoreAudioMetadata28, MediaStoreAudioQuery28> {
+
+	private val dispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
 
 	override val mediaItemFactory = MediaItemFactoryAudio28(context)
 
@@ -27,28 +33,27 @@ internal class AudioEntityProvider28 internal constructor(private val context: M
 	private val contentResolver
 		get() = context.androidContext.contentResolver
 
-	private var rememberedVersion: String = ""
+	private var changed: Boolean = true
 	private var cachedQuery: List<MediaStoreAudioEntity28> = emptyList()
 
 	private val localMutex = Mutex()
 
-	override suspend fun queryEntity(): List<MediaStoreAudioEntity28> {
-		return localMutex.withLock {
-			if (!checkVersionChanged()) {
-				Timber.d("AudioEntityProvider28, version $rememberedVersion didn't change, returning cache")
-				return cachedQuery
-			}
+	private val audioContentObserver: ContentObserver
 
-			checkReadExternalStoragePermission()
-			val query = queryAudioEntity()
-			cachedQuery = query
-			query
-		}
+	init {
+		audioContentObserver = AudioContentObserver(null)
+		contentResolver.registerContentObserver(uri_audio_external, true, audioContentObserver)
 	}
 
-	private fun checkVersionChanged(): Boolean {
-		val v = MediaStore28.getVersion(context.androidContext)
-		return (v != rememberedVersion).also { notEqual -> if (notEqual) rememberedVersion = v  }
+	override suspend fun queryEntity(): List<MediaStoreAudioEntity28> {
+		return localMutex.withLock {
+			checkReadExternalStoragePermission()
+			if (changed) {
+				cachedQuery = queryAudioEntity()
+				changed = false
+			}
+			cachedQuery
+		}
 	}
 
 	private suspend fun queryAudioEntity(): List<MediaStoreAudioEntity28> = withContext(
@@ -196,10 +201,11 @@ internal class AudioEntityProvider28 internal constructor(private val context: M
 	}
 
 
-	private fun checkReadExternalStoragePermission() {
+	private fun checkReadExternalStoragePermission(): Boolean {
 		if (!contextInfo.permissionInfo.readExternalStorageAllowed) {
 			throw NoReadExternalStoragePermissionException()
 		}
+		return true
 	}
 
 	private fun createUID(id: Long): String =
@@ -208,6 +214,31 @@ internal class AudioEntityProvider28 internal constructor(private val context: M
 		)
 
 	private fun createUri(id: Long): Uri = ContentUris.withAppendedId(uri_audio_external, id)
+
+
+	private inner class AudioContentObserver(private val handler: Handler?) : ContentObserver(handler) {
+		override fun deliverSelfNotifications(): Boolean = true
+
+		override fun onChange(selfChange: Boolean) {
+			Timber.d("AudioEntityProvider, onChange(Boolean) \n$selfChange")
+			changed = true
+		}
+
+		override fun onChange(selfChange: Boolean, uri: Uri?) {
+			Timber.d("AudioEntityProvider, onChange(Boolean, Uri) \n$selfChange\n$uri")
+			changed = true
+		}
+
+		override fun onChange(selfChange: Boolean, uri: Uri?, flags: Int) {
+			Timber.d("AudioEntityProvider, onChange(Boolean, Uri, Int) \n$selfChange\n$uri\n$flags")
+			changed = true
+		}
+
+		override fun onChange(selfChange: Boolean, uris: MutableCollection<Uri>, flags: Int) {
+			Timber.d("AudioEntityProvider, onChange(Boolean, MutableCollection<Uri>, Int) \n$selfChange\n${uris.joinToString()}\n$flags")
+			changed = true
+		}
+	}
 
 	companion object {
 		private val uri_audio_external: Uri = MediaStore28.Audio.EXTERNAL_CONTENT_URI

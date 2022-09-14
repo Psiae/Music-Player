@@ -2,20 +2,20 @@
  * Created on 03.05.2015
  * Author: Veselin Markov.
  */
-package com.kylentt.musicplayer.common.media.audio.meta_tag.audio.dsf
+package com.flammky.musicplayer.common.media.audio.meta_tag.audio.dsf
 
 import com.flammky.android.core.sdk.VersionHelper
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.generic.AudioFileReader2
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.generic.GenericAudioHeader
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.generic.Utils
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.iff.IffHeaderChunk
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.Tag
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.TagException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.id3.ID3v2TagBase
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.id3.ID3v22Tag
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.id3.ID3v23Tag
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.id3.ID3v24Tag
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadException
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.generic.AudioFileReader2
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.generic.GenericAudioHeader
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.generic.Utils
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.iff.IffHeaderChunk
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.Tag
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.TagException
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.id3.ID3v2TagBase
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.id3.ID3v22Tag
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.id3.ID3v23Tag
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.id3.ID3v24Tag
 import java.io.IOException
 import java.nio.channels.FileChannel
 import java.nio.file.Path

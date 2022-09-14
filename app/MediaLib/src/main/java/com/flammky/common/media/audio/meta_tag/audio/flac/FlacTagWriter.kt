@@ -16,17 +16,17 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
-package com.kylentt.musicplayer.common.media.audio.meta_tag.audio.flac
+package com.flammky.musicplayer.common.media.audio.meta_tag.audio.flac
 
 import com.flammky.android.core.sdk.VersionHelper
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotWriteException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.NoWritePermissionsException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.flac.metadatablock.*
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.flac.metadatablock.MetadataBlockHeader.Companion.readHeader
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.Tag
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.flac.FlacTag
-import com.kylentt.musicplayer.common.media.audio.meta_tag.utils.ShiftData.shiftDataByOffsetToMakeSpace
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadException
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotWriteException
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.NoWritePermissionsException
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.flac.metadatablock.*
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.flac.metadatablock.MetadataBlockHeader.Companion.readHeader
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.Tag
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.flac.FlacTag
+import com.flammky.musicplayer.common.media.audio.meta_tag.utils.ShiftData.shiftDataByOffsetToMakeSpace
 import java.io.IOException
 import java.io.UnsupportedEncodingException
 import java.nio.ByteBuffer

@@ -13,23 +13,23 @@
  *  you can getFields a copy from http://www.opensource.org/licenses/lgpl-license.php or write to the Free Software
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
-package com.kylentt.musicplayer.common.media.audio.meta_tag.tag.id3
+package com.flammky.musicplayer.common.media.audio.meta_tag.tag.id3
 
 import com.flammky.android.core.sdk.VersionHelper
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.UnableToCreateFileException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.exceptions.UnableToModifyFileException
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.generic.Utils
-import com.kylentt.musicplayer.common.media.audio.meta_tag.audio.mp3.MP3File
-import com.kylentt.musicplayer.common.media.audio.meta_tag.logging.ErrorMessage
-import com.kylentt.musicplayer.common.media.audio.meta_tag.logging.FileSystemMessage
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.*
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.datatype.DataTypes
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.id3.framebody.*
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.id3.valuepair.ID3NumberTotalFields
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.images.Artwork
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.reference.Languages
-import com.kylentt.musicplayer.common.media.audio.meta_tag.tag.reference.PictureTypes
-import com.kylentt.musicplayer.common.media.audio.meta_tag.utils.ShiftData
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.UnableToCreateFileException
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.UnableToModifyFileException
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.generic.Utils
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.mp3.MP3File
+import com.flammky.musicplayer.common.media.audio.meta_tag.logging.ErrorMessage
+import com.flammky.musicplayer.common.media.audio.meta_tag.logging.FileSystemMessage
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.*
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.datatype.DataTypes
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.id3.framebody.*
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.id3.valuepair.ID3NumberTotalFields
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.images.Artwork
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.reference.Languages
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.reference.PictureTypes
+import com.flammky.musicplayer.common.media.audio.meta_tag.utils.ShiftData
 import java.io.*
 import java.nio.ByteBuffer
 import java.nio.channels.Channels

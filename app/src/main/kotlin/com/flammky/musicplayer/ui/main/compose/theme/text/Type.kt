@@ -72,13 +72,6 @@ val MainTypography = Typography(
 		lineHeight = 20.sp,
 		letterSpacing = 0.1.sp,
 	),
-	labelLarge = TextStyle(
-		fontFamily = Roboto,
-		fontWeight = FontWeight.Medium,
-		fontSize = 14.sp,
-		lineHeight = 20.sp,
-		letterSpacing = 0.1.sp,
-	),
 	bodyLarge = TextStyle(
 		fontFamily = Roboto,
 		fontWeight = FontWeight.W400,
@@ -99,6 +92,13 @@ val MainTypography = Typography(
 		fontSize = 12.sp,
 		lineHeight = 16.sp,
 		letterSpacing = 0.4.sp,
+	),
+	labelLarge = TextStyle(
+		fontFamily = Roboto,
+		fontWeight = FontWeight.Medium,
+		fontSize = 14.sp,
+		lineHeight = 20.sp,
+		letterSpacing = 0.1.sp,
 	),
 	labelMedium = TextStyle(
 		fontFamily = Roboto,

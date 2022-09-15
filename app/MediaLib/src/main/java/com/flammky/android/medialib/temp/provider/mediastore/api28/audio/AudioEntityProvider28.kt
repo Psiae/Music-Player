@@ -6,25 +6,23 @@ import android.database.Cursor
 import android.net.Uri
 import android.os.Handler
 import com.flammky.android.common.io.exception.NoReadExternalStoragePermissionException
-import com.flammky.android.common.kotlin.coroutines.AndroidCoroutineDispatchers
+import com.flammky.android.common.kotlin.coroutines.CoroutineDispatchers
 import com.flammky.android.medialib.temp.common.context.ContextInfo
 import com.flammky.android.medialib.temp.provider.mediastore.MediaStoreContext
 import com.flammky.android.medialib.temp.provider.mediastore.api28.MediaStore28
 import com.flammky.android.medialib.temp.provider.mediastore.base.audio.AudioEntityProvider
 import com.flammky.common.kotlin.throwable.throwAll
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.asCoroutineDispatcher
-import kotlinx.coroutines.isActive
+import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.util.concurrent.Executors
 
 internal class AudioEntityProvider28 internal constructor(private val context: MediaStoreContext) :
 	AudioEntityProvider<MediaStoreAudioEntity28, MediaStoreAudioFile28, MediaStoreAudioMetadata28, MediaStoreAudioQuery28> {
 
-	private val dispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
+	private val singleDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
+	private val scope = CoroutineScope(singleDispatcher + SupervisorJob())
 
 	override val mediaItemFactory = MediaItemFactoryAudio28(context)
 
@@ -33,10 +31,10 @@ internal class AudioEntityProvider28 internal constructor(private val context: M
 	private val contentResolver
 		get() = context.androidContext.contentResolver
 
-	private var changed: Boolean = true
+	private var cached = false
 	private var cachedQuery: List<MediaStoreAudioEntity28> = emptyList()
 
-	private val localMutex = Mutex()
+	private val mutex = Mutex()
 
 	private val audioContentObserver: ContentObserver
 
@@ -45,14 +43,21 @@ internal class AudioEntityProvider28 internal constructor(private val context: M
 		contentResolver.registerContentObserver(uri_audio_external, true, audioContentObserver)
 	}
 
-	override suspend fun queryEntity(): List<MediaStoreAudioEntity28> {
-		return localMutex.withLock {
-			checkReadExternalStoragePermission()
-			if (changed) {
+	@Throws(NoReadExternalStoragePermissionException::class)
+	override suspend fun queryEntity(cacheAllowed: Boolean): List<MediaStoreAudioEntity28> {
+		checkReadExternalStoragePermission()
+		return mutex.withLock {
+			if (!cached) {
 				cachedQuery = queryAudioEntity()
-				changed = false
+				cached = true
 			}
 			cachedQuery
+		}
+	}
+
+	private fun onUriContentChanged(uri: Uri) = scope.launch {
+		mutex.withLock {
+			cached = false
 		}
 	}
 
@@ -221,29 +226,35 @@ internal class AudioEntityProvider28 internal constructor(private val context: M
 
 		override fun onChange(selfChange: Boolean) {
 			Timber.d("AudioEntityProvider, onChange(Boolean) \n$selfChange")
-			changed = true
+			// call super will do nothing
 		}
 
 		override fun onChange(selfChange: Boolean, uri: Uri?) {
 			Timber.d("AudioEntityProvider, onChange(Boolean, Uri) \n$selfChange\n$uri")
-			changed = true
+			// call super will call above function without uri
 		}
 
 		override fun onChange(selfChange: Boolean, uri: Uri?, flags: Int) {
 			Timber.d("AudioEntityProvider, onChange(Boolean, Uri, Int) \n$selfChange\n$uri\n$flags")
-			changed = true
+			// call super will call above function without flags
 		}
 
 		override fun onChange(selfChange: Boolean, uris: MutableCollection<Uri>, flags: Int) {
 			Timber.d("AudioEntityProvider, onChange(Boolean, MutableCollection<Uri>, Int) \n$selfChange\n${uris.joinToString()}\n$flags")
-			changed = true
+			// call super will call above function on each uri(s)
+			uris.forEach { notifyUriContentChanged(it) }
+		}
+
+		private fun notifyUriContentChanged(uri: Uri) {
+			if (!uri.toString().startsWith(uri_audio_external.toString())) return
+			onUriContentChanged(uri)
 		}
 	}
 
 	companion object {
 		private val uri_audio_external: Uri = MediaStore28.Audio.EXTERNAL_CONTENT_URI
 
-		private val ioDispatcher: CoroutineDispatcher = AndroidCoroutineDispatchers.DEFAULT.io
+		private val ioDispatcher: CoroutineDispatcher = CoroutineDispatchers.ANDROID.io
 
 		/**
 		 * Projector to fill [MediaStoreAudioEntity28.queryInfo]

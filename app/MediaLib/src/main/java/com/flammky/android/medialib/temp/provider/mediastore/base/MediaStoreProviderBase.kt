@@ -4,5 +4,4 @@ import com.flammky.android.medialib.temp.api.provider.mediastore.MediaStoreProvi
 
 abstract class MediaStoreProviderBase {
 	abstract val audio: MediaStoreProvider.Audio
-	abstract fun isGenerationChanged(): Boolean
 }

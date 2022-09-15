@@ -9,25 +9,12 @@ import com.flammky.android.medialib.temp.provider.mediastore.base.MediaStoreProv
 import com.flammky.android.medialib.temp.provider.mediastore.base.audio.*
 
 internal class MediaStoreProvider28 internal constructor(private val context: MediaStoreContext) : MediaStoreProviderBase() {
-	private var rememberedVersion: String = ""
-
 	override val audio: MediaStoreProvider.Audio = Audio()
-
-	override fun isGenerationChanged(): Boolean {
-		val v = MediaStore28.getVersion(context.androidContext)
-		val equal = v == rememberedVersion
-		rememberedVersion = v
-		return !equal
-	}
-
-	init {
-		isGenerationChanged()
-	}
 
 	private inner class Audio : MediaStoreProvider.Audio {
 		private val provider = AudioEntityProvider28(context)
 
-		override suspend fun query(): List<MediaStoreAudioEntity28> = provider.queryEntity()
+		override suspend fun query(): List<MediaStoreAudioEntity28> = provider.queryEntity(true)
 
 		override val mediaItemFactory: MediaItemFactoryOf<MediaStoreAudioEntity>
 			get() = provider.mediaItemFactory

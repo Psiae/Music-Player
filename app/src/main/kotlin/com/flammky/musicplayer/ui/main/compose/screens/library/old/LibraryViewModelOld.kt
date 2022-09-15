@@ -13,7 +13,7 @@ import androidx.media3.common.MediaItem
 import com.flammky.android.app.AppDelegate
 import com.flammky.android.medialib.temp.MediaLibrary
 import com.flammky.android.medialib.temp.api.provider.mediastore.MediaStoreProvider
-import com.flammky.android.medialib.temp.image.ImageProvider
+import com.flammky.android.medialib.temp.image.ArtworkProvider
 import com.flammky.android.medialib.temp.provider.mediastore.base.audio.MediaStoreAudioEntity
 import com.flammky.android.common.kotlin.coroutines.AndroidCoroutineDispatchers
 import com.flammky.common.media.audio.AudioFile
@@ -28,11 +28,11 @@ import kotlin.system.measureTimeMillis
 
 @HiltViewModel
 class LibraryViewModelOld @Inject constructor(
-    @ApplicationContext val context: Context,
-    private val dispatchers: AndroidCoroutineDispatchers,
-    private val mediaStore: MediaStoreProvider,
-    private val imageProvider: ImageProvider,
-    private val sessionInteractor: SessionInteractor
+	@ApplicationContext val context: Context,
+	private val dispatchers: AndroidCoroutineDispatchers,
+	private val mediaStore: MediaStoreProvider,
+	private val artworkProvider: ArtworkProvider,
+	private val sessionInteractor: SessionInteractor
 ) : ViewModel() {
 
 	private var mRefreshing = mutableStateOf(false)
@@ -92,113 +92,108 @@ class LibraryViewModelOld @Inject constructor(
 	private suspend fun internalRefreshLocalSongs(
 		maybeSongs: List<MediaStoreAudioEntity>? = null
 	) {
+		withContext(dispatchers.io) {
 
-		withContext(Dispatchers.Main) {
+			val songs = (maybeSongs ?: mediaStore.audio.query()).filter {
+				it.metadataInfo.durationMs > 0
+			}
+
+			val factory = mediaStore.audio.mediaItemFactory
+
+			val models = songs.map {
+				LocalSongModel(it.uid, it.metadataInfo.title, factory.createMediaItem(it))
+			}
 
 			_localSongModels.removeAll { true }
+			_localSongModels.addAll(models)
 
-			withContext(dispatchers.io) {
+			val api = MediaLibrary.API
+			val lru = api.imageRepository.sharedBitmapLru
 
-				val songs = (maybeSongs ?: mediaStore.audio.query()).filter {
-					it.metadataInfo.durationMs > 0
-				}
+			val allCachedFile = cacheManager.retrieveAllImageCacheFile(Bitmap::class,"LibraryViewModel")
 
-				val factory = mediaStore.audio.mediaItemFactory
+			val toAwait = mutableListOf<Deferred<Triple<File?, String?, Pair<String, Bitmap>?>>>()
 
-				val models = songs.map {
-					LocalSongModel(it.uid, it.metadataInfo.title, factory.createMediaItem(it))
-				}
+			songs.forEachIndexed { index, song ->
 
-				_localSongModels.addAll(models)
+				val deferred: Deferred<Triple<File?, String?, Pair<String, Bitmap>?>> = viewModelScope.async(dispatchers.io) {
 
-				val api = MediaLibrary.API
-				val lru = api.imageRepository.sharedBitmapLru
+					val usedFile: File?
+					val lruIdToRemove: String?
+					var lruElementToPut: Pair<String, Bitmap>? = null
 
-				val allCachedFile = cacheManager.retrieveAllImageCacheFile(Bitmap::class,"LibraryViewModel")
+					val id = song.uid
 
-				val toAwait = mutableListOf<Deferred<Triple<File?, String?, Pair<String, Bitmap>?>>>()
+					// Todo: Constants
+					val cachedFile = cacheManager.retrieveImageCacheFile(song.uid + song.fileInfo.dateModified, "LibraryViewModel")
 
-				songs.forEachIndexed { index, song ->
+					if (cachedFile != null) {
 
-					val deferred: Deferred<Triple<File?, String?, Pair<String, Bitmap>?>> = viewModelScope.async(dispatchers.io) {
+						usedFile = cachedFile
 
-						val usedFile: File?
-						val lruIdToRemove: String?
-						var lruElementToPut: Pair<String, Bitmap>? = null
+						val req = ArtworkProvider.Request
+							.Builder(id, Bitmap::class.java)
+							.setMinimumHeight(250)
+							.setMinimumWidth(250)
+							.setMemoryCacheAllowed(true)
+							.setDiskCacheAllowed(true)
+							.build()
 
-						val id = song.uid
+						val provided: Bitmap? = artworkProvider.request(req).await().get()
 
-						// Todo: Constants
-						val cachedFile = cacheManager.retrieveImageCacheFile(song.uid + song.fileInfo.dateModified, "LibraryViewModel")
+						val cachedLru = id to provided
 
-						if (cachedFile != null) {
-
-							usedFile = cachedFile
-
-							val req = ImageProvider.Request
-								.Builder(id, Bitmap::class.java)
-								.setMinimumHeight(250)
-								.setMinimumWidth(250)
-								.setMemoryCacheAllowed(true)
-								.setDiskCacheAllowed(true)
-								.build()
-
-							val provided: Bitmap? = imageProvider.request(req).await().get()
-
-							val cachedLru = id to provided
-
-							if (cachedLru.second != null) {
-								models[index].updateArtwork(cachedLru.second)
-							} else {
-								BitmapFactory.decodeFile(cachedFile.absolutePath)?.let {
-									models[index].updateArtwork(it)
-									lruElementToPut = id to it
-								}
-							}
-							return@async Triple(usedFile, null, lruElementToPut)
-						}
-
-						lruIdToRemove = id
-
-						val embed: Any? = AudioFile.Builder(
-							context,
-							song.uri
-						).build().run { file?.delete()
-							val data = imageData
-
-							if (data == null || data.isEmpty()) {
-								return@run null
-							}
-
-							BitmapSampler.ByteArray.toSampledBitmap(data, 0, data.size, 2000000)?.let {
-								val reg = cacheManager.registerImageToCache(it, song.uid + song.fileInfo.dateModified, "LibraryViewModel")
-								models[index].mediaItem.mediaMetadata.extras?.putString("cachedArtwork", reg.absolutePath)
+						if (cachedLru.second != null) {
+							models[index].updateArtwork(cachedLru.second)
+						} else {
+							BitmapFactory.decodeFile(cachedFile.absolutePath)?.let {
+								models[index].updateArtwork(it)
 								lruElementToPut = id to it
-								it
 							}
 						}
-						models[index].updateArtwork(embed)
-						Triple(null, lruIdToRemove, lruElementToPut)
+						return@async Triple(usedFile, null, lruElementToPut)
 					}
-					toAwait.add(deferred)
-				}
 
-				val result = toAwait.map { it.await() }
+					lruIdToRemove = id
 
-				Timber.d("LibraryViewModel InternalRefresh Awaited ${result.size} of ${songs.size}")
+					val embed: Any? = AudioFile.Builder(
+						context,
+						song.uri
+					).build().run { file?.delete()
+						val data = imageData
 
-				result.mapNotNull { it.second }.forEach { lru.remove(it) }
-				result.mapNotNull { it.third }.forEach { lru.put(it.first, it.second) }
+						if (data == null || data.isEmpty()) {
+							return@run null
+						}
 
-				allCachedFile
-					.filter { it !in result.map { r -> r.first } }
-					.forEach {
-						if (it.exists()) {
-							Timber.d("Deleting $it from cache")
-							it.delete()
+						BitmapSampler.ByteArray.toSampledBitmap(data, 0, data.size, 2000000)?.let {
+							val reg = cacheManager.registerImageToCache(it, song.uid + song.fileInfo.dateModified, "LibraryViewModel")
+							models[index].mediaItem.mediaMetadata.extras?.putString("cachedArtwork", reg.absolutePath)
+							lruElementToPut = id to it
+							it
 						}
 					}
+					models[index].updateArtwork(embed)
+					Triple(null, lruIdToRemove, lruElementToPut)
+				}
+				toAwait.add(deferred)
 			}
+
+			val result = toAwait.map { it.await() }
+
+			Timber.d("LibraryViewModel InternalRefresh Awaited ${result.size} of ${songs.size}")
+
+			result.mapNotNull { it.second }.forEach { lru.remove(it) }
+			result.mapNotNull { it.third }.forEach { lru.put(it.first, it.second) }
+
+			allCachedFile
+				.filter { it !in result.map { r -> r.first } }
+				.forEach {
+					if (it.exists()) {
+						Timber.d("Deleting $it from cache")
+						it.delete()
+					}
+				}
 		}
 	}
 
@@ -217,6 +212,9 @@ class LibraryViewModelOld @Inject constructor(
 
 		val isArtLoaded
 			get() = artState.value !== null
+
+		val noArt: Boolean
+			get() = artState.value === NO_ART
 
 		fun updateArtwork(art: Any?) {
 			Timber.d("LocalSongModel $displayName update art: $art")

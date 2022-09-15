@@ -107,15 +107,15 @@ private fun RootScaffold(
 
     Scaffold(
         bottomBar = {
-            if (showBottomNav(backStackEntry.value)) {
-				val elevation = if (isSystemInDarkTheme()) 2.dp else 8.dp
-                val backgroundColor = ColorHelper.tonePrimarySurface(elevation = elevation)
-                    .copy(alpha = appSettings.navigationSettings.bnvSettings.visibility / 100)
-                RootBottomNavigation(
-                    appSettings = appSettings,
-                    backgroundColor = backgroundColor,
-                    selectedItem = MainBottomNavItems.map { it.screen }.find { it.route == backStackEntry.value!!.destination.route }!!,
-                    onItemClicked = { item ->
+					if (showBottomNav(backStackEntry.value)) {
+						val elevation = if (isSystemInDarkTheme()) 2.dp else 8.dp
+						val backgroundColor = ColorHelper.tonePrimarySurface(elevation = elevation)
+							.copy(alpha = appSettings.navigationSettings.bnvSettings.visibility / 100)
+						RootBottomNavigation(
+							appSettings = appSettings,
+							backgroundColor = backgroundColor,
+							selectedItem = MainBottomNavItems.map { it.screen }.find { it.route == backStackEntry.value!!.destination.route }!!,
+							onItemClicked = { item ->
 						if (item.route != backStackEntry.value?.destination?.route) {
 							navController.navigate(item.route) {
 								launchSingleTop = true

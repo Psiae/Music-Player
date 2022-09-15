@@ -16,6 +16,4 @@ internal class RealMediaStoreProvider (private val context: MediaStoreContext) :
 
 	@Suppress("UNCHECKED_CAST")
 	override val audio = actual.audio
-
-	fun isGenerationChanged(): Boolean = actual.isGenerationChanged()
 }

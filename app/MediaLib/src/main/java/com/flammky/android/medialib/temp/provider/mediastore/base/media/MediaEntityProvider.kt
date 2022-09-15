@@ -6,6 +6,15 @@ interface MediaEntityProvider<E : MediaStoreEntity, F : MediaStoreFile, M : Medi
 
 	val mediaItemFactory: MediaItemFactory<E, F, M, Q>
 
+	/**
+	 * Whether the provider is allowed to return cached list from its previous query.
+	 *
+	 * &nbsp
+	 *
+	 * Cached list will not be returned when:
+	 * + @param [cacheAllowed] is false
+	 * + the current cache needs to be updated
+	 */
 	@Throws(PermissionException::class)
-	suspend fun queryEntity(): List<E>
+	suspend fun queryEntity(cacheAllowed: Boolean): List<E>
 }

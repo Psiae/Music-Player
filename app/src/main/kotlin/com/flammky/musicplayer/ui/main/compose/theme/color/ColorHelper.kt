@@ -29,7 +29,7 @@ object ColorHelper {
 
 	@Composable
 	fun textColor(darkMode: Boolean = isSystemInDarkTheme()): Color {
-		return if (darkMode) Color.White else Color.Black
+		return if (darkMode) Color.White else MaterialTheme.colorScheme.onBackground
 	}
 
 }

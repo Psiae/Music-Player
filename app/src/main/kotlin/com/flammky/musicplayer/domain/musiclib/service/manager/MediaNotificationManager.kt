@@ -340,33 +340,21 @@ class MediaNotificationManager(
 			currentCompleted: suspend () -> Unit = {}
 		): Unit = withContext(this@MediaNotificationManager.appDispatchers.main) {
 			val currentItem = player.currentMediaItem.orEmpty()
-			val id = currentItem.mediaId
-			val lruId = id + "500"
-			localStored = id to (lruCache.get(lruId) ?: getItemBitmap(currentItem)?.second ?: NO_BITMAP)
+			val bitmap = (getItemBitmap(currentItem, true)?.second ?: NO_BITMAP)
+			localStored = currentItem.mediaId to bitmap
 			currentCompleted()
 		}
 
-		private suspend fun getItemBitmap(
-			item: MediaItem,
-			cache: Boolean = false
-		): Pair<MediaItem, Bitmap?>? = withContext(this@MediaNotificationManager.appDispatchers.io) {
-			if (cache) {
-				if (item.embedSizeMB > 2) {
-					// Don't cache
-					return@withContext item to null
-				}
-			}
+		private suspend fun getItemBitmap(item: MediaItem, cache: Boolean): Pair<MediaItem, Bitmap?>? = withContext(this@MediaNotificationManager.appDispatchers.io) {
 
 			try {
 
-				val reqSize = if (cache) 128 else 512
-				val scale = if (cache) null else Scale.FILL
-
-				item.mediaMetadata.extras?.getString("cachedArtwork")?.let {
-					coilHelper.loadSquaredBitmap(File(it), reqSize, scale)?.let { bm ->
-						return@withContext item to bm
-					}
+				if (cache) {
+					lruCache.get(item.mediaId + "500")?.let { return@withContext item to it }
 				}
+
+				val reqSize = 500
+				val scale = Scale.FILL
 
 				val bytes = MediaItemFactory.getEmbeddedImage(context, item)
 					?: return@withContext item to null
@@ -383,32 +371,14 @@ class MediaNotificationManager(
 				// 128 to 1024 is ideal
 
 
-				val source: Any =
-					if (cache) {
-						BitmapSampler.ByteArray.toSampledBitmap(bytes, 0, bytes.size , reqSize, reqSize)
-							?: return@withContext item to null
-					} else {
-						bytes
-					}
-
-				ensureCancellation {
-					if (source is Bitmap) source.recycle()
-				}
+				val source: Any = bytes
 
 				// maybe create Fitter Class for some APIs version or Device that require some modification
 				// to have proper display
 				val squaredBitmap = coilHelper.loadSquaredBitmap(source, reqSize, scale)
 
-				Timber.d(
-					"squaredBitmap " +
-						"requestedSize: ${
-							if (source is Bitmap) "${source.width}:${source.height}" else "$reqSize:$reqSize"
-						} " +
-						"to size: ${squaredBitmap?.width}:${squaredBitmap?.height}"
-				)
-
-				ensureCancellation {
-					if (source is Bitmap) source.recycle()
+				if (squaredBitmap != null) {
+					lruCache.put(item.mediaId + "500", squaredBitmap)
 				}
 
 				item to squaredBitmap

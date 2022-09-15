@@ -5,12 +5,10 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.flammky.android.medialib.temp.image.ImageProvider
-import com.flammky.musicplayer.ui.main.compose.screens.library.LocalSongModel
-import dagger.hilt.android.lifecycle.HiltViewModel
+import com.flammky.android.medialib.temp.image.ArtworkProvider
+import com.flammky.musicplayer.ui.library.local.LocalSongModel
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 class LibraryViewModel constructor(
 	private val session: SessionInteractor,
@@ -27,7 +25,7 @@ class LibraryViewModel constructor(
 	}
 
 	interface MediaProvider {
-		val artwork: ImageProvider
+		val artwork: ArtworkProvider
 		suspend fun getLocalSongs(): Deferred<LocalSongModel>
 	}
 }

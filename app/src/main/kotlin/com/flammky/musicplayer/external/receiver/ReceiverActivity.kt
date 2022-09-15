@@ -12,13 +12,13 @@ class ReceiverActivity : Activity() {
 		super.onCreate(savedInstanceState)
 		when {
 			intent.isActionView() -> launchMainActivity()
-			else -> throw NotImplementedError()
+			else -> TODO("Unsupported Intent Action: ${intent.action}")
 		}
 		finishAfterTransition()
 	}
 
 	private fun launchMainActivity() {
-		MainActivity.Companion.Launcher.launch(this, intent)
+		MainActivity.launch(this, intent)
 		if (!MainActivity.Companion.Info.state.wasLaunched()) {
 			overridePendingTransition(R.anim.anim_stay_still, R.anim.anim_stay_still)
 		}

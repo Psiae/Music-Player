@@ -262,11 +262,9 @@ class MainActivity : ComponentActivity() {
 			val stateDelegate = ReadOnlyProperty<Any?, MainState> { _, _ -> state }
 		}
 
-		object Launcher {
-			fun launch(context: Context) =
-				MainActivity.Launcher.startActivity(context, null)
-			fun launch(context: Context, intent: Intent) =
-				MainActivity.Launcher.startActivity(context, intent)
-		}
+		fun launch(context: Context) =
+			Launcher.startActivity(context)
+		fun launch(context: Context, intent: Intent) =
+			Launcher.startActivity(context, intent)
 	}
 }

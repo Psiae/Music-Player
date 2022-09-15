@@ -198,21 +198,32 @@ dependencies {
     /* Google.accompanist */
     dependencies  {
         val v = "0.25.1"
+        
+        // Drawable
         implementation("com.google.accompanist:accompanist-drawablepainter:$v")
+
+        // FlowLayout
+        implementation("com.google.accompanist:accompanist-flowlayout:$v")
+
+        // Navigation
+        implementation("com.google.accompanist:accompanist-navigation-animation:$v")
         implementation("com.google.accompanist:accompanist-navigation-material:$v")
-        implementation("com.google.accompanist:accompanist-permissions:$v")
-        implementation("com.google.accompanist:accompanist-placeholder:$v")
-        implementation("com.google.accompanist:accompanist-systemuicontroller:$v")
 
         // Pager
         implementation("com.google.accompanist:accompanist-pager:$v")
         implementation("com.google.accompanist:accompanist-pager-indicators:$v")
 
+        // Permissions
+        implementation("com.google.accompanist:accompanist-permissions:$v")
+
+        // PlaceHolder
+        implementation("com.google.accompanist:accompanist-placeholder:$v")
+
         // Swipe-refresh
         implementation("com.google.accompanist:accompanist-swiperefresh:$v")
 
-        // Navigation
-        implementation("com.google.accompanist:accompanist-navigation-animation:$v")
+        // SysUI
+        implementation("com.google.accompanist:accompanist-systemuicontroller:$v")
     }
 
     /* Google.android */

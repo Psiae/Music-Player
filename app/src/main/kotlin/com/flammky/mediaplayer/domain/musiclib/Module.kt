@@ -44,9 +44,9 @@ object MusicLibraryModule {
 
 	@Provides
 	@Singleton
-	fun provideTestImageProvider(@ApplicationContext context: Context): com.flammky.android.medialib.temp.image.ImageProvider {
+	fun provideTestImageProvider(@ApplicationContext context: Context): com.flammky.android.medialib.temp.image.ArtworkProvider {
 		val lru = com.flammky.android.medialib.temp.MediaLibrary.construct(context, MusicLibraryService::class.java).imageRepository.sharedBitmapLru
-		return com.flammky.android.medialib.temp.image.internal.TestImageProvider(lru)
+		return com.flammky.android.medialib.temp.image.internal.TestArtworkProvider(lru)
 	}
 }
 

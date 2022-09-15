@@ -12,12 +12,13 @@ import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import com.flammky.android.app.AppDelegate
 import com.flammky.android.medialib.temp.MediaLibrary
-import com.flammky.android.medialib.temp.api.provider.mediastore.MediaStoreProvider
 import com.flammky.android.medialib.temp.image.ArtworkProvider
 import com.flammky.android.medialib.temp.provider.mediastore.base.audio.MediaStoreAudioEntity
 import com.flammky.android.common.kotlin.coroutines.AndroidCoroutineDispatchers
 import com.flammky.common.media.audio.AudioFile
 import com.flammky.musicplayer.common.android.bitmap.bitmapfactory.BitmapSampler
+import com.flammky.android.medialib.temp.api.provider.mediastore.MediaStoreProvider
+import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemPropertyHelper.mediaUri
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.*
@@ -45,8 +46,28 @@ class LibraryViewModelOld @Inject constructor(
 
 	val refreshing: State<Boolean> get() = mRefreshing
 
-	fun playSong(local: LocalSongModel) = viewModelScope.launch { sessionInteractor.play(local) }
+	private val onContentChangeListener = MediaStoreProvider.OnContentChangedListener() { uris, flag ->
+		if (flag == MediaStoreProvider.OnContentChangedListener.Flags.DELETE) {
+			viewModelScope.launch(dispatchers.main) {
+				val toRemove = mutableListOf<MediaItem>()
+				val items = sessionInteractor.getAllMediaItems()
 
+				uris.forEach { uri ->
+					items.find { it.mediaUri == uri }?.let { toRemove.add(it) }
+				}
+
+				sessionInteractor.removeMediaItems(toRemove)
+				sessionInteractor.pause()
+			}
+		}
+		requestRefresh()
+	}
+
+	init {
+		mediaStore.audio.registerOnContentChanged(onContentChangeListener)
+	}
+
+	fun playSong(local: LocalSongModel) = viewModelScope.launch { sessionInteractor.play(local) }
 
 	fun validateLocalSongs(): Unit {
 
@@ -74,7 +95,7 @@ class LibraryViewModelOld @Inject constructor(
 
 	private var refreshAvailable = true
 
-	fun requestRefresh() = viewModelScope.launch(dispatchers.main) {
+	fun requestRefresh() = viewModelScope.launch(dispatchers.mainImmediate) {
 		if (refreshAvailable) {
 			refreshAvailable = false
 
@@ -197,6 +218,10 @@ class LibraryViewModelOld @Inject constructor(
 		}
 	}
 
+	override fun onCleared() {
+		mediaStore.audio.unregisterOnContentChanged(onContentChangeListener)
+	}
+
 	data class LocalSongModel(
 		val id: String,
 		val displayName: String,
@@ -223,6 +248,12 @@ class LibraryViewModelOld @Inject constructor(
 	}
 
 	interface SessionInteractor {
+		val currentMediaItem: MediaItem?
+
+		fun getAllMediaItems(): List<MediaItem>
+		fun removeMediaItem(item: MediaItem)
+		fun removeMediaItems(items: List<MediaItem>)
+		fun pause()
 		suspend fun play(model: LocalSongModel)
 	}
 }

@@ -1,5 +1,6 @@
 package com.flammky.musicplayer.ui.main.compose.screens.library.old
 
+import androidx.media3.common.MediaItem
 import com.flammky.android.medialib.temp.api.player.MediaController
 import com.flammky.musicplayer.domain.musiclib.core.MusicLibrary
 import dagger.Module
@@ -20,6 +21,25 @@ object ViewModelModule {
 	private class SessionInteractor : LibraryViewModelOld.SessionInteractor {
 		private val player: MediaController
 			get() = MusicLibrary.api.localAgent.session.player
+
+		override val currentMediaItem: MediaItem?
+			get() = player.currentMediaItem
+
+		override fun getAllMediaItems(): List<MediaItem> {
+			return player.getAllMediaItems()
+		}
+
+		override fun removeMediaItem(item: MediaItem) {
+			player.removeMediaItem(item)
+		}
+
+		override fun removeMediaItems(items: List<MediaItem>) {
+			player.removeMediaItems(items)
+		}
+
+		override fun pause() {
+			player.pause()
+		}
 
 		override suspend fun play(model: LibraryViewModelOld.LocalSongModel) {
 			if (!player.connected) player.connectService().await()

@@ -258,6 +258,28 @@ class MediaControllerWrapper internal constructor(
 			if (isStateConnected()) mediaController.stop()
 		}
 
+		override fun removeMediaItem(index: Int) {
+			if (isStateConnected()) {
+				mediaController.removeMediaItem(index)
+			}
+		}
+
+		override fun removeMediaItem(item: MediaItem) {
+			if (isStateConnected()) {
+				removeMediaItems(listOf(item))
+			}
+		}
+
+		override fun removeMediaItems(items: List<MediaItem>) {
+			if (isStateConnected()) {
+				val currentItems = getAllMediaItems()
+				items.forEach {
+					val index = currentItems.indexOf(it)
+					if (index != -1) removeMediaItem(index)
+				}
+			}
+		}
+
 		override fun setMediaItems(items: List<MediaItem>) {
 			if (isStateConnected()) mediaController.setMediaItems(items)
 		}
@@ -287,13 +309,14 @@ class MediaControllerWrapper internal constructor(
 		}
 
 		override fun getAllMediaItems(limit: Int): List<MediaItem> {
-			if (!isStateConnected()) return emptyList()
-
-			val max = min(limit, mediaItemCount)
 			val holder: MutableList<MediaItem> = mutableListOf()
-			for (i in 0 until max) {
-				holder.add(mediaController.getMediaItemAt(i))
+
+			if (isStateConnected()) {
+				repeat(min(limit, mediaItemCount)) { i ->
+					holder.add(mediaController.getMediaItemAt(i))
+				}
 			}
+
 			return holder
 		}
 	}

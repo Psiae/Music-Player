@@ -1,6 +1,7 @@
 package com.flammky.android.medialib.temp.provider.mediastore.base.media
 
 import com.flammky.android.common.io.exception.PermissionException
+import com.flammky.android.medialib.temp.api.provider.mediastore.MediaStoreProvider
 
 interface MediaEntityProvider<E : MediaStoreEntity, F : MediaStoreFile, M : MediaStoreMetadata, Q : MediaStoreQuery> {
 
@@ -17,4 +18,8 @@ interface MediaEntityProvider<E : MediaStoreEntity, F : MediaStoreFile, M : Medi
 	 */
 	@Throws(PermissionException::class)
 	suspend fun queryEntity(cacheAllowed: Boolean): List<E>
+
+	fun registerOnContentChangedListener(listener: MediaStoreProvider.OnContentChangedListener)
+
+	fun unregisterOnContentChangedListener(listener: MediaStoreProvider.OnContentChangedListener)
 }

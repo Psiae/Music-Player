@@ -57,6 +57,9 @@ interface LibraryPlayer {
 	fun seekToPreviousMediaItem()
 	fun seekToNextMediaItem()
 
+	fun removeMediaItem(item: MediaItem)
+	fun removeMediaItems(items: List<MediaItem>)
+	fun removeMediaItem(index: Int)
 	fun setMediaItems(items: List<MediaItem>)
 	fun play()
 

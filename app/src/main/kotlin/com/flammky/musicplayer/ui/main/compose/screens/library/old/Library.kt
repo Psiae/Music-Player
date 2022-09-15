@@ -47,12 +47,12 @@ import timber.log.Timber
 
 @Composable
 fun Library() {
-	val localNavController = rememberNavController()
+	val navController: NavHostController = rememberNavController()
 
 	Column(
 		modifier = Modifier.fillMaxSize()
 	) {
-		LibraryContent(localNavController)
+		LibraryContent(navController)
 	}
 }
 
@@ -77,6 +77,7 @@ private fun LibraryTopBar() {
 @Composable
 private fun LibraryContent(navController: NavHostController) {
 	val vm: LibraryViewModelOld = activityViewModel()
+	val lifecycleOwner = LocalLifecycleOwner.current
 
 	NavHost(navController = navController, "main") {
 		composable(route = "main") {
@@ -84,6 +85,12 @@ private fun LibraryContent(navController: NavHostController) {
 		}
 		composable(route = "localSongLists") {
 			LocalSongLists()
+		}
+	}
+
+	LaunchedEffect(key1 = true) {
+		lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+			vm.validateLocalSongs()
 		}
 	}
 }
@@ -190,7 +197,8 @@ private fun LocalSongs(vm: LibraryViewModelOld, controller: NavController) {
 								modifier = Modifier
 									.size(120.dp)
 									.clip(RoundedCornerShape(15))
-									.clickable { controller.navigate("localSongLists")
+									.clickable {
+										controller.navigate("localSongLists")
 									},
 								elevation = CardDefaults.cardElevation(2.dp),
 								shape = RoundedCornerShape(15)
@@ -273,12 +281,6 @@ private fun LocalSongs(vm: LibraryViewModelOld, controller: NavController) {
 						}
 					}
 				}
-			}
-		}
-		LaunchedEffect(key1 = true) {
-			lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-				Timber.d("RefreshLocalSongOnResume")
-				vm.validateLocalSongs()
 			}
 		}
 	}
@@ -400,13 +402,6 @@ private fun LocalSongLists() {
 							.height(mainVM.bottomNavigatorHeight.value)
 					)
 				}
-			}
-		}
-
-		LaunchedEffect(key1 = true) {
-			lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-				Timber.d("RefreshLocalSongOnResume")
-				vm.validateLocalSongs()
 			}
 		}
 	}

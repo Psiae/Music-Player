@@ -120,7 +120,7 @@ private fun NavGraphBuilder.addLibraryScreen(
 		route = Screen.Library.route
 	) {
 		Library()
-    }
+		}
 }
 
 const val userRoute = "UserRoute"

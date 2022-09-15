@@ -116,19 +116,19 @@ private fun RootScaffold(
 							backgroundColor = backgroundColor,
 							selectedItem = MainBottomNavItems.map { it.screen }.find { it.route == backStackEntry.value!!.destination.route }!!,
 							onItemClicked = { item ->
-						if (item.route != backStackEntry.value?.destination?.route) {
-							navController.navigate(item.route) {
-								launchSingleTop = true
-								restoreState = true
-								popUpTo(navController.graph.findStartDestination().id) {
-									saveState = true
+								if (item.route != backStackEntry.value?.destination?.route) {
+									navController.navigate(item.route) {
+										launchSingleTop = true
+										restoreState = true
+										popUpTo(navController.graph.findStartDestination().id) {
+											saveState = true
+										}
+									}
 								}
 							}
-						}
-                    }
-                )
-            }
-        }
+						)
+					}
+				}
     ) { padding ->
         content(padding)
 		LaunchedEffect(key1 = padding) {

@@ -32,4 +32,9 @@ object ColorHelper {
 		return if (darkMode) Color.White else MaterialTheme.colorScheme.onBackground
 	}
 
+	@Composable
+	fun textColorBackground(darkMode: Boolean = isSystemInDarkTheme()): Color {
+		return if (darkMode) MaterialTheme.colorScheme.background else Color.White
+	}
+
 }

@@ -1,7 +1,7 @@
 package com.flammky.mediaplayer.data.source
 
 import android.content.Context
-import com.flammky.android.common.kotlin.coroutines.AndroidCoroutineDispatchers
+import com.flammky.android.common.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.mediaplayer.data.source.local.MediaStoreSource
 import com.flammky.mediaplayer.data.source.local.MediaStoreSourceImpl
 import dagger.Module

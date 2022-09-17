@@ -8,7 +8,7 @@ import com.flammky.mediaplayer.helper.external.IntentWrapper
 import com.flammky.mediaplayer.helper.external.MediaIntentHandler
 import com.flammky.mediaplayer.helper.image.CoilHelper
 import com.flammky.musicplayer.common.android.environment.DeviceInfo
-import com.flammky.android.common.kotlin.coroutines.AndroidCoroutineDispatchers
+import com.flammky.android.common.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.common.kotlin.coroutines.safeCollect
 import com.flammky.common.kotlin.coroutine.ensureCancellation
 import com.flammky.common.kotlin.collection.mutable.forEachClear

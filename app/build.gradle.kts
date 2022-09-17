@@ -31,7 +31,7 @@ android {
         release {
             isMinifyEnabled = true
             isDebuggable = false
-            resValue(type = "string", name = "app_name", "MusicPlayer")
+            resValue(type = "string", name = "app_name", "Music Player")
         }
         debug {
             isMinifyEnabled = false

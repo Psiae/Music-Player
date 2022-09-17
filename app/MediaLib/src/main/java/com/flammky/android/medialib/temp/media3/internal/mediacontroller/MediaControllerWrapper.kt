@@ -177,6 +177,7 @@ class MediaControllerWrapper internal constructor(
 
 
 		override val volumeManager: VolumeManager = object : VolumeManager() {
+
 			override var internalVolume: Float
 				get() = maybeControllerValue(fallbackInfo.noIndex.toFloat()) { it.volume }
 				set(value) { if (isStateConnected()) mediaController.volume = value.clamp(0f, 1f)  }

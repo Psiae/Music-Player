@@ -49,7 +49,7 @@ fun AnimatedMainAppNavigator(
         addHomeRoute(controller)
         addSearchRoute(controller)
         addLibraryRoute(controller)
-		addUserRoute(controller)
+				addUserRoute(controller)
     }
 }
 

@@ -15,7 +15,7 @@ import com.flammky.mediaplayer.helper.Preconditions.checkArgument
 import com.flammky.mediaplayer.helper.Preconditions.checkMainThread
 import com.flammky.mediaplayer.helper.external.providers.ContentProvidersHelper
 import com.flammky.mediaplayer.helper.external.providers.DocumentProviderHelper
-import com.flammky.android.common.kotlin.coroutines.AndroidCoroutineDispatchers
+import com.flammky.android.common.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.musicplayer.domain.musiclib.core.MusicLibrary
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory
 import com.flammky.android.medialib.temp.provider.mediastore.base.audio.MediaStoreAudioEntity

@@ -14,7 +14,7 @@ import com.flammky.android.app.AppDelegate
 import com.flammky.android.medialib.temp.MediaLibrary
 import com.flammky.android.medialib.temp.image.ArtworkProvider
 import com.flammky.android.medialib.temp.provider.mediastore.base.audio.MediaStoreAudioEntity
-import com.flammky.android.common.kotlin.coroutines.AndroidCoroutineDispatchers
+import com.flammky.android.common.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.common.media.audio.AudioFile
 import com.flammky.musicplayer.common.android.bitmap.bitmapfactory.BitmapSampler
 import com.flammky.android.medialib.temp.api.provider.mediastore.MediaStoreProvider
@@ -46,7 +46,7 @@ class LibraryViewModelOld @Inject constructor(
 
 	val refreshing: State<Boolean> get() = mRefreshing
 
-	private val onContentChangeListener = MediaStoreProvider.OnContentChangedListener() { uris, flag ->
+	private val onContentChangeListener = MediaStoreProvider.OnContentChangedListener { uris, flag ->
 		if (flag == MediaStoreProvider.OnContentChangedListener.Flags.DELETE) {
 			viewModelScope.launch(dispatchers.main) {
 				val toRemove = mutableListOf<MediaItem>()
@@ -56,6 +56,7 @@ class LibraryViewModelOld @Inject constructor(
 					items.find { it.mediaUri == uri }?.let { toRemove.add(it) }
 				}
 
+				// maybe `notifyUnplayableMedia sound kind of nicer`
 				sessionInteractor.removeMediaItems(toRemove)
 				sessionInteractor.pause()
 			}
@@ -248,8 +249,6 @@ class LibraryViewModelOld @Inject constructor(
 	}
 
 	interface SessionInteractor {
-		val currentMediaItem: MediaItem?
-
 		fun getAllMediaItems(): List<MediaItem>
 		fun removeMediaItem(item: MediaItem)
 		fun removeMediaItems(items: List<MediaItem>)

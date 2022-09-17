@@ -5,7 +5,7 @@ import android.os.Handler
 import android.os.Looper
 import com.flammky.android.medialib.temp.cache.lru.LruCache
 import com.flammky.android.medialib.temp.image.ArtworkProvider
-import com.flammky.android.common.kotlin.coroutines.AndroidCoroutineDispatchers
+import com.flammky.android.common.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.common.kotlin.generic.sync
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi

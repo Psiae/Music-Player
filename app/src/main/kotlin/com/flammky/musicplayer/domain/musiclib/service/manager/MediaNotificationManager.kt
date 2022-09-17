@@ -20,12 +20,10 @@ import coil.size.Scale
 import com.google.common.collect.ImmutableList
 import com.flammky.mediaplayer.helper.Preconditions.checkState
 import com.flammky.mediaplayer.helper.image.CoilHelper
-import com.flammky.musicplayer.common.android.bitmap.bitmapfactory.BitmapSampler
 import com.flammky.musicplayer.common.android.environment.DeviceInfo
-import com.flammky.android.common.kotlin.coroutines.AndroidCoroutineDispatchers
+import com.flammky.android.common.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.common.kotlin.coroutines.AutoCancelJob
 import com.flammky.common.kotlin.comparable.clamp
-import com.flammky.common.kotlin.coroutine.ensureCancellation
 import com.flammky.musicplayer.core.sdk.VersionHelper
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory.orEmpty
@@ -43,7 +41,6 @@ import com.flammky.musicplayer.domain.musiclib.service.provider.MediaNotificatio
 import com.flammky.musicplayer.ui.main.MainActivity
 import kotlinx.coroutines.*
 import timber.log.Timber
-import java.io.File
 import kotlin.coroutines.coroutineContext
 
 class MediaNotificationManager(

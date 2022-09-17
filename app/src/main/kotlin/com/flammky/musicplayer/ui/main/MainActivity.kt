@@ -14,7 +14,7 @@ import com.flammky.mediaplayer.helper.external.IntentWrapper
 import com.flammky.musicplayer.common.android.activity.disableWindowDecorFitSystemInsets
 import com.flammky.android.medialib.temp.common.context.ContextInfo
 import com.flammky.android.medialib.temp.common.intent.isActionMain
-import com.flammky.android.common.kotlin.coroutines.AndroidCoroutineDispatchers
+import com.flammky.android.common.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.musicplayer.ui.main.compose.ComposeContent
 import dagger.hilt.android.AndroidEntryPoint
 import timber.log.Timber

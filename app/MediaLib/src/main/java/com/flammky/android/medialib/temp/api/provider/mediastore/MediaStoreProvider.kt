@@ -19,7 +19,7 @@ interface MediaStoreProvider {
 
 	fun interface OnContentChangedListener {
 
-		/** @see [ContentResolver]*/
+		/** @see [ContentResolver.NOTIFY_FLAGS]*/
 		sealed interface Flags {
 			/** @see [ContentResolver.NOTIFY_INSERT]*/
 			object INSERT : Flags

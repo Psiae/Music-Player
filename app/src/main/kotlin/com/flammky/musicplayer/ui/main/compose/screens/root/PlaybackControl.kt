@@ -20,6 +20,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -176,8 +177,16 @@ private fun PlaybackControlBox(
 
 					val textColor = if (isCardDark) Color.White else Color.Black
 
-					val style = MaterialTheme.typography.titleMedium.copy(color = textColor)
-					val style2 = MaterialTheme.typography.titleSmall.copy(color = textColor)
+					val style = MaterialTheme.typography.bodyMedium
+						.copy(
+							color = textColor,
+							fontWeight = FontWeight.SemiBold
+						)
+					val style2 = MaterialTheme.typography.bodyMedium
+						.copy(
+							color = textColor,
+							fontWeight = FontWeight.Medium
+						)
 
 					Text(
 						text = model.playbackTitle.value,

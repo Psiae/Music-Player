@@ -1,4 +1,4 @@
-package com.flammky.android.common.kotlin.coroutines
+package com.flammky.android.common.kotlin.coroutine
 
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers

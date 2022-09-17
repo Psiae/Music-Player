@@ -3,7 +3,7 @@ package com.flammky.musicplayer.core.app.dependency
 import android.app.NotificationManager
 import android.content.Context
 import coil.Coil
-import com.flammky.android.common.kotlin.coroutines.AndroidCoroutineDispatchers
+import com.flammky.android.common.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.app.coroutines.AppScope
 import dagger.Module
 import dagger.Provides

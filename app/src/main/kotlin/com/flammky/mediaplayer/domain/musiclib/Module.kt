@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.media3.exoplayer.ExoPlayer
 import com.flammky.mediaplayer.helper.external.MediaIntentHandler
 import com.flammky.mediaplayer.helper.external.MediaIntentHandlerImpl
-import com.flammky.android.common.kotlin.coroutines.AndroidCoroutineDispatchers
+import com.flammky.android.common.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.musicplayer.domain.musiclib.player.exoplayer.ExoPlayerFactory
 import com.flammky.musicplayer.domain.musiclib.service.MusicLibraryService
 import dagger.Module

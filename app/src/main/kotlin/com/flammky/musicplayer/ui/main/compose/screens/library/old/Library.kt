@@ -1,7 +1,9 @@
 package com.flammky.musicplayer.ui.main.compose.screens.library.old
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -13,14 +15,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
@@ -108,6 +116,7 @@ private fun LocalSongs(vm: LibraryViewModelOld, controller: NavController) {
 	) {
 
 		val headerStyle = MaterialTheme.typography.titleLarge
+			.copy(fontWeight = FontWeight.Bold)
 
 		Text(
 			modifier = Modifier.fillMaxWidth(),
@@ -124,7 +133,7 @@ private fun LocalSongs(vm: LibraryViewModelOld, controller: NavController) {
 			mainAxisAlignment = MainAxisAlignment.SpaceAround,
 			mainAxisSpacing = 10.dp,
 			crossAxisAlignment = FlowCrossAxisAlignment.Start,
-			crossAxisSpacing = 10.dp
+			crossAxisSpacing = 15.dp
 		) {
 
 			val stateList = vm.localSongs
@@ -140,8 +149,16 @@ private fun LocalSongs(vm: LibraryViewModelOld, controller: NavController) {
 				Column(
 					modifier = Modifier
 						.width(100.dp)
-						.height(120.dp),
-					verticalArrangement = Arrangement.spacedBy(8.dp),
+						.height(100.dp)
+						.clip(shape =  RoundedCornerShape(5))
+						.background(
+							if (isSystemInDarkTheme()) {
+								Color(0xFF27292D)
+							} else {
+								Color(0xFFF0F4F5)
+							}
+						),
+					verticalArrangement = Arrangement.Top,
 					horizontalAlignment = Alignment.CenterHorizontally
 				) {
 
@@ -150,12 +167,14 @@ private fun LocalSongs(vm: LibraryViewModelOld, controller: NavController) {
 							Card(
 								modifier = Modifier
 									.size(100.dp)
-									.clip(RoundedCornerShape(15))
-									.clickable { vm.playSong(item) },
-								elevation = CardDefaults.cardElevation(2.dp),
-								shape = RoundedCornerShape(15)
+									.clip(
+										shape = RoundedCornerShape(5)
+									)
+									.clickable { vm.playSong(item) }
+									.background(MaterialTheme.colorScheme.surfaceVariant),
+								elevation = CardDefaults.elevatedCardElevation(2.dp),
+								shape = RoundedCornerShape(5),
 							) {
-
 								val req = remember(data) {
 									if (data == null) return@remember null
 									ImageRequest.Builder(context)
@@ -164,117 +183,154 @@ private fun LocalSongs(vm: LibraryViewModelOld, controller: NavController) {
 										.transformations(CenterCropTransformation())
 										.build()
 								}
-
-								AsyncImage(
-									modifier = Modifier
-										.fillMaxSize()
-										.placeholder(
-											visible = !item.isArtLoaded,
-											color = ColorHelper.tonePrimarySurface(elevation = 2.dp)
-										),
-									model = req,
-									contentDescription = null,
-									contentScale = ContentScale.Crop
-								)
-							}
-
-							val typography = MaterialTheme.typography.labelMedium
-
-							Text(
-								modifier = Modifier
-									.fillMaxWidth(0.9f)
-									.heightIn(20.dp),
-								text = item.displayName,
-								color = ColorHelper.textColor(),
-								style = typography,
-								textAlign = TextAlign.Center,
-								maxLines = 1,
-								overflow = TextOverflow.Ellipsis
-							)
-						}
-						index == 5 -> {
-							Card(
-								modifier = Modifier
-									.size(120.dp)
-									.clip(RoundedCornerShape(15))
-									.clickable {
-										controller.navigate("localSongLists")
-									},
-								elevation = CardDefaults.cardElevation(2.dp),
-								shape = RoundedCornerShape(15)
-							) {
 								Box {
-									Column {
-										var i = 0
-										repeat(2) { rowIndex ->
-											i += rowIndex
-											Row(
-												modifier = Modifier
-													.fillMaxWidth()
-													.height(60.dp)
-											) {
-												repeat(2) { eIndex ->
-													i += eIndex
-													val currentIndex = 5 + i
-													val maybeItem = if (localSongs.size >= currentIndex) {
-														localSongs[currentIndex]
-													} else {
-														null
-													}
-													val maybeData = maybeItem?.artState?.value
-													val req = remember(maybeData) {
-														if (maybeItem?.noArt == true) return@remember R.drawable.blu_splash
-														ImageRequest.Builder(context)
-															.data(maybeData)
-															.crossfade(true)
-															.build()
-													}
-													Box(
-														modifier = Modifier
-															.height(60.dp)
-															.width(50.dp)
-													) {
-														AsyncImage(
-															modifier = Modifier
-																.fillMaxSize()
-																.placeholder(
-																	visible = maybeData != null && !maybeItem.isArtLoaded,
-																	color = ColorHelper.tonePrimarySurface(elevation = 2.dp)
-																),
-															model = req,
-															contentDescription = null,
-															contentScale = ContentScale.Crop
-														)
-													}
-												}
-											}
-										}
-									}
+									AsyncImage(
+										modifier = Modifier
+											.fillMaxSize()
+											.placeholder(
+												visible = !item.isArtLoaded,
+												color = ColorHelper.tonePrimarySurface(elevation = 2.dp)
+											),
+										model = req,
+										contentDescription = null,
+										contentScale = ContentScale.Crop
+									)
+									val alpha = 0.50F
+									val shadowColor = Color.Black
+									val textColor = Color.White
 									Box(
 										modifier = Modifier
 											.align(Alignment.BottomCenter)
 											.fillMaxWidth()
-											.height(20.dp)
 											.background(
 												Brush.verticalGradient(
 													colors = listOf(
-														Color.Transparent,
-														Color.Black.copy(alpha = 0.97f),
+														shadowColor.copy(alpha = alpha - 0.50f),
+														shadowColor.copy(alpha = alpha - 0.40f),
+														shadowColor.copy(alpha = alpha - 0.30f),
+														shadowColor.copy(alpha = alpha - 0.20f),
+														shadowColor.copy(alpha = alpha - 0.10f),
+														shadowColor.copy(alpha = alpha)
 													)
 												)
 											),
 										contentAlignment = Alignment.BottomCenter,
 									) {
-										val typography = MaterialTheme.typography.labelLarge
-										Text(
-											modifier = Modifier.fillMaxWidth(0.8f),
-											text = "${localSongs.size - 5}",
-											color = Color.White,
-											style = typography,
-											textAlign = TextAlign.Center,
-											maxLines = 1,
-											overflow = TextOverflow.Ellipsis
-										)
+										Column {
+											val typography = MaterialTheme.typography.labelMedium
+											Spacer(modifier = Modifier.height(2.dp))
+											Text(
+												modifier = Modifier.fillMaxWidth(0.85f),
+												text = item.displayName,
+												color = textColor,
+												style = typography,
+												textAlign = TextAlign.Center,
+												maxLines = 1,
+												overflow = TextOverflow.Ellipsis
+											)
+											Spacer(modifier = Modifier.height(2.dp))
+										}
+									}
+								}
+							}
+						}
+						index == 5 -> {
+							Box(
+								modifier = Modifier
+									.fillMaxSize()
+									.clip(RoundedCornerShape(5))
+									.clickable {
+										controller.navigate("localSongLists")
+									}
+							) {
+								Card(
+									modifier = Modifier
+										.size(100.dp)
+										.clip(RoundedCornerShape(10)),
+									elevation = CardDefaults.cardElevation(2.dp),
+									shape = RoundedCornerShape(10)
+								) {
+									Box {
+										Column {
+											var i = 0
+											repeat(2) { rowIndex ->
+												i += rowIndex
+												Row(
+													modifier = Modifier
+														.fillMaxWidth()
+														.height(50.dp)
+												) {
+													repeat(2) { eIndex ->
+														i += eIndex
+														val currentIndex = 5 + i
+														val maybeItem = if (localSongs.size >= currentIndex) {
+															localSongs[currentIndex]
+														} else {
+															null
+														}
+														val maybeData = maybeItem?.artState?.value
+														val req = remember(maybeData) {
+															if (maybeItem?.noArt == true) return@remember R.drawable.blu_splash
+															ImageRequest.Builder(context)
+																.data(maybeData)
+																.crossfade(true)
+																.build()
+														}
+														Box(
+															modifier = Modifier
+																.height(50.dp)
+																.width(50.dp)
+														) {
+															AsyncImage(
+																modifier = Modifier
+																	.fillMaxSize()
+																	.placeholder(
+																		visible = maybeData != null && !maybeItem.isArtLoaded,
+																		color = ColorHelper.tonePrimarySurface(elevation = 2.dp)
+																	),
+																model = req,
+																contentDescription = null,
+																contentScale = ContentScale.Crop
+															)
+														}
+													}
+												}
+											}
+										}
+										val shadowColor = Color.Black
+										Box(
+											modifier = Modifier
+												.fillMaxSize()
+												.background(shadowColor.copy(alpha = 0.8f))
+												.padding(bottom = 2.dp)
+										) {
+											val textColor = Color.White
+											Text(
+												modifier = Modifier
+													.align(Alignment.Center)
+													.widthIn(max = 96.dp)
+													.padding(horizontal = 2.dp),
+												text = "${localSongs.size - 5}",
+												color = textColor,
+												style = MaterialTheme.typography.titleMedium,
+												textAlign = TextAlign.Center,
+												maxLines = 1,
+												overflow = TextOverflow.Ellipsis,
+											)
+											val typography = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+											Text(
+												modifier = Modifier
+													.align(Alignment.BottomCenter)
+													.fillMaxWidth(0.9f)
+													.heightIn(20.dp),
+												text = "See more",
+												color = textColor,
+												style = typography,
+												textAlign = TextAlign.Center,
+												maxLines = 1,
+												overflow = TextOverflow.Ellipsis
+											)
+										}
 									}
 								}
 							}

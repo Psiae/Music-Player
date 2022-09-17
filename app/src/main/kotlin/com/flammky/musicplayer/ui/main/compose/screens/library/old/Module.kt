@@ -22,9 +22,6 @@ object ViewModelModule {
 		private val player: MediaController
 			get() = MusicLibrary.api.localAgent.session.player
 
-		override val currentMediaItem: MediaItem?
-			get() = player.currentMediaItem
-
 		override fun getAllMediaItems(): List<MediaItem> {
 			return player.getAllMediaItems()
 		}

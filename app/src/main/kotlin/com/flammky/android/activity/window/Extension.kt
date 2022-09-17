@@ -1,4 +1,4 @@
-package com.flammky.musicplayer.common.android.activity.window
+package com.flammky.android.activity.window
 
 import android.view.Window
 import androidx.core.view.WindowCompat

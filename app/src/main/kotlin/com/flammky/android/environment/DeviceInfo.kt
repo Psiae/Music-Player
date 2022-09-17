@@ -1,16 +1,18 @@
-package com.flammky.musicplayer.common.android.environment
+package com.flammky.android.environment
 
 import android.app.ActivityManager
 import android.app.ActivityManager.MemoryInfo
 import android.content.Context
 import android.content.res.Configuration
 import androidx.annotation.DimenRes
+import androidx.core.content.getSystemService
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 
 class DeviceInfo @Inject constructor(@ApplicationContext context: Context) {
-	private val localContext = context.applicationContext
-	private val activityManager = localContext.getSystemService(ActivityManager::class.java)
+	private val context = context.applicationContext
+
+	private val activityManager: ActivityManager = this.context.getSystemService()!!
 
 	val memoryInfo: MemoryInfo
 		get() {
@@ -20,23 +22,23 @@ class DeviceInfo @Inject constructor(@ApplicationContext context: Context) {
 		}
 
 	val screenWidthPixel: Int
-		get() = localContext.screenWidthPixel
+		get() = context.screenWidthPixel
 
 	val screenHeightPixel: Int
-		get() = localContext.screenHeightPixel
+		get() = context.screenHeightPixel
 
 	val isOrientationPortrait
-		get() = when (localContext.screenOrientation) {
+		get() = when (context.screenOrientation) {
 			Configuration.ORIENTATION_LANDSCAPE -> false
 			else -> true
 		}
 
 	fun dimensionPixelSize(@DimenRes id: Int): Int {
-		return localContext.resources.getDimensionPixelSize(id)
+		return context.resources.getDimensionPixelSize(id)
 	}
 
 	val isOrientationLandscape
-		get() = localContext.screenOrientation == Configuration.ORIENTATION_LANDSCAPE
+		get() = context.screenOrientation == Configuration.ORIENTATION_LANDSCAPE
 
 	private inner class NotificationInfo
 
@@ -49,10 +51,10 @@ class DeviceInfo @Inject constructor(@ApplicationContext context: Context) {
 			get() = resources.displayMetrics.heightPixels
 
 		val Context.screenHeightDp
-			get() = screenHeightPixel.toFloat() * resources.displayMetrics.density
+			get() = screenHeightPixel / resources.displayMetrics.density
 
 		val Context.screenWidthDp
-			get() = screenWidthPixel.toFloat() * resources.displayMetrics.density
+			get() = screenWidthPixel / resources.displayMetrics.density
 
 		val Context.screenOrientation
 			get() = resources.configuration.orientation

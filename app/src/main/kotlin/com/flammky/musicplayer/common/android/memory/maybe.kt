@@ -1,7 +1,7 @@
 package com.flammky.musicplayer.common.android.memory
 
 import android.app.ActivityManager.MemoryInfo
-import com.flammky.musicplayer.common.android.environment.DeviceInfo
+import com.flammky.android.environment.DeviceInfo
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlin.coroutines.coroutineContext
@@ -25,11 +25,11 @@ suspend inline fun maybeWaitForMemory(
 }
 
 suspend inline fun maybeWaitForMemory(
-	nThreshold: Float = 1.5F,
-	limitTime: Long,
-	checkInterval: Long,
-	deviceInfo: DeviceInfo,
-	onWait: () -> Unit = {}
+    nThreshold: Float = 1.5F,
+    limitTime: Long,
+    checkInterval: Long,
+    deviceInfo: DeviceInfo,
+    onWait: () -> Unit = {}
 ) = maybeWaitForMemory(nThreshold, limitTime, checkInterval, { deviceInfo.memoryInfo }, onWait)
 
 

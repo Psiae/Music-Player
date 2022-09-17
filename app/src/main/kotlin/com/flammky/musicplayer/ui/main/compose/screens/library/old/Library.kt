@@ -1,6 +1,5 @@
 package com.flammky.musicplayer.ui.main.compose.screens.library.old
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -15,12 +14,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -28,7 +23,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
@@ -38,6 +32,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.flammky.android.environment.DeviceInfo.Companion.screenHeightDp
+import com.flammky.android.environment.DeviceInfo.Companion.screenWidthDp
 import com.flammky.android.x.lifecycle.viewmodel.compose.activityViewModel
 import com.flammky.common.kotlin.comparable.clamp
 import com.flammky.mediaplayer.domain.viewmodels.MainViewModel
@@ -52,6 +48,10 @@ import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import jp.wasabeef.transformers.coil.CenterCropTransformation
 import timber.log.Timber
+import kotlin.math.ceil
+import kotlin.math.min
+import kotlin.math.nextUp
+import kotlin.math.roundToInt
 
 @Composable
 fun Library() {
@@ -146,10 +146,13 @@ private fun LocalSongs(vm: LibraryViewModelOld, controller: NavController) {
 				val item = localSongs[index]
 				val data = item.artState.value
 
+				val ra = min(3, localSongs.size)
+				val size = ((LocalContext.current.screenWidthDp.dp - 30.dp) / ra) - (ceil(ra / 2f) * 10).dp
+
 				Column(
 					modifier = Modifier
-						.width(100.dp)
-						.height(100.dp)
+						.width(size)
+						.height(size)
 						.clip(shape =  RoundedCornerShape(5))
 						.background(
 							if (isSystemInDarkTheme()) {
@@ -166,7 +169,7 @@ private fun LocalSongs(vm: LibraryViewModelOld, controller: NavController) {
 						index < 5 -> {
 							Card(
 								modifier = Modifier
-									.size(100.dp)
+									.fillMaxSize()
 									.clip(
 										shape = RoundedCornerShape(5)
 									)
@@ -245,7 +248,7 @@ private fun LocalSongs(vm: LibraryViewModelOld, controller: NavController) {
 							) {
 								Card(
 									modifier = Modifier
-										.size(100.dp)
+										.fillMaxSize()
 										.clip(RoundedCornerShape(10)),
 									elevation = CardDefaults.cardElevation(2.dp),
 									shape = RoundedCornerShape(10)
@@ -263,7 +266,7 @@ private fun LocalSongs(vm: LibraryViewModelOld, controller: NavController) {
 													repeat(2) { eIndex ->
 														i += eIndex
 														val currentIndex = 5 + i
-														val maybeItem = if (localSongs.size >= currentIndex) {
+														val maybeItem = if (localSongs.size > currentIndex) {
 															localSongs[currentIndex]
 														} else {
 															null

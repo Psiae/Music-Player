@@ -1,4 +1,4 @@
-package com.flammky.musicplayer.common.android.intent
+package com.flammky.android.content.intent
 
 import android.content.Intent
 

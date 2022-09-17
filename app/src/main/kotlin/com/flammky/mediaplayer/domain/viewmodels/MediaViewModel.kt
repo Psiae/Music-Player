@@ -7,7 +7,7 @@ import androidx.media3.common.MediaItem
 import com.flammky.mediaplayer.helper.external.IntentWrapper
 import com.flammky.mediaplayer.helper.external.MediaIntentHandler
 import com.flammky.mediaplayer.helper.image.CoilHelper
-import com.flammky.musicplayer.common.android.environment.DeviceInfo
+import com.flammky.android.environment.DeviceInfo
 import com.flammky.android.common.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.common.kotlin.coroutines.safeCollect
 import com.flammky.common.kotlin.coroutine.ensureCancellation
@@ -26,11 +26,11 @@ import kotlin.time.ExperimentalTime
 
 @HiltViewModel
 class MediaViewModel @Inject constructor(
-    private val coilHelper: CoilHelper,
-    private val deviceInfo: DeviceInfo,
-    private val dispatchers: AndroidCoroutineDispatchers,
-    private val itemHelper: MediaItemHelper,
-    private val intentHandler: MediaIntentHandler,
+	private val coilHelper: CoilHelper,
+	private val deviceInfo: DeviceInfo,
+	private val dispatchers: AndroidCoroutineDispatchers,
+	private val itemHelper: MediaItemHelper,
+	private val intentHandler: MediaIntentHandler,
 ) : ViewModel() {
 
 	private val cacheManager = AppDelegate.cacheManager

@@ -33,6 +33,10 @@ interface MediaStoreProvider {
 
 			/** @see [ContentResolver.NOTIFY_SKIP_NOTIFY_FOR_DESCENDANTS] */
 			object SKIP_NOTIFY : Flags
+
+			fun isInsert() = this === INSERT
+			fun isUpdate() = this === UPDATE
+			fun isDelete() = this === DELETE
 		}
 
 		fun onContentChange(uris: Collection<Uri>, flag: Flags)

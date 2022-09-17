@@ -8,7 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import com.google.accompanist.permissions.*
 import com.flammky.musicplayer.BuildConfig
-import com.flammky.musicplayer.common.android.context.rememberContextInfo
+import com.flammky.android.content.context.rememberContextInfo
 import com.flammky.musicplayer.core.app.permission.AndroidPermission
 import timber.log.Timber
 

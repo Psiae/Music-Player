@@ -11,7 +11,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.flammky.mediaplayer.domain.viewmodels.MainViewModel
 import com.flammky.mediaplayer.domain.viewmodels.MediaViewModel
 import com.flammky.mediaplayer.helper.external.IntentWrapper
-import com.flammky.musicplayer.common.android.activity.disableWindowDecorFitSystemInsets
+import com.flammky.android.activity.disableWindowDecorFitSystemInsets
 import com.flammky.android.medialib.temp.common.context.ContextInfo
 import com.flammky.android.medialib.temp.common.intent.isActionMain
 import com.flammky.android.common.kotlin.coroutine.AndroidCoroutineDispatchers

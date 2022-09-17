@@ -1,8 +1,8 @@
-package com.flammky.musicplayer.common.android.activity
+package com.flammky.android.activity
 
 import android.app.Activity
 import android.view.Window
-import com.flammky.musicplayer.common.android.activity.window.disableDecorFitSystem
+import com.flammky.android.activity.window.disableDecorFitSystem
 
 /**
  * make the Content Views of the attached [Window] of the given [Activity]

@@ -58,7 +58,6 @@ class LibraryViewModelOld @Inject constructor(
 
 				// maybe `notifyUnplayableMedia sound kind of nicer`
 				sessionInteractor.removeMediaItems(toRemove)
-				sessionInteractor.pause()
 			}
 		}
 		requestRefresh()

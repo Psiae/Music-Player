@@ -20,7 +20,7 @@ import coil.size.Scale
 import com.google.common.collect.ImmutableList
 import com.flammky.mediaplayer.helper.Preconditions.checkState
 import com.flammky.mediaplayer.helper.image.CoilHelper
-import com.flammky.musicplayer.common.android.environment.DeviceInfo
+import com.flammky.android.environment.DeviceInfo
 import com.flammky.android.common.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.common.kotlin.coroutines.AutoCancelJob
 import com.flammky.common.kotlin.comparable.clamp

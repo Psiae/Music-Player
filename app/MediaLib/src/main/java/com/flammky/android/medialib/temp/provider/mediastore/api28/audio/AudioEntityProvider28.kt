@@ -1,9 +1,12 @@
 package com.flammky.android.medialib.temp.provider.mediastore.api28.audio
 
+import android.app.Activity
 import android.content.ContentResolver
 import android.content.ContentUris
+import android.content.Intent
 import android.database.ContentObserver
 import android.database.Cursor
+import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Handler
 import android.os.SystemClock
@@ -51,7 +54,7 @@ internal class AudioEntityProvider28 internal constructor(private val context: M
 		}
 		set(value) {
 			check(Thread.holdsLock(cacheLock))
-			cached = field != value
+			cached = field == value
 			field = value
 		}
 
@@ -130,9 +133,41 @@ internal class AudioEntityProvider28 internal constructor(private val context: M
 	}
 
 	private fun onUriContentChanged(uris: Collection<Uri>, flags: MediaStoreProvider.OnContentChangedListener.Flags) {
-		scope.launch(context.eventDispatcher) {
+		Timber.d("onUriContentChanged: ${uris.joinToString()}\n flags: $flags")
+
+		scope.launch(AndroidDispatchers.io) {
+
 			sync(cacheLock) { cacheKey = SystemClock.elapsedRealtime().toString() }
-			contentChangeListeners.forEach { it.onContentChange(uris, flags) }
+
+			if (flags.isInsert()) {
+				uris.forEach { uri ->
+					contentResolver.query(
+						uri,
+						arrayOf(MediaStore28.Audio.AudioColumns.DATA),
+						null,
+						null,
+						null
+					)?.use { cursor ->
+						if (cursor.moveToFirst()) {
+							cursor.getString(0)
+						} else {
+							null
+						}
+					}?.let { path ->
+						Timber.d("Notify MediaScanner to scan $path")
+						MediaScannerConnection.scanFile(
+							context.androidContext,
+							arrayOf(path),
+							null,
+							null
+						)
+					}
+				}
+			}
+
+			withContext(context.eventDispatcher) {
+				contentChangeListeners.forEach { it.onContentChange(uris, flags) }
+			}
 		}
 	}
 

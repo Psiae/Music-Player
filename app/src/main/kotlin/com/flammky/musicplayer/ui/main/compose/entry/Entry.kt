@@ -28,8 +28,8 @@ import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.permissions.shouldShowRationale
 import com.flammky.musicplayer.R
-import com.flammky.musicplayer.common.android.context.ContextInfo
-import com.flammky.musicplayer.common.android.context.rememberContextInfo
+import com.flammky.android.content.context.ContextInfo
+import com.flammky.android.content.context.rememberContextInfo
 import com.flammky.musicplayer.core.app.permission.AndroidPermission
 import com.flammky.musicplayer.ui.main.compose.theme.MainMaterial3Theme
 import com.flammky.musicplayer.ui.main.compose.theme.color.ColorHelper

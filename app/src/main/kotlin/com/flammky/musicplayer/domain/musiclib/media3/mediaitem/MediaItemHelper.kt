@@ -41,7 +41,7 @@ object MediaItemPropertyHelper {
 	inline val MediaItem.title
 		@JvmStatic get() = mediaMetadata.title
 
-	val MediaItem.mediaUri: Uri?
+	inline val MediaItem.mediaUri: Uri?
 		@JvmStatic get() = localConfiguration?.uri ?: requestMetadata.mediaUri
 
 	@JvmStatic

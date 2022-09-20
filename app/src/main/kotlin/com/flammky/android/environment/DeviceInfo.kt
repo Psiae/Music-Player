@@ -28,17 +28,14 @@ class DeviceInfo @Inject constructor(@ApplicationContext context: Context) {
 		get() = context.screenHeightPixel
 
 	val isOrientationPortrait
-		get() = when (context.screenOrientation) {
-			Configuration.ORIENTATION_LANDSCAPE -> false
-			else -> true
-		}
+		get() = !isOrientationLandscape
+
+	val isOrientationLandscape
+		get() = context.screenOrientation == Configuration.ORIENTATION_LANDSCAPE
 
 	fun dimensionPixelSize(@DimenRes id: Int): Int {
 		return context.resources.getDimensionPixelSize(id)
 	}
-
-	val isOrientationLandscape
-		get() = context.screenOrientation == Configuration.ORIENTATION_LANDSCAPE
 
 	private inner class NotificationInfo
 

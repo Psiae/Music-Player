@@ -18,12 +18,9 @@ class MediaStoreAudioEntity28 private constructor(
 	class Builder internal constructor() {
 		var uid: String = ""
 		var uri: Uri = Uri.EMPTY
-		var fileInfo: MediaStoreAudioFile28 =
-            MediaStoreAudioFile28.empty
-		var metadataInfo: MediaStoreAudioMetadata28 =
-            MediaStoreAudioMetadata28.empty
-		var queryInfo: MediaStoreAudioQuery28 =
-            MediaStoreAudioQuery28.empty
+		var fileInfo: MediaStoreAudioFile28 = MediaStoreAudioFile28.empty
+		var metadataInfo: MediaStoreAudioMetadata28 = MediaStoreAudioMetadata28.empty
+		var queryInfo: MediaStoreAudioQuery28 = MediaStoreAudioQuery28.empty
 
 		internal fun build(): MediaStoreAudioEntity28 {
 			return MediaStoreAudioEntity28(

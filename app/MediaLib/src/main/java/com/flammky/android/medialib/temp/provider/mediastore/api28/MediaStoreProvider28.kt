@@ -1,7 +1,7 @@
 package com.flammky.android.medialib.temp.provider.mediastore.api28
 
+import com.flammky.android.medialib.common.mediaitem.MediaItemFactoryOf
 import com.flammky.android.medialib.temp.api.provider.mediastore.MediaStoreProvider
-import com.flammky.android.medialib.temp.media3.contract.MediaItemFactoryOf
 import com.flammky.android.medialib.temp.provider.mediastore.MediaStoreContext
 import com.flammky.android.medialib.temp.provider.mediastore.api28.audio.AudioEntityProvider28
 import com.flammky.android.medialib.temp.provider.mediastore.api28.audio.MediaStoreAudioEntity28

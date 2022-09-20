@@ -9,17 +9,17 @@ import androidx.compose.ui.platform.LocalContext
 import com.google.accompanist.permissions.*
 import com.flammky.musicplayer.BuildConfig
 import com.flammky.android.content.context.rememberContextInfo
-import com.flammky.musicplayer.core.app.permission.AndroidPermission
+import com.flammky.android.app.permission.AndroidPermission
 import timber.log.Timber
 
 @ExperimentalPermissionsApi
 @DoNotInline
 @Composable
 fun RequirePermission(
-	permission: AndroidPermission,
-	showRationale: @Composable (PermissionState) -> Unit,
-	whenDenied: @Composable (PermissionState) -> Unit,
-	whenGranted: @Composable (PermissionState) -> Unit
+    permission: AndroidPermission,
+    showRationale: @Composable (PermissionState) -> Unit,
+    whenDenied: @Composable (PermissionState) -> Unit,
+    whenGranted: @Composable (PermissionState) -> Unit
 ) {
 
 	val contextInfo = rememberContextInfo()
@@ -77,10 +77,10 @@ fun RequirePermission(
 @DoNotInline
 @Composable
 fun RequirePermissions(
-	permissions: List<AndroidPermission>,
-	showRationale: @Composable (MultiplePermissionsState) -> Unit,
-	whenAllDenied: @Composable (MultiplePermissionsState) -> Unit,
-	whenAllGranted: @Composable (MultiplePermissionsState) -> Unit
+    permissions: List<AndroidPermission>,
+    showRationale: @Composable (MultiplePermissionsState) -> Unit,
+    whenAllDenied: @Composable (MultiplePermissionsState) -> Unit,
+    whenAllGranted: @Composable (MultiplePermissionsState) -> Unit
 ) {
 
 	val contextInfo = rememberContextInfo()

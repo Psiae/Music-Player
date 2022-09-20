@@ -4,6 +4,8 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.media3.common.MediaItem
+import java.util.stream.Collector
+import java.util.stream.Stream
 
 data class LocalSongModel(
 	val id: String,
@@ -17,6 +19,5 @@ data class LocalSongModel(
 	val artState: State<Any?> = _artState
 
 	fun updateArt(art: Any?) {
-
 	}
 }

@@ -7,15 +7,13 @@ import com.flammky.android.medialib.temp.cache.lru.LruCache
 import com.flammky.android.medialib.temp.image.ArtworkProvider
 import com.flammky.android.common.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.common.kotlin.generic.sync
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.*
+import java.lang.Runnable
 
 class TestArtworkProvider(private val lru: LruCache<String, Bitmap>) : ArtworkProvider {
 
 	private val ioDispatcher = AndroidCoroutineDispatchers.DEFAULT.io
-	private val scope = CoroutineScope(ioDispatcher)
+	private val scope = CoroutineScope(ioDispatcher + SupervisorJob())
 
 	override fun <R> request(request: ArtworkProvider.Request<R>): ArtworkProvider.ListenableResult<R> {
 		val listenable = ListenableResult<R>(request.id)
@@ -66,13 +64,16 @@ class TestArtworkProvider(private val lru: LruCache<String, Bitmap>) : ArtworkPr
 
 		@OptIn(ExperimentalCoroutinesApi::class)
 		override suspend fun await(): ArtworkProvider.RequestResult<R> {
-			if (isDone()) return r
-			return suspendCancellableCoroutine { cont ->
-				sync {
-					if (isDone()) {
-						cont.resume(r) {}
-					} else {
-						awaiters.add { cont.resume(r) {} }
+			return if (isDone()) {
+				r
+			} else {
+				suspendCancellableCoroutine { cont ->
+					sync {
+						if (isDone()) {
+							cont.resume(r) {}
+						} else {
+							awaiters.add { cont.resume(r) {} }
+						}
 					}
 				}
 			}
@@ -80,15 +81,14 @@ class TestArtworkProvider(private val lru: LruCache<String, Bitmap>) : ArtworkPr
 
 		override fun onResult(block: (ArtworkProvider.RequestResult<R>) -> Unit) {
 			sync {
-				if (isDone()) return block(r)
-
-				val looper = Looper.myLooper()
-
-				if (looper != null) {
-					val handler = Handler(looper)
-					awaiters.add { handler.post { block(r) } }
+				if (isDone()) {
+					block(r)
 				} else {
-					awaiters.add { block(r) }
+					Looper.myLooper()
+						?.let { looper ->
+							awaiters.add { Handler(looper).post { block(r) } }
+						}
+						?: awaiters.add { block(r) }
 				}
 			}
 		}

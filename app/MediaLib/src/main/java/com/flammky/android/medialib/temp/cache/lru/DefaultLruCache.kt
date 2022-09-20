@@ -126,7 +126,8 @@ class DefaultLruCache<K: Any, V: Any>(
 	private fun evictVictim(): Boolean {
 		return try {
 			val victim = lruEntries.entries.iterator().next()
-			return remove(victim.key) != null
+			remove(victim.key)
+			true
 		} catch (nse: NoSuchElementException) {
 			// fallback?
 			false

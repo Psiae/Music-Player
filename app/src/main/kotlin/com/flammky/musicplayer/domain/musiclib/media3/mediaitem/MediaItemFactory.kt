@@ -41,7 +41,7 @@ object MediaItemFactory {
 			val album =
 				mtr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM) ?: "<Unknown>"
 			val albumArtist =
-				mtr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST) ?: "<Unknown>"
+				mtr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST)
 			val title = mtr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
 				?: if (uri.scheme == "content") {
 					context.contentResolver.query(uri, null, null, null, null)

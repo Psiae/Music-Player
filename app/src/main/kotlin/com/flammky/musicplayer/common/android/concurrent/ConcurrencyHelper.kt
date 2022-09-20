@@ -5,7 +5,7 @@ import java.lang.Thread.currentThread
 
 object ConcurrencyHelper {
 
-	val Thread.isMain get() = this == Looper.getMainLooper().thread
+	val Thread.isMain get() = this === Looper.getMainLooper().thread
 
 	fun isMainThread() = currentThread().isMain
 

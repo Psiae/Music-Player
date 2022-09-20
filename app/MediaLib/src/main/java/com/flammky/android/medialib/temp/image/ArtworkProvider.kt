@@ -60,43 +60,41 @@ interface ArtworkProvider {
 			private var memoryCacheAllowed: Boolean = true
 
 
-			fun setMinimumSize(@Px @IntRange(from = 0, to = 2147483647) size: Int): Builder<R> {
-				return setMinimumSize(size, size)
-			}
+			fun setMinimumSize(@Px @IntRange(from = 0, to = MAX_WIDTH) size: Int): Builder<R> =
+				apply {
+					setMinimumSize(size, size)
+				}
 
 			fun setMinimumSize(
-				@Px @IntRange(from = 0, to = 2147483647) width: Int,
-				@Px @IntRange(from = 0, to = 2147483647) height: Int,
-			): Builder<R> {
+				@Px @IntRange(from = 0, to = MAX_WIDTH) width: Int,
+				@Px @IntRange(from = 0, to = MAX_HEIGHT) height: Int,
+			): Builder<R> = apply {
 				setMinimumWidth(width)
 				setMinimumHeight(height)
-				return this
 			}
 
-			fun setMinimumWidth(@Px @IntRange(from = 0, to = 2147483647) width: Int): Builder<R> {
-				require(width in 0..2147483647) {
-					"Invalid Width, $width is out of bounds"
+			fun setMinimumWidth(@Px @IntRange(from = 0, to = MAX_WIDTH) width: Int): Builder<R> =
+				apply {
+					require(width in 0..MAX_WIDTH) {
+						"Invalid Width, $width is out of bounds"
+					}
+					minimumWidth = width
 				}
-				minimumWidth = width
-				return this
-			}
 
-			fun setMinimumHeight(@Px @IntRange(from = 0, to = 2147483647) height: Int): Builder<R> {
-				require(height in 0..2147483647) {
-					"Invalid Height, $height is out of bounds"
+			fun setMinimumHeight(@Px @IntRange(from = 0, to = MAX_HEIGHT) height: Int): Builder<R> =
+				apply {
+					require(height in 0..MAX_HEIGHT) {
+						"Invalid Height, $height is out of bounds"
+					}
+					minimumHeight = height
 				}
-				minimumHeight = height
-				return this
-			}
 
-			fun setDiskCacheAllowed(allowed: Boolean): Builder<R> {
+			fun setDiskCacheAllowed(allowed: Boolean): Builder<R> = apply {
 				diskCacheAllowed = allowed
-				return this
 			}
 
-			fun setMemoryCacheAllowed(allowed: Boolean): Builder<R> {
+			fun setMemoryCacheAllowed(allowed: Boolean): Builder<R> = apply {
 				memoryCacheAllowed = allowed
-				return this
 			}
 
 			fun build(): Request<R> = Request(
@@ -107,6 +105,11 @@ interface ArtworkProvider {
 				diskCacheAllowed = diskCacheAllowed,
 				memoryCacheAllowed = memoryCacheAllowed,
 			)
+		}
+
+		companion object {
+			const val MAX_WIDTH = Int.MAX_VALUE.toLong()
+			const val MAX_HEIGHT = Int.MAX_VALUE.toLong()
 		}
 	}
 

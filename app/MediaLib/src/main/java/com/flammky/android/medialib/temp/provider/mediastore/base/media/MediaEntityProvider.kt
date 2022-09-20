@@ -8,12 +8,14 @@ interface MediaEntityProvider<E : MediaStoreEntity, F : MediaStoreFile, M : Medi
 	val mediaItemFactory: MediaItemFactory<E, F, M, Q>
 
 	/**
-	 * Whether the provider is allowed to return cached list from its previous query.
+	 * Query the Entity
+	 *
+	 * @param cacheAllowed Whether the provider is allowed to return cached list from its previous query.
 	 *
 	 * &nbsp
 	 *
 	 * Cached list will not be returned when:
-	 * + @param [cacheAllowed] is false
+	 * + [cacheAllowed] is false
 	 * + the current cache needs to be updated
 	 */
 	@Throws(PermissionException::class)

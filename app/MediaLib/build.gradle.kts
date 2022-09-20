@@ -4,6 +4,14 @@ plugins {
 }
 
 android {
+    signingConfigs {
+        create("release") {
+            storeFile = file("C:\\Users\\Kyle\\dev\\Android Studio\\key\\testRelease-key.jks")
+            storePassword = "123456"
+            keyAlias = "key0"
+            keyPassword = "123456"
+        }
+    }
     namespace = "com.flammky.android.medialib"
     compileSdk = 32
 
@@ -34,7 +42,7 @@ android {
 
 dependencies {
 
-    implementation("androidx.core:core-ktx:1.9.0-alpha02")
+    implementation("androidx.core:core-ktx:1.9.0-alpha01")
     implementation("androidx.appcompat:appcompat:1.5.1")
     implementation("com.google.android.material:material:1.6.1")
     testImplementation("junit:junit:4.13.2")

@@ -272,7 +272,7 @@ class MediaControllerWrapper internal constructor(
 		}
 
 		override fun removeMediaItems(items: List<MediaItem>) {
-			if (isStateConnected()) {
+			if (isStateConnected() && items.isNotEmpty()) {
 				val currentItems = getAllMediaItems()
 				items.forEach {
 					val index = currentItems.indexOf(it)

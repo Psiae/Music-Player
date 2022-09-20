@@ -1,16 +1,11 @@
 package com.flammky.musicplayer.ui.main.compose.screens.library.old
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,12 +27,12 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.flammky.android.environment.DeviceInfo.Companion.screenHeightDp
 import com.flammky.android.environment.DeviceInfo.Companion.screenWidthDp
 import com.flammky.android.x.lifecycle.viewmodel.compose.activityViewModel
 import com.flammky.common.kotlin.comparable.clamp
 import com.flammky.mediaplayer.domain.viewmodels.MainViewModel
 import com.flammky.musicplayer.R
+import com.flammky.musicplayer.ui.main.compose.screens.library.old.local.LocalSongItem
 import com.flammky.musicplayer.ui.main.compose.theme.color.ColorHelper
 import com.google.accompanist.flowlayout.FlowCrossAxisAlignment
 import com.google.accompanist.flowlayout.FlowRow
@@ -50,8 +45,6 @@ import jp.wasabeef.transformers.coil.CenterCropTransformation
 import timber.log.Timber
 import kotlin.math.ceil
 import kotlin.math.min
-import kotlin.math.nextUp
-import kotlin.math.roundToInt
 
 @Composable
 fun Library() {
@@ -153,7 +146,7 @@ private fun LocalSongs(vm: LibraryViewModelOld, controller: NavController) {
 					modifier = Modifier
 						.width(size)
 						.height(size)
-						.clip(shape =  RoundedCornerShape(5))
+						.clip(shape = RoundedCornerShape(5))
 						.background(
 							if (isSystemInDarkTheme()) {
 								Color(0xFF27292D)
@@ -170,9 +163,7 @@ private fun LocalSongs(vm: LibraryViewModelOld, controller: NavController) {
 							Card(
 								modifier = Modifier
 									.fillMaxSize()
-									.clip(
-										shape = RoundedCornerShape(5)
-									)
+									.clip(shape = RoundedCornerShape(5))
 									.clickable { vm.playSong(item) }
 									.background(MaterialTheme.colorScheme.surfaceVariant),
 								elevation = CardDefaults.elevatedCardElevation(2.dp),
@@ -243,15 +234,18 @@ private fun LocalSongs(vm: LibraryViewModelOld, controller: NavController) {
 									.fillMaxSize()
 									.clip(RoundedCornerShape(5))
 									.clickable {
-										controller.navigate("localSongLists")
+										controller.navigate("localSongLists") {
+											launchSingleTop = true
+											restoreState = true
+										}
 									}
 							) {
 								Card(
 									modifier = Modifier
 										.fillMaxSize()
-										.clip(RoundedCornerShape(10)),
+										.clip(RoundedCornerShape(5)),
 									elevation = CardDefaults.cardElevation(2.dp),
-									shape = RoundedCornerShape(10)
+									shape = RoundedCornerShape(5)
 								) {
 									Box {
 										Column {
@@ -345,122 +339,56 @@ private fun LocalSongs(vm: LibraryViewModelOld, controller: NavController) {
 	}
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun LocalSongLists() {
-	val context = LocalContext.current
-	val lifecycleOwner = LocalLifecycleOwner.current
-	val vm: LibraryViewModelOld = activityViewModel()
-	val mainVM: MainViewModel = activityViewModel()
+	Box(
+		modifier = Modifier
+			.fillMaxSize()
+			.background(
+				color = with(MaterialTheme.colorScheme.background) {
+					val factor = 0.8f
+					val r = red * factor
+					val g = green * factor
+					val b = blue * factor
+					copy(1f, r, g, b)
+				}
+			),
+	) {
+		LocalSongListsColumn(
+			vm = activityViewModel(),
+			mainVM = activityViewModel()
+		)
+	}
+}
 
-	Timber.d("LibraryContent recomposed")
+@Composable
+private fun LocalSongListsColumn(
+	vm: LibraryViewModelOld,
+	mainVM: MainViewModel
+) {
 
 	SwipeRefresh(
 		state = rememberSwipeRefreshState(isRefreshing = vm.refreshing.value),
 		onRefresh = { vm.requestRefresh() },
 		indicatorPadding = PaddingValues(top = 10.dp)
 	) {
+		LazyColumn(
+			verticalArrangement = Arrangement.spacedBy(1.dp)
+		) {
 
-		Timber.d("LibraryContent SwipeRefresh recomposed")
+			val localSongs = vm.localSongs.toList()
 
-		Column {
+			items(localSongs.size) {
+				val model = localSongs[it]
+				LocalSongItem(model = model) { vm.playSong(model) }
+			}
 
-			Timber.d("LibraryContent Column recomposed")
-
-			LazyVerticalGrid(
-				modifier = Modifier
-					.fillMaxWidth()
-					.fillMaxHeight()
-					.padding(top = 10.dp, start = 10.dp, end = 10.dp),
-				columns = GridCells.Fixed(2),
-				verticalArrangement = Arrangement.spacedBy(10.dp),
-				horizontalArrangement = Arrangement.spacedBy(10.dp)
-			) {
-
-				items(2) { Spacer(Modifier) }
-
-				val stateList = vm.localSongs
-
-				val localSongs = ArrayList(stateList)
-
-				Timber.d("LibraryContent Column Grid recomposed, list: ${stateList.size}")
-
-				items(localSongs.size) {
-
-					Timber.d("LibraryContent Column Item $it recomposed")
-
-					val item = localSongs[it]
-					val data = item.artState.value
-
-					Card(
-						modifier = Modifier
-							.size(140.dp)
-							.clickable { vm.playSong(item) }
-						,
-					) {
-						Box(contentAlignment = Alignment.BottomCenter) {
-
-							val req = remember(data) {
-								if (data == null) return@remember null
-
-								ImageRequest.Builder(context)
-									.data(data)
-									.crossfade(true)
-									.transformations(CenterCropTransformation())
-									/*.listener(onError = { request: ImageRequest, result: ErrorResult ->
-										val reqData = request.data
-										if (reqData is File && !reqData.exists()) vm.requestRefresh()
-									})*/
-									.build()
-							}
-
-							AsyncImage(
-								modifier = Modifier
-									.fillMaxSize()
-									.placeholder(
-										visible = !item.isArtLoaded,
-										color = ColorHelper.tonePrimarySurface(elevation = 2.dp)
-									)
-
-								,
-								model = req,
-								contentDescription = null,
-								contentScale = ContentScale.Crop
-							)
-							Box(
-								modifier = Modifier
-									.fillMaxWidth()
-									.background(
-										Brush.verticalGradient(
-											colors = listOf(
-												Color.Transparent,
-												Color.Black.copy(alpha = 0.8f),
-											)
-										)
-									),
-								contentAlignment = Alignment.BottomCenter,
-							) {
-								val typography = MaterialTheme.typography.labelLarge
-								Text(
-									modifier = Modifier.fillMaxWidth(0.9f),
-									text = item.displayName,
-									color = Color.White,
-									style = typography,
-									textAlign = TextAlign.Center,
-									maxLines = 1,
-									overflow = TextOverflow.Ellipsis
-								)
-							}
-						}
-					}
-				}
-				items(2) {
-					Spacer(
-						modifier = Modifier
-							.fillMaxWidth()
-							.height(mainVM.bottomNavigatorHeight.value)
-					)
-				}
+			item() {
+				Spacer(
+					modifier = Modifier
+						.fillMaxWidth()
+						.height(mainVM.bottomVisibilityHeight.value)
+				)
 			}
 		}
 	}

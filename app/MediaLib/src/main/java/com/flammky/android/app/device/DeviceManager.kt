@@ -1,11 +1,11 @@
-package com.flammky.musicplayer.core.app.device
+package com.flammky.android.app.device
 
 import android.app.Application
 import android.app.WallpaperManager
 import android.content.Context
 import android.graphics.drawable.Drawable
 import com.flammky.common.kotlin.lazy.LazyConstructor
-import com.flammky.musicplayer.core.app.permission.AndroidPermissionInfo
+import com.flammky.android.app.permission.AndroidPermissionInfo
 
 class DeviceManager private constructor(private val context: Context) {
 	private val permissionInfo = AndroidPermissionInfo(context)

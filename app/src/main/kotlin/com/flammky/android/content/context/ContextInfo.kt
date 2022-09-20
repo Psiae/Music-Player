@@ -4,8 +4,8 @@ import android.content.Context
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import com.flammky.android.content.intent.AndroidCommonIntent
-import com.flammky.musicplayer.core.app.permission.AndroidPermission
-import com.flammky.musicplayer.core.app.permission.AndroidPermissionInfo
+import com.flammky.android.app.permission.AndroidPermission
+import com.flammky.android.app.permission.AndroidPermissionInfo
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 

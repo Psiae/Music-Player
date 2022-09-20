@@ -15,6 +15,8 @@ class PermissionManager private constructor(private val application: Application
 	companion object {
 		private val instance = LazyConstructor<PermissionManager>()
 
-		fun get(application: Application) = instance.construct { PermissionManager(application) }
+		fun get(application: Application) = instance.construct {
+			PermissionManager(application)
+		}
 	}
 }

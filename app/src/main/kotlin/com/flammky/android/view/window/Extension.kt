@@ -1,4 +1,4 @@
-package com.flammky.android.activity.window
+package com.flammky.android.view.window
 
 import android.view.Window
 import androidx.core.view.WindowCompat
@@ -8,7 +8,6 @@ import androidx.core.view.WindowCompat
  * to not consider fitting for System Insets such as Status bar and Navigation bar
  */
 
-fun Window.disableDecorFitSystem(): Window {
+fun Window.disableFitSystemInsets(): Window = apply {
 	WindowCompat.setDecorFitsSystemWindows(this, false)
-	return this
 }

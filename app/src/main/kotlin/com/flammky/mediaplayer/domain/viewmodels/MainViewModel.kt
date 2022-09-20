@@ -19,7 +19,7 @@ class MainViewModel @Inject constructor(
 	val playbackControlShownHeight = mutableStateOf(0.dp)
 	val bottomNavigationHeight = mutableStateOf(0.dp)
 
-	val bottomNavigatorHeight = derivedStateOf {
+	val bottomVisibilityHeight = derivedStateOf {
 		playbackControlShownHeight.value + bottomNavigationHeight.value
 	}
 

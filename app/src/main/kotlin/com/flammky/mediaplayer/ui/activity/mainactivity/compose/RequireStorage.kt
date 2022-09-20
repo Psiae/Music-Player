@@ -6,7 +6,7 @@ import androidx.compose.runtime.neverEqualPolicy
 import androidx.compose.runtime.remember
 import com.google.accompanist.permissions.*
 import com.flammky.android.app.AppDelegate
-import com.flammky.musicplayer.core.app.permission.AndroidPermission
+import com.flammky.android.app.permission.AndroidPermission
 import timber.log.Timber
 
 @OptIn(ExperimentalPermissionsApi::class)

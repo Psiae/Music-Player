@@ -129,11 +129,10 @@ class MediaIntentHandlerImpl(
         fadeOut: Boolean
     ) {
       checkMainThread()
-			val factory = mediaSource.audio.mediaItemFactory as com.flammky.android.medialib.temp.media3.contract.MediaItemFactoryOf<MediaStoreAudioEntity>
-
+			val factory = mediaSource.audio.mediaItemFactory
       val itemList = list.map { factory.createMediaItem(it) }
       val item = itemList[list.indexOf(song)]
-      playMediaItem(item, itemList, fadeOut)
+      playMediaItem(item.media3, itemList.map { it.media3 }, fadeOut)
     }
 
     private fun playMediaItem(

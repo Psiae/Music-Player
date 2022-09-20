@@ -1,4 +1,5 @@
 import java.io.FileInputStream
+import java.io.File
 import java.util.*
 
 plugins {
@@ -11,6 +12,14 @@ plugins {
 
 android {
 
+    signingConfigs {
+        create("release") {
+            storeFile = file(getKeystoreProp()["FILE_PATH"]!!)
+            storePassword = getKeystoreProp()["PASSWORD"]?.toString()
+            keyAlias = getKeystoreProp()["KEY_ALIAS"]?.toString()
+            keyPassword = getKeystoreProp()["KEY_PASSWORD"]?.toString()
+        }
+    }
     compileSdk = 32
 
     defaultConfig {
@@ -29,7 +38,8 @@ android {
     buildTypes {
 
         release {
-            isMinifyEnabled = true
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = false
             isDebuggable = false
             resValue(type = "string", name = "app_name", "Music Player")
         }
@@ -122,7 +132,7 @@ dependencies {
 
     /* Androidx.core */
     dependencies {
-        val vKTX = "1.9.0-alpha02"
+        val vKTX = "1.9.0-alpha01"
         val vSplashScreen = "1.0.0"
 
         implementation("androidx.core:core-ktx:$vKTX")

@@ -2,7 +2,7 @@ package com.flammky.android.activity
 
 import android.app.Activity
 import android.view.Window
-import com.flammky.android.activity.window.disableDecorFitSystem
+import com.flammky.android.view.window.disableFitSystemInsets
 
 /**
  * make the Content Views of the attached [Window] of the given [Activity]
@@ -12,11 +12,10 @@ import com.flammky.android.activity.window.disableDecorFitSystem
  */
 
 @kotlin.jvm.Throws(IllegalArgumentException::class)
-fun Activity.disableWindowDecorFitSystemInsets(): Activity {
+fun Activity.disableWindowFitSystemInsets(): Activity = apply {
 	requireNotNull(window) {
 		"Activity.window was null, " +
 			"try calling this function when of after onCreate(Bundle?) is called"
 	}
-	window.disableDecorFitSystem()
-	return this
+	window.disableFitSystemInsets()
 }

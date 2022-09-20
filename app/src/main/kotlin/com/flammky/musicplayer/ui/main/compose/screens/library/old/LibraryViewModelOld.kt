@@ -11,13 +11,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import com.flammky.android.app.AppDelegate
+import com.flammky.android.common.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.medialib.temp.MediaLibrary
+import com.flammky.android.medialib.temp.api.provider.mediastore.MediaStoreProvider
 import com.flammky.android.medialib.temp.image.ArtworkProvider
 import com.flammky.android.medialib.temp.provider.mediastore.base.audio.MediaStoreAudioEntity
-import com.flammky.android.common.kotlin.coroutine.AndroidCoroutineDispatchers
+import com.flammky.common.kotlin.generic.sync
 import com.flammky.common.media.audio.AudioFile
 import com.flammky.musicplayer.common.android.bitmap.bitmapfactory.BitmapSampler
-import com.flammky.android.medialib.temp.api.provider.mediastore.MediaStoreProvider
+import com.flammky.musicplayer.common.android.concurrent.ConcurrencyHelper.checkMainThread
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemPropertyHelper.mediaUri
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -41,30 +43,35 @@ class LibraryViewModelOld @Inject constructor(
 	private val cacheManager = AppDelegate.cacheManager
 
 	private val _localSongModels = mutableStateListOf<LocalSongModel>()
+		get() {
+			checkMainThread() {
+				"State variables should only be accessed on Main Context"
+			}
+			return field
+		}
 
 	val localSongs: SnapshotStateList<LocalSongModel> get() = _localSongModels
 
 	val refreshing: State<Boolean> get() = mRefreshing
 
 	private val onContentChangeListener = MediaStoreProvider.OnContentChangedListener { uris, flag ->
-		if (flag == MediaStoreProvider.OnContentChangedListener.Flags.DELETE) {
+		if (flag.isDelete()) {
 			viewModelScope.launch(dispatchers.main) {
 				val toRemove = mutableListOf<MediaItem>()
 				val items = sessionInteractor.getAllMediaItems()
 
-				uris.forEach { uri ->
-					items.find { it.mediaUri == uri }?.let { toRemove.add(it) }
-				}
+				uris.forEach { uri -> items.find { it.mediaUri == uri }?.let { toRemove.add(it) } }
 
 				// maybe `notifyUnplayableMedia sound kind of nicer`
 				sessionInteractor.removeMediaItems(toRemove)
 			}
 		}
-		requestRefresh()
+		requestRefresh(true)
 	}
 
 	init {
 		mediaStore.audio.registerOnContentChanged(onContentChangeListener)
+		validateLocalSongs()
 	}
 
 	fun playSong(local: LocalSongModel) = viewModelScope.launch { sessionInteractor.play(local) }
@@ -74,9 +81,11 @@ class LibraryViewModelOld @Inject constructor(
 		viewModelScope.launch(dispatchers.io) {
 
 			val get = mediaStore.audio.query()
-				.filter { it.metadataInfo.durationMs > 0 }
+				.filter { (it.metadataInfo.durationMs ?: 0) > 0 }
 
-			val local = _localSongModels
+			val local = withContext(dispatchers.main) {
+				_localSongModels.sync { ArrayList(this) }
+			}
 
 			if (get.size != local.size) {
 				internalRefreshLocalSongs(get)
@@ -86,7 +95,7 @@ class LibraryViewModelOld @Inject constructor(
 			get.forEach { song ->
 				local.find { it.id == song.uid }
 					?: run {
-						internalRefreshLocalSongs( get)
+						internalRefreshLocalSongs(get)
 						return@launch
 					}
 			}
@@ -95,7 +104,7 @@ class LibraryViewModelOld @Inject constructor(
 
 	private var refreshAvailable = true
 
-	fun requestRefresh() = viewModelScope.launch(dispatchers.mainImmediate) {
+	fun requestRefresh(force: Boolean = false) = viewModelScope.launch(dispatchers.mainImmediate) {
 		if (refreshAvailable) {
 			refreshAvailable = false
 
@@ -107,6 +116,8 @@ class LibraryViewModelOld @Inject constructor(
 			mRefreshing.value = false
 
 			refreshAvailable = true
+		} else if (force) {
+			internalRefreshLocalSongs()
 		}
 	}
 
@@ -116,17 +127,21 @@ class LibraryViewModelOld @Inject constructor(
 		withContext(dispatchers.io) {
 
 			val songs = (maybeSongs ?: mediaStore.audio.query()).filter {
-				it.metadataInfo.durationMs > 0
+				(it.metadataInfo.durationMs ?: 0) > 0
 			}
 
 			val factory = mediaStore.audio.mediaItemFactory
 
 			val models = songs.map {
-				LocalSongModel(it.uid, it.metadataInfo.title, factory.createMediaItem(it))
+				LocalSongModel(it.uid, it.metadataInfo.title ?: it.fileInfo.fileName, factory.createMediaItem(it))
 			}
 
-			_localSongModels.removeAll { true }
-			_localSongModels.addAll(models)
+			withContext(dispatchers.mainImmediate) {
+				_localSongModels.sync {
+					removeAll { true }
+					addAll(models)
+				}
+			}
 
 			val api = MediaLibrary.API
 			val lru = api.imageRepository.sharedBitmapLru
@@ -189,7 +204,7 @@ class LibraryViewModelOld @Inject constructor(
 
 						BitmapSampler.ByteArray.toSampledBitmap(data, 0, data.size, 2000000)?.let {
 							val reg = cacheManager.registerImageToCache(it, song.uid + song.fileInfo.dateModified, "LibraryViewModel")
-							models[index].mediaItem.mediaMetadata.extras?.putString("cachedArtwork", reg.absolutePath)
+							models[index].mediaItem.bundle?.putString("cachedArtwork", reg.absolutePath)
 							lruElementToPut = id to it
 							it
 						}
@@ -225,7 +240,7 @@ class LibraryViewModelOld @Inject constructor(
 	data class LocalSongModel(
 		val id: String,
 		val displayName: String,
-		val mediaItem: MediaItem
+		val mediaItem: com.flammky.android.medialib.common.mediaitem.MediaItem
 	) {
 		private object NO_ART
 

@@ -17,7 +17,7 @@ abstract class MediaStoreFile internal constructor() {
 	 *
 	 * @see [MediaStore.Files.FileColumns.DATA]
 	 */
-	abstract val absolutePath: String
+	abstract val absolutePath: String?
 
 	/**
 	 * the `date-added` of this file,
@@ -50,14 +50,14 @@ abstract class MediaStoreFile internal constructor() {
 	 *
 	 * @see [MediaStore.Files.FileColumns.MEDIA_TYPE]
 	 */
-	abstract val mediaType: Int
+	abstract val mediaType: Int?
 
 	/**
 	 * the Mime-Type of the file
 	 *
 	 * @see [MediaStore.Files.FileColumns.MIME_TYPE]
 	 */
-	abstract val mimeType: String
+	abstract val mimeType: String?
 
 	/**
 	 * the size of the file, in bytes
@@ -65,5 +65,5 @@ abstract class MediaStoreFile internal constructor() {
 	 * @see [MediaStore.Files.FileColumns.SIZE]
 	 */
 	@StorageDataValue(StorageDataUnit.BYTE)
-	abstract val size: Long
+	abstract val size: Long?
 }

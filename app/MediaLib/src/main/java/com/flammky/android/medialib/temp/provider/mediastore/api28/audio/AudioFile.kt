@@ -8,7 +8,7 @@ import com.flammky.android.medialib.temp.provider.mediastore.base.audio.MediaSto
  * @see MediaStore28.Files
  */
 class MediaStoreAudioFile28 private constructor(
-	override val absolutePath: String,
+	override val absolutePath: String?,
 	override val dateAdded: Long,
 	override val dateModified: Long,
 	override val fileName: String,
@@ -17,7 +17,7 @@ class MediaStoreAudioFile28 private constructor(
 ) : MediaStoreAudioFile() {
 
 	class Builder internal constructor() {
-		var absolutePath: String = ""
+		var absolutePath: String? = null
 		var dateAdded: Long = -1L
 		var dateModified: Long = -1L
 		var fileName: String = ""

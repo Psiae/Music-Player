@@ -1,4 +1,4 @@
-package com.flammky.musicplayer.core.app.permission
+package com.flammky.android.app.permission
 
 import android.app.Application
 import com.flammky.common.kotlin.lazy.LazyConstructor

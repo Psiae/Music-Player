@@ -30,7 +30,7 @@ import com.google.accompanist.permissions.shouldShowRationale
 import com.flammky.musicplayer.R
 import com.flammky.android.content.context.ContextInfo
 import com.flammky.android.content.context.rememberContextInfo
-import com.flammky.musicplayer.core.app.permission.AndroidPermission
+import com.flammky.android.app.permission.AndroidPermission
 import com.flammky.musicplayer.ui.main.compose.theme.MainMaterial3Theme
 import com.flammky.musicplayer.ui.main.compose.theme.color.ColorHelper
 
@@ -263,10 +263,10 @@ private fun isPermissionGranted(
 }
 
 private data class PermissionPageItem(
-	val permission: AndroidPermission,
-	@DrawableRes val resId: Int,
-	val optional: Boolean,
-	val title: String,
+    val permission: AndroidPermission,
+    @DrawableRes val resId: Int,
+    val optional: Boolean,
+    val title: String,
 )
 
 @Composable

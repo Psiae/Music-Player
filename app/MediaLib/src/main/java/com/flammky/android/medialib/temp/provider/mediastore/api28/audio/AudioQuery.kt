@@ -12,16 +12,16 @@ import com.flammky.android.medialib.temp.provider.mediastore.base.audio.MediaSto
 class MediaStoreAudioQuery28 private constructor(
 	override val id: Long,
 	override val uri: Uri,
-	override val albumId: Long,
-	override val artistId: Long,
+	override val albumId: Long?,
+	override val artistId: Long?,
 	override val version: String
 ) : MediaStoreAudioQuery() {
 
 	class Builder internal constructor() {
 		var id: Long = Long.MIN_VALUE
 		var uri: Uri = Uri.EMPTY
-		var artistId: Long = Long.MIN_VALUE
-		var albumId: Long = Long.MIN_VALUE
+		var artistId: Long? = null
+		var albumId: Long? = null
 		var version: String = ""
 
 		internal fun build(): MediaStoreAudioQuery28 {

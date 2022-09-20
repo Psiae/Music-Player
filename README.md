@@ -19,9 +19,9 @@ Addition:
 # Preview
 > Image Preview below will be updated accordingly on any changes made
 
-| Dark Mode + Palette + mini Playback Control (Library screen is temporary) |
+| Dark Mode + Palette + mini Playback Control (List Screen is Temporary) |
 | -------------- |
-| <img src="https://user-images.githubusercontent.com/94031495/183958377-e1e85537-17de-45c5-9fc4-6eb4b1d01682.png" width="195"> |
+| <img src="https://user-images.githubusercontent.com/94031495/190876678-ca665f9e-265b-41fc-bcc5-a09317dc27f7.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/190876680-8cd752ce-4d3b-4203-a625-ba33b6042b99.png" width="195"> |
 
 > background shown is taken from Device Home Background or current MediaItem Metadata (removed temporarily)
 

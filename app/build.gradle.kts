@@ -11,15 +11,6 @@ plugins {
 }
 
 android {
-
-    signingConfigs {
-        create("release") {
-            storeFile = file(getKeystoreProp()["FILE_PATH"]!!)
-            storePassword = getKeystoreProp()["PASSWORD"]?.toString()
-            keyAlias = getKeystoreProp()["KEY_ALIAS"]?.toString()
-            keyPassword = getKeystoreProp()["KEY_PASSWORD"]?.toString()
-        }
-    }
     compileSdk = 32
 
     defaultConfig {
@@ -32,6 +23,15 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
+        }
+    }
+
+    signingConfigs {
+        create("release") {
+            storeFile = file(getKeystoreProp()["FILE_PATH"]!!)
+            storePassword = getKeystoreProp()["PASSWORD"]?.toString()
+            keyAlias = getKeystoreProp()["KEY_ALIAS"]?.toString()
+            keyPassword = getKeystoreProp()["KEY_PASSWORD"]?.toString()
         }
     }
 

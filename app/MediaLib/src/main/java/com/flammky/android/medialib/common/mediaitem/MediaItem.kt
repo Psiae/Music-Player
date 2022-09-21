@@ -7,7 +7,7 @@ import javax.annotation.concurrent.Immutable
 
 
 @Immutable
-data class MediaItem @Suppress("DataClassPrivateConstructor") private constructor(
+open class MediaItem protected constructor(
 	val bundle: Bundle?,
 	val mediaId: String,
 	val mediaUri: Uri,

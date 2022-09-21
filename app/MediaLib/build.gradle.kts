@@ -1,17 +1,13 @@
+import java.util.Properties
+import java.io.File
+import java.io.FileInputStream
+
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
 }
 
 android {
-    signingConfigs {
-        create("release") {
-            storeFile = file("C:\\Users\\Kyle\\dev\\Android Studio\\key\\testRelease-key.jks")
-            storePassword = "123456"
-            keyAlias = "key0"
-            keyPassword = "123456"
-        }
-    }
     namespace = "com.flammky.android.medialib"
     compileSdk = 32
 
@@ -22,6 +18,16 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
     }
+
+    signingConfigs {
+        create("release") {
+            storeFile = file(getKeystoreProp()["FILE_PATH"]!!)
+            storePassword = getKeystoreProp()["PASSWORD"]?.toString()
+            keyAlias = getKeystoreProp()["KEY_ALIAS"]?.toString()
+            keyPassword = getKeystoreProp()["KEY_PASSWORD"]?.toString()
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -71,3 +77,23 @@ dependencies {
         implementation("com.jakewharton.timber:timber:$v")
     }
 }
+
+fun getProp(file: File): Properties {
+    require(file.exists()) {
+        "couldn't find $file, make sure File is correct"
+    }
+    val prop = Properties()
+    prop.load(FileInputStream(file))
+    return prop
+}
+
+fun getRootProp(propName: String): Properties {
+    val propFile = rootProject.file(propName)
+    require(propFile.exists()) {
+        "couldn't find $propName in $rootProject"
+    }
+    return getProp(propFile)
+}
+
+fun getLocalProp(): Properties = getRootProp("local.properties")
+fun getKeystoreProp(): Properties = getRootProp("keystore.properties")

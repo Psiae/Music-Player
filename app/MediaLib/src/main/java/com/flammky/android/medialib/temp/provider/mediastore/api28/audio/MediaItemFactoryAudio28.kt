@@ -5,6 +5,7 @@ import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.common.mediaitem.MediaItem
 import com.flammky.android.medialib.temp.provider.mediastore.MediaStoreContext
 import com.flammky.android.medialib.temp.provider.mediastore.base.audio.MediaItemAudioFactory
+import kotlin.time.Duration.Companion.milliseconds
 
 internal class MediaItemFactoryAudio28 internal constructor(private val context: MediaStoreContext) :
 	MediaItemAudioFactory<MediaStoreAudioEntity28, MediaStoreAudioFile28, MediaStoreAudioMetadata28, MediaStoreAudioQuery28>(
@@ -34,7 +35,7 @@ internal class MediaItemFactoryAudio28 internal constructor(private val context:
 				setTitle(metadataInfo.title)
 				setAlbum(metadataInfo.album)
 				setArtist(metadataInfo.artist)
-				setDuration(metadataInfo.durationMs)
+				setDuration(metadataInfo.durationMs?.milliseconds)
 				setPlayable((metadataInfo.durationMs ?: 0) > 0)
 				if (bundle != null) setBundle(bundle)
 			}

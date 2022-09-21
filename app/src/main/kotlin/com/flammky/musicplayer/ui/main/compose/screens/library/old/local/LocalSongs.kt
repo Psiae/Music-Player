@@ -36,7 +36,7 @@ import kotlin.time.toDuration
 fun LocalSongItem(
 	model: LibraryViewModelOld.LocalSongModel,
 	onClick: () -> Unit
-)  {
+) {
 	Box(
 		modifier = Modifier
 			.height(60.dp)
@@ -57,11 +57,8 @@ fun LocalSongItem(
 
 			val metadata = model.mediaItem.metadata as AudioMetadata
 
-			val formattedDuration = remember(metadata.durationMs) {
-				val seconds = (metadata.durationMs ?: 0)
-					.toDuration(DurationUnit.MILLISECONDS)
-					.inWholeSeconds
-
+			val formattedDuration = remember(metadata.duration) {
+				val seconds = metadata.duration?.inWholeSeconds ?: 0
 				if (seconds > 3600) {
 					String.format(
 						"%02d:%02d:%02d",
@@ -83,8 +80,7 @@ fun LocalSongItem(
 			ItemTextDescription(
 				modifier = Modifier.weight(1f, true),
 				title = model.displayName,
-				subtitle = "$formattedDuration "
-					+ "$separator ${metadata.artist ?: "<unknown artist>"}",
+				subtitle = "$formattedDuration " + "$separator ${metadata.artist ?: "<unknown artist>"}",
 			)
 
 			Spacer(modifier = Modifier.width(8.dp))
@@ -106,7 +102,7 @@ fun LocalSongItem(
 					.clip(RoundedCornerShape(50))
 					.clickable {
 						Toast
-							.makeText(context, "Coming Soon", Toast.LENGTH_SHORT)
+							.makeText(context.applicationContext, "Coming Soon", Toast.LENGTH_SHORT)
 							.show()
 					}
 					.weight(0.2f, true)

@@ -85,7 +85,7 @@ android {
 
 dependencies {
 
-    implementation(project("MediaLib"))
+    implementation(project("medialib"))
 
     /* Android.material */
     dependencies {

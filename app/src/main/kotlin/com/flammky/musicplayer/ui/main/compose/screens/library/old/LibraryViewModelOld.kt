@@ -3,15 +3,16 @@ package com.flammky.musicplayer.ui.main.compose.screens.library.old
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.os.Bundle
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.media3.common.MediaItem
 import com.flammky.android.app.AppDelegate
 import com.flammky.android.common.kotlin.coroutine.AndroidCoroutineDispatchers
+import com.flammky.android.medialib.common.mediaitem.MediaItem
 import com.flammky.android.medialib.temp.MediaLibrary
 import com.flammky.android.medialib.temp.api.provider.mediastore.MediaStoreProvider
 import com.flammky.android.medialib.temp.image.ArtworkProvider
@@ -57,7 +58,7 @@ class LibraryViewModelOld @Inject constructor(
 	private val onContentChangeListener = MediaStoreProvider.OnContentChangedListener { uris, flag ->
 		if (flag.isDelete()) {
 			viewModelScope.launch(dispatchers.main) {
-				val toRemove = mutableListOf<MediaItem>()
+				val toRemove = mutableListOf<androidx.media3.common.MediaItem>()
 				val items = sessionInteractor.getAllMediaItems()
 
 				uris.forEach { uri -> items.find { it.mediaUri == uri }?.let { toRemove.add(it) } }
@@ -133,7 +134,7 @@ class LibraryViewModelOld @Inject constructor(
 			val factory = mediaStore.audio.mediaItemFactory
 
 			val models = songs.map {
-				LocalSongModel(it.uid, it.metadataInfo.title ?: it.fileInfo.fileName, factory.createMediaItem(it))
+				LocalSongModel(it.uid, it.metadataInfo.title ?: it.fileInfo.fileName, factory.createMediaItem(it, Bundle()))
 			}
 
 			withContext(dispatchers.mainImmediate) {
@@ -204,7 +205,7 @@ class LibraryViewModelOld @Inject constructor(
 
 						BitmapSampler.ByteArray.toSampledBitmap(data, 0, data.size, 2000000)?.let {
 							val reg = cacheManager.registerImageToCache(it, song.uid + song.fileInfo.dateModified, "LibraryViewModel")
-							models[index].mediaItem.bundle?.putString("cachedArtwork", reg.absolutePath)
+							models[index].mediaItem.extra.bundle.putString("cachedArtwork", reg.absolutePath)
 							lruElementToPut = id to it
 							it
 						}
@@ -240,7 +241,7 @@ class LibraryViewModelOld @Inject constructor(
 	data class LocalSongModel(
 		val id: String,
 		val displayName: String,
-		val mediaItem: com.flammky.android.medialib.common.mediaitem.MediaItem
+		val mediaItem: MediaItem
 	) {
 		private object NO_ART
 
@@ -263,9 +264,9 @@ class LibraryViewModelOld @Inject constructor(
 	}
 
 	interface SessionInteractor {
-		fun getAllMediaItems(): List<MediaItem>
-		fun removeMediaItem(item: MediaItem)
-		fun removeMediaItems(items: List<MediaItem>)
+		fun getAllMediaItems(): List<androidx.media3.common.MediaItem>
+		fun removeMediaItem(item: androidx.media3.common.MediaItem)
+		fun removeMediaItems(items: List<androidx.media3.common.MediaItem>)
 		fun pause()
 		suspend fun play(model: LocalSongModel)
 	}

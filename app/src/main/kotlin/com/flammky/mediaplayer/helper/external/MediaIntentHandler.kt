@@ -4,21 +4,22 @@ import android.app.Application
 import android.content.ContentUris
 import android.content.Context
 import android.net.Uri
+import android.os.Bundle
 import android.os.Environment
 import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.widget.Toast
 import androidx.core.net.toUri
-import androidx.media3.common.MediaItem
+import com.flammky.android.common.kotlin.coroutine.AndroidCoroutineDispatchers
+import com.flammky.android.medialib.common.mediaitem.MediaItem
+import com.flammky.android.medialib.temp.provider.mediastore.base.audio.MediaStoreAudioEntity
 import com.flammky.mediaplayer.helper.Preconditions.checkArgument
 import com.flammky.mediaplayer.helper.Preconditions.checkMainThread
 import com.flammky.mediaplayer.helper.external.providers.ContentProvidersHelper
 import com.flammky.mediaplayer.helper.external.providers.DocumentProviderHelper
-import com.flammky.android.common.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.musicplayer.domain.musiclib.core.MusicLibrary
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory
-import com.flammky.android.medialib.temp.provider.mediastore.base.audio.MediaStoreAudioEntity
 import kotlinx.coroutines.*
 import timber.log.Timber
 import java.io.File
@@ -117,7 +118,7 @@ class MediaIntentHandlerImpl(
               Toast.makeText(context, "Unable To Play Media", Toast.LENGTH_LONG).show()
             } else {
               ensureActive()
-              playMediaItem(item, listOf(item), true)
+              playMediaItem(item)
             }
           }
       }
@@ -130,9 +131,9 @@ class MediaIntentHandlerImpl(
     ) {
       checkMainThread()
 			val factory = mediaSource.audio.mediaItemFactory
-      val itemList = list.map { factory.createMediaItem(it) }
+      val itemList = list.map { factory.createMediaItem(it, Bundle()) }
       val item = itemList[list.indexOf(song)]
-      playMediaItem(item.media3, itemList.map { it.media3 }, fadeOut)
+			playMediaItem(item, itemList, fadeOut)
     }
 
     private fun playMediaItem(
@@ -148,6 +149,17 @@ class MediaIntentHandlerImpl(
 				seekToMediaItem(list.indexOf(item), 0L)
 				prepare()
 				play()
+			}
+		}
+
+		private fun playMediaItem(
+			item: androidx.media3.common.MediaItem
+		) {
+			checkMainThread()
+			with(MusicLibrary.api.localAgent.session.player) {
+				stop()
+				seekToDefaultPosition(0)
+				play(item)
 			}
 		}
 

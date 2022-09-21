@@ -29,8 +29,6 @@ import com.flammky.android.medialib.common.mediaitem.MediaItem
 import com.flammky.musicplayer.R
 import com.flammky.musicplayer.ui.main.compose.screens.library.old.LibraryViewModelOld
 import com.flammky.musicplayer.ui.main.compose.theme.color.ColorHelper
-import kotlin.time.DurationUnit
-import kotlin.time.toDuration
 
 @Composable
 fun LocalSongItem(

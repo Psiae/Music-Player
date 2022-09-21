@@ -37,9 +37,9 @@ object MediaItemFactory {
 		return try {
 			mtr.setDataSource(context, uri)
 			val artist =
-				mtr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST) ?: "<Unknown>"
+				mtr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
 			val album =
-				mtr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM) ?: "<Unknown>"
+				mtr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
 			val albumArtist =
 				mtr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST)
 			val title = mtr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
@@ -49,9 +49,8 @@ object MediaItemFactory {
 							cursor.moveToFirst()
 							cursor.getString(cursor.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME))
 						}
-						?: "Unknown"
 				} else {
-					"Unknown"
+					null
 				}
 
 			val mediaId = "${uri.authority}" + "_" + MediaItem.fromUri(uri).hashCode().toString()
@@ -167,4 +166,3 @@ object MediaItemFactory {
 
 	fun MediaItem?.orEmpty() = this ?: EMPTY
 }
-

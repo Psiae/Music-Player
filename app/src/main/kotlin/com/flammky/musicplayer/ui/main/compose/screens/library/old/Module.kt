@@ -7,7 +7,9 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.guava.await
+import kotlinx.coroutines.withContext
 import javax.inject.Singleton
 
 @Module
@@ -40,7 +42,7 @@ object ViewModelModule {
 
 		override suspend fun play(model: LibraryViewModelOld.LocalSongModel) {
 			if (!player.connected) player.connectService().await()
-			player.play( (model.mediaItem) )
+			player.play(model.mediaItem)
 		}
 	}
 }

@@ -1,13 +1,20 @@
 package com.flammky.musicplayer.domain.musiclib.session
 
+import android.os.Handler
+import android.os.Looper
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
+import com.flammky.android.medialib.temp.player.event.IsPlayingChangedReason
 import com.flammky.common.kotlin.comparable.clamp
 import com.flammky.musicplayer.domain.musiclib.entity.PlaybackState
 import com.flammky.musicplayer.domain.musiclib.interactor.LibraryAgent
 import kotlinx.coroutines.*
+import kotlinx.coroutines.android.asCoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import timber.log.Timber
+import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.coroutineContext
 
 class MusicSession(private val agent: LibraryAgent) {
@@ -15,7 +22,7 @@ class MusicSession(private val agent: LibraryAgent) {
 	val player: com.flammky.android.medialib.temp.api.player.MediaController = com.flammky.android.medialib.temp.MediaLibrary.API.sessions.manager.findSessionById("DEBUG")!!.mediaController
 
 	val sessionInfo = object : SessionInfo {
-		val mainScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+		private val scope = CoroutineScope(Dispatchers.Main)
 
 		private val mLoading = MutableStateFlow(false)
 		private val mPlaybackPosition = MutableStateFlow(-1L)
@@ -56,10 +63,16 @@ class MusicSession(private val agent: LibraryAgent) {
 
 				if (new != null) {
 					if (!positionCollectorJob.isActive) {
-						startPositionCollector(0L)
+						startPositionCollector(
+							startPosition = 0L,
+							context = Handler(Looper.myLooper()!!).asCoroutineDispatcher()
+						)
 					}
 					if (!bufferedPositionCollectorJob.isActive) {
-						startBufferedPositionCollector(0L)
+						startBufferedPositionCollector(
+							startPosition = 0L,
+							context = Handler(Looper.myLooper()!!).asCoroutineDispatcher()
+						)
 					}
 				} else {
 					updatePlaybackPosition(0L)
@@ -67,8 +80,13 @@ class MusicSession(private val agent: LibraryAgent) {
 				}
 			}
 
-			override fun onIsPlayingChanged(isPlaying: Boolean, reason: com.flammky.android.medialib.temp.player.event.IsPlayingChangedReason) {
-				if (isPlaying && !positionCollectorJob.isActive) startPositionCollector()
+			override fun onIsPlayingChanged(
+				isPlaying: Boolean,
+				reason: IsPlayingChangedReason
+			) {
+				if (isPlaying && !positionCollectorJob.isActive) {
+					startPositionCollector(context = Handler(Looper.myLooper()!!).asCoroutineDispatcher())
+				}
 			}
 
 			override fun onIsLoadingChanged(isLoading: Boolean) {
@@ -76,7 +94,7 @@ class MusicSession(private val agent: LibraryAgent) {
 				mLoading.value = isLoading
 
 				if (!bufferedPositionCollectorJob.isActive) {
-					startBufferedPositionCollector()
+					startBufferedPositionCollector(context = Handler(Looper.myLooper()!!).asCoroutineDispatcher())
 				}
 			}
 
@@ -88,50 +106,6 @@ class MusicSession(private val agent: LibraryAgent) {
 				updatePlaybackPosition(newPos.positionMs)
 			}
 		}
-
-		/*private val playerListener = object : Player.Listener {
-
-			override fun onPositionDiscontinuity(
-				oldPosition: Player.PositionInfo,
-				newPosition: Player.PositionInfo,
-				reason: Int
-			) {
-				updatePlaybackPosition(newPosition.positionMs)
-			}
-
-			override fun onIsPlayingChanged(isPlaying: Boolean) {
-				if (isPlaying && !positionCollectorJob.isActive) startPositionCollector()
-			}
-
-			override fun onIsLoadingChanged(isLoading: Boolean) {
-				updatePlaybackBufferedPosition(player.bufferedPosition)
-				mLoading.value = isLoading
-
-				if (!bufferedPositionCollectorJob.isActive) {
-					startBufferedPositionCollector()
-				}
-			}
-
-			override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-				cancelPositionCollector()
-				cancelBufferedPositionCollector()
-
-				if (mediaItem != null) {
-					if (!positionCollectorJob.isActive) {
-						startPositionCollector(0L)
-					}
-					if (!bufferedPositionCollectorJob.isActive) {
-						startBufferedPositionCollector(0L)
-					}
-				} else {
-					updatePlaybackPosition(0L)
-					updatePlaybackBufferedPosition(0L)
-				}
-			}
-
-			override fun onTimelineChanged(timeline: Timeline, reason: Int) {
-			}
-		}*/
 
 		init {
 			player.addListener(playerListener)
@@ -145,9 +119,12 @@ class MusicSession(private val agent: LibraryAgent) {
 			mPlaybackBufferedPosition.value = pos.clamp(0L, playbackState.value.duration)
 		}
 
-		private fun startPositionCollector(startPosition: Long = player.positionMs) {
+		private fun startPositionCollector(
+			startPosition: Long = player.positionMs,
+			context: CoroutineContext = scope.coroutineContext
+		) {
 			updatePlaybackPosition(startPosition)
-			positionCollectorJob = mainScope.launch {
+			positionCollectorJob = scope.launch(context) {
 				delay(1000)
 				collectPosition()
 			}
@@ -157,9 +134,12 @@ class MusicSession(private val agent: LibraryAgent) {
 			positionCollectorJob.cancel()
 		}
 
-		private fun startBufferedPositionCollector(startPosition: Long = player.bufferedPositionMs) {
+		private fun startBufferedPositionCollector(
+			startPosition: Long = player.bufferedPositionMs,
+			context: CoroutineContext = scope.coroutineContext
+		) {
 			updatePlaybackBufferedPosition(startPosition)
-			bufferedPositionCollectorJob = mainScope.launch {
+			bufferedPositionCollectorJob = scope.launch(context) {
 				delay(500)
 				collectBufferedPosition()
 			}

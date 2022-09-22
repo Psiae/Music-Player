@@ -129,7 +129,6 @@ class MediaIntentHandlerImpl(
         list: List<MediaStoreAudioEntity>,
         fadeOut: Boolean
     ) {
-      checkMainThread()
 			val factory = mediaSource.audio.mediaItemFactory
       val itemList = list.map { factory.createMediaItem(it, Bundle()) }
       val item = itemList[list.indexOf(song)]
@@ -141,7 +140,6 @@ class MediaIntentHandlerImpl(
       list: List<MediaItem>,
       fadeOut: Boolean
     ) {
-			checkMainThread()
 			with(MusicLibrary.api.localAgent.session.player) {
 				stop()
 				seekToDefaultPosition(0)
@@ -155,7 +153,6 @@ class MediaIntentHandlerImpl(
 		private fun playMediaItem(
 			item: androidx.media3.common.MediaItem
 		) {
-			checkMainThread()
 			with(MusicLibrary.api.localAgent.session.player) {
 				stop()
 				seekToDefaultPosition(0)

@@ -1,9 +1,7 @@
 package com.flammky.android.medialib.temp.media3.internal.mediacontroller
 
 import android.content.ComponentName
-import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
+import android.os.*
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
@@ -25,23 +23,222 @@ import com.flammky.android.medialib.temp.player.playback.RepeatMode.Companion.as
 import com.flammky.android.medialib.temp.util.addListener
 import com.flammky.common.kotlin.comparable.clamp
 import com.google.common.util.concurrent.ListenableFuture
+import kotlinx.coroutines.*
+import kotlinx.coroutines.android.asCoroutineDispatcher
+import timber.log.Timber
 import java.util.concurrent.Executor
 import kotlin.math.min
+import kotlin.time.ExperimentalTime
+import kotlin.time.measureTimedValue
 
 class MediaControllerWrapper internal constructor(
 	private val playerContext: PlayerContext,
 	private val wrapped: WrappedMediaController = WrappedMediaController(playerContext)
-) : LibraryPlayer by wrapped {
+) : LibraryPlayer {
+
+	private val handlerThread = object : HandlerThread("WrapperMediaController") {
+		init { start() }
+	}
+	private val iLooper = handlerThread.looper
+	private val looperDispatcher = Handler(iLooper).asCoroutineDispatcher()
+	private val looperScope = CoroutineScope(looperDispatcher + SupervisorJob())
+
+	override val availableCommands: Player.Commands
+		get() = internalBlocking { wrapped.availableCommands }
+
+	override val playbackParameters: PlaybackParameters
+		get() = internalBlocking { wrapped.playbackParameters }
+
+	override val playWhenReady: Boolean
+		get() = internalBlocking { wrapped.playWhenReady }
+
+	override val playbackState: LibraryPlayer.PlaybackState
+		get() = internalBlocking { wrapped.playbackState }
+
+	override val repeatMode: RepeatMode
+		get() = internalBlocking { wrapped.repeatMode }
+
+	override val isLoading: Boolean
+		get() = internalBlocking { wrapped.isLoading }
+
+	override val isPlaying: Boolean
+		get() = internalBlocking { wrapped.isPlaying }
+
+	override val currentPeriod: Timeline.Period?
+		get() = internalBlocking { wrapped.currentPeriod }
+
+	override val currentPeriodIndex: Int
+		get() = internalBlocking { wrapped.currentPeriodIndex }
+
+	override val timeLine: Timeline
+		get() = internalBlocking { wrapped.timeLine }
+
+	override val mediaItemCount: Int
+		get() = internalBlocking { wrapped.mediaItemCount }
+
+	override val currentMediaItem: MediaItem?
+		get() = internalBlocking { wrapped.currentMediaItem }
+
+	override val currentMediaItemIndex: Int
+		get() = internalBlocking { wrapped.currentMediaItemIndex }
+
+	override val nextMediaItemIndex: Int
+		get() = internalBlocking { wrapped.nextMediaItemIndex }
+
+	override val previousMediaItemIndex: Int
+		get() = internalBlocking { wrapped.previousMediaItemIndex }
+
+	override val positionMs: Long
+		get() = internalBlocking { wrapped.positionMs }
+
+	override val bufferedPositionMs: Long
+		get() = internalBlocking { wrapped.bufferedPositionMs }
+
+	override val bufferedDurationMs: Long
+		get() = internalBlocking { wrapped.bufferedDurationMs }
+
+	override val durationMs: Long
+		get() = internalBlocking { wrapped.durationMs }
+
+	override val contextInfo: PlayerContextInfo
+		get() = internalBlocking { wrapped.contextInfo }
+
+	override val volumeManager: VolumeManager
+		get() = internalBlocking { wrapped.volumeManager }
+
+	override val released: Boolean
+		get() = internalBlocking { wrapped.released }
+
+	override val seekable: Boolean
+		get() = internalBlocking { wrapped.seekable }
+
+	override fun seekToDefaultPosition() {
+		internalPost { wrapped.seekToDefaultPosition() }
+	}
+
+	override fun seekToDefaultPosition(index: Int) {
+		internalPost { wrapped.seekToDefaultPosition(index) }
+	}
+
+	override fun seekToPosition(position: Long) {
+		internalPost { wrapped.seekToPosition(position) }
+	}
+
+	override fun seekToMediaItem(index: Int, startPosition: Long) {
+		internalPost { wrapped.seekToMediaItem(index, startPosition) }
+	}
+
+	override fun seekToPrevious() {
+		internalPost { wrapped.seekToPrevious() }
+	}
+
+	override fun seekToNext() {
+		internalPost { wrapped.seekToNext() }
+	}
+
+	override fun seekToPreviousMediaItem() {
+		internalPost { wrapped.seekToPreviousMediaItem() }
+	}
+
+	override fun seekToNextMediaItem() {
+		internalPost { wrapped.seekToNextMediaItem() }
+	}
+
+	override fun removeMediaItem(item: MediaItem) {
+		internalPost { wrapped.removeMediaItem(item) }
+	}
+
+	override fun removeMediaItems(items: List<MediaItem>) {
+		internalPost { wrapped.removeMediaItems(items) }
+	}
+
+	override fun removeMediaItem(index: Int) {
+		internalPost { wrapped.removeMediaItem(index) }
+	}
+
+	override fun setMediaItems(items: List<com.flammky.android.medialib.common.mediaitem.MediaItem>) {
+		internalPost { wrapped.setMediaItems(items) }
+	}
+
+	override fun play() {
+		internalPost { wrapped.play() }
+	}
+
+	override fun play(item: MediaItem) {
+		internalPost { wrapped.play(item) }
+	}
+
+	override fun play(item: com.flammky.android.medialib.common.mediaitem.MediaItem) {
+		internalPost { wrapped.play(item) }
+	}
+
+	override fun pause() {
+		internalPost { wrapped.pause() }
+	}
+
+	override fun prepare() {
+		internalPost { wrapped.prepare() }
+	}
+
+	override fun stop() {
+		internalPost { wrapped.stop() }
+	}
+
+	override fun addListener(listener: LibraryPlayerEventListener) {
+		internalPost { wrapped.addListener(listener) }
+	}
+
+	override fun removeListener(listener: LibraryPlayerEventListener) {
+		internalPost { wrapped.removeListener(listener) }
+	}
+
+	override fun release() {
+		internalPost { wrapped.release() }
+	}
+
+	override fun getMediaItemAt(index: Int): MediaItem {
+		return internalBlocking { wrapped.getMediaItemAt(index) }
+	}
+
+	override fun getAllMediaItems(limit: Int): List<MediaItem> {
+		return internalBlocking { wrapped.getAllMediaItems(limit) }
+	}
 
 	fun connect(
 		onError: () -> Unit,
 		onConnected: () -> Unit
-	) = wrapped.connectMediaController(onConnected = onConnected, onError = onError)
+	): Unit {
+		looperScope.launch {
+			wrapped.connectMediaController(onError = onError, onConnected = onConnected)
+		}
+	}
 
-	fun isConnected(): Boolean = wrapped.isStateConnected()
+	fun isConnected(): Boolean = internalBlocking { wrapped.isStateConnected() }
+
+	@OptIn(ExperimentalTime::class)
+	private fun <R> internalBlocking(block: () -> R): R {
+		return if (inSync()) {
+			measureTimedValue { block() }.apply {
+				Timber.d("InternalBlocking in Sync took ${duration.inWholeNanoseconds}ns")
+			}.value
+		} else {
+			measureTimedValue { runBlocking(looperDispatcher) { block() } }.apply {
+				Timber.d("InternalBlocking runBlocking took ${duration.inWholeNanoseconds}ns")
+			}.value
+		}
+	}
+
+	private fun internalPost(block: () -> Unit) {
+		if (inSync()) {
+			block()
+		} else {
+			looperScope.launch { block() }
+		}
+	}
+
+	private fun inSync(): Boolean = Looper.myLooper() == iLooper
 
 	internal class WrappedMediaController(private val playerContext: PlayerContext) : LibraryPlayer {
-		private val handler = Handler(playerContext.looper)
 
 		private var future: ListenableFuture<MediaController>? = null
 		private var _mediaController: MediaController? = null
@@ -79,7 +276,7 @@ class MediaControllerWrapper internal constructor(
 
 			try {
 				MediaController.Builder(playerContext.android, sessionToken)
-					.setApplicationLooper(playerContext.looper)
+					.setApplicationLooper(Looper.myLooper()!!)
 					.setConnectionHints(connectionHint)
 					.buildAsync()
 					.addListener(executor) {
@@ -248,10 +445,6 @@ class MediaControllerWrapper internal constructor(
 
 		override fun play(item: MediaItem) {
 			if (isStateConnected()) {
-				if (Looper.myLooper() != playerContext.looper) {
-					handler.postAtFrontOfQueue { play(item) }
-					return
-				}
 				val mc = mediaController
 				if (mc.currentMediaItem?.mediaId != item.mediaId) mc.setMediaItem(item)
 				if (mc.playbackState == Player.STATE_ENDED) mc.seekToDefaultPosition()

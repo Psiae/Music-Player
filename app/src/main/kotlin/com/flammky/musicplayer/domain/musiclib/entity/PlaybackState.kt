@@ -21,6 +21,19 @@ data class PlaybackState(
 	@Player.State val playerState: Int
 ) {
 
+	override fun toString(): String {
+		return """
+			PlaybackState:
+			mediaItem: $mediaItem
+			mediaItems: ${mediaItems.joinToString()}
+			playWhenReady: $playWhenReady
+			playing: $playing
+			duration: $duration
+			repeatMode: $playerRepeatMode
+			playerState: $playerState
+		""".trimIndent()
+	}
+
 	class StateFlow(player: com.flammky.android.medialib.temp.player.LibraryPlayer) : kotlinx.coroutines.flow.StateFlow<PlaybackState> {
 		private val mStateFlow = MutableStateFlow(EMPTY)
 

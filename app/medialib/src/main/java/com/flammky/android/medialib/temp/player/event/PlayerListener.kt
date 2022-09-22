@@ -13,6 +13,7 @@ import com.flammky.android.medialib.temp.player.event.PlayWhenReadyChangedReason
 import com.flammky.android.medialib.temp.player.playback.RepeatMode
 import com.flammky.android.medialib.temp.player.playback.RepeatMode.Companion.asRepeatMode
 import com.flammky.android.medialib.temp.player.playback.RepeatMode.Companion.toRepeatModeInt
+import timber.log.Timber
 
 interface LibraryPlayerEventListener {
 
@@ -109,6 +110,10 @@ interface LibraryPlayerEventListener {
 				private var rememberIsPlaying = player.isPlaying
 				private var rememberTimeline = player.timeLine
 				private var rememberRepeatMode: Int = player.repeatMode.toRepeatModeInt
+
+				override fun onEvents(player: Player, events: Player.Events) {
+
+				}
 
 				override fun onAudioAttributesChanged(audioAttributes: AudioAttributes) {
 					delegated.onAudioAttributesChanged(audioAttributes, audioAttributes)

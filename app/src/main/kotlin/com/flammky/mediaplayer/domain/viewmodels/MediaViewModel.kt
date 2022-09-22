@@ -70,22 +70,24 @@ class MediaViewModel @Inject constructor(
 		pendingStorageIntent.forEachClear(::handleMediaIntent)
 	}
 
-	fun play() = viewModelScope.launch {
+	fun play() {
+		viewModelScope.launch {
 
-		val player = if (!player.connected) {
-			player.connectService().await()
-		} else {
-			player
+			if (!player.connected) {
+				player.connectService().await()
+			}
+
+			when {
+				player.playbackState.isIDLE() -> player.prepare()
+				player.playbackState.isENDED() -> player.seekToDefaultPosition()
+			}
+
+			player.play()
 		}
-
-		when {
-			player.playbackState.isIDLE() -> player.prepare()
-			player.playbackState.isENDED() -> player.seekToDefaultPosition()
-		}
-
-		player.play()
 	}
-	fun pause() = player.pause()
+	fun pause() {
+		viewModelScope.launch { player.pause() }
+	}
 
   fun handleMediaIntent(intent: IntentWrapper) {
     viewModelScope.launch(dispatchers.computation) {
@@ -95,7 +97,7 @@ class MediaViewModel @Inject constructor(
 
   private suspend fun collectPlaybackState() {
     MusicLibrary.api.localAgent.session.info.playbackState.safeCollect { playbackState ->
-			Timber.d("collectPlaybackState")
+			Timber.d("collectPlaybackState: $playbackState")
 
 			val get = playbackControlModel.mediaItem
 

@@ -16,19 +16,16 @@ internal class MediaItemFactoryAudio28 internal constructor(private val context:
 		metadataInfo: MediaStoreAudioMetadata28,
 		metadataBundle: Bundle?
 	): AudioMetadata {
-		return AudioMetadata.Builder()
-			.apply {
-				setTitle(metadataInfo.title)
-				setAlbumTitle(metadataInfo.album)
-				setArtist(metadataInfo.artist)
-				setDuration(metadataInfo.durationMs?.milliseconds)
-				setPlayable((metadataInfo.durationMs ?: 0) > 0)
-				if (metadataBundle != null) {
-					val extra = MediaMetadata.Extra(metadataBundle)
-					setExtra(extra)
-				}
+		return AudioMetadata.build {
+			setTitle(metadataInfo.title)
+			setAlbumTitle(metadataInfo.album)
+			setArtist(metadataInfo.artist)
+			setDuration(metadataInfo.durationMs?.milliseconds)
+			setPlayable((metadataInfo.durationMs ?: 0) > 0)
+			if (metadataBundle != null) {
+				val extra = MediaMetadata.Extra(metadataBundle)
+				setExtra(extra)
 			}
-			.build()
+		}
 	}
-
 }

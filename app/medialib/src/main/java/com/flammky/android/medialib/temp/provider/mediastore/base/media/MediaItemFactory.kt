@@ -24,14 +24,12 @@ abstract class MediaItemFactory<
 	}
 
 	open fun createMetadata(metadataInfo: M, metadataBundle: Bundle?): MediaMetadata {
-		return MediaMetadata.Builder()
-			.apply {
-				setTitle(metadataInfo.title)
-				if (metadataBundle != null) {
-					val extra = MediaMetadata.Extra(metadataBundle)
-					setExtra(extra)
-				}
+		return MediaMetadata.build {
+			setTitle(metadataInfo.title)
+			if (metadataBundle != null) {
+				val extra = MediaMetadata.Extra(metadataBundle)
+				setExtra(extra)
 			}
-			.build()
+		}
 	}
 }

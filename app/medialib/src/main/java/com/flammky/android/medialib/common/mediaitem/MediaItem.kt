@@ -1,5 +1,6 @@
 package com.flammky.android.medialib.common.mediaitem
 
+import android.media.AsyncPlayer
 import android.net.Uri
 import android.os.Bundle
 import com.flammky.android.medialib.context.LibraryContext
@@ -47,7 +48,6 @@ abstract class MediaItem internal constructor() {
 		fun setMediaUri(uri: Uri): Builder
 		fun setMetadata(metadata: MediaMetadata): Builder
 		fun setExtra(extra: Extra): Builder
-
 		fun build(): MediaItem
 	}
 

@@ -5,36 +5,19 @@ import android.os.Looper
 import com.flammky.android.medialib.concurrent.PublicThreadLocked
 import java.util.concurrent.locks.LockSupport
 
-interface ThreadLockedPlayer  : Player, PublicThreadLocked {
+/**
+ * Denotes that the Player is only accessible from certain Thread,
+ *
+ * [publicLooper] is public and `is` Thread-Safe.
+ *
+ * @see [PublicThreadLocked] for extra convenience function
+ */
+interface ThreadLockedPlayer<P: Player> : Player, PublicThreadLocked<P> {
 
+	/**
+	 * The [Looper] to access this Player
+	 *
+	 * @see [Handler]
+	 */
 	val publicLooper: Looper
-	val publicHandler: Handler
-
-	override fun post(block: () -> Unit): Unit {
-		publicHandler.post { block() }
-	}
-
-	override fun <R> postListen(block: () -> R, listener: (R) -> Unit)  {
-		publicHandler.post { listener(block()) }
-	}
-
-	override fun <R> joinBlocking(block: () -> R): R {
-		return if (Looper.myLooper() == publicLooper) {
-			block()
-		} else {
-			val hold = Any()
-			val thread = Thread.currentThread()
-			var result: Any? = hold
-
-			postListen(block) {
-				result = it
-				LockSupport.unpark(thread)
-			}
-
-			while (result === hold) LockSupport.park()
-
-			return result as R
-			/*runBlocking(publicHandler.asCoroutineDispatcher()) { block() }*/
-		}
-	}
 }

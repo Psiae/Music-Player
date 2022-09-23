@@ -27,6 +27,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.android.asCoroutineDispatcher
 import timber.log.Timber
 import java.util.concurrent.Executor
+import java.util.concurrent.locks.LockSupport
 import kotlin.math.min
 import kotlin.time.ExperimentalTime
 import kotlin.time.measureTimedValue
@@ -34,16 +35,18 @@ import kotlin.time.measureTimedValue
 class MediaControllerWrapper internal constructor(
 	private val playerContext: PlayerContext,
 	private val wrapped: WrappedMediaController = WrappedMediaController(playerContext)
-) : ThreadLockedPlayer {
+) : ThreadLockedPlayer<MediaControllerWrapper> {
 
 	private val handlerThread = object : HandlerThread("WrapperMediaController") {
 		init { start() }
 	}
 	private val looperDispatcher = Handler(handlerThread.looper).asCoroutineDispatcher()
-	private val looperScope = CoroutineScope(looperDispatcher + SupervisorJob())
+
+	private val looperImmediateScope = CoroutineScope(
+		context = looperDispatcher.immediate + SupervisorJob()
+	)
 
 	override val publicLooper: Looper = handlerThread.looper
-	override val publicHandler: Handler = Handler(publicLooper)
 
 	override val availableCommands: Player.Commands
 		get() = joinBlocking { wrapped.availableCommands }
@@ -115,87 +118,87 @@ class MediaControllerWrapper internal constructor(
 		get() = joinBlocking { wrapped.seekable }
 
 	override fun seekToDefaultPosition() {
-		internalPost { wrapped.seekToDefaultPosition() }
+		this.post { wrapped.seekToDefaultPosition() }
 	}
 
 	override fun seekToDefaultPosition(index: Int) {
-		internalPost { wrapped.seekToDefaultPosition(index) }
+		this.post { wrapped.seekToDefaultPosition(index) }
 	}
 
 	override fun seekToPosition(position: Long) {
-		internalPost { wrapped.seekToPosition(position) }
+		this.post { wrapped.seekToPosition(position) }
 	}
 
 	override fun seekToMediaItem(index: Int, startPosition: Long) {
-		internalPost { wrapped.seekToMediaItem(index, startPosition) }
+		this.post { wrapped.seekToMediaItem(index, startPosition) }
 	}
 
 	override fun seekToPrevious() {
-		internalPost { wrapped.seekToPrevious() }
+		this.post { wrapped.seekToPrevious() }
 	}
 
 	override fun seekToNext() {
-		internalPost { wrapped.seekToNext() }
+		this.post { wrapped.seekToNext() }
 	}
 
 	override fun seekToPreviousMediaItem() {
-		internalPost { wrapped.seekToPreviousMediaItem() }
+		this.post { wrapped.seekToPreviousMediaItem() }
 	}
 
 	override fun seekToNextMediaItem() {
-		internalPost { wrapped.seekToNextMediaItem() }
+		this.post { wrapped.seekToNextMediaItem() }
 	}
 
 	override fun removeMediaItem(item: MediaItem) {
-		internalPost { wrapped.removeMediaItem(item) }
+		this.post { wrapped.removeMediaItem(item) }
 	}
 
 	override fun removeMediaItems(items: List<MediaItem>) {
-		internalPost { wrapped.removeMediaItems(items) }
+		this.post { wrapped.removeMediaItems(items) }
 	}
 
 	override fun removeMediaItem(index: Int) {
-		internalPost { wrapped.removeMediaItem(index) }
+		this.post { wrapped.removeMediaItem(index) }
 	}
 
 	override fun setMediaItems(items: List<com.flammky.android.medialib.common.mediaitem.MediaItem>) {
-		internalPost { wrapped.setMediaItems(items) }
+		this.post { wrapped.setMediaItems(items) }
 	}
 
 	override fun play() {
-		internalPost { wrapped.play() }
+		this.post { wrapped.play() }
 	}
 
 	override fun play(item: MediaItem) {
-		internalPost { wrapped.play(item) }
+		this.post { wrapped.play(item) }
 	}
 
 	override fun play(item: com.flammky.android.medialib.common.mediaitem.MediaItem) {
-		internalPost { wrapped.play(item) }
+		this.post { wrapped.play(item) }
 	}
 
 	override fun pause() {
-		internalPost { wrapped.pause() }
+		this.post { wrapped.pause() }
 	}
 
 	override fun prepare() {
-		internalPost { wrapped.prepare() }
+		this.post { wrapped.prepare() }
 	}
 
 	override fun stop() {
-		internalPost { wrapped.stop() }
+		this.post { wrapped.stop() }
 	}
 
 	override fun addListener(listener: LibraryPlayerEventListener) {
-		internalPost { wrapped.addListener(listener) }
+		this.post { wrapped.addListener(listener) }
 	}
 
 	override fun removeListener(listener: LibraryPlayerEventListener) {
-		internalPost { wrapped.removeListener(listener) }
+		this.post { wrapped.removeListener(listener) }
 	}
 
 	override fun release() {
-		internalPost { wrapped.release() }
+		this.post { wrapped.release() }
 	}
 
 	override fun getMediaItemAt(index: Int): MediaItem {
@@ -210,37 +213,108 @@ class MediaControllerWrapper internal constructor(
 		onError: () -> Unit,
 		onConnected: () -> Unit
 	): Unit {
-		looperScope.launch {
+		looperImmediateScope.launch {
 			wrapped.connectMediaController(onError = onError, onConnected = onConnected)
 		}
 	}
 
 	fun isConnected(): Boolean = joinBlocking { wrapped.isStateConnected() }
 
+	override fun post(block: MediaControllerWrapper.() -> Unit) {
+		if (joined()) {
+			block()
+		} else {
+			looperImmediateScope.launch { block() }
+		}
+	}
+
+	override fun <R> postListen(block: MediaControllerWrapper.() -> R, listener: (R) -> Unit) {
+		if (joined()) {
+			block()
+		} else {
+			looperImmediateScope.launch { listener(block()) }
+		}
+	}
 
 	@OptIn(ExperimentalTime::class)
-	override fun <R> joinBlocking(block: () -> R): R {
+	override fun <R> joinBlockingSuspend(block: suspend MediaControllerWrapper.() -> R): R {
 		return if (joined()) {
 			measureTimedValue {
-				super.joinBlocking(block)
+				var r: Any? = Unit
+				looperImmediateScope.launch { r = block() }
+				r as R
+			}.apply {
+				Timber.d("joinBlockingSuspend in Sync took ${duration.inWholeNanoseconds}ns")
+			}.value
+		} else {
+			measureTimedValue {
+				runBlocking(looperDispatcher.immediate) {
+					block()
+				}
+			}.apply {
+				Timber.d("joinBlockingSuspend runBlocking took ${duration.inWholeNanoseconds}ns")
+			}.value
+		}
+
+
+
+		return measureTimedValue {
+			var r: Any? = Unit
+			looperImmediateScope.launch {
+				delay(100)
+				r = block()
+			}
+			r as R
+		}.apply {
+			Timber.d("joinBlockingSuspend in Sync took ${duration.inWholeNanoseconds}ns")
+		}.value
+	}
+
+	@OptIn(ExperimentalTime::class)
+	override suspend fun <R> joinSuspending(block: suspend MediaControllerWrapper.() -> R): R {
+		return if (joined()) {
+			measureTimedValue {
+				block()
+			}.apply {
+				Timber.d("joinSuspend in Sync took ${duration.inWholeNanoseconds}ns")
+			}.value
+		} else {
+			measureTimedValue {
+				withContext(looperDispatcher.immediate) { block() }
+			}.apply {
+				Timber.d("joinSuspend withContext took ${duration.inWholeNanoseconds}ns")
+			}.value
+		}
+	}
+
+	@OptIn(ExperimentalTime::class)
+	override fun <R> joinBlocking(block: MediaControllerWrapper.() -> R): R {
+		return if (joined()) {
+			measureTimedValue {
+				block()
 			}.apply {
 				Timber.d("joinBlocking in Sync took ${duration.inWholeNanoseconds}ns")
 			}.value
 		} else {
 			measureTimedValue {
-				// should we do recursive call?
-				super.joinBlocking(block)
+				val hold = Any()
+				val thread = Thread.currentThread()
+				var result: Any? = hold
+
+				postListen(block) {
+					result = it
+					LockSupport.unpark(thread)
+				}
+
+				while (result === hold) LockSupport.park(this)
+
+				result as R
+
+				// should we just use runBlocking instead?
+				/*runBlocking(publicHandler.asCoroutineDispatcher()) { block() }*/
 			}.apply {
 				Timber.d("joinBlocking runBlocking took ${duration.inWholeNanoseconds}ns")
 			}.value
-		}
-	}
-
-	private fun internalPost(block: () -> Unit) {
-		if (joined()) {
-			block()
-		} else {
-			looperScope.launch { block() }
 		}
 	}
 

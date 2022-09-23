@@ -41,8 +41,10 @@ object ViewModelModule {
 		}
 
 		override suspend fun play(model: LibraryViewModelOld.LocalSongModel) {
-			if (!player.connected) player.connectService().await()
-			player.play(model.mediaItem)
+			player.joinSuspending {
+				if (!player.connected) player.connectService().await()
+				player.play(model.mediaItem)
+			}
 		}
 	}
 }

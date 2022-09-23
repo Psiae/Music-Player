@@ -11,7 +11,6 @@ import kotlinx.coroutines.Deferred
  */
 interface AsyncPlayer : Player {
 
-
 	fun prepareAsync(): Deferred<Unit>
 	fun playAsync(): Deferred<Unit>
 	fun pauseAsync(): Deferred<Unit>

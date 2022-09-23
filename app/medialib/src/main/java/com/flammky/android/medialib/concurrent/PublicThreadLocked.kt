@@ -3,7 +3,7 @@ package com.flammky.android.medialib.concurrent
 /**
  * Instance is not Thread-safe and must only be accessed from certain Thread or Event Loop
  */
-interface PublicThreadLocked {
+interface PublicThreadLocked<out T: Any> {
 
 	/**
 	 * Queue the block to be executed internally without blocking,
@@ -12,8 +12,10 @@ interface PublicThreadLocked {
 	 *
 	 * @see postListen
 	 * @see joinBlocking
+	 * @see joinBlockingSuspend
+	 * @see joinSuspending
 	 */
-	fun post(block: () -> Unit)
+	fun post(block: T.() -> Unit)
 
 	/**
 	 * Queue the block to be executed internally without blocking,
@@ -22,18 +24,53 @@ interface PublicThreadLocked {
 	 *
 	 * @see post
 	 * @see joinBlocking
+	 * @see joinBlockingSuspend
+	 * @see joinSuspending
 	 */
-	fun <R> postListen(block: () -> R, listener: (R) -> Unit)
+	fun <R> postListen(block: T.() -> R, listener: (R) -> Unit)
 
 	/**
 	 * Block the current Thread until block is done executed internally,
 	 *
 	 * allows the caller to get results with cost of being blocked.
 	 *
-	 * this function must be re-entrant
+	 * this function must be re-entrant meaning recalling this function from within does not
+	 * cause deadlocks
 	 *
 	 * @see post
 	 * @see postListen
+	 * @see joinBlockingSuspend
+	 * @see joinSuspending
 	 */
-	fun <R> joinBlocking(block: () -> R): R
+	fun <R> joinBlocking(block: T.() -> R): R
+
+	/**
+	 * Block the current Thread until block is done executed internally,
+	 *
+	 * allows the caller to get results with cost of being blocked.
+	 *
+	 * this function must be re-entrant meaning recalling this function from within does not
+	 * cause deadlocks
+	 *
+	 * @see post
+	 * @see postListen
+	 * @see joinBlocking
+	 * @see joinSuspending
+	 */
+	fun <R> joinBlockingSuspend(block: suspend T.() -> R): R
+
+	/**
+	 * Block the current Thread until block is done executed internally,
+	 *
+	 * allows the caller to get results with cost of being blocked.
+	 *
+	 * this function must be re-entrant meaning recalling this function from within does not
+	 * cause deadlocks
+	 *
+	 * @see post
+	 * @see postListen
+	 * @see joinBlocking
+	 * @see joinBlockingSuspend
+	 */
+	suspend fun <R> joinSuspending(block: suspend T.() -> R): R
 }

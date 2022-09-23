@@ -71,18 +71,15 @@ class MediaViewModel @Inject constructor(
 	}
 
 	fun play() {
-		viewModelScope.launch {
-
+		player.joinBlockingSuspend {
 			if (!player.connected) {
 				player.connectService().await()
 			}
-
 			when {
-				player.playbackState.isIDLE() -> player.prepare()
-				player.playbackState.isENDED() -> player.seekToDefaultPosition()
+				playbackState.isIDLE() -> player.prepare()
+				playbackState.isENDED() -> player.seekToDefaultPosition()
 			}
-
-			player.play()
+			play()
 		}
 	}
 	fun pause() {

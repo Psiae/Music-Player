@@ -8,10 +8,8 @@ import kotlin.time.Duration
 /**
  * root Interface for a Player.
  *
- * Implementations are mostly not Thread-Safe but Properties annotated with @JvmField
- * must be safe to be called from any Thread.
- *
  * @see [AsyncPlayer]
+ * @see [ThreadLockedPlayer]
  */
 
 interface Player {

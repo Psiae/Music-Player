@@ -1,5 +1,7 @@
 package com.flammky.android.medialib.concurrent
 
+import com.flammky.android.medialib.errorprone.UnsafeBySuspend
+
 /**
  * Instance is not Thread-safe and must only be accessed from certain Thread or Event Loop
  */
@@ -49,14 +51,19 @@ interface PublicThreadLocked<out T: Any> {
 	 *
 	 * allows the caller to get results with cost of being blocked.
 	 *
-	 * this function must be re-entrant meaning recalling this function from within does not
-	 * cause deadlocks
+	 * this function must be re-entrant meaning recalling this function from within
+	 * does not cause deadlocks
+	 *
+	 * + no guarantees if you lock yourself externally
 	 *
 	 * @see post
 	 * @see postListen
 	 * @see joinBlocking
 	 * @see joinSuspending
 	 */
+
+	// maybe we should just not include this.
+	@UnsafeBySuspend
 	fun <R> joinBlockingSuspend(block: suspend T.() -> R): R
 
 	/**

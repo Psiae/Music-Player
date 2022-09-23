@@ -76,6 +76,15 @@ dependencies {
         val v = "5.0.1"
         implementation("com.jakewharton.timber:timber:$v")
     }
+
+    dependencies {
+        val lintVersion = "30.4.0-alpha02"
+        compileOnly("com.android.tools.lint:lint-api:$lintVersion")
+        compileOnly("com.android.tools.lint:lint-checks:$lintVersion")
+    }
+
+    lintChecks(project("lint"))
+    lintPublish(project("lint"))
 }
 
 fun getProp(file: File): Properties {

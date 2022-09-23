@@ -1,5 +1,6 @@
 package com.flammky.android.medialib.temp.media3.internal.mediacontroller
 
+import android.annotation.SuppressLint
 import android.content.ComponentName
 import android.os.*
 import androidx.media3.common.MediaItem
@@ -9,6 +10,7 @@ import androidx.media3.common.Timeline
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.flammky.android.medialib.common.mediaitem.RealMediaItem
+import com.flammky.android.medialib.errorprone.UnsafeBySuspend
 import com.flammky.android.medialib.media3.Media3Item
 import com.flammky.android.medialib.temp.player.LibraryPlayer
 import com.flammky.android.medialib.temp.player.LibraryPlayer.PlaybackState.Companion.asPlaybackState
@@ -230,18 +232,22 @@ class MediaControllerWrapper internal constructor(
 
 	override fun <R> postListen(block: MediaControllerWrapper.() -> R, listener: (R) -> Unit) {
 		if (joined()) {
-			block()
+			listener(block())
 		} else {
 			looperImmediateScope.launch { listener(block()) }
 		}
 	}
 
 	@OptIn(ExperimentalTime::class)
+	@UnsafeBySuspend
 	override fun <R> joinBlockingSuspend(block: suspend MediaControllerWrapper.() -> R): R {
 		return if (joined()) {
 			measureTimedValue {
 				var r: Any? = Unit
+
+				// we are already synchronized but we promise a suspend function so ¯\_(ツ)_/¯
 				looperImmediateScope.launch { r = block() }
+
 				r as R
 			}.apply {
 				Timber.d("joinBlockingSuspend in Sync took ${duration.inWholeNanoseconds}ns")
@@ -255,19 +261,6 @@ class MediaControllerWrapper internal constructor(
 				Timber.d("joinBlockingSuspend runBlocking took ${duration.inWholeNanoseconds}ns")
 			}.value
 		}
-
-
-
-		return measureTimedValue {
-			var r: Any? = Unit
-			looperImmediateScope.launch {
-				delay(100)
-				r = block()
-			}
-			r as R
-		}.apply {
-			Timber.d("joinBlockingSuspend in Sync took ${duration.inWholeNanoseconds}ns")
-		}.value
 	}
 
 	@OptIn(ExperimentalTime::class)

@@ -8,6 +8,8 @@ import java.util.concurrent.locks.LockSupport
 /**
  * Denotes that the Player is only accessible from certain Thread,
  *
+ * doing otherwise will result in either an exception or thread blocking
+ *
  * [publicLooper] is public and `is` Thread-Safe.
  *
  * @see [PublicThreadLocked] for extra convenience function

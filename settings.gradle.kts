@@ -18,4 +18,4 @@ dependencyResolutionManagement {
 rootProject.name = "MusicPlayer"
 include (":app")
 include(":app:medialib")
-include(":medialib")
+include(":app:medialib:lint")

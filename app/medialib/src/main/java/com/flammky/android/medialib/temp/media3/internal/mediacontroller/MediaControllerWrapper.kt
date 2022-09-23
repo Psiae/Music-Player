@@ -34,83 +34,85 @@ import kotlin.time.measureTimedValue
 class MediaControllerWrapper internal constructor(
 	private val playerContext: PlayerContext,
 	private val wrapped: WrappedMediaController = WrappedMediaController(playerContext)
-) : LibraryPlayer {
+) : ThreadLockedPlayer {
 
 	private val handlerThread = object : HandlerThread("WrapperMediaController") {
 		init { start() }
 	}
-	private val iLooper = handlerThread.looper
-	private val looperDispatcher = Handler(iLooper).asCoroutineDispatcher()
+	private val looperDispatcher = Handler(handlerThread.looper).asCoroutineDispatcher()
 	private val looperScope = CoroutineScope(looperDispatcher + SupervisorJob())
 
+	override val publicLooper: Looper = handlerThread.looper
+	override val publicHandler: Handler = Handler(publicLooper)
+
 	override val availableCommands: Player.Commands
-		get() = internalBlocking { wrapped.availableCommands }
+		get() = joinBlocking { wrapped.availableCommands }
 
 	override val playbackParameters: PlaybackParameters
-		get() = internalBlocking { wrapped.playbackParameters }
+		get() = joinBlocking { wrapped.playbackParameters }
 
 	override val playWhenReady: Boolean
-		get() = internalBlocking { wrapped.playWhenReady }
+		get() = joinBlocking { wrapped.playWhenReady }
 
 	override val playbackState: LibraryPlayer.PlaybackState
-		get() = internalBlocking { wrapped.playbackState }
+		get() = joinBlocking { wrapped.playbackState }
 
 	override val repeatMode: RepeatMode
-		get() = internalBlocking { wrapped.repeatMode }
+		get() = joinBlocking { wrapped.repeatMode }
 
 	override val isLoading: Boolean
-		get() = internalBlocking { wrapped.isLoading }
+		get() = joinBlocking { wrapped.isLoading }
 
 	override val isPlaying: Boolean
-		get() = internalBlocking { wrapped.isPlaying }
+		get() = joinBlocking { wrapped.isPlaying }
 
 	override val currentPeriod: Timeline.Period?
-		get() = internalBlocking { wrapped.currentPeriod }
+		get() = joinBlocking { wrapped.currentPeriod }
 
 	override val currentPeriodIndex: Int
-		get() = internalBlocking { wrapped.currentPeriodIndex }
+		get() = joinBlocking { wrapped.currentPeriodIndex }
 
 	override val timeLine: Timeline
-		get() = internalBlocking { wrapped.timeLine }
+		get() = joinBlocking { wrapped.timeLine }
 
 	override val mediaItemCount: Int
-		get() = internalBlocking { wrapped.mediaItemCount }
+		get() = joinBlocking { wrapped.mediaItemCount }
 
 	override val currentMediaItem: MediaItem?
-		get() = internalBlocking { wrapped.currentMediaItem }
+		get() = joinBlocking { wrapped.currentMediaItem }
 
 	override val currentMediaItemIndex: Int
-		get() = internalBlocking { wrapped.currentMediaItemIndex }
+		get() = joinBlocking { wrapped.currentMediaItemIndex }
 
 	override val nextMediaItemIndex: Int
-		get() = internalBlocking { wrapped.nextMediaItemIndex }
+		get() = joinBlocking { wrapped.nextMediaItemIndex }
 
 	override val previousMediaItemIndex: Int
-		get() = internalBlocking { wrapped.previousMediaItemIndex }
+		get() = joinBlocking { wrapped.previousMediaItemIndex }
 
 	override val positionMs: Long
-		get() = internalBlocking { wrapped.positionMs }
+		get() = joinBlocking { wrapped.positionMs }
 
 	override val bufferedPositionMs: Long
-		get() = internalBlocking { wrapped.bufferedPositionMs }
+		get() = joinBlocking { wrapped.bufferedPositionMs }
 
 	override val bufferedDurationMs: Long
-		get() = internalBlocking { wrapped.bufferedDurationMs }
+		get() = joinBlocking { wrapped.bufferedDurationMs }
 
 	override val durationMs: Long
-		get() = internalBlocking { wrapped.durationMs }
+		get() = joinBlocking { wrapped.durationMs }
 
 	override val contextInfo: PlayerContextInfo
-		get() = internalBlocking { wrapped.contextInfo }
+		get() = joinBlocking { wrapped.contextInfo }
 
 	override val volumeManager: VolumeManager
-		get() = internalBlocking { wrapped.volumeManager }
+		get() = joinBlocking { wrapped.volumeManager }
 
 	override val released: Boolean
-		get() = internalBlocking { wrapped.released }
+		get() = joinBlocking { wrapped.released }
 
 	override val seekable: Boolean
-		get() = internalBlocking { wrapped.seekable }
+		get() = joinBlocking { wrapped.seekable }
 
 	override fun seekToDefaultPosition() {
 		internalPost { wrapped.seekToDefaultPosition() }
@@ -197,11 +199,11 @@ class MediaControllerWrapper internal constructor(
 	}
 
 	override fun getMediaItemAt(index: Int): MediaItem {
-		return internalBlocking { wrapped.getMediaItemAt(index) }
+		return joinBlocking { wrapped.getMediaItemAt(index) }
 	}
 
 	override fun getAllMediaItems(limit: Int): List<MediaItem> {
-		return internalBlocking { wrapped.getAllMediaItems(limit) }
+		return joinBlocking { wrapped.getAllMediaItems(limit) }
 	}
 
 	fun connect(
@@ -213,31 +215,39 @@ class MediaControllerWrapper internal constructor(
 		}
 	}
 
-	fun isConnected(): Boolean = internalBlocking { wrapped.isStateConnected() }
+	fun isConnected(): Boolean = joinBlocking { wrapped.isStateConnected() }
+
 
 	@OptIn(ExperimentalTime::class)
-	private fun <R> internalBlocking(block: () -> R): R {
-		return if (inSync()) {
-			measureTimedValue { block() }.apply {
-				Timber.d("InternalBlocking in Sync took ${duration.inWholeNanoseconds}ns")
+	override fun <R> joinBlocking(block: () -> R): R {
+		return if (joined()) {
+			measureTimedValue {
+				super.joinBlocking(block)
+			}.apply {
+				Timber.d("joinBlocking in Sync took ${duration.inWholeNanoseconds}ns")
 			}.value
 		} else {
-			measureTimedValue { runBlocking(looperDispatcher) { block() } }.apply {
-				Timber.d("InternalBlocking runBlocking took ${duration.inWholeNanoseconds}ns")
+			measureTimedValue {
+				// should we do recursive call?
+				super.joinBlocking(block)
+			}.apply {
+				Timber.d("joinBlocking runBlocking took ${duration.inWholeNanoseconds}ns")
 			}.value
 		}
 	}
 
 	private fun internalPost(block: () -> Unit) {
-		if (inSync()) {
+		if (joined()) {
 			block()
 		} else {
 			looperScope.launch { block() }
 		}
 	}
 
-	private fun inSync(): Boolean = Looper.myLooper() == iLooper
-
+	/**
+	 * check if we are already inside internal looper, to avoid deadlock on call to runBlocking
+	 */
+	private fun joined(): Boolean = Looper.myLooper() == publicLooper
 	internal class WrappedMediaController(private val playerContext: PlayerContext) : LibraryPlayer {
 
 		private var future: ListenableFuture<MediaController>? = null

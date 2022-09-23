@@ -1,14 +1,13 @@
 package com.flammky.android.medialib.common.mediaitem
 
-import android.media.AsyncPlayer
 import android.net.Uri
 import android.os.Bundle
+import com.flammky.android.medialib.common.mediaitem.MediaItem.Companion
 import com.flammky.android.medialib.context.LibraryContext
 
 /**
  * MediaItem Container, internal Implementations are thread-safe.
  *
- * @see [AudioMetadata]
  * @see [Companion.build] to build instances
  */
 abstract class MediaItem internal constructor() {
@@ -25,6 +24,8 @@ abstract class MediaItem internal constructor() {
 
 	/**
 	 * Metadata Information
+	 *
+	 * @see [MediaMetadata]
 	 */
 	abstract val metadata: MediaMetadata
 
@@ -69,6 +70,11 @@ abstract class MediaItem internal constructor() {
 		fun build(context: LibraryContext, apply: Builder.() -> Unit): MediaItem {
 			return RealMediaItem.build(context.internal.mediaItemBuilder, apply)
 		}
+
+		@JvmStatic
+		fun LibraryContext.buildMediaItem(apply: Builder.() -> Unit): MediaItem {
+			return build(this, apply)
+		}
 	}
 }
 
@@ -80,6 +86,7 @@ internal data class RealMediaItem @Suppress("DataClassPrivateConstructor") priva
 	private val internalBuilder: InternalBuilder
 ) : MediaItem() {
 
+	// calling copy will recreate this instance
 	internal val internalItem: InternalMediaItem = internalBuilder.build(this)
 
 	class Builder internal constructor(

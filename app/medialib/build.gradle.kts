@@ -48,6 +48,8 @@ android {
 
 dependencies {
 
+    implementation(project("lint"))
+
     implementation("androidx.core:core-ktx:1.9.0-alpha01")
     implementation("androidx.appcompat:appcompat:1.5.1")
     implementation("com.google.android.material:material:1.6.1")

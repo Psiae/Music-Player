@@ -84,6 +84,15 @@ android {
 dependencies {
 
     implementation(project("medialib"))
+    implementation(project("medialib:lint"))
+    lintChecks(project("medialib:lint"))
+    lintPublish(project("medialib:lint"))
+
+    dependencies {
+        val lintVersion = "30.4.0-alpha02"
+        compileOnly("com.android.tools.lint:lint-api:$lintVersion")
+        compileOnly("com.android.tools.lint:lint-checks:$lintVersion")
+    }
 
     /* Android.material */
     dependencies {

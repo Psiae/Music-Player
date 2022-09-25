@@ -34,7 +34,12 @@ internal class ApiContext private constructor(
 			object : LibraryContext(
 				object : InternalLibraryContext {
 					override val mediaItemBuilder = InternalMediaItem.Builder { extra, mediaId, uri, metadata ->
-						Media3Item.Builder.build(extra, mediaId, uri, metadata)
+						Media3Item.build(mediaId) {
+							setExtra(extra)
+							setUri(uri)
+							setMetadata(metadata)
+							build()
+						}
 					}
 				}
 			) {}

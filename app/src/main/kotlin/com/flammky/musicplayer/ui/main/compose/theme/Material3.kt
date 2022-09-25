@@ -6,14 +6,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.google.accompanist.systemuicontroller.rememberSystemUiController
-import com.google.android.material.color.DynamicColors
 import com.flammky.musicplayer.core.sdk.VersionHelper
 import com.flammky.musicplayer.ui.main.compose.theme.color.ColorHelper
 import com.flammky.musicplayer.ui.main.compose.theme.text.MainTypography
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import com.google.android.material.color.DynamicColors
 
 @Composable
 fun MainMaterial3Theme(

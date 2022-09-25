@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -346,11 +347,7 @@ private fun LocalSongLists() {
 			.fillMaxSize()
 			.background(
 				color = with(MaterialTheme.colorScheme.background) {
-					val factor = 0.8f
-					val r = red * factor
-					val g = green * factor
-					val b = blue * factor
-					copy(1f, r, g, b)
+					copy(alpha = 0.97f).compositeOver(Color.Black)
 				}
 			),
 	) {
@@ -373,7 +370,7 @@ private fun LocalSongListsColumn(
 		indicatorPadding = PaddingValues(top = 10.dp)
 	) {
 		LazyColumn(
-			verticalArrangement = Arrangement.spacedBy(1.dp)
+			verticalArrangement = Arrangement.spacedBy(4.dp)
 		) {
 
 			val localSongs = vm.localSongs.toList()

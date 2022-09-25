@@ -13,7 +13,37 @@ import com.flammky.android.medialib.common.mediaitem.MediaMetadata
  */
 internal class Media3Item private constructor(internal val item: MediaItem) : InternalMediaItem() {
 
-	object Builder : InternalMediaItem.Builder {
+	class Builder(mediaId: String) : InternalMediaItem.Builder {
+
+		var extra: Extra = Extra.UNSET
+			private set
+
+		var mediaId: String = mediaId
+			private set
+
+		var uri: Uri = Uri.EMPTY
+			private set
+
+		var metadata: MediaMetadata =  MediaMetadata.UNSET
+			private set
+
+		fun setExtra(extra: Extra) = apply {
+			this.extra = extra
+		}
+
+		fun setMediaId(mediaId: String) = apply {
+			this.mediaId = mediaId
+		}
+
+		fun setUri(uri: Uri) = apply {
+			this.uri = uri
+		}
+
+		fun setMetadata(metadata: MediaMetadata) = apply {
+			this.metadata = metadata
+		}
+
+		fun build(): Media3Item = build(extra, mediaId, uri, metadata)
 
 		override fun build(
 			extra: Extra,
@@ -43,6 +73,13 @@ internal class Media3Item private constructor(internal val item: MediaItem) : In
 				}.build())
 			}.build()
 			return Media3Item(item)
+		}
+	}
+
+	companion object {
+		@JvmStatic
+		fun build(mediaId: String, apply: Builder.() -> Media3Item): Media3Item {
+			return Builder(mediaId).apply { apply() }.build()
 		}
 	}
 }

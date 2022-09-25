@@ -34,7 +34,14 @@ abstract class MediaItem internal constructor() {
 	 */
 	abstract val extra: Extra
 
-	class Extra(val bundle: Bundle = Bundle())
+	class Extra(val bundle: Bundle = Bundle()) {
+
+		companion object {
+
+			@JvmStatic
+			val UNSET = Extra()
+		}
+	}
 
 	/**
 	 * Builder Interface for MediaItem
@@ -71,10 +78,13 @@ abstract class MediaItem internal constructor() {
 			return RealMediaItem.build(context.internal.mediaItemBuilder, apply)
 		}
 
+		/**
+		 * Build MediaItem using given [LibraryContext]
+		 *
+		 * @return instance of [MediaItem]
+		 */
 		@JvmStatic
-		fun LibraryContext.buildMediaItem(apply: Builder.() -> Unit): MediaItem {
-			return build(this, apply)
-		}
+		fun LibraryContext.buildMediaItem(apply: Builder.() -> Unit): MediaItem = build(this, apply)
 	}
 }
 
@@ -108,12 +118,15 @@ internal data class RealMediaItem @Suppress("DataClassPrivateConstructor") priva
 		override fun setMediaId(id: String) = apply {
 			this.mediaId = id
 		}
+
 		override fun setMediaUri(uri: Uri) = apply {
 			this.mediaUri = uri
 		}
+
 		override fun setMetadata(metadata: MediaMetadata) = apply {
 			this.metadata = metadata
 		}
+
 		override fun setExtra(extra: Extra): MediaItem.Builder = apply {
 			this.extra = extra
 		}

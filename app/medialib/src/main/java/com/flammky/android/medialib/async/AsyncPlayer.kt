@@ -1,6 +1,5 @@
 package com.flammky.android.medialib.async
 
-import com.flammky.android.medialib.common.mediaitem.MediaItem
 import com.flammky.android.medialib.player.Player
 import kotlinx.coroutines.Deferred
 

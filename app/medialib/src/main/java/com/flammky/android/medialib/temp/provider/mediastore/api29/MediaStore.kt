@@ -12,9 +12,9 @@ import androidx.annotation.RequiresApi
 import com.flammky.android.core.sdk.VersionHelper
 import com.flammky.common.kotlin.time.annotation.DurationValue
 import com.flammky.android.medialib.temp.provider.mediastore.base.BaseColumns
-import com.flammky.musicplayer.domain.musiclib.annotation.OnlyAPI
-import com.flammky.musicplayer.domain.musiclib.annotation.StorageDataUnit
-import com.flammky.musicplayer.domain.musiclib.annotation.StorageDataValue
+import com.flammky.android.medialib.temp.annotation.OnlyAPI
+import com.flammky.android.medialib.temp.annotation.StorageDataUnit
+import com.flammky.android.medialib.temp.annotation.StorageDataValue
 import java.util.concurrent.TimeUnit
 
 

@@ -4,8 +4,5 @@ import java.io.Closeable
 
 object CloseableUtil {
 
-	inline fun <C: Closeable>C.applyClose(apply: C.() -> Unit): C = use {
-		apply()
-		this
-	}
+	inline fun <C: Closeable, R> C.applyUse(apply: C.() -> R): R = use(apply)
 }

@@ -1,4 +1,4 @@
-package com.flammky.musicplayer.domain.musiclib.annotation
+package com.flammky.android.medialib.temp.annotation
 
 @Target(AnnotationTarget.PROPERTY, AnnotationTarget.PROPERTY_GETTER)
 annotation class StorageDataValue(val unit: StorageDataUnit)

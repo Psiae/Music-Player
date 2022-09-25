@@ -88,11 +88,25 @@ interface Player {
 	val state: State
 
 	/**
-	 *
+	 * Commands the player to prepare resources and start playback
 	 */
 	fun play()
+
+	/**
+	 * Commands the player to prepare resources
+	 */
 	fun prepare()
+
+	/**
+	 * Commands the player to pause playback
+	 */
 	fun pause()
+
+	/**
+	 * Commands the player to release resources and stop playback
+	 *
+	 * resources needs to be prepared in order to start playback again
+	 */
 	fun stop()
 
 	/**

@@ -1,6 +1,9 @@
 package com.flammky.android.medialib.lint
 
 import com.android.tools.lint.detector.api.*
+import com.flammky.android.medialib.lint.kt.KtModifiers
+import org.jetbrains.kotlin.asJava.elements.KtLightModifierList
+import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.uast.*
 import org.jetbrains.uast.kotlin.KotlinUParameter
 
@@ -34,31 +37,42 @@ object UnsafeBySuspend {
             usageInfo: AnnotationUsageInfo
         ) {
 
-            element.getParentOfType<UMethod>()?.let { function ->
-                if (function.uAnnotations.any { it.qualifiedName == ANNOTATION }) return
-            }
+            val method = element.getParentOfType<UMethod>()
 
-            // TODO: Find KtModifierListOwner that has `suspend` modifier available
+            if (method is UMethod) {
+                element.getParentOfType<UMethod>()?.let { function ->
+                    if (function.uAnnotations.any { it.qualifiedName == ANNOTATION }) return
+                }
+
+                val modifierList = method.modifierList
+                val modifiers = modifierList as? KtLightModifierList<*>
+
+                if (modifiers?.kotlinOrigin?.hasModifier(KtTokens.SUSPEND_KEYWORD) == true) {
+                    reportIssue(context, usageInfo.usage)
+                }
+            }
 
             val lambda = element.getParentOfType<ULambdaExpression>()
             if (lambda is ULambdaExpression
-                && lambda.parameters
-                    .any { param -> param is KotlinUParameter
-                            && param.type.equalsToText("kotlinx.coroutines.CoroutineScope")
-                    }
+                && lambda.parameters.any { param -> param is KotlinUParameter
+                        && param.type.equalsToText("kotlinx.coroutines.CoroutineScope")
+                }
             ) {
-                context.report(
-                    issue = ISSUE,
-                    scope = usageInfo.usage,
-                    location = context.getNameLocation(usageInfo.usage),
-                    message = """
+                reportIssue(context, usageInfo.usage)
+            }
+        }
+
+
+        private fun reportIssue(context: JavaContext, scope: UElement) {
+            context.report(
+                issue = ISSUE,
+                scope = scope,
+                location = context.getNameLocation(scope),
+                message = """
 					        This function should not be called from a `suspend` function.
 					        Please refer to the documentation
 				        """
-                )
-            }
+            )
         }
     }
 }
-
-

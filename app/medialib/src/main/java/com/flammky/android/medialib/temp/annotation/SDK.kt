@@ -1,4 +1,4 @@
-package com.flammky.musicplayer.domain.musiclib.annotation
+package com.flammky.android.medialib.temp.annotation
 
 import androidx.annotation.IntRange
 

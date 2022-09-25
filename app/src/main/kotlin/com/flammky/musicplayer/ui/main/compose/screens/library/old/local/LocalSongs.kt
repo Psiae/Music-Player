@@ -14,9 +14,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -95,7 +97,8 @@ fun LocalSongItem(
 			Box(
 				modifier = Modifier
 					.align(Alignment.CenterVertically)
-					.size(48.dp)
+					.fillMaxHeight()
+					.aspectRatio(1f, true)
 					.padding(5.dp)
 					.clip(RoundedCornerShape(50))
 					.clickable {
@@ -105,10 +108,11 @@ fun LocalSongItem(
 					}
 					.weight(0.2f, true)
 			) {
+
 				Icon(
 					modifier = Modifier
 						.align(Alignment.Center)
-						.fillMaxSize(0.8f),
+						.fillMaxSize(0.5f),
 					painter = painterResource(id = id),
 					contentDescription = "More",
 				)

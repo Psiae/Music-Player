@@ -1,6 +1,7 @@
 package com.flammky.mediaplayer.domain.viewmodels
 
 import androidx.annotation.MainThread
+import androidx.compose.material3.MaterialTheme
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
@@ -82,6 +83,8 @@ class MediaViewModel @Inject constructor(
 			play()
 		}
 	}
+
+
 	fun pause() {
 		viewModelScope.launch { player.pause() }
 	}

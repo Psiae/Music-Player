@@ -1,21 +1,20 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 buildscript {
-    val kotlin_version by extra("1.7.10")
+    val vKotlin = "1.7.10"
     dependencies {
         classpath("com.google.dagger:hilt-android-gradle-plugin:2.42")
         classpath("org.jetbrains.kotlin:kotlin-serialization:1.7.10")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$vKotlin")
     }
     repositories {
         mavenCentral()
     }
-
-
 }
 
 plugins {
     id("com.android.application") version "7.3.0" apply false
     id("com.android.library") version "7.3.0" apply false
+    id("com.google.devtools.ksp") version "1.7.10-1.0.6"
     id("org.jetbrains.kotlin.android") version "1.7.10" apply false
     id("org.jetbrains.kotlin.plugin.serialization") version "1.7.10"
     id("org.jetbrains.kotlin.jvm") version "1.7.10" apply false

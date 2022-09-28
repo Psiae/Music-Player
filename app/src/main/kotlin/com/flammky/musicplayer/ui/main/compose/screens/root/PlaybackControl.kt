@@ -31,7 +31,6 @@ import coil.compose.AsyncImage
 import coil.request.CachePolicy
 import coil.request.ImageRequest
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
-import com.flammky.android.medialib.common.mediaitem.PlaybackMetadata
 import com.google.accompanist.placeholder.placeholder
 import com.flammky.mediaplayer.domain.viewmodels.MainViewModel
 import com.flammky.mediaplayer.domain.viewmodels.MediaViewModel
@@ -451,7 +450,7 @@ class PlaybackControlModel() {
 		mPlaybackTitle.value = metadata.title ?: ""
 
 		if (metadata is AudioMetadata) {
-			mPlaybackArtist.value = metadata.artist ?: metadata.albumArtist ?: ""
+			mPlaybackArtist.value = metadata.artistName ?: metadata.albumArtistName ?: ""
 		}
 	}
 

@@ -27,7 +27,8 @@ class ExoPlayerContext private constructor(
 	 * @see [Builder.library]
 	 */
 	override val library: LibraryContext
-	) : LibPlayerContext() {
+
+) : LibPlayerContext() {
 
 	override val android: AndroidContext = library.android
 

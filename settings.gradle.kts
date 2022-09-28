@@ -19,3 +19,4 @@ rootProject.name = "MusicPlayer"
 include (":app")
 include(":app:medialib")
 include(":app:medialib:lint")
+include(":library")

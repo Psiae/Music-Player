@@ -58,7 +58,7 @@ internal class Media3Item private constructor(internal val item: MediaItem) : In
 
 				if (metadata is AudioMetadata) type.append("audio;")
 				if (metadata is PlaybackMetadata) type.append("playback;")
-				if (metadata is BaseMediaMetadata) type.append("base;")
+				type.append("base;")
 
 				internalBundle.putBundle("nest", extra.bundle)
 				internalBundle.putString("mediaMetadataType", type.toString())
@@ -68,10 +68,8 @@ internal class Media3Item private constructor(internal val item: MediaItem) : In
 				setRequestMetadata(RequestMetadata.Builder().setMediaUri(uri).setExtras(internalBundle).build())
 				setMediaMetadata(androidx.media3.common.MediaMetadata.Builder().apply {
 
-					if (metadata is BaseMediaMetadata) {
-						setTitle(metadata.title)
-						setExtras(metadata.extra?.bundle)
-					}
+					setTitle(metadata.title)
+					setExtras(metadata.extra?.bundle)
 
 					if (metadata is PlaybackMetadata) {
 						setIsPlayable(metadata.playable)
@@ -86,8 +84,8 @@ internal class Media3Item private constructor(internal val item: MediaItem) : In
 							}
 						}
 						if (metadata is AudioMetadata) {
-							setArtist(metadata.artist)
-							setAlbumArtist(metadata.albumArtist)
+							setArtist(metadata.artistName)
+							setAlbumArtist(metadata.albumArtistName)
 							setAlbumTitle(metadata.albumTitle)
 						}
 					}

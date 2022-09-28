@@ -6,7 +6,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("dagger.hilt.android.plugin")
-    id("kotlin-kapt")
+    id("com.google.devtools.ksp")
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
@@ -194,7 +194,7 @@ dependencies {
 
         implementation("androidx.room:room-runtime:$v")
         implementation("androidx.room:room-ktx:$v")
-        kapt("androidx.room:room-compiler:$v")
+        ksp("androidx.room:room-compiler:$v")
     }
 
     /* Androidx.startup */
@@ -257,7 +257,7 @@ dependencies {
         // Hilt-Android
         val vHiltAndroid = "2.43.2"
         implementation("com.google.dagger:hilt-android:$vHiltAndroid")
-        kapt("com.google.dagger:hilt-android-compiler:$vHiltAndroid")
+        ksp("com.google.dagger:hilt-android-compiler:$vHiltAndroid")
     }
 
     /* Google.firebase */

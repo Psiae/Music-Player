@@ -14,11 +14,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -80,7 +78,7 @@ fun LocalSongItem(
 			ItemTextDescription(
 				modifier = Modifier.weight(1f, true),
 				title = model.displayName,
-				subtitle = "$formattedDuration " + "$separator ${metadata.artist ?: "<unknown artist>"}",
+				subtitle = "$formattedDuration " + "$separator ${metadata.artistName ?: "<unknown artist>"}",
 			)
 
 			Spacer(modifier = Modifier.width(8.dp))

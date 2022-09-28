@@ -1,12 +1,11 @@
 package com.flammky.android.medialib.media3
 
 import android.net.Uri
+import android.os.Bundle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaItem.RequestMetadata
-import com.flammky.android.medialib.common.mediaitem.AudioMetadata
-import com.flammky.android.medialib.common.mediaitem.InternalMediaItem
+import com.flammky.android.medialib.common.mediaitem.*
 import com.flammky.android.medialib.common.mediaitem.MediaItem.Extra
-import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 
 /**
  * Class that represents [MediaItem] from androidx.media3 package
@@ -53,23 +52,45 @@ internal class Media3Item private constructor(internal val item: MediaItem) : In
 		): Media3Item {
 			// TODO: Factory
 			val item = MediaItem.Builder().apply {
+
+				val internalBundle = Bundle()
+				val type = StringBuilder()
+
+				if (metadata is AudioMetadata) type.append("audio;")
+				if (metadata is PlaybackMetadata) type.append("playback;")
+				if (metadata is BaseMediaMetadata) type.append("base;")
+
+				internalBundle.putBundle("nest", extra.bundle)
+				internalBundle.putString("mediaMetadataType", type.toString())
+
 				setMediaId(mediaId)
 				setUri(uri)
-				setRequestMetadata(RequestMetadata.Builder().setMediaUri(uri).setExtras(extra.bundle).build())
+				setRequestMetadata(RequestMetadata.Builder().setMediaUri(uri).setExtras(internalBundle).build())
 				setMediaMetadata(androidx.media3.common.MediaMetadata.Builder().apply {
-					val audioMetadata = metadata as AudioMetadata
-					setArtist(audioMetadata.artist)
-					setAlbumArtist(audioMetadata.albumArtist)
-					setAlbumTitle(audioMetadata.albumTitle)
-					setTitle(audioMetadata.title)
-					setIsPlayable(audioMetadata.playable)
 
-					metadata.extra?.bundle?.apply {
-						putString("durationMs", "${audioMetadata.duration?.inWholeMilliseconds}")
-						putString("bitrate", "${audioMetadata.bitrate}")
-						setExtras(this)
+					if (metadata is BaseMediaMetadata) {
+						setTitle(metadata.title)
+						setExtras(metadata.extra?.bundle)
 					}
 
+					if (metadata is PlaybackMetadata) {
+						setIsPlayable(metadata.playable)
+						metadata.extra?.bundle?.apply {
+
+							if (metadata.duration != null) {
+								putString("durationMs", "${metadata.duration.inWholeMilliseconds}")
+							}
+
+							if (metadata.bitrate != null) {
+								putString("bitrate", "${metadata.bitrate}")
+							}
+						}
+						if (metadata is AudioMetadata) {
+							setArtist(metadata.artist)
+							setAlbumArtist(metadata.albumArtist)
+							setAlbumTitle(metadata.albumTitle)
+						}
+					}
 				}.build())
 			}.build()
 			return Media3Item(item)
@@ -78,8 +99,8 @@ internal class Media3Item private constructor(internal val item: MediaItem) : In
 
 	companion object {
 		@JvmStatic
-		fun build(mediaId: String, apply: Builder.() -> Media3Item): Media3Item {
-			return Builder(mediaId).apply { apply() }.build()
+		fun build(mediaId: String, apply: Builder.() -> Unit): Media3Item {
+			return Builder(mediaId).apply(apply).build()
 		}
 	}
 }

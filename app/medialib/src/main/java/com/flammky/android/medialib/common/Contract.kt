@@ -1,6 +1,7 @@
 package com.flammky.android.medialib.common
 
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 // Contract or Constants ?
@@ -9,4 +10,6 @@ object Contract {
 
 	val DURATION_UNSET: Duration = (-1).seconds
 	val DURATION_INDEFINITE: Duration = Duration.INFINITE
+
+	val POSITION_UNSET: Duration = (-1).milliseconds
 }

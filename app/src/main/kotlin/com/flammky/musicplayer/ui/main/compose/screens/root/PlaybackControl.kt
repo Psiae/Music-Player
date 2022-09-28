@@ -30,6 +30,8 @@ import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
 import coil.request.CachePolicy
 import coil.request.ImageRequest
+import com.flammky.android.medialib.common.mediaitem.AudioMetadata
+import com.flammky.android.medialib.common.mediaitem.PlaybackMetadata
 import com.google.accompanist.placeholder.placeholder
 import com.flammky.mediaplayer.domain.viewmodels.MainViewModel
 import com.flammky.mediaplayer.domain.viewmodels.MediaViewModel
@@ -441,13 +443,20 @@ class PlaybackControlModel() {
 	var mediaItem: MediaItem = MediaItem.EMPTY
 		private set
 
+	var actualMediaItem: com.flammky.android.medialib.common.mediaitem.MediaItem = com.flammky.android.medialib.common.mediaitem.MediaItem.UNSET
+		private set
+	fun updateMediaItem(item: com.flammky.android.medialib.common.mediaitem.MediaItem) {
+		actualMediaItem = item
+		val metadata = item.metadata
+		mPlaybackTitle.value = metadata.title ?: ""
+
+		if (metadata is AudioMetadata) {
+			mPlaybackArtist.value = metadata.artist ?: metadata.albumArtist ?: ""
+		}
+	}
+
 
 	fun updateBy(state: PlaybackState) {
-		val item = state.mediaItem
-		val metadata = item.mediaMetadata
-		mediaItem = item
-		mPlaybackTitle.value = (metadata.title ?: metadata.albumTitle ?: "").toString()
-		mPlaybackArtist.value = (metadata.artist ?: metadata.albumArtist ?: "").toString()
 		mPlaybackDuration.value = state.duration
 		mPlayAvailable.value = !state.playWhenReady
 		mShowPlay.value = (!state.playing && (!state.playerState.isStateBuffering() && !state.playWhenReady ))

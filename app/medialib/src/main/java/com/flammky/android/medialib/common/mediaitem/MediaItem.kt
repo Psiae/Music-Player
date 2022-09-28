@@ -4,6 +4,7 @@ import android.net.Uri
 import android.os.Bundle
 import com.flammky.android.medialib.common.mediaitem.MediaItem.Companion
 import com.flammky.android.medialib.context.LibraryContext
+import com.flammky.android.medialib.context.internal.InternalLibraryContext
 
 /**
  * MediaItem Container, internal Implementations are thread-safe.
@@ -34,12 +35,16 @@ abstract class MediaItem internal constructor() {
 	 */
 	abstract val extra: Extra
 
+	/**
+	 * Class for containing extra configuration
+	 */
 	class Extra(val bundle: Bundle = Bundle()) {
 
 		companion object {
+			fun Bundle.toMediaItemExtra(): Extra = Extra(this)
 
 			@JvmStatic
-			val UNSET = Extra()
+			val UNSET = Extra(Bundle.EMPTY)
 		}
 	}
 
@@ -75,7 +80,8 @@ abstract class MediaItem internal constructor() {
 		 */
 		@JvmStatic
 		fun build(context: LibraryContext, apply: Builder.() -> Unit): MediaItem {
-			return RealMediaItem.build(context.internal.mediaItemBuilder, apply)
+			val internal = context as InternalLibraryContext
+			return RealMediaItem.build(internal.mediaItemBuilder, apply)
 		}
 
 		/**
@@ -96,12 +102,10 @@ internal data class RealMediaItem @Suppress("DataClassPrivateConstructor") priva
 	private val internalBuilder: InternalBuilder
 ) : MediaItem() {
 
-	// calling copy will recreate this instance
+	// calling copy will also recreate this instance
 	internal val internalItem: InternalMediaItem = internalBuilder.build(this)
 
-	class Builder internal constructor(
-		private val internalBuilder: InternalMediaItem.Builder
-	): MediaItem.Builder {
+	class Builder internal constructor(private val internalBuilder: InternalMediaItem.Builder): MediaItem.Builder {
 
 		override var mediaId: String = ""
 			private set

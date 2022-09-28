@@ -5,16 +5,15 @@ import android.os.Looper
 import com.flammky.android.medialib.concurrent.PublicThreadLocked
 import java.util.concurrent.locks.LockSupport
 
+typealias PlayerThreadLocked = ThreadLockedPlayer<Player>
+
 /**
- * Denotes that the Player is only accessible from certain Thread,
- *
- * doing otherwise will result in either an exception or thread blocking
- *
- * [publicLooper] is public and `is` Thread-Safe.
+ * The Player is only accessible from certain Thread, doing otherwise will result in
+ * either an exception or thread blocking
  *
  * @see [PublicThreadLocked] for extra convenience function
  */
-interface ThreadLockedPlayer<P: Player> : Player, PublicThreadLocked<P> {
+interface ThreadLockedPlayer<out P: Player> : Player, PublicThreadLocked<P> {
 
 	/**
 	 * The [Looper] to access this Player

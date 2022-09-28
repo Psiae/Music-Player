@@ -4,6 +4,10 @@ import android.os.Looper
 import androidx.media3.common.AudioAttributes
 import androidx.media3.exoplayer.LoadControl
 import com.flammky.android.common.broadcast.ContextBroadcastManager
+import com.flammky.android.medialib.common.mediaitem.InternalMediaItem
+import com.flammky.android.medialib.context.AndroidContext
+import com.flammky.android.medialib.context.internal.InternalLibraryContext
+import com.flammky.android.medialib.media3.Media3Item
 import com.flammky.android.medialib.temp.internal.MediaLibraryContext
 import com.flammky.android.medialib.temp.player.component.AudioRerouteHandler
 import com.flammky.android.medialib.temp.player.options.FallbackInfo
@@ -17,6 +21,19 @@ internal class PlayerContext private constructor(
 	val handleAudioReroute: Pair<Boolean, AudioRerouteHandler?>,
 	val playbackControlInfo: PlaybackControlInfo
 ) {
+
+	val libContext = object : InternalLibraryContext() {
+		override val mediaItemBuilder = InternalMediaItem.Builder { extra, mediaId, uri, metadata ->
+			Media3Item.build(mediaId) {
+				setExtra(extra)
+				setUri(uri)
+				setMetadata(metadata)
+			}
+		}
+		override val android = AndroidContext(libraryContext.android)
+	}
+
+
 
 	val android
 		get() = libraryContext.android

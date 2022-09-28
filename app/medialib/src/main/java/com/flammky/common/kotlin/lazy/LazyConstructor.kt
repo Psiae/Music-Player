@@ -9,7 +9,7 @@ import androidx.annotation.GuardedBy
 class LazyConstructor<T> @JvmOverloads constructor(lock: Any = Any()) : Lazy<T> {
 
 	/**
-	 * Placeholder Object, delegated value may be null
+	 * Placeholder Object
 	 */
 	private object UNSET
 
@@ -61,7 +61,11 @@ class LazyConstructor<T> @JvmOverloads constructor(lock: Any = Any()) : Lazy<T> 
 	 * Null if not yet initialized
 	 */
 	val valueOrNull: T?
-		get() = try { value } catch (e: IllegalStateException) { null }
+		get() = if (isConstructed()) {
+			castValue
+		} else {
+			null
+		}
 
 	/**
 	 *  Whether [localValue] is already initialized

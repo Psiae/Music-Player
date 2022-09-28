@@ -54,26 +54,27 @@ object MediaItemFactory {
 				}
 
 			val mediaId = "${uri.authority}" + "_" + MediaItem.fromUri(uri).hashCode().toString()
+			MediaItem.Builder().apply {
 
-			val metadata = MediaMetadata.Builder()
-				.setArtist(artist)
-				.setAlbumTitle(album)
-				.setAlbumArtist(albumArtist)
-				.setDisplayTitle(title)
-				.setTitle(title)
-				.build()
+				val internalBundle = Bundle()
+				val type = StringBuilder()
 
-			val reqMetadata = RequestMetadata.Builder()
-				.setMediaUri(uri)
-				.build()
+				type.append("audio;")
+				type.append("playback;")
+				type.append("base;")
 
-			MediaItem.Builder()
-				.setUri(uri)
-				.setMediaId(mediaId)
-				.setMediaMetadata(metadata)
-				.setRequestMetadata(reqMetadata)
-				.build()
+				internalBundle.putString("mediaMetadataType", type.toString())
 
+				setMediaId(mediaId)
+				setUri(uri)
+				setRequestMetadata(RequestMetadata.Builder().setMediaUri(uri).setExtras(internalBundle).build())
+				setMediaMetadata(androidx.media3.common.MediaMetadata.Builder().apply {
+					setTitle(title)
+					setArtist(artist)
+					setAlbumArtist(albumArtist)
+					setAlbumTitle(album)
+				}.build())
+			}.build()
 		} catch (e: Exception) {
 			Timber.w("Failed To Build MediaItem from Uri: $uri \n${e}")
 			EMPTY

@@ -41,6 +41,7 @@ class MediaViewModel @Inject constructor(
 
 	private val positionStateFlow = MusicLibrary.api.localAgent.session.info.playbackPosition
 	private val bufferedPositionStateFlow = MusicLibrary.api.localAgent.session.info.playbackBufferedPosition
+	private val itemStateFlow = MusicLibrary.api.localAgent.session.info.playbackItem
 
 	private val player = MusicLibrary.api.localAgent.session.player
 
@@ -63,6 +64,18 @@ class MediaViewModel @Inject constructor(
 		viewModelScope.launch(dispatchers.main) {
 			bufferedPositionStateFlow.safeCollect {
 				playbackControlModel.updateBufferedPosition(it)
+			}
+		}
+		viewModelScope.launch(dispatchers.main) {
+			itemStateFlow.safeCollect {
+				val get = playbackControlModel.actualMediaItem
+
+				if (get != it) {
+					playbackControlModel.updateArt(null)
+					dispatchUpdateItemBitmap(it)
+				}
+
+				playbackControlModel.updateMediaItem(it)
 			}
 		}
 	}
@@ -98,21 +111,13 @@ class MediaViewModel @Inject constructor(
   private suspend fun collectPlaybackState() {
     MusicLibrary.api.localAgent.session.info.playbackState.safeCollect { playbackState ->
 			Timber.d("collectPlaybackState: $playbackState")
-
-			val get = playbackControlModel.mediaItem
-
-			if (get !== playbackState.mediaItem) {
-				playbackControlModel.updateArt(null)
-				dispatchUpdateItemBitmap(playbackState.mediaItem)
-			}
-
 			playbackControlModel.updateBy(playbackState)
     }
   }
 
   @OptIn(ExperimentalTime::class)
 	@MainThread
-  suspend fun dispatchUpdateItemBitmap(item: MediaItem) {
+  suspend fun dispatchUpdateItemBitmap(item: com.flammky.android.medialib.common.mediaitem.MediaItem) {
 		updateArtJob.cancel()
     updateArtJob = ioScope.launch {
 			ensureActive()
@@ -126,11 +131,7 @@ class MediaViewModel @Inject constructor(
 
 			try {
 
-				Timber.d("itemHasExtra: ${item.mediaMetadata.extras}")
-
-				val bitmap = item.mediaMetadata.extras?.getString("cachedArtwork")?.let { file ->
-					coilHelper.loadBitmap(File(file), 500 ,500)
-				} ?: itemHelper.getEmbeddedPicture(item)?.let { bytes ->
+				val bitmap = itemHelper.getEmbeddedPicture(item.mediaUri)?.let { bytes ->
 					coilHelper.loadBitmap(bytes, 500 ,500)
 				}
 

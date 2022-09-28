@@ -1,6 +1,5 @@
-package com.flammky.android.medialib.async
+package com.flammky.android.medialib.player
 
-import com.flammky.android.medialib.player.PlayerController
 import kotlinx.coroutines.Deferred
 
 interface AsyncPlayerController : PlayerController, AsyncPlayer {

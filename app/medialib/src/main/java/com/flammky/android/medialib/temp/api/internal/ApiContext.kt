@@ -31,18 +31,16 @@ internal class ApiContext private constructor(
 	val mediaProviders: RealMediaProviders = RealMediaProviders(
 		ProvidersContext(
 			android,
-			object : LibraryContext(
-				object : InternalLibraryContext {
-					override val mediaItemBuilder = InternalMediaItem.Builder { extra, mediaId, uri, metadata ->
-						Media3Item.build(mediaId) {
-							setExtra(extra)
-							setUri(uri)
-							setMetadata(metadata)
-							build()
-						}
+			object : InternalLibraryContext() {
+				override val mediaItemBuilder = InternalMediaItem.Builder { extra, mediaId, uri, metadata ->
+					Media3Item.build(mediaId) {
+						setExtra(extra)
+						setUri(uri)
+						setMetadata(metadata)
 					}
 				}
-			) {}
+				override val android = com.flammky.android.medialib.context.AndroidContext(this@ApiContext.android)
+			}
 		)
 	)
 

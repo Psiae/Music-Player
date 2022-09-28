@@ -2,7 +2,6 @@ package com.flammky.android.medialib.player
 
 import com.flammky.android.medialib.common.Contract
 import com.flammky.android.medialib.common.mediaitem.MediaItem
-import com.flammky.android.medialib.async.AsyncPlayer
 import kotlin.time.Duration
 
 /**
@@ -15,7 +14,6 @@ import kotlin.time.Duration
 interface Player {
 
 	// Playback Properties
-	// should we wrap it in a class or create separate interface instead or keep it as is ?
 
 	/**
 	 * The current buffered position.
@@ -88,6 +86,15 @@ interface Player {
 	val state: State
 
 	/**
+	 * Whether The Player is already fully Released.
+	 *
+	 * In this case the Player will ignore all commands received.
+	 *
+	 * player should no longer be used nor referenced so it can be garbage-collected.
+	 */
+	val isReleased: Boolean
+
+	/**
 	 * Commands the player to prepare resources and start playback
 	 */
 	fun play()
@@ -108,6 +115,18 @@ interface Player {
 	 * resources needs to be prepared in order to start playback again
 	 */
 	fun stop()
+
+	/**
+	 * Fully release any resources within.
+	 *
+	 * When called any external commands will be ignored.
+	 *
+	 * Player should no longer be used nor referenced after calling this function so it can be
+	 * garbage collected
+	 *
+	 * @see isReleased
+	 */
+	fun release()
 
 	/**
 	 * The State, this interface is sealed with open child for convenience
@@ -143,6 +162,17 @@ interface Player {
 		open class ERROR : State
 
 		companion object {
+			@JvmStatic
+			val IDLE = State.IDLE()
+			@JvmStatic
+			val BUFFERING = State.BUFFERING()
+			@JvmStatic
+			val READY = State.READY()
+			@JvmStatic
+			val ENDED = State.ENDED()
+			@JvmStatic
+			val ERROR = State.ERROR()
+
 			@JvmStatic fun State.isIdle() = this is IDLE
 			@JvmStatic fun State.isBuffering() = this is BUFFERING
 			@JvmStatic fun State.isReady() = this is READY

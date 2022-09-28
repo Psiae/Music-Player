@@ -1,8 +1,10 @@
 package com.flammky.android.medialib.temp.media3.internal.mediacontroller
 
-import android.annotation.SuppressLint
 import android.content.ComponentName
-import android.os.*
+import android.os.Bundle
+import android.os.Handler
+import android.os.HandlerThread
+import android.os.Looper
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
@@ -30,7 +32,7 @@ import kotlinx.coroutines.android.asCoroutineDispatcher
 import timber.log.Timber
 import java.util.concurrent.Executor
 import java.util.concurrent.locks.LockSupport
-import kotlin.coroutines.coroutineContext
+import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.math.min
 import kotlin.time.ExperimentalTime
 import kotlin.time.measureTimedValue
@@ -239,44 +241,25 @@ class MediaControllerWrapper internal constructor(
 		}
 	}
 
-	@OptIn(ExperimentalTime::class)
 	@UnsafeBySuspend
 	override fun <R> joinBlockingSuspend(block: suspend MediaControllerWrapper.() -> R): R {
-		return if (joined()) {
-			measureTimedValue {
-				var r: Any? = Unit
-
-				// we are already synchronized but we promise a suspend function so ¯\_(ツ)_/¯
-				looperImmediateScope.launch { r = block() }
-
-				r as R
-			}.apply {
-				Timber.d("joinBlockingSuspend in Sync took ${duration.inWholeNanoseconds}ns")
-			}.value
-		} else {
-			measureTimedValue {
-				runBlocking(looperDispatcher.immediate) {
-					block()
-				}
-			}.apply {
-				Timber.d("joinBlockingSuspend runBlocking took ${duration.inWholeNanoseconds}ns")
-			}.value
-		}
+		val context = if (joined()) EmptyCoroutineContext else looperDispatcher.immediate
+		return runBlocking(context) { block() }
 	}
 
 	@OptIn(ExperimentalTime::class)
-	override suspend fun <R> joinSuspending(block: suspend MediaControllerWrapper.() -> R): R {
+	override suspend fun <R> joinSuspend(block: suspend MediaControllerWrapper.() -> R): R {
 		return if (joined()) {
 			measureTimedValue {
 				block()
 			}.apply {
-				Timber.d("joinSuspend in Sync took ${duration.inWholeNanoseconds}ns")
+				Timber.d("joinSuspend in Sync took ${duration.inWholeMilliseconds}ms")
 			}.value
 		} else {
 			measureTimedValue {
 				withContext(looperDispatcher.immediate) { block() }
 			}.apply {
-				Timber.d("joinSuspend withContext took ${duration.inWholeNanoseconds}ns")
+				Timber.d("joinSuspend withContext took ${duration.inWholeNanoseconds}ms")
 			}.value
 		}
 	}
@@ -287,7 +270,7 @@ class MediaControllerWrapper internal constructor(
 			measureTimedValue {
 				block()
 			}.apply {
-				Timber.d("joinBlocking in Sync took ${duration.inWholeNanoseconds}ns")
+				Timber.d("joinBlocking in Sync took ${duration.inWholeMilliseconds}ms")
 			}.value
 		} else {
 			measureTimedValue {
@@ -303,11 +286,8 @@ class MediaControllerWrapper internal constructor(
 				while (result === hold) LockSupport.park(this)
 
 				result as R
-
-				// should we just use runBlocking instead?
-				/*runBlocking(publicHandler.asCoroutineDispatcher()) { block() }*/
 			}.apply {
-				Timber.d("joinBlocking runBlocking took ${duration.inWholeNanoseconds}ns")
+				Timber.d("joinBlocking out Sync took ${duration.inWholeMilliseconds}ms")
 			}.value
 		}
 	}

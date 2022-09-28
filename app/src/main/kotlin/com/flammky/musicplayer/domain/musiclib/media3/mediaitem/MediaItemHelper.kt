@@ -23,7 +23,7 @@ class MediaItemHelper @Inject constructor(
 		getEmbeddedPicture(it)
 	}
 
-	private fun getEmbeddedPicture(uri: Uri): ByteArray? =
+	 fun getEmbeddedPicture(uri: Uri): ByteArray? =
         MediaItemFactory.getEmbeddedImage(context, uri)
 
 	init {

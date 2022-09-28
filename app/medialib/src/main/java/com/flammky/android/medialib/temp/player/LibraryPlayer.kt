@@ -31,6 +31,7 @@ interface LibraryPlayer {
 	val timeLine: Timeline
 	val mediaItemCount: Int
 	val currentMediaItem: androidx.media3.common.MediaItem?
+
 	val currentMediaItemIndex: Int
 	val nextMediaItemIndex: Int
 	val previousMediaItemIndex: Int

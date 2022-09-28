@@ -13,6 +13,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.android.asCoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import timber.log.Timber
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.coroutineContext
@@ -25,6 +26,7 @@ class MusicSession(private val agent: LibraryAgent) {
 		private val scope = CoroutineScope(Dispatchers.Main)
 
 		private val mLoading = MutableStateFlow(false)
+		private val mPlaybackItem = MutableStateFlow<com.flammky.android.medialib.common.mediaitem.MediaItem>(com.flammky.android.medialib.common.mediaitem.MediaItem.UNSET)
 		private val mPlaybackPosition = MutableStateFlow(-1L)
 		private val mPlaybackDuration = MutableStateFlow(-1L)
 		private val mPlaybackBufferedPosition = MutableStateFlow(-1L)
@@ -42,6 +44,9 @@ class MusicSession(private val agent: LibraryAgent) {
 			}
 
 		override val playbackState: StateFlow<PlaybackState> = PlaybackState.StateFlow(player)
+
+		override val playbackItem: StateFlow<com.flammky.android.medialib.common.mediaitem.MediaItem>
+			get() = mPlaybackItem
 
 		override val playbackPosition: StateFlow<Long>
 			get() = mPlaybackPosition
@@ -78,6 +83,8 @@ class MusicSession(private val agent: LibraryAgent) {
 					updatePlaybackPosition(0L)
 					updatePlaybackBufferedPosition(0L)
 				}
+
+				mPlaybackItem.update { player.currentActualMediaItem ?: com.flammky.android.medialib.common.mediaitem.MediaItem.UNSET }
 			}
 
 			override fun onIsPlayingChanged(
@@ -149,6 +156,7 @@ class MusicSession(private val agent: LibraryAgent) {
 			bufferedPositionCollectorJob.cancel()
 		}
 
+
 		private suspend fun collectPosition() {
 			while (coroutineContext.isActive) {
 				updatePlaybackPosition(player.positionMs)
@@ -167,6 +175,7 @@ class MusicSession(private val agent: LibraryAgent) {
 	}
 
 	interface SessionInfo {
+		val playbackItem: StateFlow<com.flammky.android.medialib.common.mediaitem.MediaItem>
 		val playbackState: StateFlow<PlaybackState>
 		val playbackPosition: StateFlow<Long>
 		val playbackBufferedPosition: StateFlow<Long>

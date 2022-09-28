@@ -1,12 +1,11 @@
-package com.flammky.android.medialib.async
+package com.flammky.android.medialib.player
 
-import com.flammky.android.medialib.player.Player
 import kotlinx.coroutines.Deferred
 
 /**
- * root interface for Player with asynchronous functions.
+ * root interface for Player with asynchronous behavior.
  *
- * may block accessor thread on non-async getters if required.
+ * as we extend [Player] interface, it may block accessor thread on non-async getters if required.
  */
 interface AsyncPlayer : Player {
 

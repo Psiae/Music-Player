@@ -3,6 +3,7 @@ package com.flammky.android.medialib.common.mediaitem
 import android.os.Bundle
 import kotlin.time.Duration
 
+typealias BaseMediaMetadata = MediaMetadata.BaseMediaMetadata
 typealias PlaybackMetadata = MediaMetadata.Playback
 typealias AudioMetadata = MediaMetadata.Audio
 
@@ -16,7 +17,6 @@ sealed interface MediaMetadata {
 	val title: String?
 
 	class Extra(val bundle: Bundle)
-
 
 	interface Builder {
 		val extra: Extra?
@@ -62,7 +62,7 @@ sealed interface MediaMetadata {
 		val bitrate: Long?,
 		val duration: Duration?,
 		val playable: Boolean?
-	) : MediaMetadata {
+	) : BaseMediaMetadata(extra, title) {
 
 		class Builder {
 			private var extra: Extra? = null
@@ -98,6 +98,10 @@ sealed interface MediaMetadata {
 
 		companion object {
 			val UNSET = Builder().build()
+
+			fun build(apply: Builder.() -> Unit): Playback {
+				return Builder().apply(apply).build()
+			}
 		}
 	}
 
@@ -125,7 +129,7 @@ sealed interface MediaMetadata {
 			private var albumTitle: String? = null
 			private var albumArtist: String? = null
 
-			fun setExtra(extra: Extra) = apply {
+			fun setExtra(extra: Extra?) = apply {
 				this.extra = extra
 			}
 			fun setTitle(title: String?) = apply {
@@ -175,6 +179,14 @@ sealed interface MediaMetadata {
 	companion object {
 		fun build(apply: MediaMetadata.Builder.() -> Unit): MediaMetadata {
 			return BaseMediaMetadata.Builder().apply(apply).build()
+		}
+
+		fun buildPlayback(apply: Playback.Builder.() -> Unit): PlaybackMetadata {
+			return Playback.Builder().apply(apply).build()
+		}
+
+		fun buildAudio(apply: Audio.Builder.() -> Unit): AudioMetadata {
+			return Audio.Builder().apply(apply).build()
 		}
 	}
 }

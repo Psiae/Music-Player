@@ -6,6 +6,7 @@ import com.flammky.common.kotlin.comparable.clamp
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory
 import com.flammky.android.medialib.temp.player.LibraryPlayer.PlaybackState.Companion.toPlaybackStateInt
 import com.flammky.android.medialib.temp.player.playback.RepeatMode.Companion.toRepeatModeInt
+import kotlinx.coroutines.InternalCoroutinesApi
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
@@ -57,8 +58,10 @@ data class PlaybackState(
 		override val value: PlaybackState
 			get() = mStateFlow.value
 
+		@InternalCoroutinesApi
 		override suspend fun collect(collector: FlowCollector<PlaybackState>): Nothing {
 			mStateFlow.collect(collector)
+			return error("")
 		}
 	}
 

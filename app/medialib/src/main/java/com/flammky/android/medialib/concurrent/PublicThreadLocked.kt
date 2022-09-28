@@ -15,7 +15,7 @@ interface PublicThreadLocked<out T: Any> {
 	 * @see postListen
 	 * @see joinBlocking
 	 * @see joinBlockingSuspend
-	 * @see joinSuspending
+	 * @see joinSuspend
 	 */
 	fun post(block: T.() -> Unit)
 
@@ -27,7 +27,7 @@ interface PublicThreadLocked<out T: Any> {
 	 * @see post
 	 * @see joinBlocking
 	 * @see joinBlockingSuspend
-	 * @see joinSuspending
+	 * @see joinSuspend
 	 */
 	fun <R> postListen(block: T.() -> R, listener: (R) -> Unit)
 
@@ -42,7 +42,7 @@ interface PublicThreadLocked<out T: Any> {
 	 * @see post
 	 * @see postListen
 	 * @see joinBlockingSuspend
-	 * @see joinSuspending
+	 * @see joinSuspend
 	 */
 	fun <R> joinBlocking(block: T.() -> R): R
 
@@ -59,7 +59,7 @@ interface PublicThreadLocked<out T: Any> {
 	 * @see post
 	 * @see postListen
 	 * @see joinBlocking
-	 * @see joinSuspending
+	 * @see joinSuspend
 	 */
 
 	// maybe we should just not include this.
@@ -79,5 +79,5 @@ interface PublicThreadLocked<out T: Any> {
 	 * @see joinBlocking
 	 * @see joinBlockingSuspend
 	 */
-	suspend fun <R> joinSuspending(block: suspend T.() -> R): R
+	suspend fun <R> joinSuspend(block: suspend T.() -> R): R
 }

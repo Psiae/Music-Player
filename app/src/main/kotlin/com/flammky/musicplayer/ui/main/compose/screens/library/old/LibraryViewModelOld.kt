@@ -11,14 +11,13 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.flammky.android.app.AppDelegate
-import com.flammky.android.common.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.medialib.common.mediaitem.MediaItem
 import com.flammky.android.medialib.temp.MediaLibrary
 import com.flammky.android.medialib.temp.api.provider.mediastore.MediaStoreProvider
 import com.flammky.android.medialib.temp.image.ArtworkProvider
 import com.flammky.android.medialib.temp.provider.mediastore.base.audio.MediaStoreAudioEntity
-import com.flammky.common.kotlin.generic.sync
 import com.flammky.common.media.audio.AudioFile
+import com.flammky.kotlin.common.sync.sync
 import com.flammky.musicplayer.common.android.bitmap.bitmapfactory.BitmapSampler
 import com.flammky.musicplayer.common.android.concurrent.ConcurrencyHelper.checkMainThread
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemPropertyHelper.mediaUri
@@ -33,7 +32,7 @@ import kotlin.system.measureTimeMillis
 @HiltViewModel
 class LibraryViewModelOld @Inject constructor(
 	@ApplicationContext val context: Context,
-	private val dispatchers: AndroidCoroutineDispatchers,
+	private val dispatchers: com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers,
 	private val mediaStore: MediaStoreProvider,
 	private val artworkProvider: ArtworkProvider,
 	private val sessionInteractor: SessionInteractor

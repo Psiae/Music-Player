@@ -1,17 +1,15 @@
 package com.flammky.mediaplayer.domain.viewmodels
 
 import androidx.annotation.MainThread
-import androidx.compose.material3.MaterialTheme
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.media3.common.MediaItem
 import com.flammky.mediaplayer.helper.external.IntentWrapper
 import com.flammky.mediaplayer.helper.external.MediaIntentHandler
 import com.flammky.mediaplayer.helper.image.CoilHelper
 import com.flammky.android.environment.DeviceInfo
-import com.flammky.android.common.kotlin.coroutine.AndroidCoroutineDispatchers
+import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.common.kotlin.coroutines.safeCollect
-import com.flammky.common.kotlin.coroutine.ensureCancellation
+import com.flammky.common.kotlin.coroutine.ensureNotCancelled
 import com.flammky.common.kotlin.collection.mutable.forEachClear
 import com.flammky.android.app.AppDelegate
 import com.flammky.musicplayer.domain.musiclib.core.MusicLibrary
@@ -21,7 +19,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.*
 import kotlinx.coroutines.guava.await
 import timber.log.Timber
-import java.io.File
 import javax.inject.Inject
 import kotlin.time.ExperimentalTime
 
@@ -29,7 +26,7 @@ import kotlin.time.ExperimentalTime
 class MediaViewModel @Inject constructor(
 	private val coilHelper: CoilHelper,
 	private val deviceInfo: DeviceInfo,
-	private val dispatchers: AndroidCoroutineDispatchers,
+	private val dispatchers: com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers,
 	private val itemHelper: MediaItemHelper,
 	private val intentHandler: MediaIntentHandler,
 ) : ViewModel() {
@@ -135,7 +132,7 @@ class MediaViewModel @Inject constructor(
 					coilHelper.loadBitmap(bytes, 500 ,500)
 				}
 
-				ensureCancellation {
+				ensureNotCancelled {
 					bitmap?.recycle()
 				}
 

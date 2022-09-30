@@ -2,8 +2,8 @@ package com.flammky.musicplayer.core.app.cache
 
 import android.app.Application
 import android.graphics.Bitmap
+import com.flammky.kotlin.common.lazy.LazyConstructor
 import com.flammky.musicplayer.BuildConfig
-import com.flammky.common.kotlin.lazy.LazyConstructor
 import java.io.File
 import java.io.FileOutputStream
 import kotlin.reflect.KClass

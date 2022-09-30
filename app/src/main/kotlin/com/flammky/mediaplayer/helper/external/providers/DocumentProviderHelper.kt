@@ -9,7 +9,7 @@ import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import com.flammky.musicplayer.core.sdk.VersionHelper
-import com.flammky.android.common.kotlin.coroutine.AndroidCoroutineDispatchers
+import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
@@ -46,7 +46,7 @@ object DocumentProviderHelper {
     return withContext(coroutineContext) { URLDecoder.decode(url, enc) }
   }
 
-  private val dispatchers = AndroidCoroutineDispatchers.DEFAULT
+  private val dispatchers = com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers.DEFAULT
 
   suspend fun getAudioPathFromContentUri(
     context: Context,

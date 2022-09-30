@@ -1,7 +1,7 @@
 package com.flammky.musicplayer.core.app.permission
 
 import android.app.Application
-import com.flammky.common.kotlin.lazy.LazyConstructor
+import com.flammky.kotlin.common.lazy.LazyConstructor
 
 class PermissionManager private constructor(private val application: Application) {
 	private val mPermissionInfo = AndroidPermissionInfo(application)

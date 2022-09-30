@@ -4,10 +4,10 @@ import android.app.Application
 import android.content.Context
 import com.flammky.android.app.ApplicationDelegate
 import com.flammky.android.app.cache.CacheManager
-import com.flammky.android.medialib.temp.common.context.ContextInfo
-import com.flammky.common.kotlin.lazy.LazyConstructor
 import com.flammky.android.app.device.DeviceManager
 import com.flammky.android.app.permission.PermissionManager
+import com.flammky.android.medialib.temp.common.context.ContextInfo
+import com.flammky.kotlin.common.lazy.LazyConstructor
 
 
 interface ApplicationDelegate {

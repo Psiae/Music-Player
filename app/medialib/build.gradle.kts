@@ -1,6 +1,6 @@
-import java.util.Properties
-import java.io.File
+
 import java.io.FileInputStream
+import java.util.*
 
 plugins {
     id("com.android.library")
@@ -51,7 +51,9 @@ android {
 
 dependencies {
 
-    implementation(project("lint"))
+    // Project Local
+    api(project(":common"))
+    lintChecks(project("lint"))
 
     implementation("androidx.core:core-ktx:1.9.0-alpha01")
     implementation("androidx.appcompat:appcompat:1.5.1")
@@ -82,14 +84,11 @@ dependencies {
         implementation("com.jakewharton.timber:timber:$v")
     }
 
-    dependencies {
+    /*dependencies {
         val lintVersion = "30.4.0-alpha02"
         compileOnly("com.android.tools.lint:lint-api:$lintVersion")
         compileOnly("com.android.tools.lint:lint-checks:$lintVersion")
-    }
-
-    lintChecks(project("lint"))
-    lintPublish(project("lint"))
+    }*/
 }
 
 fun getProp(file: File): Properties {

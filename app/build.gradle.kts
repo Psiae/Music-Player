@@ -1,5 +1,5 @@
+
 import java.io.FileInputStream
-import java.io.File
 import java.util.*
 
 plugins {
@@ -7,6 +7,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("dagger.hilt.android.plugin")
     id("com.google.devtools.ksp")
+    id("kotlin-kapt")
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
@@ -84,9 +85,6 @@ android {
 dependencies {
 
     implementation(project("medialib"))
-    implementation(project("medialib:lint"))
-    lintChecks(project("medialib:lint"))
-    lintPublish(project("medialib:lint"))
 
     dependencies {
         val lintVersion = "30.4.0-alpha02"
@@ -257,7 +255,7 @@ dependencies {
         // Hilt-Android
         val vHiltAndroid = "2.43.2"
         implementation("com.google.dagger:hilt-android:$vHiltAndroid")
-        ksp("com.google.dagger:hilt-android-compiler:$vHiltAndroid")
+        kapt("com.google.dagger:hilt-android-compiler:$vHiltAndroid")
     }
 
     /* Google.firebase */

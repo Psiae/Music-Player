@@ -16,7 +16,12 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "MusicPlayer"
-include (":app")
+include(":app")
+include(":app:base")
+include(":app:library")
 include(":app:medialib")
 include(":app:medialib:lint")
-include(":library")
+include(":common")
+include(":common:android")
+include(":common:kotlin")
+include(":common:android:kotlin")

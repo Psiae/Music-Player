@@ -3,7 +3,7 @@ package com.flammky.musicplayer.core.app.dependency
 import android.app.NotificationManager
 import android.content.Context
 import coil.Coil
-import com.flammky.android.common.kotlin.coroutine.AndroidCoroutineDispatchers
+import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.app.coroutines.AppScope
 import dagger.Module
 import dagger.Provides
@@ -29,11 +29,11 @@ object CoroutineModule {
 
 	@Provides
 	@Singleton
-	fun provideAppDispatchers(): AndroidCoroutineDispatchers = AndroidCoroutineDispatchers.DEFAULT
+	fun provideAppDispatchers(): com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers = com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers.DEFAULT
 
 	@Provides
 	@Singleton
-	fun provideAppScope(dispatchers: AndroidCoroutineDispatchers): AppScope =
+	fun provideAppScope(dispatchers: com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers): AppScope =
 		with(dispatchers) {
 			AppScope(
 				ioScope = CoroutineScope(context = io + SupervisorJob()),

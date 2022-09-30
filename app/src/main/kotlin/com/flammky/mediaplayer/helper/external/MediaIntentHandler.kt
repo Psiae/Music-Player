@@ -11,11 +11,10 @@ import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.widget.Toast
 import androidx.core.net.toUri
-import com.flammky.android.common.kotlin.coroutine.AndroidCoroutineDispatchers
+import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.medialib.common.mediaitem.MediaItem
 import com.flammky.android.medialib.temp.provider.mediastore.base.audio.MediaStoreAudioEntity
 import com.flammky.mediaplayer.helper.Preconditions.checkArgument
-import com.flammky.mediaplayer.helper.Preconditions.checkMainThread
 import com.flammky.mediaplayer.helper.external.providers.ContentProvidersHelper
 import com.flammky.mediaplayer.helper.external.providers.DocumentProviderHelper
 import com.flammky.musicplayer.domain.musiclib.core.MusicLibrary
@@ -47,9 +46,9 @@ interface MediaIntentHandler {
 
 @Singleton
 class MediaIntentHandlerImpl(
-    private val context: Context,
-    private val dispatcher: AndroidCoroutineDispatchers,
-    private val mediaSource: com.flammky.android.medialib.temp.api.provider.mediastore.MediaStoreProvider
+  private val context: Context,
+  private val dispatcher: com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers,
+  private val mediaSource: com.flammky.android.medialib.temp.api.provider.mediastore.MediaStoreProvider
 ) : MediaIntentHandler {
 
   private val actionViewHandler = ActionViewHandler()

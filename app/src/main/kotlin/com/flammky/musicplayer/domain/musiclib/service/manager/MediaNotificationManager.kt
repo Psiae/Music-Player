@@ -21,7 +21,7 @@ import com.google.common.collect.ImmutableList
 import com.flammky.mediaplayer.helper.Preconditions.checkState
 import com.flammky.mediaplayer.helper.image.CoilHelper
 import com.flammky.android.environment.DeviceInfo
-import com.flammky.android.common.kotlin.coroutine.AndroidCoroutineDispatchers
+import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.common.kotlin.coroutines.AutoCancelJob
 import com.flammky.common.kotlin.comparable.clamp
 import com.flammky.musicplayer.core.sdk.VersionHelper
@@ -49,7 +49,7 @@ class MediaNotificationManager(
 	private lateinit var provider: Provider
 	private lateinit var dispatcher: Dispatcher
 
-	private lateinit var appDispatchers: AndroidCoroutineDispatchers
+	private lateinit var appDispatchers: com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 	private lateinit var mainScope: CoroutineScope
 
 	private lateinit var coilHelper: CoilHelper

@@ -1,11 +1,13 @@
 package com.flammky.musicplayer.domain.musiclib.entity
 
-import androidx.media3.common.*
-import com.flammky.common.kotlin.generic.sync
-import com.flammky.common.kotlin.comparable.clamp
-import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.common.Timeline
 import com.flammky.android.medialib.temp.player.LibraryPlayer.PlaybackState.Companion.toPlaybackStateInt
 import com.flammky.android.medialib.temp.player.playback.RepeatMode.Companion.toRepeatModeInt
+import com.flammky.common.kotlin.comparable.clamp
+import com.flammky.kotlin.common.sync.sync
+import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory
 import kotlinx.coroutines.InternalCoroutinesApi
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -61,7 +63,7 @@ data class PlaybackState(
 		@InternalCoroutinesApi
 		override suspend fun collect(collector: FlowCollector<PlaybackState>): Nothing {
 			mStateFlow.collect(collector)
-			return error("")
+			error("")
 		}
 	}
 

@@ -19,7 +19,7 @@ import coil.request.ImageRequest
 import coil.size.Precision
 import coil.size.Scale
 import com.flammky.mediaplayer.helper.image.CoilHelper.CenterCropTransform.*
-import com.flammky.common.kotlin.coroutine.ensureCancellation
+import com.flammky.common.kotlin.coroutine.ensureNotCancelled
 import dagger.hilt.android.qualifiers.ApplicationContext
 import jp.wasabeef.transformers.coil.CenterBottomCropTransformation
 import jp.wasabeef.transformers.coil.CenterCropTransformation
@@ -67,7 +67,7 @@ private object CoilBitmapTransformer {
 		coroutineContext.ensureActive()
 		val queued = imageLoader.enqueue(req.build())
 
-		coroutineContext.ensureCancellation {
+		coroutineContext.ensureNotCancelled {
 			queued.dispose()
 		}
 
@@ -129,7 +129,7 @@ class CoilHelper constructor(
 		coroutineContext.ensureActive()
 		val queued = loader.enqueue(req.build())
 
-		coroutineContext.ensureCancellation {
+		coroutineContext.ensureNotCancelled {
 			queued.dispose()
 		}
 

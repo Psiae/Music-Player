@@ -84,7 +84,12 @@ class MusicSession(private val agent: LibraryAgent) {
 					updatePlaybackBufferedPosition(0L)
 				}
 
-				mPlaybackItem.update { player.currentActualMediaItem ?: com.flammky.android.medialib.common.mediaitem.MediaItem.UNSET }
+				if (new?.localConfiguration != null) {
+					mPlaybackItem.update {
+						player.currentActualMediaItem
+							?: com.flammky.android.medialib.common.mediaitem.MediaItem.UNSET
+					}
+				}
 			}
 
 			override fun onIsPlayingChanged(

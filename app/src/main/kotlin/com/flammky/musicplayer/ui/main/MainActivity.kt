@@ -8,17 +8,15 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import com.flammky.mediaplayer.domain.viewmodels.MainViewModel
-import com.flammky.mediaplayer.domain.viewmodels.MediaViewModel
-import com.flammky.mediaplayer.helper.external.IntentWrapper
 import com.flammky.android.activity.disableWindowFitSystemInsets
 import com.flammky.android.medialib.temp.common.context.ContextInfo
 import com.flammky.android.medialib.temp.common.intent.isActionMain
-import com.flammky.android.common.kotlin.coroutine.AndroidCoroutineDispatchers
+import com.flammky.mediaplayer.domain.viewmodels.MainViewModel
+import com.flammky.mediaplayer.domain.viewmodels.MediaViewModel
+import com.flammky.mediaplayer.helper.external.IntentWrapper
 import com.flammky.musicplayer.ui.main.compose.ComposeContent
 import dagger.hilt.android.AndroidEntryPoint
 import timber.log.Timber
-import javax.inject.Inject
 import kotlin.properties.ReadOnlyProperty
 
 @AndroidEntryPoint
@@ -31,11 +29,6 @@ class MainActivity : ComponentActivity() {
 			require(value)
 			field = value
 		}
-
-
-
-	@Inject
-	lateinit var androidCoroutineDispatchers: AndroidCoroutineDispatchers
 
 	private val intentHandler = IntentHandler()
 

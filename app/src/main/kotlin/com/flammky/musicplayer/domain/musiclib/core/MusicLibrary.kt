@@ -1,7 +1,7 @@
 package com.flammky.musicplayer.domain.musiclib.core
 
 import android.content.Context
-import com.flammky.common.kotlin.lazy.LazyConstructor
+import com.flammky.kotlin.common.lazy.LazyConstructor
 import com.flammky.musicplayer.domain.musiclib.core.internal.ComponentModule
 import com.flammky.musicplayer.domain.musiclib.core.public.MusicLibraryAPI
 
@@ -22,7 +22,7 @@ class MusicLibrary private constructor(
 
 	companion object {
 		private val constructor = LazyConstructor<MusicLibrary>()
-		private val instance by constructor
+		private val instance by constructor.lazy
 
 		val api: MusicLibraryAPI
 			get() {

@@ -4,7 +4,6 @@ import android.os.Handler
 import android.os.Looper
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
-import androidx.media3.exoplayer.ExoPlayer
 import com.flammky.android.medialib.temp.player.event.IsPlayingChangedReason
 import com.flammky.common.kotlin.comparable.clamp
 import com.flammky.musicplayer.domain.musiclib.entity.PlaybackState
@@ -14,7 +13,6 @@ import kotlinx.coroutines.android.asCoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
-import timber.log.Timber
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.coroutineContext
 
@@ -84,11 +82,9 @@ class MusicSession(private val agent: LibraryAgent) {
 					updatePlaybackBufferedPosition(0L)
 				}
 
-				if (new?.localConfiguration != null) {
-					mPlaybackItem.update {
-						player.currentActualMediaItem
-							?: com.flammky.android.medialib.common.mediaitem.MediaItem.UNSET
-					}
+				mPlaybackItem.update {
+					player.currentActualMediaItem
+						?: com.flammky.android.medialib.common.mediaitem.MediaItem.UNSET
 				}
 			}
 

@@ -54,6 +54,7 @@ dependencies {
     // Project Local
     api(project(":common"))
     lintChecks(project("lint"))
+    lintPublish(project("lint"))
 
     implementation("androidx.core:core-ktx:1.9.0-alpha01")
     implementation("androidx.appcompat:appcompat:1.5.1")

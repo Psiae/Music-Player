@@ -11,7 +11,6 @@ import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.widget.Toast
 import androidx.core.net.toUri
-import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.medialib.common.mediaitem.MediaItem
 import com.flammky.android.medialib.temp.provider.mediastore.base.audio.MediaStoreAudioEntity
 import com.flammky.mediaplayer.helper.Preconditions.checkArgument
@@ -141,7 +140,6 @@ class MediaIntentHandlerImpl(
     ) {
 			with(MusicLibrary.api.localAgent.session.player) {
 				stop()
-				seekToDefaultPosition(0)
 				setMediaItems(list)
 				seekToMediaItem(list.indexOf(item), 0L)
 				prepare()

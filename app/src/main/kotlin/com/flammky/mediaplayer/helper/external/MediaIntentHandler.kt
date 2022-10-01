@@ -123,9 +123,9 @@ class MediaIntentHandlerImpl(
     }
 
     private fun playMediaItem(
-        song: MediaStoreAudioEntity,
-        list: List<MediaStoreAudioEntity>,
-        fadeOut: Boolean
+			song: MediaStoreAudioEntity,
+			list: List<MediaStoreAudioEntity>,
+			fadeOut: Boolean
     ) {
 			val factory = mediaSource.audio.mediaItemFactory
       val itemList = list.map { factory.createMediaItem(it, Bundle()) }

@@ -4,8 +4,12 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaItem.RequestMetadata
-import com.flammky.android.medialib.common.mediaitem.*
+import androidx.media3.session.MediaSession
+import com.flammky.android.medialib.common.mediaitem.AudioMetadata
+import com.flammky.android.medialib.common.mediaitem.InternalMediaItem
 import com.flammky.android.medialib.common.mediaitem.MediaItem.Extra
+import com.flammky.android.medialib.common.mediaitem.MediaMetadata
+import com.flammky.android.medialib.common.mediaitem.PlaybackMetadata
 
 /**
  * Class that represents [MediaItem] from androidx.media3 package

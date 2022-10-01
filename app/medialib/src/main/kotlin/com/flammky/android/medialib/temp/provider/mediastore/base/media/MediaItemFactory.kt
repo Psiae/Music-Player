@@ -2,7 +2,6 @@ package com.flammky.android.medialib.temp.provider.mediastore.base.media
 
 import android.os.Bundle
 import com.flammky.android.medialib.common.mediaitem.MediaItem
-import com.flammky.android.medialib.common.mediaitem.RealMediaItem
 import com.flammky.android.medialib.common.mediaitem.MediaItemFactoryOf
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.android.medialib.temp.provider.mediastore.MediaStoreContext

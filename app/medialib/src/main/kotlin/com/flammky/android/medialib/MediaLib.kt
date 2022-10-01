@@ -9,13 +9,18 @@ object MediaLib {
 
 	val singleton: MediaLibrary
 		get() {
-			return delegate.singleton
+			return singletonOrNull
 				?: error(
 					"""
 					MediaLib singleton was not instantiated, did you forgot to call
-					MediaLib.singleton(context: Context) ?
+					MediaLib.singleton(Context) ?
 					"""
 				)
+		}
+
+	val singletonOrNull: MediaLibrary?
+		get() {
+			return delegate.singleton
 		}
 
 	fun singleton(context: Context): MediaLibrary = delegate.singleton(context)

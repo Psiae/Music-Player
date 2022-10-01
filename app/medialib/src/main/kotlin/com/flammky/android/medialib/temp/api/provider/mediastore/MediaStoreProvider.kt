@@ -3,6 +3,7 @@ package com.flammky.android.medialib.temp.api.provider.mediastore
 import android.content.ContentResolver
 import android.net.Uri
 import com.flammky.android.medialib.common.mediaitem.MediaItemFactoryOf
+import com.flammky.android.medialib.temp.provider.mediastore.base.audio.MediaStoreAudioEntity
 import com.flammky.android.medialib.temp.provider.mediastore.base.audio.*
 
 interface MediaStoreProvider {

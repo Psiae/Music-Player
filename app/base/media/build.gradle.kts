@@ -2,22 +2,29 @@ plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
     id("dagger.hilt.android.plugin")
-    id("com.google.devtools.ksp")
     id("kotlin-kapt")
 }
 
 android {
-    namespace = "com.flammky.musicplayer.base"
+    namespace = "com.flammky.musicplayer.base.media"
     compileSdk = 32
-}
 
-java {
-    sourceCompatibility = JavaVersion.VERSION_11
-    targetCompatibility = JavaVersion.VERSION_11
+    defaultConfig {
+        minSdk = 24
+        targetSdk = 32
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
+    kotlinOptions {
+        jvmTarget = "11"
+    }
 }
 
 dependencies {
-    api(project(":common"))
+    api(project(":app:base"))
+    api(project(":app:medialib"))
 
     /* google.dagger */
     dependencies {

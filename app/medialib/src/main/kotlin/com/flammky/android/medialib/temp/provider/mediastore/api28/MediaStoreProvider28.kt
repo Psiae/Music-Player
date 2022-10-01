@@ -6,7 +6,7 @@ import com.flammky.android.medialib.temp.provider.mediastore.MediaStoreContext
 import com.flammky.android.medialib.temp.provider.mediastore.api28.audio.AudioEntityProvider28
 import com.flammky.android.medialib.temp.provider.mediastore.api28.audio.MediaStoreAudioEntity28
 import com.flammky.android.medialib.temp.provider.mediastore.base.MediaStoreProviderBase
-import com.flammky.android.medialib.temp.provider.mediastore.base.audio.*
+import com.flammky.android.medialib.temp.provider.mediastore.base.audio.MediaStoreAudioEntity
 
 internal class MediaStoreProvider28 internal constructor(private val context: MediaStoreContext) : MediaStoreProviderBase() {
 	override val audio: MediaStoreProvider.Audio = Audio()

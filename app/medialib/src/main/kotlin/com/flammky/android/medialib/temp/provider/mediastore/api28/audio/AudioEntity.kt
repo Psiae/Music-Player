@@ -8,11 +8,11 @@ import com.flammky.android.medialib.temp.provider.mediastore.base.audio.MediaSto
  * @see MediaStore28
  */
 class MediaStoreAudioEntity28 private constructor(
-    override val uid: String,
-    override val uri: Uri,
-    override val fileInfo: MediaStoreAudioFile28,
-    override val metadataInfo: MediaStoreAudioMetadata28,
-    override val queryInfo: MediaStoreAudioQuery28,
+	override val uid: String,
+	override val uri: Uri,
+	override val fileInfo: MediaStoreAudioFile28,
+	override val metadataInfo: MediaStoreAudioMetadata28,
+	override val queryInfo: MediaStoreAudioQuery28,
 ) : MediaStoreAudioEntity() {
 
 	class Builder internal constructor() {

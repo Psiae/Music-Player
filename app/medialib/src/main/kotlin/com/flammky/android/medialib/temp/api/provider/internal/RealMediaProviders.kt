@@ -1,8 +1,8 @@
 package com.flammky.android.medialib.temp.api.provider.internal
 
-import com.flammky.android.medialib.temp.api.provider.mediastore.internal.RealMediaStoreProvider
 import com.flammky.android.medialib.temp.provider.mediastore.MediaStoreContext
 import com.flammky.android.medialib.temp.api.provider.MediaProviders
+import com.flammky.android.medialib.temp.api.provider.mediastore.internal.RealMediaStoreProvider
 
 internal class RealMediaProviders internal constructor(
 	private val context: ProvidersContext

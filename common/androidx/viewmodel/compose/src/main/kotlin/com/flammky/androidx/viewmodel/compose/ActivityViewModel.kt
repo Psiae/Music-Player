@@ -1,4 +1,4 @@
-package com.flammky.android.x.lifecycle.viewmodel.compose
+package com.flammky.androidx.viewmodel.compose
 
 import android.app.Activity
 import androidx.compose.runtime.Composable
@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
+
 
 /**
  * @return [ViewModel] owned by its current [Activity] if implements [ViewModelStoreOwner]

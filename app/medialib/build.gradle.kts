@@ -14,9 +14,6 @@ android {
     defaultConfig {
         minSdk = 24
         targetSdk = 32
-
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        consumerProguardFiles("consumer-rules.pro")
     }
 
     signingConfigs {
@@ -25,16 +22,6 @@ android {
             storePassword = getKeystoreProp()["PASSWORD"]?.toString()
             keyAlias = getKeystoreProp()["KEY_ALIAS"]?.toString()
             keyPassword = getKeystoreProp()["KEY_PASSWORD"]?.toString()
-        }
-    }
-
-    buildTypes {
-        release {
-            isMinifyEnabled = false
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
         }
     }
     compileOptions {
@@ -52,16 +39,10 @@ android {
 dependencies {
 
     // Project Local
-    api(project(":common"))
+    api(project(":common:android"))
+    api(project(":common:kotlin"))
     lintChecks(project("lint"))
     lintPublish(project("lint"))
-
-    implementation("androidx.core:core-ktx:1.9.0-alpha01")
-    implementation("androidx.appcompat:appcompat:1.5.1")
-    implementation("com.google.android.material:material:1.6.1")
-    testImplementation("junit:junit:4.13.2")
-    androidTestImplementation("androidx.test.ext:junit:1.1.3")
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.4.0")
 
     /* Androidx.media3 */
     dependencies {
@@ -84,12 +65,6 @@ dependencies {
         val v = "5.0.1"
         implementation("com.jakewharton.timber:timber:$v")
     }
-
-    /*dependencies {
-        val lintVersion = "30.4.0-alpha02"
-        compileOnly("com.android.tools.lint:lint-api:$lintVersion")
-        compileOnly("com.android.tools.lint:lint-checks:$lintVersion")
-    }*/
 }
 
 fun getProp(file: File): Properties {

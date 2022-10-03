@@ -17,7 +17,9 @@ java {
 }
 
 dependencies {
-    api(project(":common"))
+    api(project(":common:kotlin"))
+    api(project(":common:android"))
+    api(project(":common:androidx"))
 
     /* google.dagger */
     dependencies {

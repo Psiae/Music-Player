@@ -94,7 +94,7 @@ sealed class MediaItem {
 	}
 }
 
-internal data class RealMediaItem @Suppress("DataClassPrivateConstructor") private constructor(
+internal class RealMediaItem private constructor(
 	override val mediaId: String,
 	override val mediaUri: Uri,
 	override val metadata: MediaMetadata,

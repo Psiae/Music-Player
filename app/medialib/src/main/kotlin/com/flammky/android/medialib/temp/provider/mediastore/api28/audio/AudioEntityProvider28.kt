@@ -11,18 +11,20 @@ import android.os.SystemClock
 import androidx.annotation.GuardedBy
 import com.flammky.android.common.io.exception.NoReadExternalStoragePermissionException
 import com.flammky.android.common.kotlin.coroutine.ANDROID
+import com.flammky.android.medialib.BuildConfig
 import com.flammky.android.medialib.temp.api.provider.mediastore.MediaStoreProvider
 import com.flammky.android.medialib.temp.common.context.ContextInfo
 import com.flammky.android.medialib.temp.provider.mediastore.MediaStoreContext
 import com.flammky.android.medialib.temp.provider.mediastore.api28.MediaStore28
 import com.flammky.android.medialib.temp.provider.mediastore.base.audio.AudioEntityProvider
 import com.flammky.common.kotlin.coroutine.CoroutineDispatchers
-import com.flammky.kotlin.common.sync.sync
 import com.flammky.common.kotlin.throwable.throwAll
+import com.flammky.kotlin.common.sync.sync
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import timber.log.Timber
+
 
 internal class AudioEntityProvider28 internal constructor(private val context: MediaStoreContext) :
 	AudioEntityProvider<MediaStoreAudioEntity28, MediaStoreAudioFile28, MediaStoreAudioMetadata28, MediaStoreAudioQuery28> {
@@ -130,7 +132,7 @@ internal class AudioEntityProvider28 internal constructor(private val context: M
 	}
 
 	private fun onUriContentChanged(uris: Collection<Uri>, flags: MediaStoreProvider.OnContentChangedListener.Flags) {
-		Timber.d("onUriContentChanged: ${uris.joinToString()}\n flags: $flags")
+		Timber.d("AudioEntityProvider, onUriContentChanged: ${uris.joinToString()}\n flags: $flags")
 
 		scope.launch(AndroidDispatchers.io) {
 
@@ -161,7 +163,6 @@ internal class AudioEntityProvider28 internal constructor(private val context: M
 					}
 				}
 			}
-
 			withContext(context.eventDispatcher) {
 				contentChangeListeners.forEach { it.onContentChange(uris, flags) }
 			}
@@ -338,11 +339,17 @@ internal class AudioEntityProvider28 internal constructor(private val context: M
 		override fun onChange(selfChange: Boolean, uri: Uri?) {
 			Timber.d("AudioEntityProvider, onChange(Boolean, Uri) \n$selfChange\n$uri")
 			// call super will call above function without uri
+			if (uri != null) {
+				notifyUriContentChanged(listOf(uri), 0)
+			}
 		}
 
 		override fun onChange(selfChange: Boolean, uri: Uri?, flags: Int) {
 			Timber.d("AudioEntityProvider, onChange(Boolean, Uri, Int) \n$selfChange\n$uri\n$flags")
 			// call super will call above function without flags
+			if (uri != null) {
+				notifyUriContentChanged(listOf(uri), flags)
+			}
 		}
 
 		override fun onChange(selfChange: Boolean, uris: MutableCollection<Uri>, flags: Int) {
@@ -359,12 +366,19 @@ internal class AudioEntityProvider28 internal constructor(private val context: M
 
 		private fun toContentChangeReason(flag: Int): MediaStoreProvider.OnContentChangedListener.Flags {
 			return when(flag) {
+				0 -> MediaStoreProvider.OnContentChangedListener.Flags.UNKNOWN
 				ContentResolver.NOTIFY_INSERT -> MediaStoreProvider.OnContentChangedListener.Flags.INSERT
 				ContentResolver.NOTIFY_DELETE -> MediaStoreProvider.OnContentChangedListener.Flags.DELETE
 				ContentResolver.NOTIFY_UPDATE -> MediaStoreProvider.OnContentChangedListener.Flags.UPDATE
 				ContentResolver.NOTIFY_SYNC_TO_NETWORK -> MediaStoreProvider.OnContentChangedListener.Flags.SYNC_NETWORK
 				ContentResolver.NOTIFY_SKIP_NOTIFY_FOR_DESCENDANTS -> MediaStoreProvider.OnContentChangedListener.Flags.SKIP_NOTIFY
-				else -> throw IllegalArgumentException("Unknown Flags: $flag")
+				else -> {
+					if (BuildConfig.DEBUG) {
+						throw IllegalArgumentException("Unknown Flags: $flag")
+					} else {
+						MediaStoreProvider.OnContentChangedListener.Flags.UNKNOWN
+					}
+				}
 			}
 		}
 	}

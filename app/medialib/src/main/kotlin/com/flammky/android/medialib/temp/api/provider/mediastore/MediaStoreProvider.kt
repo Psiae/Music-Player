@@ -3,7 +3,6 @@ package com.flammky.android.medialib.temp.api.provider.mediastore
 import android.content.ContentResolver
 import android.net.Uri
 import com.flammky.android.medialib.common.mediaitem.MediaItemFactoryOf
-import com.flammky.android.medialib.temp.provider.mediastore.base.audio.MediaStoreAudioEntity
 import com.flammky.android.medialib.temp.provider.mediastore.base.audio.*
 
 interface MediaStoreProvider {
@@ -13,6 +12,7 @@ interface MediaStoreProvider {
 	interface Audio {
 		val mediaItemFactory: MediaItemFactoryOf<MediaStoreAudioEntity>
 		suspend fun query(): List<MediaStoreAudioEntity>
+		suspend fun cacheOrQuery(): List<MediaStoreAudioEntity>
 
 		fun registerOnContentChanged(onContentChangedListener: OnContentChangedListener)
 		fun unregisterOnContentChanged(onContentChangedListener: OnContentChangedListener)
@@ -22,6 +22,9 @@ interface MediaStoreProvider {
 
 		/** @see [ContentResolver.NOTIFY_FLAGS]*/
 		sealed interface Flags {
+
+			object UNKNOWN : Flags
+
 			/** @see [ContentResolver.NOTIFY_INSERT]*/
 			object INSERT : Flags
 			/** @see [ContentResolver.NOTIFY_UPDATE]*/
@@ -38,6 +41,7 @@ interface MediaStoreProvider {
 			fun isInsert() = this === INSERT
 			fun isUpdate() = this === UPDATE
 			fun isDelete() = this === DELETE
+			fun isUnknown() = this === UNKNOWN
 		}
 
 		fun onContentChange(uris: Collection<Uri>, flag: Flags)

@@ -16,8 +16,8 @@ internal class MediaStoreProvider28 internal constructor(private val context: Me
 
 		override val mediaItemFactory: MediaItemFactoryOf<MediaStoreAudioEntity>
 			get() = provider.mediaItemFactory
-		override suspend fun query(): List<MediaStoreAudioEntity28> = provider.queryEntity(true)
-
+		override suspend fun query(): List<MediaStoreAudioEntity28> = provider.queryEntity(false)
+		override suspend fun cacheOrQuery(): List<MediaStoreAudioEntity> = provider.queryEntity(true)
 		override fun registerOnContentChanged(onContentChangedListener: MediaStoreProvider.OnContentChangedListener) {
 			provider.registerOnContentChangedListener(onContentChangedListener)
 		}

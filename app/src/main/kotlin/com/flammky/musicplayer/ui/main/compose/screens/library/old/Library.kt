@@ -101,7 +101,6 @@ private fun LibraryContent(navController: NavHostController) {
 	}
 }
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun LocalSongs(vm: LibraryViewModelOld, controller: NavController) {

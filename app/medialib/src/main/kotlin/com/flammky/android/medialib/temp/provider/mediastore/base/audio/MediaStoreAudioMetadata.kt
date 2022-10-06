@@ -1,7 +1,7 @@
 package com.flammky.android.medialib.temp.provider.mediastore.base.audio
 
-import com.flammky.common.kotlin.time.annotation.DurationValue
 import com.flammky.android.medialib.temp.provider.mediastore.base.media.MediaStoreMetadata
+import com.flammky.common.kotlin.time.annotation.DurationValue
 import java.util.*
 import java.util.concurrent.TimeUnit
 import javax.annotation.concurrent.Immutable

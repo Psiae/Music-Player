@@ -22,7 +22,7 @@ internal class PlayerContext private constructor(
 	val playbackControlInfo: PlaybackControlInfo
 ) {
 
-	val libContext = object : InternalLibraryContext() {
+	val libContext = object : InternalLibraryContext(AndroidContext(libraryContext.android)) {
 		override val mediaItemBuilder = InternalMediaItem.Builder { extra, mediaId, uri, metadata ->
 			Media3Item.build(mediaId) {
 				setExtra(extra)
@@ -30,7 +30,6 @@ internal class PlayerContext private constructor(
 				setMetadata(metadata)
 			}
 		}
-		override val android = AndroidContext(libraryContext.android)
 	}
 
 

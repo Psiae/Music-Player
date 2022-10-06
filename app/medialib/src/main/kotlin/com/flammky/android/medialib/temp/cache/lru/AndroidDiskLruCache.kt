@@ -1,6 +1,7 @@
-/*
-package com.kylentt.musicplayer.medialib.cache.lru
 
+package com.flammky.android.medialib.temp.cache.lru
+
+/*
 import androidx.annotation.IntRange
 import com.flammky.common.io.closeable.CloseableUtil.applyClose
 import com.flammky.common.io.file.FileUtil.replaceIfOtherExists

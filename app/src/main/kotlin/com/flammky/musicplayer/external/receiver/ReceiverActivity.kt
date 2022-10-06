@@ -2,13 +2,18 @@ package com.flammky.musicplayer.external.receiver
 
 import android.app.Activity
 import android.os.Bundle
-import com.flammky.musicplayer.R
+import android.util.Log
 import com.flammky.android.medialib.temp.common.intent.isActionView
+import com.flammky.musicplayer.R
 import com.flammky.musicplayer.ui.main.MainActivity
+import timber.log.Timber
 
 class ReceiverActivity : Activity() {
 
 	override fun onCreate(savedInstanceState: Bundle?) {
+		Log.d("", "")
+		Timber.d("")
+
 		super.onCreate(savedInstanceState)
 		when {
 			intent.isActionView() -> launchMainActivity()

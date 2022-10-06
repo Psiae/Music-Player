@@ -15,7 +15,7 @@
  */
 package com.flammky.musicplayer.common.media.audio.meta_tag.tag.id3
 
-import FrameBodyTOAL
+import com.flammky.common.media.audio.meta_tag.tag.id3.framebody.FrameBodyTOAL
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.mp3.MP3File
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.*
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.id3.framebody.*

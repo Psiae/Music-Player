@@ -3,7 +3,6 @@ package com.flammky.musicplayer.core.app.dependency
 import android.app.NotificationManager
 import android.content.Context
 import coil.Coil
-import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.app.coroutines.AppScope
 import dagger.Module
 import dagger.Provides
@@ -26,10 +25,6 @@ object CoilModule {
 @Module
 @InstallIn(SingletonComponent::class)
 object CoroutineModule {
-
-	@Provides
-	@Singleton
-	fun provideAppDispatchers(): com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers = com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers.DEFAULT
 
 	@Provides
 	@Singleton

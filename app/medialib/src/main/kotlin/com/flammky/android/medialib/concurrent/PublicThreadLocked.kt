@@ -1,7 +1,5 @@
 package com.flammky.android.medialib.concurrent
 
-import com.flammky.android.medialib.errorprone.UnsafeBySuspend
-
 /**
  * Instance is not Thread-safe and must only be accessed from certain Thread or Event Loop
  */

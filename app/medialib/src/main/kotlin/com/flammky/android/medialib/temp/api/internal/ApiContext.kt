@@ -1,18 +1,17 @@
 package com.flammky.android.medialib.temp.api.internal
 
 import com.flammky.android.medialib.common.mediaitem.InternalMediaItem
-import com.flammky.android.medialib.context.LibraryContext
 import com.flammky.android.medialib.context.internal.InternalLibraryContext
 import com.flammky.android.medialib.media3.Media3Item
-import com.flammky.android.medialib.temp.internal.AndroidContext
-import com.flammky.android.medialib.temp.api.provider.internal.RealMediaProviders
 import com.flammky.android.medialib.temp.api.provider.internal.ProvidersContext
+import com.flammky.android.medialib.temp.api.provider.internal.RealMediaProviders
 import com.flammky.android.medialib.temp.api.service.ApiServiceComponent
 import com.flammky.android.medialib.temp.api.service.internal.InternalServiceComponent
 import com.flammky.android.medialib.temp.api.session.component.internal.ApiSessionComponent
 import com.flammky.android.medialib.temp.api.session.component.internal.InternalSessionComponent
 import com.flammky.android.medialib.temp.image.ImageRepository
 import com.flammky.android.medialib.temp.image.internal.RealImageRepository
+import com.flammky.android.medialib.temp.internal.AndroidContext
 import com.flammky.android.medialib.temp.internal.MediaLibraryContext
 
 internal class ApiContext private constructor(
@@ -30,8 +29,7 @@ internal class ApiContext private constructor(
 
 	val mediaProviders: RealMediaProviders = RealMediaProviders(
 		ProvidersContext(
-			android,
-			object : InternalLibraryContext() {
+			object : InternalLibraryContext(com.flammky.android.medialib.context.AndroidContext(this@ApiContext.android)) {
 				override val mediaItemBuilder = InternalMediaItem.Builder { extra, mediaId, uri, metadata ->
 					Media3Item.build(mediaId) {
 						setExtra(extra)
@@ -39,7 +37,6 @@ internal class ApiContext private constructor(
 						setMetadata(metadata)
 					}
 				}
-				override val android = com.flammky.android.medialib.context.AndroidContext(this@ApiContext.android)
 			}
 		)
 	)

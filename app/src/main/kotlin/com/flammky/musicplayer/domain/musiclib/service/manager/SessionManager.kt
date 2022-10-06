@@ -5,15 +5,15 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaLibraryService.MediaLibrarySession
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSession.ControllerInfo
-import com.google.common.util.concurrent.Futures
-import com.google.common.util.concurrent.ListenableFuture
+import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
+import com.flammky.common.kotlin.generic.ChangedNotNull
 import com.flammky.mediaplayer.helper.Preconditions.checkArgument
 import com.flammky.mediaplayer.helper.Preconditions.checkState
-import com.flammky.common.kotlin.generic.ChangedNotNull
-import com.flammky.musicplayer.core.app.dependency.CoroutineModule
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemPropertyHelper
 import com.flammky.musicplayer.domain.musiclib.service.MusicLibraryService
 import com.flammky.musicplayer.domain.musiclib.service.provider.SessionProvider
+import com.google.common.util.concurrent.Futures
+import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -27,7 +27,7 @@ class SessionManager(
 
 	private val sessionRegistry = SessionRegistry()
 
-	private val appDispatchers = CoroutineModule.provideAppDispatchers()
+	private val appDispatchers =  AndroidCoroutineDispatchers.DEFAULT
 	private val mainScope by lazy { CoroutineScope(appDispatchers.main + sessionManagerJob) }
 
 	override fun create(serviceDelegate: MusicLibraryService.ServiceDelegate) {

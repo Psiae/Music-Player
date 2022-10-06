@@ -168,8 +168,7 @@ private fun ItemTextDescription(
 	textColor: Color = ColorHelper.textColor()
 ) {
 	Column(
-		modifier = modifier
-			.fillMaxHeight(),
+		modifier = modifier.fillMaxHeight(),
 		verticalArrangement = Arrangement.Center
 	) {
 		val style = with(MaterialTheme.typography.bodyMedium) {

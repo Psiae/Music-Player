@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.IntentFilter
 import androidx.annotation.MainThread
+import androidx.annotation.RequiresApi
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import com.flammky.mediaplayer.ui.activity.CollectionExtension.forEachClear
@@ -48,21 +49,27 @@ class ContextBroadcastManager(context: Context) {
 	fun registerBroadcastReceiver(
 		receiver: BroadcastReceiver,
 		intentFilter: IntentFilter,
-		flags: Int? = null
 	): Boolean {
-
-		val context = localContext ?: return false
-
-		if (flags != null) {
-			context.registerReceiver(receiver, intentFilter, flags)
-		} else {
+		return localContext?.let { context ->
 			context.registerReceiver(receiver, intentFilter)
-		}
 
-		broadcastReceivers.find { it.first === receiver }?.second?.add(intentFilter)
-			?: run { broadcastReceivers.add(receiver to mutableListOf(intentFilter)) }
+			broadcastReceivers.find { it.first === receiver }?.second?.add(intentFilter)
+				?: run { broadcastReceivers.add(receiver to mutableListOf(intentFilter)) }
+		} != null
+	}
 
-		return true
+	@RequiresApi(26)
+	fun registerBroadcastReceiver(
+		receiver: BroadcastReceiver,
+		intentFilter: IntentFilter,
+		flags: Int
+	): Boolean {
+		return localContext?.let { context ->
+			context.registerReceiver(receiver, intentFilter, flags)
+
+			broadcastReceivers.find { it.first === receiver }?.second?.add(intentFilter)
+				?: run { broadcastReceivers.add(receiver to mutableListOf(intentFilter)) }
+		} != null
 	}
 
 	fun unregisterBroadcastReceiver(receiver: BroadcastReceiver): Boolean {

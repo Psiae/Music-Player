@@ -40,11 +40,11 @@ dependencies {
 
     // Project Local
     api(project(":common:android"))
+    api(project(":common:androidx"))
+    api(project(":common:androidx:lifecycle"))
     api(project(":common:kotlin"))
-    lintChecks(project("lint"))
-    lintPublish(project("lint"))
 
-    /* Androidx.media3 */
+    /* androidx.media3 */
     dependencies {
         val v = "1.0.0-beta02"
         implementation("androidx.media3:media3-exoplayer:$v")
@@ -53,7 +53,13 @@ dependencies {
         implementation("androidx.media3:media3-ui:$v")
     }
 
-    /* Google.guava */
+    /* androidx.annotation */
+    dependencies {
+        val v = "1.5.0"
+        api("androidx.annotation:annotation:$v")
+    }
+
+    /* google.guava */
     dependencies {
         val v = "31.1-android"
         implementation("com.google.guava:guava:$v")

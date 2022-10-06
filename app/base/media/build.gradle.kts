@@ -30,7 +30,7 @@ dependencies {
     dependencies {
 
         // Hilt-Android
-        val vHiltAndroid = "2.43.2"
+        val vHiltAndroid = "2.44"
         implementation("com.google.dagger:hilt-android:$vHiltAndroid")
         kapt("com.google.dagger:hilt-android-compiler:$vHiltAndroid")
     }

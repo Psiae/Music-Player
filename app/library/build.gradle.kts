@@ -18,7 +18,7 @@ android {
         compose = true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.3.0"
+        kotlinCompilerExtensionVersion = "1.3.2"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -68,8 +68,15 @@ dependencies {
     dependencies {
 
         // Hilt-Android
-        val vHiltAndroid = "2.43.2"
+        val vHiltAndroid = "2.44"
         implementation("com.google.dagger:hilt-android:$vHiltAndroid")
         kapt("com.google.dagger:hilt-android-compiler:$vHiltAndroid")
+    }
+
+    @Suppress("SpellCheckingInspection")
+    /* JakeWharton.timber */
+    dependencies {
+        val v = "5.0.1"
+        implementation("com.jakewharton.timber:timber:$v")
     }
 }

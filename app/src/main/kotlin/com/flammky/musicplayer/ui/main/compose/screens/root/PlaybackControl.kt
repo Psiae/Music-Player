@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -31,16 +32,16 @@ import coil.compose.AsyncImage
 import coil.request.CachePolicy
 import coil.request.ImageRequest
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
-import com.google.accompanist.placeholder.placeholder
+import com.flammky.common.kotlin.comparable.clamp
 import com.flammky.mediaplayer.domain.viewmodels.MainViewModel
 import com.flammky.mediaplayer.domain.viewmodels.MediaViewModel
 import com.flammky.musicplayer.R
-import com.flammky.common.kotlin.comparable.clamp
 import com.flammky.musicplayer.domain.musiclib.entity.PlaybackState
 import com.flammky.musicplayer.domain.musiclib.entity.PlaybackState.Companion.isEmpty
 import com.flammky.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isStateBuffering
 import com.flammky.musicplayer.ui.common.compose.LinearIndeterminateProgressIndicator
 import com.flammky.musicplayer.ui.util.compose.NoRipple
+import com.google.accompanist.placeholder.placeholder
 import kotlinx.coroutines.*
 import timber.log.Timber
 
@@ -382,6 +383,17 @@ private fun PlaybackProgressIndicator(progress: Float) {
 		progress = progress.clamp(0f, 1f)
 	)
 }
+
+@Preview
+@Composable
+fun PlaybackProgressIndicatorPreview() = PlaybackProgressIndicator(progress = 0.75f)
+
+@Preview
+@Composable
+fun AnimatedPlaybackProgressIndicatorPreview() = AnimatedPlaybackProgressIndicator(
+	position = 75,
+	duration = 100
+)
 
 // Use ViewModel instead
 class PlaybackControlModel() {

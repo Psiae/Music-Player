@@ -15,12 +15,12 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import com.flammky.android.common.broadcast.ContextBroadcastManager
+import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
+import com.flammky.common.kotlin.collection.mutable.forEachClear
+import com.flammky.common.kotlin.coroutines.safeCollect
 import com.flammky.mediaplayer.helper.Preconditions.checkMainThread
 import com.flammky.mediaplayer.helper.Preconditions.checkState
 import com.flammky.musicplayer.BuildConfig
-import com.flammky.common.kotlin.coroutines.safeCollect
-import com.flammky.common.kotlin.collection.mutable.forEachClear
-import com.flammky.musicplayer.core.app.dependency.CoroutineModule
 import com.flammky.musicplayer.core.sdk.VersionHelper
 import com.flammky.musicplayer.domain.musiclib.service.manager.MediaNotificationManager
 import com.flammky.musicplayer.domain.musiclib.service.manager.PlaybackManager
@@ -53,7 +53,7 @@ class MusicLibraryService : MediaLibraryService() {
 
 	private var mReleasing = false
 
-	private val appDispatchers = CoroutineModule.provideAppDispatchers()
+	private val appDispatchers = AndroidCoroutineDispatchers.DEFAULT
 	private val serviceJob = SupervisorJob()
 	private val serviceScope = CoroutineScope(appDispatchers.main + serviceJob)
 

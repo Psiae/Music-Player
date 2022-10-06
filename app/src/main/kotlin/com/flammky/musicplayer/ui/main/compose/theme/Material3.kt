@@ -1,5 +1,6 @@
 package com.flammky.musicplayer.ui.main.compose.theme
 
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
@@ -51,6 +52,7 @@ private fun mainColorScheme(darkTheme: Boolean, dynamic: Boolean): ColorScheme {
 }
 
 @Composable
+@RequiresApi(31)
 private fun dynamicColorScheme(darkTheme: Boolean): ColorScheme {
 	val context = LocalContext.current
 	return if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)

@@ -23,6 +23,7 @@ android {
 
 dependencies {
     api(project(":common:androidx"))
+    api(project(":common:androidx:lifecycle"))
 
     /* Androidx.lifecycle */
     dependencies {

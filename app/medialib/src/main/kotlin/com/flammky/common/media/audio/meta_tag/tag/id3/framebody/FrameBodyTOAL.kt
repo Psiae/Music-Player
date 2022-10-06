@@ -1,3 +1,5 @@
+package com.flammky.common.media.audio.meta_tag.tag.id3.framebody
+
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.id3.ID3v24Frames
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.id3.framebody.AbstractFrameBodyTextInfo
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.id3.framebody.ID3v23FrameBody

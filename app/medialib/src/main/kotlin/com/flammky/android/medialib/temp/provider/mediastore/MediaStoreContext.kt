@@ -5,7 +5,7 @@ import com.flammky.android.medialib.temp.api.provider.internal.ProvidersContext
 
 internal class MediaStoreContext private constructor(private val parent: ProvidersContext) {
 	val androidContext
-		get() = parent.android
+		get() = parent.library.android
 
 	val eventDispatcher
 		get() = parent.eventDispatcher

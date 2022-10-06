@@ -1,5 +1,6 @@
 package com.flammky.android.medialib.temp.provider.mediastore.base.media
 
+import com.flammky.android.medialib.providers.mediastore.base.media.MediaStoreMetadata
 import java.util.*
 import javax.annotation.concurrent.Immutable
 

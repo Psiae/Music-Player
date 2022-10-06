@@ -7,40 +7,47 @@ import com.flammky.android.medialib.context.LibraryContext
 import com.flammky.android.medialib.context.internal.InternalLibraryContext
 
 /**
- * MediaItem Container, internal Implementations are thread-safe.
+ * MediaItem Container, Implementations are thread-safe.
  *
  * @see [Companion.build] to build instances
  */
-sealed class MediaItem {
+sealed class MediaItem(
 
 	/**
 	 * The Id
 	 */
-	abstract val mediaId: String
+	@JvmField
+	val mediaId: String,
 
 	/**
 	 * The Uri
 	 */
-	abstract val mediaUri: Uri
+	@JvmField
+	val mediaUri: Uri,
 
 	/**
 	 * Metadata Information
 	 *
 	 * @see [MediaMetadata]
 	 */
-	abstract val metadata: MediaMetadata
+	@JvmField
+	val metadata: MediaMetadata,
 
 	/**
 	 * Extra Configuration
 	 */
-	abstract val extra: Extra
+	@JvmField
+	val extra: Extra
+) {
 
 	/**
 	 * Class for containing extra configuration
 	 */
-	class Extra(val bundle: Bundle = Bundle()) {
+	class Extra @JvmOverloads constructor(val bundle: Bundle = Bundle()) {
+		internal val internalBundle: Bundle = Bundle()
 
 		companion object {
+			@JvmStatic
 			fun Bundle.toMediaItemExtra(): Extra = Extra(this)
 
 			@JvmStatic
@@ -64,12 +71,12 @@ sealed class MediaItem {
 		fun build(): MediaItem
 	}
 
-	object UNSET : MediaItem() {
-		override val mediaId: String = "UNSET"
-		override val mediaUri: Uri = Uri.EMPTY
-		override val metadata: MediaMetadata = MediaMetadata.UNSET
-		override val extra: Extra = Extra(Bundle.EMPTY)
-	}
+	object UNSET : MediaItem(
+		mediaId = "UNSET",
+		mediaUri = Uri.EMPTY,
+		metadata = MediaMetadata.UNSET,
+		extra = Extra(Bundle.EMPTY)
+	)
 
 	companion object {
 
@@ -95,17 +102,19 @@ sealed class MediaItem {
 }
 
 internal class RealMediaItem private constructor(
-	override val mediaId: String,
-	override val mediaUri: Uri,
-	override val metadata: MediaMetadata,
-	override val extra: Extra,
+	mediaId: String,
+	mediaUri: Uri,
+	metadata: MediaMetadata,
+	extra: Extra,
 	private val internalBuilder: InternalBuilder
-) : MediaItem() {
+) : MediaItem(mediaId, mediaUri, metadata, extra) {
 
 	// calling copy will also recreate this instance
 	internal val internalItem: InternalMediaItem = internalBuilder.build(this)
 
-	class Builder internal constructor(private val internalBuilder: InternalMediaItem.Builder): MediaItem.Builder {
+	class Builder internal constructor(
+		private val internalBuilder: InternalMediaItem.Builder
+	): MediaItem.Builder {
 
 		override var mediaId: String = ""
 			private set

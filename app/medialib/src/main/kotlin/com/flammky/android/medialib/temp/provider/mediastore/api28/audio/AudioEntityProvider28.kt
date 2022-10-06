@@ -8,7 +8,6 @@ import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Handler
 import android.os.SystemClock
-import androidx.annotation.GuardedBy
 import com.flammky.android.common.io.exception.NoReadExternalStoragePermissionException
 import com.flammky.android.common.kotlin.coroutine.ANDROID
 import com.flammky.android.medialib.BuildConfig
@@ -45,7 +44,6 @@ internal class AudioEntityProvider28 internal constructor(private val context: M
 	private val cacheLock = Any()
 	private val mutex = Mutex()
 
-	@GuardedBy("cacheLock")
 	private var cacheKey: String = ""
 		get() {
 			check(Thread.holdsLock(cacheLock))
@@ -57,7 +55,6 @@ internal class AudioEntityProvider28 internal constructor(private val context: M
 			field = value
 		}
 
-	@GuardedBy("cacheLock")
 	private var cached = false
 		get() {
 			check(Thread.holdsLock(cacheLock))
@@ -68,13 +65,12 @@ internal class AudioEntityProvider28 internal constructor(private val context: M
 			field = value
 		}
 
-	@GuardedBy("cacheLock")
 	private var cachedQuery: List<MediaStoreAudioEntity28> = emptyList()
 		get() {
 			check(Thread.holdsLock(cacheLock))
 			return field
 		}
-		@GuardedBy("mutex") set(value) {
+		set(value) {
 			check(Thread.holdsLock(cacheLock) && mutex.isLocked)
 			field = value
 		}
@@ -272,7 +268,7 @@ internal class AudioEntityProvider28 internal constructor(private val context: M
 		cursor
 			.getColumnIndex(MediaStore28.Audio.AudioColumns.COMPOSER)
 			.takeIf { it > -1 }
-			?.let { i -> composer = cursor.getString(i) ?: "" }
+			?.let { i -> composer = cursor.getString(i) }
 		cursor
 			.getColumnIndex(MediaStore28.Audio.AudioColumns.DURATION)
 			.takeIf { it > -1 }
@@ -400,7 +396,7 @@ internal class AudioEntityProvider28 internal constructor(private val context: M
 		)
 
 		/**
-		 * Projector to fill [MediaStoreAudioEntity28.fileInfo]
+		 * Projector to fill [MediaStoreAudioEntity28.file]
 		 *
 		 * @see [MediaStoreAudioFile28]
 		 */
@@ -414,7 +410,7 @@ internal class AudioEntityProvider28 internal constructor(private val context: M
 		)
 
 		/**
-		 * Projector to fill [MediaStoreAudioEntity28.metadataInfo]
+		 * Projector to fill [MediaStoreAudioEntity28.metadata]
 		 *
 		 * @see [MediaStoreAudioMetadata28]
 		 */

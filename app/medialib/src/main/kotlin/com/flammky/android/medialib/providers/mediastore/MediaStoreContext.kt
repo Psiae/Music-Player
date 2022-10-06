@@ -1,6 +1,7 @@
 package com.flammky.android.medialib.providers.mediastore
 
 import com.flammky.android.medialib.providers.ProvidersContext
+import com.flammky.android.medialib.providers.ProvidersContext.Companion.android
 
 /**
  * The Context for Media Store Provider instance

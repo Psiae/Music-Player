@@ -19,6 +19,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.flammky.android.app.permission.AndroidPermission
+import com.flammky.android.content.context.ContextInfo
+import com.flammky.android.content.context.rememberContextInfo
+import com.flammky.musicplayer.R
+import com.flammky.musicplayer.ui.main.compose.theme.MainMaterial3Theme
+import com.flammky.musicplayer.ui.main.compose.theme.color.ColorHelper
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.HorizontalPagerIndicator
@@ -27,12 +33,7 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.permissions.shouldShowRationale
-import com.flammky.musicplayer.R
-import com.flammky.android.content.context.ContextInfo
-import com.flammky.android.content.context.rememberContextInfo
-import com.flammky.android.app.permission.AndroidPermission
-import com.flammky.musicplayer.ui.main.compose.theme.MainMaterial3Theme
-import com.flammky.musicplayer.ui.main.compose.theme.color.ColorHelper
+import kotlinx.coroutines.Deferred
 
 class EntryViewModel() : ViewModel() {
 	var shouldPersistPager: Boolean? = null
@@ -273,11 +274,16 @@ private data class PermissionPageItem(
 @Preview()
 private fun ReadStoragePermissionScreenPreview() {
 	MainMaterial3Theme(darkTheme = false) {
+		val state = remember {
+			mutableStateOf(false)
+		}
+
 		Surface {
 			PermissionPage(resId = R.drawable.folder_search_base_256_blu_glass,
 				description = "Read Storage Permission is Required",
-				isGranted = false
+				isGranted = state.value
 			) {
+				state.value = !state.value
 			}
 		}
 	}

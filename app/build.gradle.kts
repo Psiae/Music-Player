@@ -61,7 +61,7 @@ android {
     }
 
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.3.0"
+        kotlinCompilerExtensionVersion = "1.3.2"
     }
 
     @Suppress("SpellCheckingInspection")
@@ -85,12 +85,7 @@ android {
 dependencies {
 
     implementation(project("medialib"))
-
-    dependencies {
-        val lintVersion = "30.4.0-alpha02"
-        compileOnly("com.android.tools.lint:lint-api:$lintVersion")
-        compileOnly("com.android.tools.lint:lint-checks:$lintVersion")
-    }
+    implementation(project("library"))
 
     /* Android.material */
     dependencies {
@@ -253,7 +248,7 @@ dependencies {
     dependencies {
 
         // Hilt-Android
-        val vHiltAndroid = "2.43.2"
+        val vHiltAndroid = "2.44"
         implementation("com.google.dagger:hilt-android:$vHiltAndroid")
         kapt("com.google.dagger:hilt-android-compiler:$vHiltAndroid")
     }

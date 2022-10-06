@@ -3,25 +3,24 @@ package com.flammky.musicplayer.ui.main.compose.screens.library.old
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.os.Bundle
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.navigation.NavGraph
 import com.flammky.android.app.AppDelegate
 import com.flammky.android.medialib.common.mediaitem.MediaItem
 import com.flammky.android.medialib.temp.MediaLibrary
 import com.flammky.android.medialib.temp.api.provider.mediastore.MediaStoreProvider
 import com.flammky.android.medialib.temp.image.ArtworkProvider
-import com.flammky.android.medialib.temp.provider.mediastore.base.audio.MediaStoreAudioEntity
 import com.flammky.common.media.audio.AudioFile
 import com.flammky.kotlin.common.sync.sync
 import com.flammky.musicplayer.common.android.bitmap.bitmapfactory.BitmapSampler
 import com.flammky.musicplayer.common.android.concurrent.ConcurrencyHelper.checkMainThread
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemPropertyHelper.mediaUri
+import com.flammky.musicplayer.library.localsong.data.LocalSongRepository
+import com.flammky.musicplayer.library.localsong.data.RealLocalSongRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.*
@@ -34,9 +33,10 @@ import kotlin.system.measureTimeMillis
 class LibraryViewModelOld @Inject constructor(
 	@ApplicationContext val context: Context,
 	private val dispatchers: com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers,
-	private val mediaStore: MediaStoreProvider,
+	private val oldMediaStore: MediaStoreProvider,
 	private val artworkProvider: ArtworkProvider,
-	private val sessionInteractor: SessionInteractor
+	private val sessionInteractor: SessionInteractor,
+	private val localSongRepo: LocalSongRepository
 ) : ViewModel() {
 
 	private var mRefreshing = mutableStateOf(false)
@@ -45,7 +45,7 @@ class LibraryViewModelOld @Inject constructor(
 
 	private val _localSongModels = mutableStateListOf<LocalSongModel>()
 		get() {
-			checkMainThread() {
+			checkMainThread {
 				"State variables should only be accessed on Main Context"
 			}
 			return field
@@ -71,36 +71,13 @@ class LibraryViewModelOld @Inject constructor(
 	}
 
 	init {
-		mediaStore.audio.registerOnContentChanged(onContentChangeListener)
-		validateLocalSongs()
+		oldMediaStore.audio.registerOnContentChanged(onContentChangeListener)
+		viewModelScope.launch { internalRefreshLocalSongs() }
 	}
 
 	fun playSong(local: LocalSongModel) = viewModelScope.launch { sessionInteractor.play(local) }
 
 	fun validateLocalSongs(): Unit {
-
-		viewModelScope.launch(dispatchers.io) {
-
-			val get = mediaStore.audio.query()
-				.filter { (it.metadataInfo.durationMs ?: 0) > 0 }
-
-			val local = withContext(dispatchers.main) {
-				_localSongModels.sync { ArrayList(this) }
-			}
-
-			if (get.size != local.size) {
-				internalRefreshLocalSongs(get)
-				return@launch
-			}
-
-			get.forEach { song ->
-				local.find { it.id == song.uid }
-					?: run {
-						internalRefreshLocalSongs(get)
-						return@launch
-					}
-			}
-		}
 	}
 
 	private var refreshAvailable = true
@@ -122,19 +99,15 @@ class LibraryViewModelOld @Inject constructor(
 		}
 	}
 
-	private suspend fun internalRefreshLocalSongs(
-		maybeSongs: List<MediaStoreAudioEntity>? = null
-	) {
+	private suspend fun internalRefreshLocalSongs() {
 		withContext(dispatchers.io) {
 
-			val songs = (maybeSongs ?: mediaStore.audio.query()).filter {
-				(it.metadataInfo.durationMs ?: 0) > 0
-			}
+			val locals = localSongRepo.getEntitiesAsync(false).await()
+				as List<RealLocalSongRepository.MediaStoreLocalSongEntity>
 
-			val factory = mediaStore.audio.mediaItemFactory
-
-			val models = songs.map {
-				LocalSongModel(it.uid, it.metadataInfo.title ?: it.fileInfo.fileName, factory.createMediaItem(it, Bundle()))
+			val models = locals.map {
+				val displayName = it.mediaStore.metadata.title ?: it.mediaStore.file.fileName
+				LocalSongModel(it.id, displayName ?: "", it.mediaItem)
 			}
 
 			withContext(dispatchers.mainImmediate) {
@@ -151,7 +124,7 @@ class LibraryViewModelOld @Inject constructor(
 
 			val toAwait = mutableListOf<Deferred<Triple<File?, String?, Pair<String, Bitmap>?>>>()
 
-			songs.forEachIndexed { index, song ->
+			locals.forEachIndexed { index, local ->
 
 				val deferred: Deferred<Triple<File?, String?, Pair<String, Bitmap>?>> = viewModelScope.async(dispatchers.io) {
 
@@ -159,10 +132,10 @@ class LibraryViewModelOld @Inject constructor(
 					val lruIdToRemove: String?
 					var lruElementToPut: Pair<String, Bitmap>? = null
 
-					val id = song.uid
+					val id = local.id
 
 					// Todo: Constants
-					val cachedFile = cacheManager.retrieveImageCacheFile(song.uid + song.fileInfo.dateModified, "LibraryViewModel")
+					val cachedFile = cacheManager.retrieveImageCacheFile(local.id + local.mediaStore.file.dateModified, "LibraryViewModel")
 
 					if (cachedFile != null) {
 
@@ -195,7 +168,7 @@ class LibraryViewModelOld @Inject constructor(
 
 					val embed: Any? = AudioFile.Builder(
 						context,
-						song.uri
+						local.mediaStore.uri
 					).build().run { file?.delete()
 						val data = imageData
 
@@ -204,7 +177,7 @@ class LibraryViewModelOld @Inject constructor(
 						}
 
 						BitmapSampler.ByteArray.toSampledBitmap(data, 0, data.size, 2000000)?.let {
-							val reg = cacheManager.registerImageToCache(it, song.uid + song.fileInfo.dateModified, "LibraryViewModel")
+							val reg = cacheManager.registerImageToCache(it, local.id + local.mediaStore.file.dateModified, "LibraryViewModel")
 							models[index].mediaItem.extra.bundle.putString("cachedArtwork", reg.absolutePath)
 							lruElementToPut = id to it
 							it
@@ -218,7 +191,7 @@ class LibraryViewModelOld @Inject constructor(
 
 			val result = toAwait.map { it.await() }
 
-			Timber.d("LibraryViewModel InternalRefresh Awaited ${result.size} of ${songs.size}")
+			Timber.d("LibraryViewModel InternalRefresh Awaited ${result.size} of ${locals.size}")
 
 			result.mapNotNull { it.second }.forEach { lru.remove(it) }
 			result.mapNotNull { it.third }.forEach { lru.put(it.first, it.second) }
@@ -235,7 +208,7 @@ class LibraryViewModelOld @Inject constructor(
 	}
 
 	override fun onCleared() {
-		mediaStore.audio.unregisterOnContentChanged(onContentChangeListener)
+		oldMediaStore.audio.unregisterOnContentChanged(onContentChangeListener)
 	}
 
 	data class LocalSongModel(

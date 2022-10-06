@@ -4,6 +4,7 @@ import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
 import android.os.ParcelFileDescriptor
+import android.util.Log
 import com.flammky.android.app.AppDelegate
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.mp3.MP3File
 import com.flammky.musicplayer.common.media.audio.uri.AndroidFileBuilder
@@ -11,6 +12,13 @@ import com.flammky.musicplayer.common.media.audio.uri.ContentFileBuilder
 import java.io.File
 import java.io.FileDescriptor
 import java.io.FileNotFoundException
+
+interface IDK
+class IDKImpl : IDK
+
+fun idk() {
+	Log.d("", "")
+}
 
 class AudioFile private constructor() {
 	private var mContext: Context? = null

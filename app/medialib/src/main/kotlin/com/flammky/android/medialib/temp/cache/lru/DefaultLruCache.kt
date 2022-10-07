@@ -125,7 +125,7 @@ class DefaultLruCache<K: Any, V: Any>(
 
 	private fun evictVictim(): Boolean {
 		return try {
-			val victim = lruEntries.entries.last()
+			val victim = lruEntries.entries.first()
 			remove(victim.key)
 			true
 		} catch (nse: NoSuchElementException) {

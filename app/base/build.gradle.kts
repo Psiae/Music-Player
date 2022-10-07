@@ -24,6 +24,7 @@ dependencies {
     api(project(":common:kotlin"))
     api(project(":common:android"))
     api(project(":common:androidx"))
+    api(project(":common:androidx:viewmodel:compose"))
 
     /* google.dagger */
     dependencies {

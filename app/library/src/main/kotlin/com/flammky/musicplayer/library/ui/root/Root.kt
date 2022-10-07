@@ -14,8 +14,9 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.flammky.musicplayer.library.localsong.ui.LocalSongNavigator
+import com.flammky.androidx.viewmodel.compose.activityViewModel
 import com.flammky.musicplayer.library.localsong.ui.LocalSongDisplay
+import com.flammky.musicplayer.library.localsong.ui.LocalSongNavigator
 
 @Composable
 internal fun LibraryRoot() {
@@ -47,6 +48,7 @@ private fun LibraryRootContent(
 		verticalArrangement = Arrangement.spacedBy(8.dp)
 	) {
 		LocalSongDisplay(
+			viewModel = activityViewModel(),
 			navigate = { route ->
 				navController.navigate(route)
 			}

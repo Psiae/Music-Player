@@ -141,7 +141,7 @@ private fun LocalSongs(vm: LibraryViewModelOld, controller: NavController) {
 		) {
 
 			val stateList = vm.localSongs
-			val localSongs = stateList.toList()
+			val localSongs = stateList.value
 
 			repeat(localSongs.size.clamp(0, 6)) { index ->
 
@@ -376,14 +376,14 @@ private fun LocalSongListsColumn(
 
 	SwipeRefresh(
 		state = rememberSwipeRefreshState(isRefreshing = vm.refreshing.value),
-		onRefresh = { vm.requestRefresh() },
+		onRefresh = { vm.scheduleRefresh() },
 		indicatorPadding = PaddingValues(top = 10.dp)
 	) {
 		LazyColumn(
 			verticalArrangement = Arrangement.spacedBy(4.dp)
 		) {
 
-			val localSongs = vm.localSongs.toList()
+			val localSongs = vm.localSongs.value
 
 			items(localSongs.size) {
 				val model = localSongs[it]

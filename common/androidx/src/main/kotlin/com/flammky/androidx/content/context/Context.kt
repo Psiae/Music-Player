@@ -5,9 +5,17 @@ import android.content.Context
 import android.content.ContextWrapper
 
 fun Context.findActivity(): Activity? {
-	var context = this
+	return if (this is ContextWrapper) {
+		unwrapUntil { it is Activity } as? Activity
+	} else {
+		null
+	}
+}
+
+fun ContextWrapper.unwrapUntil(predicate: (Context) -> Boolean): Context? {
+	var context: Context = this
 	while (context is ContextWrapper) {
-		if (context is Activity) return context
+		if (predicate(context)) return context
 		context = context.baseContext
 	}
 	return null

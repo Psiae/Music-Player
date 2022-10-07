@@ -4,9 +4,8 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.compose.runtime.State
-import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.flammky.android.app.AppDelegate
@@ -23,11 +22,13 @@ import com.flammky.musicplayer.library.localsong.data.LocalSongRepository
 import com.flammky.musicplayer.library.localsong.data.RealLocalSongRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
 import javax.inject.Inject
-import kotlin.system.measureTimeMillis
 
 @HiltViewModel
 class LibraryViewModelOld @Inject constructor(
@@ -39,11 +40,11 @@ class LibraryViewModelOld @Inject constructor(
 	private val localSongRepo: LocalSongRepository
 ) : ViewModel() {
 
-	private var mRefreshing = mutableStateOf(false)
+	private val _refreshing = mutableStateOf(false)
 
 	private val cacheManager = AppDelegate.cacheManager
 
-	private val _localSongModels = mutableStateListOf<LocalSongModel>()
+	private val _localSongModels = mutableStateOf<List<LocalSongModel>>(emptyList())
 		get() {
 			checkMainThread {
 				"State variables should only be accessed on Main Context"
@@ -51,28 +52,29 @@ class LibraryViewModelOld @Inject constructor(
 			return field
 		}
 
-	val localSongs: SnapshotStateList<LocalSongModel> get() = _localSongModels
-
-	val refreshing: State<Boolean> get() = mRefreshing
+	val localSongs: State<List<LocalSongModel>> = _localSongModels.derive()
+	val refreshing: State<Boolean> = _refreshing.derive()
 
 	private val onContentChangeListener = MediaStoreProvider.OnContentChangedListener { uris, flag ->
 		if (flag.isDelete()) {
-			viewModelScope.launch(dispatchers.main) {
-				val toRemove = mutableListOf<androidx.media3.common.MediaItem>()
-				val items = sessionInteractor.getAllMediaItems()
+			val toRemove = mutableListOf<androidx.media3.common.MediaItem>()
+			val items = sessionInteractor.getAllMediaItems()
 
-				uris.forEach { uri -> items.find { it.mediaUri == uri }?.let { toRemove.add(it) } }
+			uris.forEach { uri -> items.find { it.mediaUri == uri }?.let { toRemove.add(it) } }
 
-				// maybe `notifyUnplayableMedia sound kind of nicer`
-				sessionInteractor.removeMediaItems(toRemove)
-			}
+			// maybe `notifyUnplayableMedia sound kind of nicer`
+			sessionInteractor.removeMediaItems(toRemove)
 		}
-		requestRefresh(true)
+		scheduleRefresh()
 	}
+
+	private var refreshAvailable = true
+
+	private val scheduledRefresh = mutableListOf<Any>()
 
 	init {
 		oldMediaStore.audio.registerOnContentChanged(onContentChangeListener)
-		viewModelScope.launch { internalRefreshLocalSongs() }
+		scheduleRefresh()
 	}
 
 	fun playSong(local: LocalSongModel) = viewModelScope.launch { sessionInteractor.play(local) }
@@ -80,22 +82,32 @@ class LibraryViewModelOld @Inject constructor(
 	fun validateLocalSongs(): Unit {
 	}
 
-	private var refreshAvailable = true
+	fun scheduleRefresh() {
+		viewModelScope.launch {
+			scheduledRefresh.add(Any())
+			if (refreshAvailable) {
+				_refreshing.value = true
+				while (scheduledRefresh.isNotEmpty()) {
+					val size = scheduledRefresh.size
+					refreshSongList().join()
+					scheduledRefresh.drop(size).let {
+						scheduledRefresh.clear()
+						scheduledRefresh.addAll(it)
+					}
+					Timber.d("LibraryViewModel scheduleRefresh: refreshed $size request at once")
+				}
+				_refreshing.value = false
+			} else {
+				Timber.d("LibraryViewModel scheduleRefresh: scheduled for next refresh")
+			}
+		}
+	}
 
-	fun requestRefresh(force: Boolean = false) = viewModelScope.launch(dispatchers.mainImmediate) {
+	private fun refreshSongList() = viewModelScope.launch {
 		if (refreshAvailable) {
 			refreshAvailable = false
-
-			mRefreshing.value = true
-
-			val took = measureTimeMillis { internalRefreshLocalSongs() }
-			if (took < 500) delay(500 - took)
-
-			mRefreshing.value = false
-
-			refreshAvailable = true
-		} else if (force) {
 			internalRefreshLocalSongs()
+			refreshAvailable = true
 		}
 	}
 
@@ -111,10 +123,7 @@ class LibraryViewModelOld @Inject constructor(
 			}
 
 			withContext(dispatchers.mainImmediate) {
-				_localSongModels.sync {
-					removeAll { true }
-					addAll(models)
-				}
+				_localSongModels.sync { value = models }
 			}
 
 			val api = MediaLibrary.API
@@ -205,6 +214,10 @@ class LibraryViewModelOld @Inject constructor(
 					}
 				}
 		}
+	}
+
+	private fun <T> State<T>.derive(calculation: (T) -> T = { it }): State<T> {
+		return derivedStateOf { calculation(value) }
 	}
 
 	override fun onCleared() {

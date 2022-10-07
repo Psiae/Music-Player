@@ -10,12 +10,13 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 
 @Composable
-fun LocalSongDisplay(
+internal fun LocalSongDisplay(
+	viewModel: LocalSongViewModel,
 	navigate: (String) -> Unit
 ) {
 	Column(modifier = Modifier.fillMaxWidth()) {
 		DisplayHeader()
-		DisplayContent()
+		DisplayContent(viewModel.listState.value)
 	}
 }
 
@@ -27,6 +28,8 @@ private fun DisplayHeader(
 }
 
 @Composable
-private fun DisplayContent() {
+private fun DisplayContent(
+	list: List<LocalSongModel>
+) {
 
 }

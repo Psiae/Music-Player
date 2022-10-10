@@ -100,14 +100,12 @@ class MediaStoreAudioProvider28(private val context: MediaStoreContext)
 		override fun onChange(selfChange: Boolean, uri: Uri?) = onChange(selfChange, uri, 0)
 
 		override fun onChange(selfChange: Boolean, uri: Uri?, flags: Int) {
-			if (observers.isEmpty()) return
 			if (uri != null) {
 				onChange(eventKey, uri, resolveInternalFlag(flags))
 			}
 		}
 
 		override fun onChange(selfChange: Boolean, uris: MutableCollection<Uri>, flags: Int) {
-			if (observers.isEmpty()) return
 			uris.forEach { uri ->
 				onChange(eventKey, uri, resolveInternalFlag(flags))
 			}
@@ -145,7 +143,7 @@ class MediaStoreAudioProvider28(private val context: MediaStoreContext)
 
 			// function to invoke
 			fun notifyObservers() {
-				internalIoScope.launch { observers.forEach { it.onChange(id, uri, flag) } }
+				internalIoScope.launch { observers.sync { forEach { it.onChange(id, uri, flag) } } }
 				Timber.d("scheduleNotifyEvent: $key, sent")
 			}
 			// sync to eventLock

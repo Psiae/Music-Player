@@ -36,13 +36,19 @@ class TestArtworkProvider(
 	}
 
 	private fun <R> doWork(request: ArtworkProvider.Request<R>, listenable: ListenableResult<R>) {
-		require(request.cls == Bitmap::class.java) {
-			"Unsupported"
+		// other formats are to do
+		if (request.cls != Bitmap::class.java) {
+			val ex = IllegalArgumentException("Unsupported Class")
+			listenable.addException(ex)
+			listenable.setResult(null)
 		}
 		scope.launch {
 			if (request.memoryCacheAllowed) {
 				lru.get(request.id)?.let {
 					listenable.setResult(it as? R)
+
+					// maybe check restore cache?
+
 					return@launch
 				}
 			}
@@ -68,7 +74,7 @@ class TestArtworkProvider(
 					af.file?.delete()
 					val data = af.imageData
 					if (data != null && data.isNotEmpty()) {
-						BitmapSampler.ByteArray.toSampledBitmap(data, 0, data.size, 2000000)
+						BitmapSampler.ByteArray.toSampledBitmap(data, 0, data.size, 1000000)
 							?.let { bitmap ->
 								bitmap.also {
 									if (request.storeMemoryCacheAllowed) {
@@ -109,6 +115,10 @@ class TestArtworkProvider(
 				this.result = result
 				awaiters.forEach { it.run() }
 			}
+		}
+
+		fun addException(exception: Exception) {
+			exceptions.sync { add(exception) }
 		}
 
 		override fun isDone(): Boolean = result !== UNSET

@@ -1,20 +1,30 @@
 package com.flammky.kotlin.common.lazy
 
+import kotlin.reflect.KProperty
+
 /**
  * Lazy delegate, but with construct function instead of constructor
  */
 
 class LazyConstructor<T> @JvmOverloads constructor(lock: Any = Any()) {
 
-	/** Placeholder Object */
+	/**
+	 * Placeholder Object
+	 */
 	private object UNSET
 
-	/** The Lock */
+	/**
+	 * The Lock
+	 */
 	private val localLock: Any = lock
 
-	/** The value holder. [UNSET] if not set  */
+	/**
+	 * The value holder. [UNSET] if not set
+	 *
+	 * @throws IllegalStateException if trying to set value without lock
+	 * @throws IllegalStateException if value was already set
+	 */
 	private var localValue: Any? = UNSET
-		@kotlin.jvm.Throws(IllegalStateException::class)
 		set(value) {
 			check(Thread.holdsLock(localLock)) {
 				"Trying to set field without lock"
@@ -25,10 +35,9 @@ class LazyConstructor<T> @JvmOverloads constructor(lock: Any = Any()) {
 			field = value
 		}
 
+	@Suppress("UNCHECKED_CAST")
 	private val castValue: T
-		@kotlin.jvm.Throws(IllegalStateException::class)
 		get() = try {
-			@Suppress("UNCHECKED_CAST")
 			localValue as T
 		} catch (cce: ClassCastException) {
 			error("localValue($localValue) was UNSET")
@@ -40,7 +49,6 @@ class LazyConstructor<T> @JvmOverloads constructor(lock: Any = Any()) {
 	 * @throws IllegalStateException if [localValue] is [UNSET]
 	 */
 	val value: T
-		@kotlin.jvm.Throws(IllegalStateException::class)
 		get() {
 			if (!isConstructed()) {
 				// The value is not yet initialized, check if its still being initialized.
@@ -48,18 +56,6 @@ class LazyConstructor<T> @JvmOverloads constructor(lock: Any = Any()) {
 				sync()
 			}
 			return castValue
-		}
-
-	/**
-	 * Try to get the value.
-	 *
-	 * Null if not yet initialized
-	 */
-	val valueOrNull: T?
-		get() = if (isConstructed()) {
-			castValue
-		} else {
-			null
 		}
 
 	val lazy = object : Lazy<T> {
@@ -91,4 +87,18 @@ class LazyConstructor<T> @JvmOverloads constructor(lock: Any = Any()) {
 
 	private fun sync(): Unit = sync { }
 	private fun <T> sync(block: () -> T): T = synchronized(localLock) { block() }
+
+	companion object {
+		fun <T> LazyConstructor<T>.valueOrNull(): T? {
+			return try { value } catch (ise: IllegalStateException) { null }
+		}
+
+		operator fun <T> LazyConstructor<T>.getValue(receiver: Any?, property: KProperty<*>): T {
+			return value
+		}
+
+		operator fun <T> LazyConstructor<T>.setValue(receiver: Any?, property: KProperty<*>, value: T) {
+			construct { value }
+		}
+	}
 }

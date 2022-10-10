@@ -31,11 +31,11 @@ class RealLocalSongRepository(
 	override suspend fun getModelsAsync(): Deferred<List<LocalSongModel>> =
 		coroutineScope {
 			async(dispatchers.io) {
-				audioProvider.query().map { toLocalSongEntity(it) }
+				audioProvider.query().map { toLocalSongModel(it) }
 			}
 		}
 
-	private fun toLocalSongEntity(from: MediaStoreAudioEntity): LocalSongModel {
+	private fun toLocalSongModel(from: MediaStoreAudioEntity): LocalSongModel {
 		val metadata = AudioMetadata.build {
 			val durationMs = from.metadata.durationMs
 			setArtist(from.metadata.artist)
@@ -73,8 +73,8 @@ class RealLocalSongRepository(
 			suspend fun sendBitmap(cache: Boolean, storeToCache: Boolean) {
 				val req = ArtworkProvider.Request
 					.Builder(artId, Bitmap::class.java)
-					.setMinimumHeight(250)
-					.setMinimumWidth(250)
+					.setMinimumHeight(1)
+					.setMinimumWidth(1)
 					.setMemoryCacheAllowed(cache)
 					.setDiskCacheAllowed(cache)
 					.setStoreMemoryCacheAllowed(storeToCache)

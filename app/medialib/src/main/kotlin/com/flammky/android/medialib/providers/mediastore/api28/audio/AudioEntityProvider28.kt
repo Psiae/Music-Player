@@ -2,6 +2,7 @@ package com.flammky.android.medialib.providers.mediastore.api28.audio
 
 import android.content.ContentUris
 import android.database.Cursor
+import android.media.MediaScannerConnection
 import android.net.Uri
 import com.flammky.android.content.context.ContextHelper
 import com.flammky.android.io.exception.ReadExternalStoragePermissionException
@@ -41,7 +42,10 @@ internal class AudioEntityProvider28 (private val context: MediaStoreContext) {
 			checkReadExternalStoragePermission()
 			if (BuildConfig.DEBUG) throw se
 		}
-		return holder.toList()
+		return holder.toList().also {
+			// ensure there's no corrupt scan
+			rescanFiles(it.mapNotNull { entity -> entity.file.absolutePath }.toTypedArray())
+		}
 	}
 
 	@kotlin.jvm.Throws(ReadExternalStoragePermissionException::class)
@@ -187,6 +191,10 @@ internal class AudioEntityProvider28 (private val context: MediaStoreContext) {
 			.getColumnIndex(MediaStore28.Audio.AudioColumns.ARTIST_ID)
 			.takeIf { it > -1 }
 			?.let { i -> setArtistId(cursor.getLong(i)) }
+	}
+
+	private fun rescanFiles(paths: Array<String>) {
+		MediaScannerConnection.scanFile(context.android, paths, null, null)
 	}
 
 	companion object {

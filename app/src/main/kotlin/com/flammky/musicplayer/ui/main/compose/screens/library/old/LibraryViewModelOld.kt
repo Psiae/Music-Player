@@ -63,6 +63,7 @@ class LibraryViewModelOld @Inject constructor(
 			if (flag.isDelete) {
 				val list = ArrayList(_localSongModels.value)
 				list.removeAll { it.id == id }
+				_localSongModels.value = list.toList()
 
 				val toRemove = mutableListOf<androidx.media3.common.MediaItem>()
 				val items = sessionInteractor.getAllMediaItems()
@@ -71,45 +72,17 @@ class LibraryViewModelOld @Inject constructor(
 
 				// maybe `notifyUnplayableMedia sound kind of nicer`
 				sessionInteractor.removeMediaItems(toRemove)
+			} else {
+				scheduleRefresh()
 			}
-
-			scheduleRefresh()
 		}
 	}
-
-	/*private val onContentChangeListener = com.flammky.android.medialib.temp.api.provider.mediastore.MediaStoreProvider.OnContentChangedListener { uris, flag ->
-		if (flag.isDelete()) {
-			val toRemove = mutableListOf<androidx.media3.common.MediaItem>()
-			val items = sessionInteractor.getAllMediaItems()
-
-			uris.forEach { uri -> items.find { it.mediaUri == uri }?.let { toRemove.add(it) } }
-
-			// maybe `notifyUnplayableMedia sound kind of nicer`
-			sessionInteractor.removeMediaItems(toRemove)
-		}
-		refreshJob.cancel()
-		scheduleRefresh(false)
-	}*/
-
 
 	private val scheduledRefresh = mutableListOf<Any>()
 
 	init {
 		mediaStoreProvider.audio.observe(onContentChangedListener)
-
-		viewModelScope.launch {
-			val locals = localSongRepo.getModelsAsync().await()
-
-			val models = locals.map {
-				val metadata = it.mediaItem.metadata as AudioMetadata
-				val displayName = metadata.title
-				LocalSongModel(it.id, displayName ?: "<unknown>", it.mediaItem)
-			}
-
-			withContext(dispatchers.mainImmediate) {
-				_localSongModels.sync { value = models }
-			}
-		}
+		refreshSongList()
 	}
 
 	fun playSong(local: LocalSongModel) = viewModelScope.launch { sessionInteractor.play(local) }
@@ -118,7 +91,7 @@ class LibraryViewModelOld @Inject constructor(
 	}
 
 	suspend fun observeArtwork(model: LocalSongModel): Flow<Bitmap?> {
-		return localSongRepo.collectArtwork(model.id)
+		return withContext(dispatchers.io) { localSongRepo.collectArtwork(model.id) }
 	}
 
 	fun scheduleRefresh() {
@@ -128,8 +101,7 @@ class LibraryViewModelOld @Inject constructor(
 				_refreshing.value = true
 				while (scheduledRefresh.isNotEmpty()) {
 					val size = scheduledRefresh.size
-					refreshJob = refreshSongList()
-						.also { if (it.isActive) it.join() }
+					refreshJob = refreshSongList().also { it.join() }
 					scheduledRefresh.drop(size).let {
 						scheduledRefresh.clear()
 						scheduledRefresh.addAll(it)
@@ -170,7 +142,10 @@ class LibraryViewModelOld @Inject constructor(
 		}
 	}
 
-	private fun <T> State<T>.derive(calculation: (T) -> T = { it }): State<T> {
+	private fun <T> State<T>.derive(): State<T> {
+		return derivedStateOf { value }
+	}
+	private fun <T> State<T>.derive(calculation: (T) -> T): State<T> {
 		return derivedStateOf { calculation(value) }
 	}
 

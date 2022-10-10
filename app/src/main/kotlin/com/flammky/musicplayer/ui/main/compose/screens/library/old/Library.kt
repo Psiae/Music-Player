@@ -25,12 +25,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
-import androidx.navigation.compose.ComposeNavigator
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.contains
-import androidx.navigation.get
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.flammky.android.environment.DeviceInfo.Companion.screenWidthDp
@@ -94,6 +91,9 @@ private fun LibraryContent(navController: NavHostController) {
 		composable(route = "main") {
 			LocalSongs(vm = vm, controller = navController)
 		}
+		composable(route = "localSongLists") {
+			LocalSongLists()
+		}
 	}
 
 	LaunchedEffect(key1 = true) {
@@ -107,14 +107,6 @@ private fun LibraryContent(navController: NavHostController) {
 @Composable
 private fun LocalSongs(vm: LibraryViewModelOld, controller: NavController) {
 	val context = LocalContext.current
-	if (!controller.graph.contains("localSongLists")) {
-		ComposeNavigator.Destination(controller.navigatorProvider[ComposeNavigator::class]) {
-			LocalSongLists()
-		}.apply {
-			route = "localSongLists"
-			controller.graph.addDestination(this)
-		}
-	}
 
 	Column(
 		modifier = Modifier.padding(15.dp),

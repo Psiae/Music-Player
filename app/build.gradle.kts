@@ -171,7 +171,7 @@ dependencies {
     dependencies {
 
         // Compose
-        val vCompose = "2.5.0"
+        val vCompose = "2.5.2"
         implementation("androidx.navigation:navigation-compose:$vCompose")
     }
 

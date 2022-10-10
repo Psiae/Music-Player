@@ -31,6 +31,7 @@ android {
 
 dependencies {
     api(project(":app:base"))
+    api(project(":app:base:compose"))
     api(project(":app:base:media"))
 
     /* androidx.compose */

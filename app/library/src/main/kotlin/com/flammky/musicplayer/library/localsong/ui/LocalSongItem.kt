@@ -2,7 +2,7 @@ package com.flammky.musicplayer.library.localsong.ui
 
 import kotlin.time.Duration
 
-sealed class LocalSongModel(
+data class LocalSongItem(
 	val id: String,
 	val displayName: String?,
 	val artistName: String?,

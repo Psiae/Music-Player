@@ -7,9 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,6 +36,7 @@ import coil.request.ImageRequest
 import com.flammky.android.environment.DeviceInfo.Companion.screenWidthDp
 import com.flammky.android.x.lifecycle.viewmodel.compose.activityViewModel
 import com.flammky.common.kotlin.comparable.clamp
+import com.flammky.common.kotlin.coroutines.safeCollect
 import com.flammky.mediaplayer.domain.viewmodels.MainViewModel
 import com.flammky.musicplayer.R
 import com.flammky.musicplayer.ui.main.compose.screens.library.old.local.LocalSongItem
@@ -50,6 +49,9 @@ import com.google.accompanist.placeholder.placeholder
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import jp.wasabeef.transformers.coil.CenterCropTransformation
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import kotlin.math.ceil
 import kotlin.math.min
@@ -143,13 +145,29 @@ private fun LocalSongs(vm: LibraryViewModelOld, controller: NavController) {
 			val stateList = vm.localSongs
 			val localSongs = stateList.value
 
+			val scope = rememberCoroutineScope()
+			val coroutineContext = Dispatchers.Main.immediate + SupervisorJob()
+
+			repeat(min(localSongs.size, 9)) { i ->
+				val item = localSongs[i]
+				DisposableEffect(key1 = item) {
+					val job = scope.launch(coroutineContext) {
+						vm.observeArtwork(item).safeCollect {
+							item.updateArtwork(it)
+						}
+					}
+					onDispose {
+						job.cancel()
+					}
+				}
+			}
+
 			repeat(localSongs.size.clamp(0, 6)) { index ->
 
 				Timber.d("LibraryContent Column Item $index recomposed")
 
 				val item = localSongs[index]
 				val data = item.artState.value
-
 				val ra = min(3, localSongs.size)
 				val size = ((LocalContext.current.screenWidthDp.dp - 30.dp) / ra) - (ceil(ra / 2f) * 10).dp
 
@@ -374,6 +392,9 @@ private fun LocalSongListsColumn(
 	mainVM: MainViewModel
 ) {
 
+	val rememberScope = rememberCoroutineScope()
+	val supervisorDispatcher = Dispatchers.Main.immediate + SupervisorJob()
+
 	SwipeRefresh(
 		state = rememberSwipeRefreshState(isRefreshing = vm.refreshing.value),
 		onRefresh = { vm.scheduleRefresh() },
@@ -385,9 +406,21 @@ private fun LocalSongListsColumn(
 
 			val localSongs = vm.localSongs.value
 
-			items(localSongs.size) {
-				val model = localSongs[it]
+			items(localSongs.size) { i ->
+				val model = localSongs[i]
 				LocalSongItem(model = model) { vm.playSong(model) }
+				val item = localSongs[i]
+				DisposableEffect(key1 = item) {
+					Timber.d("launching new bitmap collector for $item")
+					val job = rememberScope.launch(supervisorDispatcher) {
+						vm.observeArtwork(item).safeCollect {
+							item.updateArtwork(it)
+						}
+					}
+					onDispose {
+						job.cancel()
+					}
+				}
 			}
 
 			item() {

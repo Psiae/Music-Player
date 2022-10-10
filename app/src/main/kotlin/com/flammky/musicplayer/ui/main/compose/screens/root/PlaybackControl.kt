@@ -51,7 +51,7 @@ fun PlaybackControl(model: PlaybackControlModel, bottomOffset: Dp) {
 	val mainVM: MainViewModel = viewModel()
 
 	val targetState =
-		if (model.showSelf.value) {
+		if (model.showSelf.read()) {
 			VISIBILITY.VISIBLE
 		} else {
 			VISIBILITY.GONE
@@ -70,20 +70,21 @@ fun PlaybackControl(model: PlaybackControlModel, bottomOffset: Dp) {
 		}
 	}
 
-	if (animatedOffset.value > 0.dp) {
+	if (animatedOffset.read() > 0.dp) {
 		val density = LocalDensity.current.density
 
 		Box(
-			modifier = Modifier.onGloballyPositioned {
-				mainVM.playbackControlShownHeight.value =
-					(animatedOffset.value - bottomOffset) + (it.size.height / density).dp
+			modifier = Modifier.onGloballyPositioned { bounds ->
+				mainVM.playbackControlShownHeight.rewrite {
+					(animatedOffset.read() - bottomOffset) + (bounds.size.height / density).dp
+				}
 			}
 		) {
-			PlaybackControlBox(model, animatedOffset.value)
+			PlaybackControlBox(model, animatedOffset.read())
 		}
 
 	} else {
-		mainVM.playbackControlShownHeight.value = 0.dp
+		mainVM.playbackControlShownHeight.write(0.dp)
 	}
 }
 
@@ -102,7 +103,7 @@ private fun PlaybackControlBox(
 	val darkTheme = isSystemInDarkTheme()
 	val defaultCardBackgroundColor = MaterialTheme.colorScheme.surfaceVariant
 
-	val palette = model.palette.value
+	val palette = model.palette.read()
 
 	val cardBackgroundColor = remember(palette.hashCode()) {
 		val int = palette?.run {
@@ -143,7 +144,7 @@ private fun PlaybackControlBox(
 					shape = RoundedCornerShape(10),
 				) {
 
-					val art = model.art.value
+					val art = model.art.read()
 
 					val req = remember(art.hashCode()) {
 						ImageRequest.Builder(context)
@@ -191,13 +192,13 @@ private fun PlaybackControlBox(
 						)
 
 					Text(
-						text = model.playbackTitle.value,
+						text = model.playbackTitle.read(),
 						style = style,
 						maxLines = 1,
 						overflow = TextOverflow.Ellipsis,
 					)
 					Text(
-						text = model.playbackArtist.value,
+						text = model.playbackArtist.read(),
 						style = style2,
 						maxLines = 1,
 						overflow = TextOverflow.Ellipsis,
@@ -205,8 +206,8 @@ private fun PlaybackControlBox(
 				}
 
 				// IsPlaying callback from mediaController is somewhat not accurate
-				val showPlay = model.showPlay.value
-				val playAvailable = model.playAvailable.value
+				val showPlay = model.showPlay.read()
+				val playAvailable = model.playAvailable.read()
 
 				val icon =
 					if (showPlay) {
@@ -246,7 +247,7 @@ private fun PlaybackControlBox(
 				position = model.playbackPosition,
 				bufferedPosition = model.bufferedPosition,
 				duration = model.playbackDuration,
-				loading = model.buffering.value && model.bufferedPosition.value == 0L
+				loading = remember { derivedStateOf { model.buffering.read() && model.bufferedPosition.read() == 0L } }
 			)
 		}
 	}
@@ -257,7 +258,7 @@ private fun ProgressIndicator(
 	position: State<Long>,
 	bufferedPosition: State<Long>,
 	duration: State<Long>,
-	loading: Boolean
+	loading: State<Boolean>
 ) {
 
 	Timber.d("ProgressIndicator recomposed")
@@ -281,7 +282,7 @@ private fun ProgressIndicator(
 			mutableStateOf(false)
 		}
 
-		if (loading || shouldTraverse.value) {
+		if (loading.read() || shouldTraverse.read()) {
 
 			LinearIndeterminateProgressIndicator(
 				modifier = Modifier
@@ -297,18 +298,17 @@ private fun ProgressIndicator(
 				secondLineTailDuration = 433,
 				secondLineTailDelay = 850 + 333 + 300
 			) {
-				shouldTraverse.value = loading
-				loading
+				loading.read().also { shouldTraverse.write(it) }
 			}
 
 		} else {
 			AnimatedBufferedProgressIndicator(
-				bufferedPosition = bufferedPosition.value,
-				duration = duration.value
+				bufferedPosition = bufferedPosition.read(),
+				duration = duration.read()
 			)
 			AnimatedPlaybackProgressIndicator(
-				position = position.value,
-				duration = duration.value
+				position = position.read(),
+				duration = duration.read()
 			)
 		}
 	}
@@ -459,20 +459,20 @@ class PlaybackControlModel() {
 	fun updateMediaItem(item: com.flammky.android.medialib.common.mediaitem.MediaItem) {
 		actualMediaItem = item
 		val metadata = item.metadata
-		mPlaybackTitle.value = metadata.title ?: ""
+		mPlaybackTitle.write(metadata.title ?: "")
 
 		if (metadata is AudioMetadata) {
-			mPlaybackArtist.value = metadata.artistName ?: metadata.albumArtistName ?: ""
+			mPlaybackArtist.write(metadata.artistName ?: metadata.albumArtistName ?: "")
 		}
 	}
 
 
 	fun updateBy(state: PlaybackState) {
-		mPlaybackDuration.value = state.duration
-		mPlayAvailable.value = !state.playWhenReady
-		mShowPlay.value = (!state.playing && (!state.playerState.isStateBuffering() && !state.playWhenReady ))
-		mShowSelf.value = !state.isEmpty && state.mediaItem !== MediaItem.EMPTY
-		mBuffering.value = state.playerState.isStateBuffering()
+		mPlaybackDuration.write(state.duration)
+		mPlayAvailable.write(!state.playWhenReady)
+		mShowPlay.write((!state.playing && (!state.playerState.isStateBuffering() && !state.playWhenReady )))
+		mShowSelf.write(!state.isEmpty && state.mediaItem !== MediaItem.EMPTY)
+		mBuffering.write( state.playerState.isStateBuffering())
 	}
 
 	private var qBufferingState = false
@@ -482,26 +482,26 @@ class PlaybackControlModel() {
 	private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
 	fun updatePosition(position: Long) {
-		mPlaybackPosition.value = position
+		mPlaybackPosition.write(position)
 	}
 
 	fun updateBufferedPosition(bufferedPosition: Long) {
-		mBufferedPosition.value = bufferedPosition
+		mBufferedPosition.write(bufferedPosition)
 	}
 
 	fun updateArt(bitmap: Bitmap?) {
-		mArt.value = bitmap
+		mArt.write(bitmap)
 		artJob.cancel()
 
 		if (bitmap != null) {
 			artJob = ioScope.launch {
 				Palette.from(bitmap).maximumColorCount(16).generate().let {
 					ensureActive()
-					mPalette.value = it
+					mPalette.write(it)
 				}
 			}
 		} else {
-			mPalette.value = null
+			mPalette.write(null)
 		}
 	}
 
@@ -515,4 +515,28 @@ class PlaybackControlModel() {
 enum class VISIBILITY {
 	VISIBLE,
 	GONE
+}
+
+// is explicit read like this better ?
+@Suppress("NOTHING_TO_INLINE")
+private inline fun <T> State<T>.read(): T = this.value
+
+// is explicit write like this better ?
+@Suppress("NOTHING_TO_INLINE")
+private inline fun <T> MutableState<T>.write(value: T) {
+	this.value = value
+}
+
+@Suppress("NOTHING_TO_INLINE")
+private inline fun <T> MutableState<T>.rewrite(value: (T) -> T) {
+	this.value = value(this.value)
+}
+
+
+private fun <T> State<T>.derive(): State<T> = derive { it }
+
+private fun <T, R> State<T>.derive(
+	calculation: (T) -> R
+): State<R> {
+	return derivedStateOf { calculation(value) }
 }

@@ -198,7 +198,7 @@ dependencies {
 
     /* coil-kt */
     dependencies  {
-        val v = "2.2.0"
+        val v = "2.2.2"
         implementation("io.coil-kt:coil:$v")
         implementation("io.coil-kt:coil-compose:$v")
     }

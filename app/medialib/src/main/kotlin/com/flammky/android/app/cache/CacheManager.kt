@@ -51,7 +51,7 @@ class CacheManager private constructor(private val application: Application) {
 		startupCacheDir.listFiles()?.forEach(File::deleteRecursively)
 	}
 
-	fun registerImageToCache(bitmap: Bitmap, fileName: String, dirName: String): File {
+	fun insertImageToCache(bitmap: Bitmap, fileName: String, dirName: String): File {
 		val bitmapCacheDir = mBitmapCacheDir.also {
 			if (!it.exists()) it.mkdirs()
 		}
@@ -60,15 +60,27 @@ class CacheManager private constructor(private val application: Application) {
 			if (!it.exists()) it.mkdir()
 		}
 
-
 		val reqFile = File(reqDir, fileName).also {
 			if (it.exists()) it.delete()
-
 			it.createNewFile()
 		}
 
 		FileOutputStream(reqFile).use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
 		return reqFile
+	}
+
+	fun removeImageFromCache(fileName: String, dirName: String) {
+		val bitmapCacheDir = mBitmapCacheDir.also {
+			if (!it.exists()) return
+		}
+
+		val reqDir = File(bitmapCacheDir, dirName).also {
+			if (!it.exists()) return
+		}
+
+		val reqFile = File(reqDir, fileName).also {
+			if (it.exists()) it.delete()
+		}
 	}
 
 	fun retrieveImageCacheFile(fileName: String, dirName: String): File? {

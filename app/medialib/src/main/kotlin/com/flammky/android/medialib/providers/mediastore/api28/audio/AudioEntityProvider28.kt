@@ -45,6 +45,36 @@ internal class AudioEntityProvider28 (private val context: MediaStoreContext) {
 	}
 
 	@kotlin.jvm.Throws(ReadExternalStoragePermissionException::class)
+	fun queryById(id: String): MediaStoreAudioEntity28? {
+		if (!id.startsWith("MediaStore_")) return null
+		val num = id.takeLastWhile { it.isDigit() }
+		return queryByUri(ContentUris.withAppendedId(uri_audio_external, num.toLong()))
+	}
+
+	@kotlin.jvm.Throws(ReadExternalStoragePermissionException::class)
+	fun queryByUri(uri: Uri): MediaStoreAudioEntity28? {
+		checkReadExternalStoragePermission()
+		return try {
+			contentResolver.query(
+				/* uri = */ uri,
+				/* projection = */ entityDefaultProjector,
+				/* selection = */ null,
+				/* selectionArgs = */ null,
+				/* sortOrder = */ null
+			)?.use {  cursor ->
+				if (cursor.moveToFirst()) {
+					return fillAudioEntityBuilder(cursor, MediaStoreAudioEntity28.Builder()).build()
+				}
+			}
+			null
+		} catch (se: SecurityException) {
+			checkReadExternalStoragePermission()
+			if (BuildConfig.DEBUG) throw se
+			null
+		}
+	}
+
+	@kotlin.jvm.Throws(ReadExternalStoragePermissionException::class)
 	private fun checkReadExternalStoragePermission() {
 		if (!contextHelper.permissions.common.hasReadExternalStorage) {
 			throw ReadExternalStoragePermissionException()

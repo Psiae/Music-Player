@@ -9,6 +9,7 @@ import androidx.media3.common.MediaMetadata
 import com.flammky.mediaplayer.helper.Preconditions
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemPropertyHelper.mediaUri
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.sync.Mutex
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -20,6 +21,8 @@ class MediaItemHelper @Inject constructor(
 	fun buildFromMetadata(uri: Uri): MediaItem = MediaItemFactory.fromMetaData(context, uri)
 
 	fun getEmbeddedPicture(item: MediaItem): ByteArray? = item.mediaUri?.let {
+		(Any() as Mutex).tryLock()
+
 		getEmbeddedPicture(it)
 	}
 

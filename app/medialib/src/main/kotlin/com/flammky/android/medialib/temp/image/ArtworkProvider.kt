@@ -31,6 +31,8 @@ interface ArtworkProvider {
 		@Px val minimumHeight: Int,
 		val diskCacheAllowed: Boolean,
 		val memoryCacheAllowed: Boolean,
+		val storeDiskCacheAllowed: Boolean,
+		val storeMemoryCacheAllowed: Boolean,
 	) {
 
 		class Builder <R> (val id: String, val cls: Class<R>) {
@@ -52,13 +54,26 @@ interface ArtworkProvider {
 			/**
 			 * Whether Disk Cache is allowed
 			 */
-			private var diskCacheAllowed: Boolean = true
+			var diskCacheAllowed: Boolean = true
+				private set
 
 			/**
 			 * Whether Memory Cache is allowed
 			 */
-			private var memoryCacheAllowed: Boolean = true
+			var memoryCacheAllowed: Boolean = true
+				private set
 
+			/**
+			 * Whether Storing to Disk Cache is allowed
+			 */
+			var storeDiskCacheAllowed: Boolean = true
+				private set
+
+			/**
+			 * Whether Storing to Memory Cache is allowed
+			 */
+			var storeMemoryCacheAllowed: Boolean = true
+				private set
 
 			fun setMinimumSize(@Px @IntRange(from = 0, to = MAX_WIDTH) size: Int): Builder<R> =
 				apply {
@@ -97,6 +112,14 @@ interface ArtworkProvider {
 				memoryCacheAllowed = allowed
 			}
 
+			fun setStoreDiskCacheAllowed(allowed: Boolean): Builder<R> = apply {
+				storeDiskCacheAllowed = allowed
+			}
+
+			fun setStoreMemoryCacheAllowed(allowed: Boolean): Builder<R> = apply {
+				storeMemoryCacheAllowed = allowed
+			}
+
 			fun build(): Request<R> = Request(
 				id = id,
 				cls = cls,
@@ -104,6 +127,8 @@ interface ArtworkProvider {
 				minimumHeight = minimumHeight,
 				diskCacheAllowed = diskCacheAllowed,
 				memoryCacheAllowed = memoryCacheAllowed,
+				storeDiskCacheAllowed = storeDiskCacheAllowed,
+				storeMemoryCacheAllowed = storeMemoryCacheAllowed
 			)
 		}
 

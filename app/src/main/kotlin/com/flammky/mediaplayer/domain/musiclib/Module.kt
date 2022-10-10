@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.media3.exoplayer.ExoPlayer
 import com.flammky.mediaplayer.helper.external.MediaIntentHandler
 import com.flammky.mediaplayer.helper.external.MediaIntentHandlerImpl
-import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.musicplayer.domain.musiclib.player.exoplayer.ExoPlayerFactory
 import com.flammky.musicplayer.domain.musiclib.service.MusicLibraryService
 import dagger.Module
@@ -46,7 +45,7 @@ object MusicLibraryModule {
 	@Singleton
 	fun provideTestImageProvider(@ApplicationContext context: Context): com.flammky.android.medialib.temp.image.ArtworkProvider {
 		val lru = com.flammky.android.medialib.temp.MediaLibrary.construct(context, MusicLibraryService::class.java).imageRepository.sharedBitmapLru
-		return com.flammky.android.medialib.temp.image.internal.TestArtworkProvider(lru)
+		return com.flammky.android.medialib.temp.image.internal.TestArtworkProvider(context, lru)
 	}
 }
 

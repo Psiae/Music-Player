@@ -41,7 +41,7 @@ class AudioFile private constructor() {
 
 		private constructor()
 
-		constructor(context: Context) {
+		private constructor(context: Context) {
 			_context = context
 		}
 
@@ -94,6 +94,7 @@ class AudioFile private constructor() {
 		@Suppress("SpellCheckingInspection")
 		private val CACHE_DIR_NAME = File("flammky.media.audiofile")
 
-		fun fromContext(context: Context) = Builder(context)
+		fun fromContext(context: Context, file: File) = Builder(context, file)
+		fun fromContext(context: Context, uri: Uri, dir: File?) = Builder(context, uri, dir)
 	}
 }

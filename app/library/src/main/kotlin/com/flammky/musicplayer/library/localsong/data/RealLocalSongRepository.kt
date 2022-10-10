@@ -1,38 +1,46 @@
 package com.flammky.musicplayer.library.localsong.data
 
 import android.content.Context
+import android.graphics.Bitmap
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.medialib.MediaLib
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.common.mediaitem.MediaItem
 import com.flammky.android.medialib.common.mediaitem.MediaItem.Companion.buildMediaItem
+import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider
 import com.flammky.android.medialib.providers.mediastore.base.audio.MediaStoreAudioEntity
-import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
+import com.flammky.android.medialib.temp.image.ArtworkProvider
+import com.flammky.android.medialib.temp.image.internal.TestArtworkProvider
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlin.time.Duration.Companion.milliseconds
 
 class RealLocalSongRepository(
 	private val context: Context,
-	private val dispatchers: AndroidCoroutineDispatchers
+	private val dispatchers: AndroidCoroutineDispatchers,
+	private val artworkProvider: ArtworkProvider
 ) : LocalSongRepository {
+
 	private val mediaLib = MediaLib.singleton(context)
 	private val audioProvider = mediaLib.mediaProviders.mediaStore.audio
 
+	private val ioScope = CoroutineScope(dispatchers.io)
 
-	override suspend fun getEntitiesAsync(cache: Boolean): Deferred<List<LocalSongEntity>> =
+	override suspend fun getModelsAsync(): Deferred<List<LocalSongModel>> =
 		coroutineScope {
 			async(dispatchers.io) {
 				audioProvider.query().map { toLocalSongEntity(it) }
 			}
 		}
 
-	private fun toLocalSongEntity(from: MediaStoreAudioEntity): LocalSongEntity {
+	private fun toLocalSongEntity(from: MediaStoreAudioEntity): LocalSongModel {
 		val metadata = AudioMetadata.build {
 			val durationMs = from.metadata.durationMs
 			setArtist(from.metadata.artist)
 			setAlbumTitle(from.metadata.album)
-			setTitle(from.metadata.title)
+			setTitle(from.metadata.title ?: from.file.fileName)
 			setPlayable(if (durationMs != null && durationMs > 0) true else null)
 			setDuration(durationMs?.milliseconds)
 		}
@@ -44,13 +52,60 @@ class RealLocalSongRepository(
 			setMetadata(metadata)
 		}
 
-		return MediaStoreLocalSongEntity(from, mediaItem)
+		return MediaStoreLocalSongModel(from, mediaItem)
 	}
 
-	class MediaStoreLocalSongEntity(
+	class MediaStoreLocalSongModel(
 		val mediaStore: MediaStoreAudioEntity,
 		mediaItem: MediaItem
-	) : LocalSongEntity(mediaStore.uid, mediaItem) {
+	) : LocalSongModel(mediaStore.uid, mediaItem) {
 
+	}
+
+	override suspend fun collectArtwork(model: LocalSongModel): Flow<Bitmap?> {
+		return collectArtwork(model.id)
+	}
+
+	override suspend fun collectArtwork(id: String): Flow<Bitmap?> {
+		return callbackFlow {
+			val artId = id
+
+			suspend fun sendBitmap(cache: Boolean, storeToCache: Boolean) {
+				val req = ArtworkProvider.Request
+					.Builder(artId, Bitmap::class.java)
+					.setMinimumHeight(250)
+					.setMinimumWidth(250)
+					.setMemoryCacheAllowed(cache)
+					.setDiskCacheAllowed(cache)
+					.setStoreMemoryCacheAllowed(storeToCache)
+					.setStoreDiskCacheAllowed(storeToCache)
+					.build()
+				send(artworkProvider.request(req).await().get())
+			}
+
+			sendBitmap(cache = true, storeToCache = true)
+
+			suspend fun removeCache() {
+				(artworkProvider as? TestArtworkProvider)?.removeCacheForId(
+					id = artId,
+					mem = true,
+					disk = true
+				)
+			}
+
+			val observer = MediaStoreProvider.ContentObserver { id, uri, flag ->
+				if (id == artId) {
+					ioScope.launch {
+						removeCache()
+						sendBitmap(cache = false, storeToCache = false)
+					}
+				}
+			}
+
+			audioProvider.observe(observer)
+			awaitClose {
+				audioProvider.removeObserver(observer)
+			}
+		}
 	}
 }

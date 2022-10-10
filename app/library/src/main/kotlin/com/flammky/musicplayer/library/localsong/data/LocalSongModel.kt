@@ -2,7 +2,7 @@ package com.flammky.musicplayer.library.localsong.data
 
 import com.flammky.android.medialib.common.mediaitem.MediaItem
 
-abstract class LocalSongEntity(
+sealed class LocalSongModel(
 	val id: String,
 	val mediaItem: MediaItem
 )

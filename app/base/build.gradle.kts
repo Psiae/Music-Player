@@ -24,7 +24,13 @@ dependencies {
     api(project(":common:kotlin"))
     api(project(":common:android"))
     api(project(":common:androidx"))
-    api(project(":common:androidx:viewmodel:compose"))
+    api(project(":common:androidx:viewmodel"))
+
+    /* coil-kt */
+    dependencies {
+        val v = "2.2.2"
+        api("io.coil-kt:coil:$v")
+    }
 
     /* google.dagger */
     dependencies {

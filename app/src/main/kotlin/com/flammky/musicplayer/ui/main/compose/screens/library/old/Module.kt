@@ -22,20 +22,20 @@ object ViewModelModule {
 		private val player: MediaController
 			get() = MusicLibrary.api.localAgent.session.player
 
-		override fun getAllMediaItems(): List<MediaItem> {
-			return player.getAllMediaItems()
+		override suspend fun getAllMediaItems(): List<MediaItem> {
+			return player.joinSuspend { getAllMediaItems() }
 		}
 
-		override fun removeMediaItem(item: MediaItem) {
-			player.removeMediaItem(item)
+		override suspend fun removeMediaItem(item: MediaItem) {
+			player.joinSuspend { removeMediaItem(item) }
 		}
 
-		override fun removeMediaItems(items: List<MediaItem>) {
-			player.removeMediaItems(items)
+		override suspend fun removeMediaItems(items: List<MediaItem>) {
+			player.joinSuspend { removeMediaItems(items) }
 		}
 
-		override fun pause() {
-			player.pause()
+		override suspend fun pause() {
+			player.joinSuspend { pause() }
 		}
 
 		override suspend fun play(model: LibraryViewModelOld.LocalSongModel) {

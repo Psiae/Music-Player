@@ -1,31 +1,39 @@
 package com.flammky.musicplayer.library.localsong.ui
 
+import android.graphics.Bitmap
 import androidx.annotation.FloatRange
 import androidx.annotation.Px
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.LayoutCoordinates
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.min
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.*
 import coil.compose.AsyncImage
 import com.flammky.androidx.viewmodel.compose.activityViewModel
 import com.flammky.common.kotlin.coroutines.safeCollect
+import com.flammky.musicplayer.base.compose.rememberContextHelper
 import com.flammky.musicplayer.library.localsong.data.LocalSongModel
+import com.google.accompanist.placeholder.PlaceholderHighlight
+import com.google.accompanist.placeholder.placeholder
+import com.google.accompanist.placeholder.shimmer
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import kotlin.math.ceil
+import timber.log.Timber
+import kotlin.math.max
 import kotlin.math.min
 
 @Composable
@@ -42,6 +50,7 @@ internal fun LocalSongDisplay(
 		DisplayHeader()
 		DisplayContent(
 			list = viewModel.listState.read(),
+			onItemClicked = { viewModel.play(it) },
 			navigate = navigate
 		)
 	}
@@ -51,31 +60,28 @@ internal fun LocalSongDisplay(
 private fun DisplayHeader(
 	textStyle: TextStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Medium)
 ) {
-	Text(text = "Device Songs")
+	Text(text = "Device Songs", style = textStyle)
 }
 
 @Composable
 private fun DisplayContent(
 	modifier: Modifier = Modifier,
 	list: List<LocalSongModel>,
+	onItemClicked: (item: LocalSongModel) -> Unit,
 	navigate: (String) -> Unit
 ) {
-	val density = LocalDensity.current
-	val maxWidthState = remember { mutableStateOf<Dp?>(null) }
-	val maxHeightState = remember { mutableStateOf<Dp?>(null) }
-	Box(
+	BoxWithConstraints(
 		modifier = Modifier
 			.fillMaxSize()
 			.then(modifier)
-			.onGloballyPositioned { bounds: LayoutCoordinates ->
-				maxWidthState.overwrite(bounds.size.width.toDp(density))
-				maxHeightState.overwrite(bounds.size.height.toDp(density))
-			}
-	)
-	val maxWidth = maxWidthState.read()
-	val maxHeight = maxHeightState.read()
-	if (maxWidth != null && maxHeight != null) {
-		DynamicDisplayContent(maxWidth = maxWidth, maxHeight = maxHeight, list = list, navigate)
+	) {
+		DynamicDisplayContent(
+			maxWidth = this.maxWidth,
+			maxHeight = this.maxHeight,
+			list = list,
+			onItemClicked = onItemClicked,
+			navigate = navigate
+		)
 	}
 }
 
@@ -83,120 +89,214 @@ private fun DisplayContent(
 
 @Composable
 private fun DynamicDisplayContent(
-	@FloatRange(25.0, Double.MAX_VALUE) maxWidth: Dp,
-	@FloatRange(25.0, Double.MAX_VALUE)maxHeight: Dp,
+	@FloatRange(15.0, Double.MAX_VALUE) maxWidth: Dp,
+	@FloatRange(15.0, Double.MAX_VALUE) maxHeight: Dp,
+	contentPadding: PaddingValues = PaddingValues(0.dp),
 	list: List<LocalSongModel>,
+	onItemClicked: (item: LocalSongModel) -> Unit,
 	navigate: (String) -> Unit
 ) {
-	// 10 required by spacer, 15 required by minimum of 3 items
-	if (maxWidth.value < 25 || maxHeight.value < 25) {
-		error("Available Size Too Small")
-	}
-	val density = LocalDensity.current
-	val maxWidthPx = maxWidth.toPx(density)
-	val maxHeightPx = maxHeight.toPx(density)
-	val rowContentStartSpacer = 5.dp
-	val rowContentEndSpacer = 5.dp
-	val rowContentTopSpacer = 5.dp
-	val rowContentBottomSpacer = 5.dp
 
-	// Ideally we want the child size to be 100 x 100
-	// with at least 3 child on each row on vertical display orientation
-	// now we should think about whether we increase spacer size or the item size on `too small`
-	// case but not enough space for another Item
+	Timber.d("maxWidth: $maxWidth")
 
-	val minChildAmount = 3
-	val minRow = 1
-	val maxRow = 2
+	if (list.isEmpty()) return // show no local song available
 
-	val childWidth = 100.dp
-	val childHeight = 100.dp
+	val contextHelper = rememberContextHelper()
+
+	val landscape = contextHelper.configurations.isOrientationLandscape()
+
+	val rowSpacer = 5.dp
+	val rowMax = 2
+	val rowWidth = maxWidth
+	val rowHeight = maxHeight / rowMax
+
+	// ignore them for now
+	val contentStartPadding = contentPadding.calculateStartPadding(LayoutDirection.Ltr)
+	val contentEndPadding = contentPadding.calculateEndPadding(LayoutDirection.Ltr)
+	val contentTopPadding = contentPadding.calculateTopPadding()
+	val contentBottomPadding = contentPadding.calculateBottomPadding()
+	val contentHorizontalPadding = contentStartPadding + contentEndPadding
+	val contentVerticalPadding = contentTopPadding + contentBottomPadding
+
+	val maxContentPadding = maxOf(
+		contentStartPadding,
+		contentEndPadding,
+		contentTopPadding,
+		contentBottomPadding
+	)
+
 	val childHorizontalSpacer = 10.dp
 
-	val rowVerticalSpacer = rowContentTopSpacer + rowContentBottomSpacer
-	val rowHorizontalSpacer = rowContentStartSpacer + rowContentEndSpacer
-	val rowHeight = min(maxHeight, childHeight + rowVerticalSpacer)
-	val rowWidth = maxWidth
-	val rowContentHeight = rowHeight - rowHorizontalSpacer
-	val rowContentWidth = rowWidth - rowHorizontalSpacer
-	val rowSpacer = 15.dp
-
-	var fixedChildWidth = childWidth
-	var fixedChildHeight = childHeight
-
-	fun isHorizontalChildAmountPossible(amount: Int): Boolean {
-		return (rowContentWidth / (fixedChildWidth * amount + (childHorizontalSpacer * ceil(amount.toFloat() / 2)))).toInt() > 0
+	fun contentSpacerAmount(childAmount: Int): Int {
+		return if (childAmount <= 0) 0 else childAmount - 1
 	}
 
-	fun isVerticalChildAmountPossible(amount: Int): Boolean {
-		return (rowContentHeight / (fixedChildHeight * amount)).toInt() > 0
+	fun calculateContentSpacer(amount: Int): Dp {
+		return (childHorizontalSpacer * contentSpacerAmount(amount))
+			.also { Timber.d("DynamicDisplayContent calculateChildRowSpacer $amount, $it") }
 	}
 
-	fun possibleHorizontalChildAmount(): Int {
-		var possible = 0
-		while (isHorizontalChildAmountPossible(possible + 1)) {
-			possible++
+	fun calculateRowSpacer(amount: Int): Dp {
+		return (rowSpacer * if (amount <= 0) 0 else amount - 1)
+	}
+
+	fun possibleRowAmount(height: Dp): Int = when {
+		height > maxHeight -> 0
+		height > maxHeight / 2 -> 1
+		else -> {
+			val raw = maxHeight / height
+			val spacer = calculateRowSpacer(raw.toInt())
+			((maxHeight - spacer) / height).toInt()
 		}
-		return possible
+	}.also {
+		Timber.d("possibleRowAmount, $maxHeight, $height, $it")
 	}
 
-	fun possibleVerticalChildAmount(): Int {
-		var possible = 0
-		while (isVerticalChildAmountPossible(possible + 1)) {
-			possible++
+
+	fun possibleHorizontalChilds(width: Dp): Int {
+		/*return (maxWidth / width).toInt()*/
+
+		val raw = (maxWidth / width).toInt()
+		val spacer = calculateContentSpacer(raw)
+		return ((maxWidth - spacer) / width).toInt().also {
+			Timber.d("DynamicDisplayContent possibleHorizontalChilds $it, $maxWidth, $width, $raw, $spacer")
 		}
-		return possible
 	}
 
-	while (possibleHorizontalChildAmount() < minChildAmount) {
-		fixedChildWidth -= 1.dp
-	}
-	while (possibleVerticalChildAmount() < minRow) {
-		fixedChildHeight -= 1.dp
+	fun possibleVerticalChilds(height: Dp): Int {
+		return if (height > maxHeight) 0 else 1
 	}
 
-	val fixedChildSize = min(fixedChildWidth, fixedChildHeight)
-	val fixedRowHeight = fixedChildSize + rowContentTopSpacer + rowContentBottomSpacer
-	val fixedRowWidth = possibleHorizontalChildAmount()
-
-	fun isRowAmountPossible(amount: Int): Boolean {
-		val spacer = rowSpacer * ceil(amount.toFloat() / 2)
-		return (maxHeight / (fixedRowHeight * amount + spacer)).toInt() > 0
-	}
-
-	fun possibleRowAmount(): Int {
-		var possible = 0
-		while (possible < maxRow && isRowAmountPossible(possible + 1)) {
-			possible++
+	fun horizontalContentLeftover(
+		childWidth: Dp,
+		childAmount: Int = possibleHorizontalChilds(childWidth),
+	): Dp {
+		val spacer = calculateContentSpacer(childAmount)
+		return (maxWidth - (childWidth * childAmount + spacer)).also {
+			Timber.d("DynamicDisplayContent horizontalLeftover $maxWidth, $childAmount, $childWidth, $spacer, $it")
 		}
-		return possible
 	}
 
-	val possibleRowAmount = possibleRowAmount()
+	fun verticalContentLeftover(childHeight: Dp): Dp {
+		val possibleRow = possibleRowAmount(childHeight)
+		return maxHeight - calculateRowSpacer(possibleRow) / possibleRow - childHeight
+	}
 
-	repeat(possibleRowAmount) { index ->
-		val lastRow = index == possibleRowAmount - 1
-		val items =
-			if (lastRow) {
-				list.drop(min(list.size, 3))
-			} else {
-				list.take(min(list.size, 3))
-			}
-		DisplayContentRow(
-			modifier = Modifier
-				.width(rowWidth)
-				.height(fixedRowHeight)
-				.padding(
-					start = rowContentStartSpacer,
-					end = rowContentEndSpacer,
-					top = rowContentTopSpacer,
-					bottom = rowContentBottomSpacer
-				),
-			horizontalArrangement = Arrangement.spacedBy(childHorizontalSpacer),
-			verticalAlignment = Alignment.CenterVertically,
-			isLastRow = index == 1,
-			items = items
+	// the size we ideally want.
+	val idealChildSize = min(
+		maxHeight / 2 - rowSpacer,
+		maxWidth / 3 - calculateContentSpacer(3)
+	)
+
+	val vh =
+		if (landscape) {
+			maxHeight / 2 - calculateRowSpacer(2)
+		} else {
+			maxWidth / 3 - calculateContentSpacer(3)
+		}
+
+	val minimumChildSize = vh
+
+	val idealRowAmount = when(list.size) {
+		0 -> return
+		in 1..possibleHorizontalChilds(idealChildSize) -> 1
+		else -> if (idealChildSize + rowSpacer > maxHeight / 2) 1 else 2
+	}
+
+	require(idealChildSize.value > 0f) {
+		"Size <= 0"
+	}
+
+	var childSize: Dp = idealChildSize
+
+	fun currentHorizontalContentLeftover(): Dp {
+		return horizontalContentLeftover(childSize)
+	}
+
+	fun currentVerticalContentLeftover(): Dp {
+		return verticalContentLeftover(childSize)
+	}
+
+	fun currentPossibleHorizontalChild(): Int {
+		return possibleHorizontalChilds(childSize)
+	}
+
+	fun currentPossibleVerticalChild(): Int {
+		return possibleVerticalChilds(childSize)
+	}
+
+	fun minimumSizeSatisfied(): Boolean = childSize > minimumChildSize
+
+	fun expandConstrained() {
+		childSize += minOf(
+			currentVerticalContentLeftover() / max(currentPossibleVerticalChild(), 1),
+			currentHorizontalContentLeftover() / max(currentPossibleHorizontalChild(), 1)
 		)
+	}
+
+	// expand the content on horizontal axis
+	fun expandHorizontally(constraintHeight: Boolean = true) {
+		if (constraintHeight) {
+			expandConstrained()
+		} else {
+			childSize += currentHorizontalContentLeftover() / max(currentPossibleHorizontalChild(), 1)
+		}
+	}
+
+	// expand the content on vertical axis
+	fun expandVertically(constraintWidth: Boolean = true) {
+		if (constraintWidth) {
+			expandConstrained()
+		} else {
+			childSize += currentVerticalContentLeftover() / max(currentPossibleVerticalChild(), 1)
+		}
+	}
+
+	fun shrinkHorizontally(amount: Int = 1) {
+		childSize = maxWidth / (possibleHorizontalChilds(childSize) - amount)
+		expandHorizontally()
+		Timber.d("shrinkHorizontally to $childSize, ")
+	}
+
+	if (currentHorizontalContentLeftover() > 0.dp) expandHorizontally()
+	if (currentVerticalContentLeftover() > 0.dp) expandVertically()
+	while (!minimumSizeSatisfied()) shrinkHorizontally()
+
+	Column(
+		modifier = Modifier.clip(RoundedCornerShape(5.dp)),
+		horizontalAlignment = Alignment.CenterHorizontally,
+		verticalArrangement = Arrangement.spacedBy(rowSpacer)
+	) {
+		val possibleRowAmount = possibleRowAmount(childSize)
+		val possibleChildAmount = possibleHorizontalChilds(childSize)
+		var taken = 0
+		repeat(possibleRowAmount) { index ->
+			val lastRow = index == possibleRowAmount - 1
+			val items =
+				if (lastRow) {
+					list.drop(taken)
+				} else {
+					list.drop(taken).take(min(list.size, possibleChildAmount)).also { taken += it.size }
+				}
+			DisplayContentRow(
+				modifier = Modifier
+					.width(rowWidth)
+					.height(childSize)
+					/*.padding(
+						start = contentStartPadding,
+						end = contentEndPadding,
+						top = contentTopPadding,
+						bottom = contentBottomPadding
+					)*/,
+				horizontalArrangement = Arrangement.spacedBy(childHorizontalSpacer),
+				verticalAlignment = Alignment.CenterVertically,
+				isLastRow = lastRow,
+				lastIndex = min(items.lastIndex, possibleChildAmount - 1),
+				items = items,
+				onItemClicked = onItemClicked,
+				navigateSongList = { navigate(LocalSongNavigator.localSongListRoute) }
+			)
+		}
 	}
 }
 
@@ -206,69 +306,235 @@ private fun DisplayContentRow(
 	horizontalArrangement: Arrangement.Horizontal,
 	verticalAlignment: Alignment.Vertical,
 	isLastRow: Boolean,
-	items: List<LocalSongModel>
+	lastIndex: Int,
+	items: List<LocalSongModel>,
+	onItemClicked: (LocalSongModel) -> Unit,
+	navigateSongList: () -> Unit
 ) {
+
+	if (items.isEmpty()) return
+
 	Row(
-		modifier = remember(modifier) {
-			Modifier
-				.fillMaxWidth()
-				.then(modifier)
-		},
+		modifier = Modifier
+			.fillMaxWidth()
+			.then(modifier),
 		horizontalArrangement = horizontalArrangement,
 		verticalAlignment = verticalAlignment
 	) {
+		val repeat = lastIndex + 1
 		if (!isLastRow) {
-			repeat(items.size) { i ->
-				DisplayContentItem(items[i])
+			repeat(repeat) { i ->
+				DisplayContentItem(items[i], onItemClicked)
 			}
 		} else {
-			repeat(items.size) { i ->
-				if (i != items.lastIndex) {
-					DisplayContentItem(items[i])
+			repeat(repeat) { i ->
+				if (i != lastIndex || items.lastIndex == lastIndex) {
+					DisplayContentItem(items[i], onItemClicked)
 				} else {
-					DisplayLastContentItem(items = items)
+					DisplayLastContentItem(items = items.drop(i), navigateSongList)
 				}
 			}
 		}
 	}
 }
 
-private object UNSET
-private object LOADING
+private val UNSET = Any()
+private val LOADING = Any()
 
 @Composable
 private fun DisplayContentItem(
-	item: LocalSongModel
+	item: LocalSongModel,
+	onItemClicked: (item: LocalSongModel) -> Unit
 ) {
 	val viewModel: LocalSongViewModel = activityViewModel()
-	val model = remember { mutableStateOf<Any?>(null) }
+	val model = remember { mutableStateOf<Any?>(UNSET) }
 
 	Box(
 		modifier = Modifier
-			.fillMaxSize()
+			.fillMaxHeight()
+			.aspectRatio(1f, true)
 			.background(Color(0xFFC2C2C2))
+			.clip(RoundedCornerShape(5.dp))
+			.clickable { onItemClicked(item) }
 	) {
 		AsyncImage(
-			modifier = Modifier.fillMaxSize(),
-			model = model,
-			contentDescription = "art"
+			modifier = Modifier
+				.fillMaxSize()
+				.placeholder(
+					visible = model.value == LOADING,
+					color = Color(0xFFA0A0A0),
+					highlight = PlaceholderHighlight.shimmer(Color.DarkGray)
+				),
+			model = model.read(),
+			contentDescription = "art",
+			contentScale = ContentScale.Crop
+		)
+		DisplayContentItemShadowedDescription(
+			modifier = Modifier.align(Alignment.BottomCenter),
+			text = item.displayName ?: ""
 		)
 	}
 
-	val scope = rememberCoroutineScope { SupervisorJob() }
+	val scope = rememberCoroutineScope()
+	val coroutineContext = Dispatchers.Main.immediate + SupervisorJob()
 	DisposableEffect(key1 = item) {
-		val job = scope.launch {
-			viewModel.collectArtwork(item).safeCollect { art -> model.overwrite(art) }
+		val job = scope.launch(coroutineContext) {
+			model.overwrite(LOADING)
+			viewModel.collectArtwork(item).safeCollect { art ->
+				val value = model.value
+				if (art is Bitmap && value is Bitmap && art.sameAs(value)) return@safeCollect
+				model.overwrite(art)
+			}
 		}
 		onDispose { job.cancel() }
 	}
 }
 
 @Composable
-private fun DisplayLastContentItem(
-	items: List<LocalSongModel>
+private fun DisplayContentItemShadowedDescription(
+	modifier: Modifier,
+	text: String
 ) {
+	val alpha = 0.75F
+	val shadowColor = Color.Black
+	val textColor = Color.White
+	Box(
+		modifier = Modifier
+			.fillMaxWidth()
+			.background(
+				brush = Brush.verticalGradient(
+					colors = remember {
+						listOf(
+							shadowColor.copy(alpha = alpha - 0.50f),
+							shadowColor.copy(alpha = alpha - 0.40f),
+							shadowColor.copy(alpha = alpha - 0.30f),
+							shadowColor.copy(alpha = alpha - 0.20f),
+							shadowColor.copy(alpha = alpha - 0.10f),
+							shadowColor.copy(alpha = alpha)
+						)
+					}
+				)
+			)
+			.then(modifier),
+		contentAlignment = Alignment.BottomCenter,
+	) {
+		Column {
+			val typography = MaterialTheme.typography.labelMedium
+			Spacer(modifier = Modifier.height(2.dp))
+			Text(
+				modifier = Modifier.fillMaxWidth(0.85f),
+				text = text,
+				color = textColor,
+				style = typography,
+				textAlign = TextAlign.Center,
+				maxLines = 1,
+				overflow = TextOverflow.Ellipsis
+			)
+			Spacer(modifier = Modifier.height(2.dp))
+		}
+	}
+}
 
+@Composable
+private fun DisplayLastContentItem(
+	items: List<LocalSongModel>,
+	navigate: () -> Unit
+) {
+	Box(
+		modifier = Modifier
+			.fillMaxHeight()
+			.aspectRatio(1f, true)
+			.background(Color(0xFFC2C2C2))
+			.clip(RoundedCornerShape(5.dp))
+			.clickable(onClick = navigate)
+	) {
+		Column {
+			var i = 0
+			repeat(min(2, items.size)) { rowIndex ->
+				i += rowIndex
+				val f = if (rowIndex == 0) 0.5f else 1f
+				Row(modifier = Modifier
+					.fillMaxWidth()
+					.fillMaxHeight(f)
+				) {
+					repeat(min(2, items.drop(i).size)) { itemIndex ->
+						i += itemIndex
+						val model = items[i]
+						DisplayLastContentItemChild(model)
+					}
+				}
+			}
+		}
+		val shadowColor = Color.Black
+		Box(
+			modifier = Modifier
+				.fillMaxSize()
+				.background(shadowColor.copy(alpha = 0.8f))
+				.padding(bottom = 2.dp)
+		) {
+			val textColor = Color.White
+			Text(
+				modifier = Modifier
+					.align(Alignment.Center)
+					.widthIn(max = 96.dp)
+					.padding(horizontal = 2.dp),
+				text = "${items.size}",
+				color = textColor,
+				style = MaterialTheme.typography.titleMedium,
+				textAlign = TextAlign.Center,
+				maxLines = 1,
+				overflow = TextOverflow.Ellipsis,
+			)
+			val typography = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+			Text(
+				modifier = Modifier
+					.align(Alignment.BottomCenter)
+					.fillMaxWidth(0.9f)
+					.heightIn(20.dp),
+				text = "See more",
+				color = textColor,
+				style = typography,
+				textAlign = TextAlign.Center,
+				maxLines = 1,
+				overflow = TextOverflow.Ellipsis
+			)
+		}
+	}
+}
+
+@Composable
+private fun DisplayLastContentItemChild(
+	model: LocalSongModel
+) {
+	val viewModel: LocalSongViewModel = activityViewModel()
+	val imageModel = remember { mutableStateOf<Any?>(UNSET) }
+
+	AsyncImage(
+		modifier = Modifier
+			.fillMaxHeight()
+			.aspectRatio(1f, true)
+			.placeholder(
+				visible = imageModel.value === LOADING,
+				color = Color(0xFFA0A0A0)
+			),
+		model = imageModel.read(),
+		contentDescription = "art",
+		contentScale = ContentScale.Crop
+	)
+
+	val scope = rememberCoroutineScope()
+	val coroutineContext = Dispatchers.Main.immediate + SupervisorJob()
+	DisposableEffect(key1 = model) {
+		val job = scope.launch(coroutineContext) {
+			imageModel.overwrite(LOADING)
+			viewModel.collectArtwork(model).safeCollect { art ->
+				val value = imageModel.value
+				if (art is Bitmap && value is Bitmap && art.sameAs(value)) return@safeCollect
+				imageModel.overwrite(art)
+			}
+		}
+		onDispose { job.cancel() }
+	}
 }
 
 @Px
@@ -281,19 +547,16 @@ private fun Int.toDp(density: Density): Dp {
 }
 
 // is explicit read like this better ?
-@Suppress("NOTHING_TO_INLINE")
-private inline fun <T> State<T>.read(): T {
+private fun <T> State<T>.read(): T {
 	return value
 }
 
 // is explicit write like this better ?
-@Suppress("NOTHING_TO_INLINE")
-private inline fun <T> MutableState<T>.overwrite(value: T) {
+private fun <T> MutableState<T>.overwrite(value: T) {
 	this.value = value
 }
 
 // is explicit write like this better ?
-@Suppress("NOTHING_TO_INLINE")
-private inline fun <T> MutableState<T>.rewrite(block: () -> T) {
-	this.value = block()
+private fun <T> MutableState<T>.rewrite(block: (T) -> T) {
+	this.value = block(this.value)
 }

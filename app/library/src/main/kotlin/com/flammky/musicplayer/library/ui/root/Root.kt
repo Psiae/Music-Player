@@ -9,12 +9,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.min
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -70,7 +68,7 @@ private fun LibraryRootContent(
 
 			val height =
 				if (contextHelper.configurations.isOrientationPortrait()) {
-					min(maxWidth.toComposeDp(), 150.dp)
+					maxWidth.toComposeDp()
 				} else {
 					maxScreenHeight.dp - bottomVisibilityOffset
 				}
@@ -78,8 +76,7 @@ private fun LibraryRootContent(
 				modifier = Modifier
 					.padding(10.dp)
 					.width(maxWidth.toComposeDp())
-					.height(height)
-					.background(Color.Yellow),
+					.height(height),
 				viewModel = activityViewModel(),
 				navigate = { route ->
 					navController.navigate(route)

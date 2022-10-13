@@ -1,7 +1,6 @@
 package com.flammky.musicplayer.library.localsong.ui
 
 import android.graphics.Bitmap
-import androidx.annotation.FloatRange
 import androidx.annotation.Px
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -20,9 +19,13 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.*
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.min
 import coil.compose.AsyncImage
 import com.flammky.androidx.viewmodel.compose.activityViewModel
+import com.flammky.common.kotlin.comparable.clamp
 import com.flammky.common.kotlin.coroutines.safeCollect
 import com.flammky.musicplayer.base.compose.rememberContextHelper
 import com.flammky.musicplayer.library.localsong.data.LocalSongModel
@@ -45,7 +48,8 @@ internal fun LocalSongDisplay(
 	Column(
 		modifier = Modifier
 			.fillMaxWidth()
-			.then(modifier)
+			.then(modifier),
+		verticalArrangement = Arrangement.spacedBy(8.dp)
 	) {
 		DisplayHeader()
 		DisplayContent(
@@ -78,6 +82,9 @@ private fun DisplayContent(
 		DynamicDisplayContent(
 			maxWidth = this.maxWidth,
 			maxHeight = this.maxHeight,
+			horizontalSpacer = 10.dp,
+			verticalSpacer= 10.dp,
+			maximumRow = 2,
 			list = list,
 			onItemClicked = onItemClicked,
 			navigate = navigate
@@ -89,55 +96,67 @@ private fun DisplayContent(
 
 @Composable
 private fun DynamicDisplayContent(
-	@FloatRange(15.0, Double.MAX_VALUE) maxWidth: Dp,
-	@FloatRange(15.0, Double.MAX_VALUE) maxHeight: Dp,
-	contentPadding: PaddingValues = PaddingValues(0.dp),
 	list: List<LocalSongModel>,
+	minWidth: Dp = 0.dp,
+	maxWidth: Dp = Dp.Infinity,
+	minHeight: Dp = 0.dp,
+	maxHeight: Dp = Dp.Infinity,
+	minChildWidth: Dp = 0.dp,
+	maxChildWidth: Dp = maxWidth,
+	minChildHeight: Dp = 0.dp,
+	maxChildHeight: Dp = maxHeight,
+	horizontalSpacer: Dp = 0.dp,
+	verticalSpacer: Dp = 0.dp,
+	maximumRow: Int,
 	onItemClicked: (item: LocalSongModel) -> Unit,
 	navigate: (String) -> Unit
 ) {
-
-	Timber.d("maxWidth: $maxWidth")
-
-	if (list.isEmpty()) return // show no local song available
-
+	require(minWidth.value >= 0) {
+		"minWidth < 0"
+	}
+	require(minHeight.value >= 0) {
+		"minHeight < 0"
+	}
+	require(minChildWidth.value >= 0) {
+		"minChildWidth < 0"
+	}
+	require(minChildHeight.value >= 0) {
+		"minChildHeight < 0"
+	}
+	require(minChildWidth >= minWidth) {
+		"minChildWidth < minWidth"
+	}
+	require(minChildHeight >= minHeight) {
+		"minChildHeight < minHeight"
+	}
+	require(maxChildWidth <= maxWidth) {
+		"maxChildWidth > maxWidth"
+	}
+	require(maxChildHeight <= maxHeight) {
+		"maxChildHeight > maxHeight"
+	}
+	when(list.size) {
+		0 -> return // show no local song available
+		1, 2, 3 -> Unit // show static layout
+	}
 	val contextHelper = rememberContextHelper()
-
+	val constrainedMaxWidth = min(contextHelper.device.screenWidthDp.dp, maxWidth)
+	val constrainedMaxHeight = min(contextHelper.device.screenHeightDp.dp, maxHeight)
+	val constrainedMaxChildWidth = min(maxChildWidth, constrainedMaxWidth)
+	val constrainedMaxChildHeight = min(maxChildHeight, constrainedMaxHeight)
 	val landscape = contextHelper.configurations.isOrientationLandscape()
-
-	val rowSpacer = 5.dp
-	val rowMax = 2
-	val rowWidth = maxWidth
-	val rowHeight = maxHeight / rowMax
-
-	// ignore them for now
-	val contentStartPadding = contentPadding.calculateStartPadding(LayoutDirection.Ltr)
-	val contentEndPadding = contentPadding.calculateEndPadding(LayoutDirection.Ltr)
-	val contentTopPadding = contentPadding.calculateTopPadding()
-	val contentBottomPadding = contentPadding.calculateBottomPadding()
-	val contentHorizontalPadding = contentStartPadding + contentEndPadding
-	val contentVerticalPadding = contentTopPadding + contentBottomPadding
-
-	val maxContentPadding = maxOf(
-		contentStartPadding,
-		contentEndPadding,
-		contentTopPadding,
-		contentBottomPadding
-	)
-
-	val childHorizontalSpacer = 10.dp
 
 	fun contentSpacerAmount(childAmount: Int): Int {
 		return if (childAmount <= 0) 0 else childAmount - 1
 	}
 
 	fun calculateContentSpacer(amount: Int): Dp {
-		return (childHorizontalSpacer * contentSpacerAmount(amount))
+		return (horizontalSpacer * contentSpacerAmount(amount))
 			.also { Timber.d("DynamicDisplayContent calculateChildRowSpacer $amount, $it") }
 	}
 
 	fun calculateRowSpacer(amount: Int): Dp {
-		return (rowSpacer * if (amount <= 0) 0 else amount - 1)
+		return (horizontalSpacer * if (amount <= 0) 0 else amount - 1)
 	}
 
 	fun possibleRowAmount(height: Dp): Int = when {
@@ -150,10 +169,9 @@ private fun DynamicDisplayContent(
 		}
 	}.also {
 		Timber.d("possibleRowAmount, $maxHeight, $height, $it")
-	}
+	}.clamp(0, maximumRow)
 
-
-	fun possibleHorizontalChilds(width: Dp): Int {
+	fun placeableHorizontalChild(width: Dp): Int {
 		/*return (maxWidth / width).toInt()*/
 
 		val raw = (maxWidth / width).toInt()
@@ -163,13 +181,17 @@ private fun DynamicDisplayContent(
 		}
 	}
 
-	fun possibleVerticalChilds(height: Dp): Int {
+	fun placeableVerticalChild(height: Dp): Int {
 		return if (height > maxHeight) 0 else 1
+	}
+
+	fun isChildPlaceableHorizontally(amount: Int, width: Dp): Boolean {
+		return placeableHorizontalChild(width) >= amount
 	}
 
 	fun horizontalContentLeftover(
 		childWidth: Dp,
-		childAmount: Int = possibleHorizontalChilds(childWidth),
+		childAmount: Int = placeableHorizontalChild(childWidth),
 	): Dp {
 		val spacer = calculateContentSpacer(childAmount)
 		return (maxWidth - (childWidth * childAmount + spacer)).also {
@@ -184,7 +206,7 @@ private fun DynamicDisplayContent(
 
 	// the size we ideally want.
 	val idealChildSize = min(
-		maxHeight / 2 - rowSpacer,
+		maxHeight / 2 - verticalSpacer,
 		maxWidth / 3 - calculateContentSpacer(3)
 	)
 
@@ -193,19 +215,10 @@ private fun DynamicDisplayContent(
 			maxHeight / 2 - calculateRowSpacer(2)
 		} else {
 			maxWidth / 3 - calculateContentSpacer(3)
-		}
+		}.clamp(minChildHeight, maxChildHeight)
 
 	val minimumChildSize = vh
-
-	val idealRowAmount = when(list.size) {
-		0 -> return
-		in 1..possibleHorizontalChilds(idealChildSize) -> 1
-		else -> if (idealChildSize + rowSpacer > maxHeight / 2) 1 else 2
-	}
-
-	require(idealChildSize.value > 0f) {
-		"Size <= 0"
-	}
+	val maximumChildSize = minOf(maxWidth, maxHeight)
 
 	var childSize: Dp = idealChildSize
 
@@ -217,21 +230,26 @@ private fun DynamicDisplayContent(
 		return verticalContentLeftover(childSize)
 	}
 
-	fun currentPossibleHorizontalChild(): Int {
-		return possibleHorizontalChilds(childSize)
+	fun currentPlaceableHorizontalChild(): Int {
+		return placeableHorizontalChild(childSize)
 	}
 
-	fun currentPossibleVerticalChild(): Int {
-		return possibleVerticalChilds(childSize)
+	fun currentPlaceableVerticalChild(): Int {
+		return placeableVerticalChild(childSize)
 	}
 
 	fun minimumSizeSatisfied(): Boolean = childSize > minimumChildSize
 
 	fun expandConstrained() {
+		val a = currentVerticalContentLeftover() / max(currentPlaceableVerticalChild(), 1)
+		val b = currentHorizontalContentLeftover() / max(currentPlaceableHorizontalChild(), 1)
+
 		childSize += minOf(
-			currentVerticalContentLeftover() / max(currentPossibleVerticalChild(), 1),
-			currentHorizontalContentLeftover() / max(currentPossibleHorizontalChild(), 1)
-		)
+			currentVerticalContentLeftover() / max(currentPlaceableVerticalChild(), 1),
+			currentHorizontalContentLeftover() / max(currentPlaceableHorizontalChild(), 1)
+		).also {
+			Timber.d("expand constrained to $a $b $it")
+		}
 	}
 
 	// expand the content on horizontal axis
@@ -239,7 +257,7 @@ private fun DynamicDisplayContent(
 		if (constraintHeight) {
 			expandConstrained()
 		} else {
-			childSize += currentHorizontalContentLeftover() / max(currentPossibleHorizontalChild(), 1)
+			childSize += currentHorizontalContentLeftover() / max(currentPlaceableHorizontalChild(), 1)
 		}
 	}
 
@@ -248,39 +266,70 @@ private fun DynamicDisplayContent(
 		if (constraintWidth) {
 			expandConstrained()
 		} else {
-			childSize += currentVerticalContentLeftover() / max(currentPossibleVerticalChild(), 1)
+			childSize += currentVerticalContentLeftover() / max(currentPlaceableVerticalChild(), 1)
 		}
 	}
 
-	fun shrinkHorizontally(amount: Int = 1) {
-		childSize = maxWidth / (possibleHorizontalChilds(childSize) - amount)
-		expandHorizontally()
-		Timber.d("shrinkHorizontally to $childSize, ")
+	fun reduceHorizontalChild(amount: Int = 1) {
+		val calc = maxWidth / max(placeableHorizontalChild(childSize) - amount, 1)
+		if (calc <= maxHeight) {
+			childSize = calc
+			expandConstrained()
+		} else {
+			childSize = calc.clamp(0.dp, childSize + currentVerticalContentLeftover())
+			expandConstrained()
+		}
+		Timber.d("reduceHorizontalChild to $calc, expand to $childSize, possible: ${placeableHorizontalChild(childSize)}")
 	}
 
-	if (currentHorizontalContentLeftover() > 0.dp) expandHorizontally()
-	if (currentVerticalContentLeftover() > 0.dp) expandVertically()
-	while (!minimumSizeSatisfied()) shrinkHorizontally()
+	fun possibleChildWidthForAmount(amount: Int): Dp {
+		return ((maxWidth - calculateContentSpacer(amount)) / amount)
+	}
+
+	fun increaseHorizontalChild(amount: Int = 1) {
+		val currentPlaceable = currentPlaceableHorizontalChild()
+		childSize = possibleChildWidthForAmount(currentPlaceable + amount)
+		expandConstrained()
+
+		Timber.d("increaseHorizontalChild")
+	}
+
+	expandHorizontally()
+	expandVertically()
+
+	currentPlaceableHorizontalChild().let { amount ->
+		if (amount < 3) increaseHorizontalChild(3 - amount)
+	}
+
+	Timber.d(
+		"""
+			leftover: ${currentHorizontalContentLeftover()}, ${currentVerticalContentLeftover()}
+			childWidth: $childSize
+			childHeight: $childSize
+			maxWidth: $maxWidth
+			maxHeight: $maxHeight
+			"""
+		)
 
 	Column(
 		modifier = Modifier.clip(RoundedCornerShape(5.dp)),
 		horizontalAlignment = Alignment.CenterHorizontally,
-		verticalArrangement = Arrangement.spacedBy(rowSpacer)
+		verticalArrangement = Arrangement.spacedBy(verticalSpacer)
 	) {
-		val possibleRowAmount = possibleRowAmount(childSize)
-		val possibleChildAmount = possibleHorizontalChilds(childSize)
+		val placeableRow = possibleRowAmount(childSize)
+		val placeable = placeableHorizontalChild(childSize)
 		var taken = 0
-		repeat(possibleRowAmount) { index ->
-			val lastRow = index == possibleRowAmount - 1
+		repeat(placeableRow) { index ->
+			val lastRow = index == placeableRow - 1
 			val items =
 				if (lastRow) {
 					list.drop(taken)
 				} else {
-					list.drop(taken).take(min(list.size, possibleChildAmount)).also { taken += it.size }
+					list.drop(taken).take(min(list.size, placeable)).also { taken += it.size }
 				}
 			DisplayContentRow(
 				modifier = Modifier
-					.width(rowWidth)
+					.width(maxWidth)
 					.height(childSize)
 					/*.padding(
 						start = contentStartPadding,
@@ -288,10 +337,10 @@ private fun DynamicDisplayContent(
 						top = contentTopPadding,
 						bottom = contentBottomPadding
 					)*/,
-				horizontalArrangement = Arrangement.spacedBy(childHorizontalSpacer),
+				horizontalArrangement = Arrangement.SpaceBetween,
 				verticalAlignment = Alignment.CenterVertically,
 				isLastRow = lastRow,
-				lastIndex = min(items.lastIndex, possibleChildAmount - 1),
+				lastIndex = min(items.lastIndex, placeable - 1),
 				items = items,
 				onItemClicked = onItemClicked,
 				navigateSongList = { navigate(LocalSongNavigator.localSongListRoute) }
@@ -469,7 +518,7 @@ private fun DisplayLastContentItem(
 		Box(
 			modifier = Modifier
 				.fillMaxSize()
-				.background(shadowColor.copy(alpha = 0.8f))
+				.background(shadowColor.copy(alpha = 0.7f))
 				.padding(bottom = 2.dp)
 		) {
 			val textColor = Color.White

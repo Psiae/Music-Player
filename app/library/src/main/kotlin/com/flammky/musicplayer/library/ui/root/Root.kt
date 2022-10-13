@@ -65,12 +65,11 @@ private fun LibraryRootContent(
 				.verticalScroll(rememberScrollState()),
 			verticalArrangement = Arrangement.spacedBy(16.dp)
 		) {
-
 			val height =
 				if (contextHelper.configurations.isOrientationPortrait()) {
 					maxWidth.toComposeDp()
 				} else {
-					maxScreenHeight.dp - bottomVisibilityOffset
+					maxScreenHeight.dp
 				}
 			LocalSongDisplay(
 				modifier = Modifier

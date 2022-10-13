@@ -34,6 +34,17 @@ dependencies {
     api(project(":app:base:compose"))
     api(project(":app:base:media"))
 
+    /* android.accompanist */
+    dependencies {
+        val v = "0.25.1"
+
+        // PlaceHolder
+        implementation("com.google.accompanist:accompanist-placeholder:$v")
+
+        // Swipe-refresh
+        implementation("com.google.accompanist:accompanist-swiperefresh:$v")
+    }
+
     /* androidx.compose */
     dependencies {
         val v = "1.3.0-alpha01"
@@ -61,7 +72,7 @@ dependencies {
     dependencies {
 
         // Compose
-        val vCompose = "2.5.0"
+        val vCompose = "2.5.2"
         implementation("androidx.navigation:navigation-compose:$vCompose")
     }
 

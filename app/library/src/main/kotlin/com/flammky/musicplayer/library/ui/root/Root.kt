@@ -1,22 +1,32 @@
 package com.flammky.musicplayer.library.ui.root
 
+import android.content.ContextWrapper
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.min
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.flammky.android.content.context.ContextHelper
+import com.flammky.androidx.content.context.findBase
 import com.flammky.androidx.viewmodel.compose.activityViewModel
+import com.flammky.musicplayer.base.compose.VisibilityViewModel
 import com.flammky.musicplayer.library.localsong.ui.LocalSongDisplay
 import com.flammky.musicplayer.library.localsong.ui.LocalSongNavigator
+import com.flammky.musicplayer.library.util.read
 
 @Composable
 internal fun LibraryRoot() {
@@ -43,16 +53,40 @@ private fun LibraryRootNavigation(
 private fun LibraryRootContent(
 	navController: NavController
 ) {
-	Column(
-		modifier = Modifier.fillMaxSize(),
-		verticalArrangement = Arrangement.spacedBy(8.dp)
-	) {
-		LocalSongDisplay(
-			viewModel = activityViewModel(),
-			navigate = { route ->
-				navController.navigate(route)
-			}
-		)
+	val contextHelper = rememberContextHelper()
+	val maxScreenHeight = contextHelper.device.screenHeightDp
+	val maxScreenWidth = contextHelper.device.screenHeightDp
+	val vvm: VisibilityViewModel = activityViewModel()
+	val bottomVisibilityOffset = vvm.bottomVisibilityOffset.read()
+	BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+		val maxWidth = constraints.maxWidth
+		val maxHeight = constraints.maxHeight
+		Column(
+			modifier = Modifier
+				.fillMaxSize()
+				.verticalScroll(rememberScrollState()),
+			verticalArrangement = Arrangement.spacedBy(16.dp)
+		) {
+
+			val height =
+				if (contextHelper.configurations.isOrientationPortrait()) {
+					min(maxWidth.toComposeDp(), 150.dp)
+				} else {
+					maxScreenHeight.dp - bottomVisibilityOffset
+				}
+			LocalSongDisplay(
+				modifier = Modifier
+					.padding(10.dp)
+					.width(maxWidth.toComposeDp())
+					.height(height)
+					.background(Color.Yellow),
+				viewModel = activityViewModel(),
+				navigate = { route ->
+					navController.navigate(route)
+				}
+			)
+			Spacer(modifier = Modifier.height(bottomVisibilityOffset))
+		}
 	}
 }
 
@@ -63,3 +97,27 @@ private fun ApplyBackground() {
 		.background(MaterialTheme.colorScheme.background)
 	)
 }
+
+@Composable
+private fun rememberContextHelper(): ContextHelper {
+	val current = LocalContext.current
+	return remember(current) {
+		val context = if (current is ContextWrapper) current.findBase() else current
+		ContextHelper(context)
+	}
+}
+
+@Composable
+private fun Int.toComposeDp(): Dp {
+	return with(LocalDensity.current) { toDp() }
+}
+
+@Composable
+private fun Float.toComposeDp(): Dp {
+	return with(LocalDensity.current) { toDp() }
+}
+
+operator fun Float.times(other: Dp): Float {
+	return this * other.value
+}
+

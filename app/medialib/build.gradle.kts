@@ -62,7 +62,7 @@ dependencies {
     /* google.guava */
     dependencies {
         val v = "31.1-android"
-        implementation("com.google.guava:guava:$v")
+        api("com.google.guava:guava:$v")
     }
 
     @Suppress("SpellCheckingInspection")

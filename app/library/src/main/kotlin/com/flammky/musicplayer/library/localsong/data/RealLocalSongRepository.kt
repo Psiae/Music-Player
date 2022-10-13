@@ -58,7 +58,11 @@ class RealLocalSongRepository(
 	class MediaStoreLocalSongModel(
 		val mediaStore: MediaStoreAudioEntity,
 		mediaItem: MediaItem
-	) : LocalSongModel(mediaStore.uid, mediaItem) {
+	) : LocalSongModel(
+		mediaStore.uid,
+		mediaStore.metadata.title ?: mediaStore.metadata.title,
+		mediaItem
+	) {
 
 	}
 

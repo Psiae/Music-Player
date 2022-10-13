@@ -44,7 +44,7 @@ internal class AudioEntityProvider28 (private val context: MediaStoreContext) {
 		}
 		return holder.toList().also {
 			// ensure there's no corrupt scan
-			rescanFiles(it.mapNotNull { entity -> entity.file.absolutePath }.toTypedArray())
+			/*rescanFiles(it.mapNotNull { entity -> entity.file.absolutePath }.toTypedArray())*/
 		}
 	}
 

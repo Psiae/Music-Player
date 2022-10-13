@@ -47,7 +47,6 @@ import timber.log.Timber
 
 @Composable
 fun PlaybackControl(model: PlaybackControlModel, bottomOffset: Dp) {
-
 	val mainVM: MainViewModel = viewModel()
 
 	val targetState =
@@ -82,9 +81,8 @@ fun PlaybackControl(model: PlaybackControlModel, bottomOffset: Dp) {
 		) {
 			PlaybackControlBox(model, animatedOffset.read())
 		}
-
 	} else {
-		mainVM.playbackControlShownHeight.write(0.dp)
+		mainVM.playbackControlShownHeight.overwrite(0.dp)
 	}
 }
 
@@ -298,7 +296,7 @@ private fun ProgressIndicator(
 				secondLineTailDuration = 433,
 				secondLineTailDelay = 850 + 333 + 300
 			) {
-				loading.read().also { shouldTraverse.write(it) }
+				loading.read().also { shouldTraverse.overwrite(it) }
 			}
 
 		} else {
@@ -459,20 +457,20 @@ class PlaybackControlModel() {
 	fun updateMediaItem(item: com.flammky.android.medialib.common.mediaitem.MediaItem) {
 		actualMediaItem = item
 		val metadata = item.metadata
-		mPlaybackTitle.write(metadata.title ?: "")
+		mPlaybackTitle.overwrite(metadata.title ?: "")
 
 		if (metadata is AudioMetadata) {
-			mPlaybackArtist.write(metadata.artistName ?: metadata.albumArtistName ?: "")
+			mPlaybackArtist.overwrite(metadata.artistName ?: metadata.albumArtistName ?: "")
 		}
 	}
 
 
 	fun updateBy(state: PlaybackState) {
-		mPlaybackDuration.write(state.duration)
-		mPlayAvailable.write(!state.playWhenReady)
-		mShowPlay.write((!state.playing && (!state.playerState.isStateBuffering() && !state.playWhenReady )))
-		mShowSelf.write(!state.isEmpty && state.mediaItem !== MediaItem.EMPTY)
-		mBuffering.write( state.playerState.isStateBuffering())
+		mPlaybackDuration.overwrite(state.duration)
+		mPlayAvailable.overwrite(!state.playWhenReady)
+		mShowPlay.overwrite((!state.playing && (!state.playerState.isStateBuffering() && !state.playWhenReady )))
+		mShowSelf.overwrite(!state.isEmpty && state.mediaItem !== MediaItem.EMPTY)
+		mBuffering.overwrite( state.playerState.isStateBuffering())
 	}
 
 	private var qBufferingState = false
@@ -482,26 +480,26 @@ class PlaybackControlModel() {
 	private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
 	fun updatePosition(position: Long) {
-		mPlaybackPosition.write(position)
+		mPlaybackPosition.overwrite(position)
 	}
 
 	fun updateBufferedPosition(bufferedPosition: Long) {
-		mBufferedPosition.write(bufferedPosition)
+		mBufferedPosition.overwrite(bufferedPosition)
 	}
 
 	fun updateArt(bitmap: Bitmap?) {
-		mArt.write(bitmap)
+		mArt.overwrite(bitmap)
 		artJob.cancel()
 
 		if (bitmap != null) {
 			artJob = ioScope.launch {
 				Palette.from(bitmap).maximumColorCount(16).generate().let {
 					ensureActive()
-					mPalette.write(it)
+					mPalette.overwrite(it)
 				}
 			}
 		} else {
-			mPalette.write(null)
+			mPalette.overwrite(null)
 		}
 	}
 
@@ -523,7 +521,7 @@ private inline fun <T> State<T>.read(): T = this.value
 
 // is explicit write like this better ?
 @Suppress("NOTHING_TO_INLINE")
-private inline fun <T> MutableState<T>.write(value: T) {
+private inline fun <T> MutableState<T>.overwrite(value: T) {
 	this.value = value
 }
 

@@ -128,6 +128,8 @@ interface Player {
 	 */
 	fun release()
 
+	fun setMediaItem(item: MediaItem)
+
 	/**
 	 * The State, this interface is sealed with open child for convenience
 	 */

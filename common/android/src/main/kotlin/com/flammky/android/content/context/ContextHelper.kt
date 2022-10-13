@@ -1,10 +1,13 @@
 package com.flammky.android.content.context
 
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.pm.PackageManager
 import com.flammky.android.manifest.permission.AndroidPermission
 
-class ContextHelper(private val context: Context) {
+class ContextHelper(context: Context) {
+
+	val context = context.findBase()
 
 	val configurations = object : Configurations {
 		override val orientationInt: Int get() = context.orientationInt
@@ -37,6 +40,20 @@ class ContextHelper(private val context: Context) {
 		}
 	}
 
+	val device = object : Device {
+		override val screenWidthPx: Int
+			get() = context.resources.displayMetrics.widthPixels
+
+		override val screenHeightPx: Int
+			get() = context.resources.displayMetrics.heightPixels
+
+		override val screenWidthDp: Float
+			get() = screenWidthPx / context.resources.displayMetrics.density
+
+		override val screenHeightDp: Float
+			get() = screenHeightPx / context.resources.displayMetrics.density
+	}
+
 	interface Permissions {
 
 		val common: Common
@@ -57,8 +74,20 @@ class ContextHelper(private val context: Context) {
 		fun isOrientationLandscape(): Boolean
 	}
 
+	interface Device {
+		val screenWidthPx: Int
+		val screenHeightPx: Int
+		val screenWidthDp: Float
+		val screenHeightDp: Float
+	}
+
 	companion object {
 		inline val Context.orientationInt: Int
 			get() = resources.configuration.orientation
 	}
+}
+
+
+private fun Context.findBase(): Context {
+	return if (this is ContextWrapper) this.findBase() else this
 }

@@ -12,6 +12,7 @@ import com.flammky.android.medialib.common.mediaitem.MediaItem.Extra.Companion.t
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.android.medialib.common.mediaitem.PlaybackMetadata
 import com.flammky.android.medialib.errorprone.UnsafeBySuspend
+import com.flammky.android.medialib.media3.Media3Item
 import com.flammky.android.medialib.player.Player
 import com.flammky.android.medialib.player.ThreadLockedPlayer
 import com.flammky.android.medialib.player.lib.LibPlayer
@@ -135,6 +136,10 @@ class ExoPlayerWrapper(override val context: ExoPlayerContext)
 
 	override fun release() {
 		post { exoPlayer.release() }
+	}
+
+	override fun setMediaItem(item: MediaItem) {
+		post { exoPlayer.setMediaItem((item as Media3Item).item) }
 	}
 
 	override fun post(block: ExoPlayerWrapper.() -> Unit) {

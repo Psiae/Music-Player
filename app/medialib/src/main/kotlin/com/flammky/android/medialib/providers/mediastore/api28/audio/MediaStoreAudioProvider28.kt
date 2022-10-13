@@ -35,7 +35,9 @@ class MediaStoreAudioProvider28(private val context: MediaStoreContext)
 
 	// we can instead just remember it with our entity
 	private val rememberMutex = Mutex()
-	private var rememberUrisKey = 0
+	private var _rememberUrisKey by OverflowSafeLong(0) { 0 }
+	private val rememberUrisKey: Long
+		get() = _rememberUrisKey.also { _rememberUrisKey++ }
 	private var rememberUris = INVALID_rememberUris
 
 	private val ioDispatcher = AndroidCoroutineDispatchers.DEFAULT.io
@@ -71,7 +73,7 @@ class MediaStoreAudioProvider28(private val context: MediaStoreContext)
 		observers.sync { removeAll { it === observer } }
 	}
 
-	private fun rememberUris(key: Int, uris: List<Uri>) {
+	private fun rememberUris(key: Long, uris: List<Uri>) {
 		internalIoScope.launch {
 			rememberMutex.withLock {
 				if (key == rememberUrisKey) {

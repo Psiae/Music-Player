@@ -15,6 +15,7 @@ import com.flammky.mediaplayer.domain.viewmodels.MainViewModel
 import com.flammky.mediaplayer.domain.viewmodels.MediaViewModel
 import com.flammky.mediaplayer.helper.external.IntentWrapper
 import com.flammky.musicplayer.ui.main.compose.ComposeContent
+import com.google.accompanist.flowlayout.FlowRow
 import dagger.hilt.android.AndroidEntryPoint
 import timber.log.Timber
 import kotlin.properties.ReadOnlyProperty
@@ -52,6 +53,9 @@ class MainActivity : ComponentActivity() {
 
 		setContent {
 			ComposeContent()
+			FlowRow() {
+
+			}
 		}
 
 		return dispatchEvent(MainEvent.Create)

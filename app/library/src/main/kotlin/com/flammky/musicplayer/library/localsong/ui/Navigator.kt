@@ -4,9 +4,11 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 
 object LocalSongNavigator {
-	fun NavGraphBuilder.addLocalSongDestinations() {
-		composable("library.localSong.list") {
+	val localSongListRoute = "library.localSong.list"
 
+	fun NavGraphBuilder.addLocalSongDestinations() {
+		composable(localSongListRoute) {
+			LocalSongListsLegacy()
 		}
 	}
 }

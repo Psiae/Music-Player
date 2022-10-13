@@ -2,12 +2,15 @@ package com.flammky.android.medialib.temp.api.player
 
 import android.net.Uri
 import android.os.Looper
+import com.flammky.android.medialib.MediaLib
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.common.mediaitem.MediaItem
 import com.flammky.android.medialib.common.mediaitem.MediaItem.Companion.buildMediaItem
 import com.flammky.android.medialib.common.mediaitem.MediaItem.Extra.Companion.toMediaItemExtra
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.android.medialib.common.mediaitem.PlaybackMetadata
+import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider
+import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider.ContentObserver.Flag.Companion.isDelete
 import com.flammky.android.medialib.temp.media3.internal.mediacontroller.MediaControllerWrapper
 import com.flammky.android.medialib.temp.player.LibraryPlayer
 import com.flammky.android.medialib.temp.player.PlayerContext
@@ -19,6 +22,22 @@ internal class ForwardingMediaController private constructor(
     private val playerContext: PlayerContext,
     private val wrapper: MediaControllerWrapper
 ) : MediaController, LibraryPlayer by wrapper {
+
+	private val mediaStore = MediaLib.singleton(playerContext.android).mediaProviders.mediaStore
+
+	private val contentObserver = MediaStoreProvider.ContentObserver { _, uri, flag ->
+		if (flag.isDelete) {
+			wrapper.post {
+				val toRemove = mutableListOf<androidx.media3.common.MediaItem>()
+				getAllMediaItems().forEach {
+					if ((it.localConfiguration?.uri ?: it.requestMetadata.mediaUri) == uri ) {
+						toRemove.add(it)
+					}
+				}
+				removeMediaItems(toRemove)
+			}
+		}
+	}
 
 	override val currentActualMediaItem: MediaItem?
 		get() = wrapper.currentMediaItem?.let { convertMediaItem(it) }
@@ -107,6 +126,7 @@ internal class ForwardingMediaController private constructor(
 	inner class WrapperFuture : AbstractFuture<MediaController>() {
 		init {
 			wrapper.connect({}) {
+				mediaStore.audio.observe(contentObserver)
 				set(this@ForwardingMediaController)
 			}
 		}

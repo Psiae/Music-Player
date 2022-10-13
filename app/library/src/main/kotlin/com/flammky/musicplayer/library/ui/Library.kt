@@ -5,4 +5,4 @@ import com.flammky.musicplayer.library.ui.entry.LibraryEntry
 
 /** Library Composable public entry point */
 @Composable
-fun Library() = LibraryEntry()
+internal fun Library() = LibraryEntry()

@@ -45,7 +45,6 @@
             android:name="com.flammky.musicplayer.ui.main.MainActivity"
             android:exported="true"
             android:theme="@style/Theme.App.SplashScreen"
-            android:screenOrientation="portrait"
             android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

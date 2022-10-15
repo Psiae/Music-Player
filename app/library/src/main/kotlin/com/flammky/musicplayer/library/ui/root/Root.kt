@@ -65,17 +65,10 @@ private fun LibraryRootContent(
 				.verticalScroll(rememberScrollState()),
 			verticalArrangement = Arrangement.spacedBy(16.dp)
 		) {
-			val height =
-				if (contextHelper.configurations.isOrientationPortrait()) {
-					maxWidth.toComposeDp()
-				} else {
-					maxScreenHeight.dp
-				}
 			LocalSongDisplay(
 				modifier = Modifier
 					.padding(10.dp)
-					.width(maxWidth.toComposeDp())
-					.height(height),
+					.height(300.dp),
 				viewModel = activityViewModel(),
 				navigate = { route ->
 					navController.navigate(route)

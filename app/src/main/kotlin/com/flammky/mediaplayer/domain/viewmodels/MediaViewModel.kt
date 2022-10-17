@@ -1,17 +1,16 @@
 package com.flammky.mediaplayer.domain.viewmodels
 
-import androidx.annotation.MainThread
+import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.flammky.android.app.AppDelegate
+import com.flammky.android.environment.DeviceInfo
+import com.flammky.android.medialib.temp.image.ArtworkProvider
+import com.flammky.common.kotlin.collection.mutable.forEachClear
+import com.flammky.common.kotlin.coroutines.safeCollect
 import com.flammky.mediaplayer.helper.external.IntentWrapper
 import com.flammky.mediaplayer.helper.external.MediaIntentHandler
 import com.flammky.mediaplayer.helper.image.CoilHelper
-import com.flammky.android.environment.DeviceInfo
-import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
-import com.flammky.common.kotlin.coroutines.safeCollect
-import com.flammky.common.kotlin.coroutine.ensureNotCancelled
-import com.flammky.common.kotlin.collection.mutable.forEachClear
-import com.flammky.android.app.AppDelegate
 import com.flammky.musicplayer.domain.musiclib.core.MusicLibrary
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemHelper
 import com.flammky.musicplayer.ui.main.compose.screens.root.PlaybackControlModel
@@ -20,7 +19,6 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.guava.await
 import timber.log.Timber
 import javax.inject.Inject
-import kotlin.time.ExperimentalTime
 
 @HiltViewModel
 class MediaViewModel @Inject constructor(
@@ -29,6 +27,7 @@ class MediaViewModel @Inject constructor(
 	private val dispatchers: com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers,
 	private val itemHelper: MediaItemHelper,
 	private val intentHandler: MediaIntentHandler,
+	private val artworkProvider: ArtworkProvider,
 ) : ViewModel() {
 
 	private val cacheManager = AppDelegate.cacheManager
@@ -112,36 +111,17 @@ class MediaViewModel @Inject constructor(
     }
   }
 
-  @OptIn(ExperimentalTime::class)
-	@MainThread
   suspend fun dispatchUpdateItemBitmap(item: com.flammky.android.medialib.common.mediaitem.MediaItem) {
 		updateArtJob.cancel()
     updateArtJob = ioScope.launch {
-			ensureActive()
-
-			val lru = com.flammky.android.medialib.temp.MediaLibrary.API.imageRepository.sharedBitmapLru
-			val cached = lru.get(item.mediaId) ?: lru.get(item.mediaId + "500")
-
-			if (cached != null) {
-				return@launch playbackControlModel.updateArt(cached)
-			}
-
 			try {
-
-				val bitmap = itemHelper.getEmbeddedPicture(item.mediaUri)?.let { bytes ->
-					coilHelper.loadBitmap(bytes, 500 ,500)
-				}
-
-				ensureNotCancelled {
-					bitmap?.recycle()
-				}
-
-				if (bitmap != null) lru.putIfKeyAbsent(item.mediaId + "500", bitmap)
-
-				withContext(dispatchers.main) {
-					playbackControlModel.updateArt(bitmap)
-				}
-
+				val req = ArtworkProvider.Request.Builder(item.mediaId, Bitmap::class.java)
+					.setStoreMemoryCacheAllowed(true)
+					.setDiskCacheAllowed(false)
+					.build()
+				val art = artworkProvider.request(req).await()
+				ensureActive()
+				playbackControlModel.updateArt(art.get())
 			} catch (_: OutOfMemoryError) {}
 		}
 	}

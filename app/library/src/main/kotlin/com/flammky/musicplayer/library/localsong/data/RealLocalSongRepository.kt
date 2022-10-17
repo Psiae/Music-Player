@@ -15,6 +15,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlin.coroutines.resume
 import kotlin.time.Duration.Companion.milliseconds
 
 class RealLocalSongRepository(
@@ -32,6 +33,23 @@ class RealLocalSongRepository(
 		coroutineScope {
 			async(dispatchers.io) {
 				audioProvider.query().map { toLocalSongModel(it) }
+			}
+		}
+
+	override suspend fun getModelAsync(id: String): Deferred<LocalSongModel?> =
+		coroutineScope {
+			async(dispatchers.io) {
+				audioProvider.queryById(id)?.let { toLocalSongModel(it) }
+			}
+		}
+
+	override suspend fun requestUpdateAsync(): Deferred<List<LocalSongModel>> =
+		coroutineScope {
+			async(dispatchers.io) {
+				suspendCancellableCoroutine { cont ->
+					audioProvider.rescan { cont.resume(it) }
+				}
+				getModelsAsync().await()
 			}
 		}
 

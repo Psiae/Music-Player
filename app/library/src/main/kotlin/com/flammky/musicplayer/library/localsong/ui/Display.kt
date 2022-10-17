@@ -5,6 +5,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.ButtonDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -63,7 +66,7 @@ internal fun LocalSongDisplay(
 @Composable
 private fun DisplayHeader(
 	modifier: Modifier = Modifier,
-	textStyle: TextStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Medium),
+	textStyle: TextStyle = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Medium),
 ) {
 	Text(
 		modifier = modifier,
@@ -207,9 +210,7 @@ private fun DynamicDisplayContent(
 		childAmount: Int = calculateHorizontalPlaceableChild(childWidth)
 	): Float {
 		val spaceConstrained = constraint.maxWidth - calculateHorizontalSpacer(childAmount)
-		return (spaceConstrained - childWidth * childAmount).also {
-			Timber.d("HLeftover: $it, $childWidth, $childAmount, $spaceConstrained")
-		}
+		return (spaceConstrained - childWidth * childAmount)
 	}
 
 	fun calculateVerticalContentLeftover(childHeight: Float): Float {
@@ -355,8 +356,8 @@ private fun DisplayContentItem(
 		modifier = Modifier
 			.fillMaxHeight()
 			.aspectRatio(1f, true)
-			.background(Color(0xFFC2C2C2))
 			.clip(RoundedCornerShape(5.dp))
+			.background(Color(0xFFC2C2C2))
 			.clickable { onItemClicked(item) }
 	) {
 		AsyncImage(
@@ -403,20 +404,6 @@ private fun DisplayContentItemShadowedDescription(
 	Box(
 		modifier = Modifier
 			.fillMaxWidth()
-			/*.background(
-				brush = Brush.verticalGradient(
-					colors = remember {
-						listOf(
-							shadowColor.copy(alpha = alpha - 0.50f),
-							shadowColor.copy(alpha = alpha - 0.40f),
-							shadowColor.copy(alpha = alpha - 0.30f),
-							shadowColor.copy(alpha = alpha - 0.20f),
-							shadowColor.copy(alpha = alpha - 0.10f),
-							shadowColor.copy(alpha = alpha)
-						)
-					}
-				)
-			)*/
 			.then(modifier),
 		contentAlignment = Alignment.BottomCenter,
 	) {
@@ -446,8 +433,8 @@ private fun DisplayLastContentItem(
 		modifier = Modifier
 			.fillMaxHeight()
 			.aspectRatio(1f, true)
-			.background(Color(0xFFC2C2C2))
 			.clip(RoundedCornerShape(5.dp))
+			.background(Color(0xFFC2C2C2))
 			.clickable(onClick = navigate)
 	) {
 		Column {

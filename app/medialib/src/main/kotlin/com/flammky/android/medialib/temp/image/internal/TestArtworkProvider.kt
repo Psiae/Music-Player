@@ -46,19 +46,20 @@ class TestArtworkProvider(
 			if (request.memoryCacheAllowed) {
 				lru.get(request.id)?.let {
 					listenable.setResult(it as? R)
-
 					// maybe check restore cache?
-
 					return@launch
 				}
 			}
 
 			if (request.diskCacheAllowed) {
 				cacheManager.retrieveImageCacheFile(request.id, "TestArtworkProvider")?.let { file ->
-					BitmapFactory.decodeFile(file.absolutePath)?.let {
-						listenable.setResult(it as? R)
+					BitmapFactory.decodeFile(file.absolutePath)?.let { bitmap ->
+						listenable.setResult(bitmap as? R)
 						return@launch
-					} ?: run { file.delete() }
+					} ?: run {
+						// corrupt
+						file.delete()
+					}
 				}
 			}
 

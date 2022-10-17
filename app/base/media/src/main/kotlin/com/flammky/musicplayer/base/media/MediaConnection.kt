@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 /**
  * Connector to our Media Services.
  */
-interface MediaConnection {
+internal interface MediaConnection {
 	val state: State
 	val currentSession: Session?
 

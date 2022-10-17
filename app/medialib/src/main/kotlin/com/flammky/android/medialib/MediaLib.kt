@@ -3,6 +3,8 @@ package com.flammky.android.medialib
 import android.content.Context
 import com.flammky.android.medialib.core.MediaLibrary
 import com.flammky.android.medialib.internal.RealMediaLib
+import com.flammky.androidx.content.context.findActivity
+import com.flammky.androidx.content.context.findService
 
 object MediaLib {
 	private val delegate = RealMediaLib
@@ -23,5 +25,14 @@ object MediaLib {
 			return delegate.singleton
 		}
 
-	fun singleton(context: Context): MediaLibrary = delegate.singleton(context)
+	fun singleton(context: Context): MediaLibrary {
+		// Leak Protection
+		require(context.findActivity() == null) {
+			"Leaking Activity in MediaLib.singleton(Context)"
+		}
+		require(context.findService() == null) {
+			"Leaking Service in MediaLib.singleton(Context)"
+		}
+		return delegate.singleton(context)
+	}
 }

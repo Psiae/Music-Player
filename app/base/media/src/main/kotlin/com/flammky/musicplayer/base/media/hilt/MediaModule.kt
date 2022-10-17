@@ -1,12 +1,10 @@
 package com.flammky.musicplayer.base.media.hilt
 
-import android.content.Context
-import com.flammky.musicplayer.base.media.MediaConnection
-import com.flammky.musicplayer.base.media.SingletonMediaConnection
+import com.flammky.musicplayer.base.media.MediaConnectionDelegate
+import com.flammky.musicplayer.base.media.RealMediaConnectionDelegate
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
-import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
@@ -16,7 +14,5 @@ object MediaModule {
 
 	@Provides
 	@Singleton
-	fun provideMediaConnection(
-		@ApplicationContext context: Context
-	): MediaConnection = SingletonMediaConnection.getOrCreate(context)
+	fun provideMediaConnectionDelegate(): MediaConnectionDelegate = RealMediaConnectionDelegate()
 }

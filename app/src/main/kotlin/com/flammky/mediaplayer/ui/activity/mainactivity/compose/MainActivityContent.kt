@@ -52,7 +52,6 @@ import com.flammky.mediaplayer.domain.viewmodels.MainViewModel
 import com.flammky.mediaplayer.domain.viewmodels.MediaViewModel
 import com.flammky.mediaplayer.ui.activity.mainactivity.compose.theme.AppTypography
 import com.flammky.musicplayer.R
-import com.flammky.musicplayer.base.compose.ProvideLocalBottomOffsetVisibility
 import com.flammky.musicplayer.base.compose.VisibilityViewModel
 import com.flammky.musicplayer.ui.main.compose.navigation.MainNavigator
 import com.flammky.musicplayer.ui.main.compose.navigation.MainNavigator.ProvideNavHostController
@@ -70,23 +69,21 @@ fun MainActivityRoot(
 	val mainVM: MainViewModel = activityViewModel()
 
 	ProvideNavHostController(rememberNavController()) {
-		ProvideLocalBottomOffsetVisibility {
-			RootScaffold(
-				appSettings = appSettings,
-				navController = MainNavigator.controller
-			) { padding ->
-				Box(
-					modifier = Modifier.fillMaxSize(),
-					contentAlignment = Alignment.BottomCenter
-				) {
-					Column {
-						StatusBarSpacer()
-						AnimatedMainAppNavigator(
-							controller = MainNavigator.controller
-						)
-					}
-					PlaybackControl(mediaVM.playbackControlModel, padding.calculateBottomPadding())
+		RootScaffold(
+			appSettings = appSettings,
+			navController = MainNavigator.controller
+		) { padding ->
+			Box(
+				modifier = Modifier.fillMaxSize(),
+				contentAlignment = Alignment.BottomCenter
+			) {
+				Column {
+					StatusBarSpacer()
+					AnimatedMainAppNavigator(
+						controller = MainNavigator.controller
+					)
 				}
+				PlaybackControl(mediaVM.playbackControlModel, padding.calculateBottomPadding())
 			}
 		}
 	}

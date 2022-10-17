@@ -11,7 +11,6 @@ import com.flammky.androidx.content.context.findBase
 fun rememberContextHelper(): ContextHelper {
 	val current = LocalContext.current
 	return remember(current) {
-		val context = if (current is ContextWrapper) current.findBase() else current
-		ContextHelper(context)
+		ContextHelper(if (current is ContextWrapper) current.findBase() else current)
 	}
 }

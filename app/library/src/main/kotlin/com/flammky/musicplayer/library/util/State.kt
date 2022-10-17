@@ -4,19 +4,17 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
 
 // is explicit read like this better ?
-@Suppress("NOTHING_TO_INLINE")
-inline fun <T> State<T>.read(): T {
+internal fun <T> State<T>.read(): T {
 	return value
 }
 
 // is explicit write like this better ?
-@Suppress("NOTHING_TO_INLINE")
-inline fun <T> MutableState<T>.overwrite(value: T) {
+internal fun <T> MutableState<T>.overwrite(value: T) {
 	this.value = value
 }
 
 // is explicit write like this better ?
-@Suppress("NOTHING_TO_INLINE")
-inline fun <T> MutableState<T>.rewrite(block: (T) -> T) {
+internal inline fun <T> MutableState<T>.rewrite(block: (T) -> T): T {
 	this.value = block(this.value)
+	return this.value
 }

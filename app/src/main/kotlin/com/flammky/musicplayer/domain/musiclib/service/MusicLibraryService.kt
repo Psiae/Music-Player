@@ -193,6 +193,7 @@ class MusicLibraryService : MediaLibraryService() {
 
 		// probably would be nice to introduce something similar in musiclib package
 
+		// we should have something else instead
 		if (!MainActivity.Companion.Info.state.isAlive()) {
 			// could Leak
 			// TODO: CleanUp

@@ -48,6 +48,8 @@ class MainActivity : ComponentActivity() {
 		setupWindow()
 		setupSplashScreen()
 
+
+
 		com.flammky.android.medialib.temp.MediaLibrary.API.service.startService()
 
 		setContent {

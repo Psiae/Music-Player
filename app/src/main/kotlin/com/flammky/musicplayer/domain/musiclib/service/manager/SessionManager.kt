@@ -1,27 +1,33 @@
 package com.flammky.musicplayer.domain.musiclib.service.manager
 
+import android.content.Context
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.MediaLibraryService.MediaLibrarySession
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSession.ControllerInfo
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
+import com.flammky.android.medialib.MediaLib
+import com.flammky.android.medialib.core.MediaLibrary
 import com.flammky.common.kotlin.generic.ChangedNotNull
 import com.flammky.mediaplayer.helper.Preconditions.checkArgument
 import com.flammky.mediaplayer.helper.Preconditions.checkState
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemPropertyHelper
 import com.flammky.musicplayer.domain.musiclib.service.MusicLibraryService
 import com.flammky.musicplayer.domain.musiclib.service.provider.SessionProvider
-import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.guava.asListenableFuture
 import timber.log.Timber
 
 class SessionManager(
 	private val sessionProvider: SessionProvider
 ) : MusicLibraryService.ServiceComponent() {
+
+	private lateinit var mediaLib: MediaLibrary
 
 	private var sessionManagerJob: Job = Job().apply { complete() }
 
@@ -34,6 +40,11 @@ class SessionManager(
 		super.create(serviceDelegate)
 		val serviceJob = serviceDelegate.property.serviceMainJob
 		sessionManagerJob = SupervisorJob(serviceJob)
+	}
+
+	override fun serviceContextAttached(context: Context) {
+		super.serviceContextAttached(context)
+		mediaLib = MediaLib.singleton(context.applicationContext)
 	}
 
 	override fun serviceDependencyInjected() {
@@ -252,18 +263,17 @@ class SessionManager(
 			controller: ControllerInfo,
 			mediaItems: MutableList<MediaItem>
 		): ListenableFuture<MutableList<MediaItem>> {
-			val toReturn = mutableListOf<MediaItem>()
-
-			mediaItems.forEach {
-
-				with(MediaItemPropertyHelper) {
-					val uri = it.mediaUri ?: return@forEach
-					val filled = com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory.fillInLocalConfig(it, uri)
-					toReturn.add(filled)
+			return mainScope.async<MutableList<MediaItem>> {
+				val toReturn = mutableListOf<MediaItem>()
+				mediaItems.forEach {
+					with(MediaItemPropertyHelper) {
+						val uri = it.mediaUri ?: return@forEach
+						val filled = com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory.fillInLocalConfig(it, uri)
+						toReturn.add(filled)
+					}
 				}
-			}
-
-			return Futures.immediateFuture(toReturn)
+				toReturn
+			}.asListenableFuture()
 		}
 	}
 }

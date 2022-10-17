@@ -109,7 +109,6 @@ internal class RealMediaItem private constructor(
 	private val internalBuilder: InternalBuilder
 ) : MediaItem(mediaId, mediaUri, metadata, extra) {
 
-	// calling copy will also recreate this instance
 	internal val internalItem: InternalMediaItem = internalBuilder.build(this)
 
 	class Builder internal constructor(

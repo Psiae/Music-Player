@@ -24,6 +24,7 @@ interface MediaStoreProvider : MediaProvider {
 		suspend fun queryByUri(uri: Uri): MediaStoreEntity?
 		fun observe(observer: ContentObserver)
 		fun removeObserver(observer: ContentObserver)
+		fun rescan(callback: (List<Uri>) -> Unit)
 	}
 
 	/** Audio Interface */

@@ -34,6 +34,10 @@ internal class MediaStoreProvider28 (private val context: MediaStoreContext)
 		override fun removeObserver(observer: MediaStoreProvider.ContentObserver) {
 			TODO("Not yet implemented")
 		}
+
+		override fun rescan(callback: (List<Uri>) -> Unit) {
+			TODO("Not yet implemented")
+		}
 	}
 
 	override val video: MediaStoreProvider.Video = object : Video {
@@ -54,6 +58,10 @@ internal class MediaStoreProvider28 (private val context: MediaStoreContext)
 		}
 
 		override fun removeObserver(observer: MediaStoreProvider.ContentObserver) {
+			TODO("Not yet implemented")
+		}
+
+		override fun rescan(callback: (List<Uri>) -> Unit) {
 			TODO("Not yet implemented")
 		}
 	}

@@ -17,7 +17,7 @@ sealed class MediaMetadata(
 ) {
 
 	/** Extra configuration regardless of class type */
-	class Extra(val bundle: Bundle)
+	class Extra(val bundle: Bundle = Bundle())
 
 	/** Builder interface for [MediaMetadata] subclass builders */
 	interface Builder {

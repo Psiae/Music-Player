@@ -13,6 +13,8 @@ import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider
 import com.flammky.android.medialib.temp.MediaLibrary
 import com.flammky.musicplayer.library.localsong.data.LocalSongModel
 import com.flammky.musicplayer.library.localsong.data.LocalSongRepository
+import com.flammky.musicplayer.library.media.MediaConnection
+import com.flammky.musicplayer.library.util.rewrite
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
@@ -22,12 +24,12 @@ import javax.inject.Inject
 @HiltViewModel
 internal class LocalSongViewModel @Inject constructor(
 	private val dispatcher: AndroidCoroutineDispatchers,
-	/* mediaConnection later */
+	private val mediaConnection: MediaConnection,
 	private val repository: LocalSongRepository,
 ) : ViewModel() {
 
-	private val contentObserver = MediaStoreProvider.ContentObserver { _, _, _ ->
-		scheduleRefresh()
+	private val contentObserver = MediaStoreProvider.ContentObserver { id: String, _, _ ->
+		scheduleRefresh(id)
 	}
 
 	private val mediaController = MediaLibrary.API.sessions.manager.findSessionById("DEBUG")!!.mediaController
@@ -43,14 +45,19 @@ internal class LocalSongViewModel @Inject constructor(
 
 	init {
 		MediaLib.singleton.mediaProviders.mediaStore.audio.observe(contentObserver)
-		scheduleRefresh()
+		refresh()
 	}
 
 	override fun onCleared() {
 		MediaLib.singleton.mediaProviders.mediaStore.audio.removeObserver(contentObserver)
 	}
 
-	fun scheduleRefresh() {
+	// we should rescan
+	fun refresh() {
+		scheduleRefresh()
+	}
+
+	private fun scheduleRefresh(id: String? = null) {
 		fun refreshing(): Boolean {
 			return _refreshing.value
 		}
@@ -58,21 +65,35 @@ internal class LocalSongViewModel @Inject constructor(
 			_refreshing.value = refreshing
 		}
 		viewModelScope.launch {
-			scheduledRefresh.add(null)
+			scheduledRefresh.add(id)
 			if (!refreshing()) {
 				markRefreshing(true)
-				doScheduledRefresh()
+				doScheduledRefresh(id)
 				markRefreshing(false)
 			}
 		}
 	}
 
-	private suspend fun doScheduledRefresh() {
+	private suspend fun doScheduledRefresh(id: String? = null) {
 		withContext(dispatcher.mainImmediate) {
-			while (scheduledRefresh.isNotEmpty()) {
-				val size = scheduledRefresh.size
-				_listState.overwrite(repository.getModelsAsync().await())
-				scheduledRefresh.drop(size).let {
+			if (id == null) {
+				while (scheduledRefresh.isNotEmpty()) {
+					val size = scheduledRefresh.size
+					_listState.overwrite(repository.getModelsAsync().await())
+					scheduledRefresh.drop(size).let {
+						scheduledRefresh.clear()
+						scheduledRefresh.addAll(it)
+					}
+				}
+			} else {
+				_listState.rewrite { old ->
+					repository.getModelAsync(id).await()
+						// there's an update
+						?.let { get -> old.map { if (it.id == id) get else it } }
+						// deleted
+						?: old.filter { it.id != id }
+				}
+				scheduledRefresh.filter { it != id }.let {
 					scheduledRefresh.clear()
 					scheduledRefresh.addAll(it)
 				}
@@ -81,12 +102,7 @@ internal class LocalSongViewModel @Inject constructor(
 	}
 
 	fun play(model: LocalSongModel) {
-		viewModelScope.launch {
-			mediaController.joinSuspend {
-				if (!connected) connectService()
-				play(model.mediaItem)
-			}
-		}
+		mediaConnection.play(model.id, model.mediaItem.mediaUri)
 	}
 
 	suspend fun collectArtwork(model: LocalSongModel): Flow<Bitmap?> {

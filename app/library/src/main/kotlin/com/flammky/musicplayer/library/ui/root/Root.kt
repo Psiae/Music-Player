@@ -68,7 +68,7 @@ private fun LibraryRootContent(
 			LocalSongDisplay(
 				modifier = Modifier
 					.padding(10.dp)
-					.height(300.dp),
+					.heightIn(max = 300.dp),
 				viewModel = activityViewModel(),
 				navigate = { route ->
 					navController.navigate(route)

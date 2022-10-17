@@ -70,7 +70,7 @@ private fun LocalSongListsColumn(
 
 	SwipeRefresh(
 		state = rememberSwipeRefreshState(isRefreshing = vm.refreshing.value),
-		onRefresh = { vm.scheduleRefresh() },
+		onRefresh = { vm.refresh() },
 		indicatorPadding = PaddingValues(top = 10.dp)
 	) {
 		LazyColumn(
@@ -222,19 +222,8 @@ private fun ItemArtworkCard(model: LocalSongModel, vm: LocalSongViewModel) {
 		colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
 	) {
 
-		val shimmerBackground =
-			if (isSystemInDarkTheme()) {
-				Color.Black
-			} else {
-				Color.White
-			}
-
-		val shimmerColor =
-			if (isSystemInDarkTheme()) {
-				Color.DarkGray
-			} else {
-				Color.Gray
-			}
+		val shimmerBackground = Color(0xFFC2C2C2)
+		val shimmerColor = Color(0xFFA0A0A0)
 
 		AsyncImage(
 			modifier = Modifier

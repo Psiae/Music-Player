@@ -36,8 +36,7 @@ class MediaStoreAudioProvider28(private val context: MediaStoreContext)
 	// we can instead just remember it with our entity
 	private val rememberMutex = Mutex()
 	private var _rememberUrisKey by OverflowSafeLong(0) { 0 }
-	private val rememberUrisKey: Long
-		get() = _rememberUrisKey.also { _rememberUrisKey++ }
+	private val rememberUrisKey: Long get() = _rememberUrisKey.also { _rememberUrisKey++ }
 	private var rememberUris = INVALID_rememberUris
 
 	private val ioDispatcher = AndroidCoroutineDispatchers.DEFAULT.io
@@ -72,6 +71,19 @@ class MediaStoreAudioProvider28(private val context: MediaStoreContext)
 	override fun removeObserver(observer: MediaStoreProvider.ContentObserver) {
 		observers.sync { removeAll { it === observer } }
 	}
+
+	override fun rescan(callback: (List<Uri>) -> Unit) {
+		internalIoScope.launch {
+			query().mapNotNull { it.file.absolutePath }.toTypedArray().let { paths ->
+				val holder = mutableListOf<Uri?>()
+				MediaScannerConnection.scanFile(context.android, paths, null) { _, uri: Uri? ->
+					holder.add(uri)
+					if (holder.size == paths.size) callback(holder.filterNotNull())
+				}
+			}
+		}
+	}
+
 
 	private fun rememberUris(key: Long, uris: List<Uri>) {
 		internalIoScope.launch {
@@ -122,7 +134,7 @@ class MediaStoreAudioProvider28(private val context: MediaStoreContext)
 						flag
 					}
 
-				val id = "MediaStore_28_" + uri.toString().takeLastWhile { it.isDigit() }
+				val id = "MediaStore_28_AUDIO_" + uri.toString().takeLastWhile { it.isDigit() }
 
 				if (resolvedFlag.isInsert) {
 					queryByUri(uri)?.file?.absolutePath?.let { path ->

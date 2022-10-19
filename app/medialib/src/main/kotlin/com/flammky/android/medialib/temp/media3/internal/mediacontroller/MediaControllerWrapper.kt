@@ -1,6 +1,7 @@
 package com.flammky.android.medialib.temp.media3.internal.mediacontroller
 
 import android.content.ComponentName
+import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
@@ -11,6 +12,11 @@ import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
+import com.flammky.android.medialib.common.mediaitem.AudioMetadata
+import com.flammky.android.medialib.common.mediaitem.MediaItem.Companion.buildMediaItem
+import com.flammky.android.medialib.common.mediaitem.MediaItem.Extra.Companion.toMediaItemExtra
+import com.flammky.android.medialib.common.mediaitem.MediaMetadata
+import com.flammky.android.medialib.common.mediaitem.PlaybackMetadata
 import com.flammky.android.medialib.common.mediaitem.RealMediaItem
 import com.flammky.android.medialib.media3.Media3Item
 import com.flammky.android.medialib.temp.player.LibraryPlayer
@@ -33,6 +39,7 @@ import java.util.concurrent.Executor
 import java.util.concurrent.locks.LockSupport
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.math.min
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.ExperimentalTime
 import kotlin.time.measureTimedValue
 
@@ -211,6 +218,10 @@ class MediaControllerWrapper internal constructor(
 
 	override fun getAllMediaItems(limit: Int): List<MediaItem> {
 		return joinBlocking { wrapped.getAllMediaItems(limit) }
+	}
+
+	override fun getAllMediaItem(): List<com.flammky.android.medialib.common.mediaitem.MediaItem> {
+		return joinBlocking { wrapped.getAllMediaItem() }
 	}
 
 	fun connect(
@@ -489,7 +500,12 @@ class MediaControllerWrapper internal constructor(
 		}
 
 		override fun play() {
-			if (isStateConnected()) mediaController.play()
+			if (isStateConnected()) {
+				val mc = mediaController
+				if (mc.playbackState == Player.STATE_ENDED) mc.seekToDefaultPosition()
+				mc.prepare()
+				mc.play()
+			}
 		}
 
 		override fun play(item: com.flammky.android.medialib.common.mediaitem.MediaItem) {
@@ -502,8 +518,12 @@ class MediaControllerWrapper internal constructor(
 		override fun play(item: MediaItem) {
 			if (isStateConnected()) {
 				val mc = mediaController
-				if (mc.currentMediaItem?.mediaId != item.mediaId) mc.setMediaItem(item)
-				if (mc.playbackState == Player.STATE_ENDED) mc.seekToDefaultPosition()
+				if (mc.currentMediaItem?.mediaId != item.mediaId) {
+					mc.stop()
+					mc.setMediaItem(item)
+				} else if (mc.playbackState == Player.STATE_ENDED) {
+					mc.seekToDefaultPosition()
+				}
 				mc.prepare()
 				mc.play()
 			}
@@ -546,7 +566,7 @@ class MediaControllerWrapper internal constructor(
 		}
 
 		override fun addListener(listener: LibraryPlayerEventListener) {
-			val m = listener.asPlayerListener(this)
+			val m = listener.asPlayerListener(this, playerContext)
 			listeners.add(listener to m)
 			if (isStateConnected()) mediaController.addListener(m)
 		}
@@ -579,6 +599,62 @@ class MediaControllerWrapper internal constructor(
 			}
 
 			return holder
+		}
+
+		override fun getAllMediaItem(): List<com.flammky.android.medialib.common.mediaitem.MediaItem> {
+			val get = getAllMediaItems(Int.MAX_VALUE)
+			val holder: MutableList<com.flammky.android.medialib.common.mediaitem.MediaItem> = mutableListOf()
+
+			repeat(get.size) { i ->
+				holder.add(convertMediaItem(get[i]))
+			}
+
+			return holder
+		}
+
+		@Deprecated("Temporary", ReplaceWith("TODO"))
+		private fun convertMediaItem(item: androidx.media3.common.MediaItem): com.flammky.android.medialib.common.mediaitem.MediaItem {
+			return playerContext.libContext.buildMediaItem {
+				setMediaUri(item.localConfiguration?.uri ?: item.requestMetadata.mediaUri ?: Uri.EMPTY)
+				setMediaId(item.mediaId)
+				setExtra(item.requestMetadata.extras?.toMediaItemExtra() ?: com.flammky.android.medialib.common.mediaitem.MediaItem.Extra.UNSET)
+
+				val hint = item.requestMetadata.extras!!.getString("mediaMetadataType")!!
+				val mediaMetadata = item.mediaMetadata
+
+				val metadata = when {
+					hint.startsWith("audio;") -> {
+						AudioMetadata.build {
+							mediaMetadata.extras?.let { setExtra(MediaMetadata.Extra(it)) }
+							setAlbumArtist(mediaMetadata.albumArtist?.toString())
+							setAlbumTitle(mediaMetadata.albumTitle?.toString())
+							setArtist(mediaMetadata.artist?.toString())
+							setBitrate(mediaMetadata.extras?.getString("bitrate")?.toLong())
+							setDuration(mediaMetadata.extras?.getString("durationMs")?.toLong()?.milliseconds)
+							setPlayable(mediaMetadata.isPlayable)
+							setTitle(mediaMetadata.title?.toString())
+						}
+					}
+					hint.startsWith("playback;") -> {
+						PlaybackMetadata.build {
+							mediaMetadata.extras?.let { setExtra(MediaMetadata.Extra(it)) }
+							setBitrate(mediaMetadata.extras?.getString("bitrate")?.toLong())
+							setDuration(mediaMetadata.extras?.getString("durationMs")?.toLong()?.milliseconds)
+							setPlayable(mediaMetadata.isPlayable)
+							setTitle(mediaMetadata.title?.toString())
+						}
+					}
+					hint.startsWith("base;") -> {
+						MediaMetadata.build {
+							mediaMetadata.extras?.let { setExtra(MediaMetadata.Extra(it)) }
+							setTitle(mediaMetadata.title?.toString())
+						}
+					}
+					else -> error("Invalid Media3Item Internal Info")
+				}
+
+				setMetadata(metadata)
+			}
 		}
 	}
 

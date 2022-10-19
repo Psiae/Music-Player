@@ -69,6 +69,8 @@ android {
         jvmTarget = "11"
         freeCompilerArgs = freeCompilerArgs + "-Xopt-in=kotlin.RequiresOptIn"
         freeCompilerArgs = freeCompilerArgs + "-Xjvm-default=all"
+        freeCompilerArgs = freeCompilerArgs + "-Xsam-conversions=class"
+
     }
 
     packagingOptions {
@@ -297,6 +299,10 @@ dependencies {
 
     /* Jetbrains.kotlinx */
     dependencies {
+
+        // Collections.Immutable
+        val vCollectionImmutable = "0.3.5"
+        implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:$vCollectionImmutable")
 
         // Coroutines-Guava
         val vCoroutinesGuava = "1.6.4"

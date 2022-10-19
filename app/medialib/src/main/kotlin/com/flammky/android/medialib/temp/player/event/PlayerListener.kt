@@ -1,19 +1,27 @@
 package com.flammky.android.medialib.temp.player.event
 
+import android.net.Uri
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.Player.PositionInfo
 import androidx.media3.common.Timeline
-import com.flammky.android.medialib.temp.player.PlayerContextInfo
+import com.flammky.android.medialib.common.Contract
+import com.flammky.android.medialib.common.mediaitem.AudioMetadata
+import com.flammky.android.medialib.common.mediaitem.MediaItem.Companion.buildMediaItem
+import com.flammky.android.medialib.common.mediaitem.MediaItem.Extra.Companion.toMediaItemExtra
+import com.flammky.android.medialib.common.mediaitem.MediaMetadata
+import com.flammky.android.medialib.common.mediaitem.PlaybackMetadata
 import com.flammky.android.medialib.temp.player.LibraryPlayer
 import com.flammky.android.medialib.temp.player.LibraryPlayer.PlaybackState.Companion.asPlaybackState
+import com.flammky.android.medialib.temp.player.PlayerContext
+import com.flammky.android.medialib.temp.player.PlayerContextInfo
 import com.flammky.android.medialib.temp.player.event.MediaItemTransitionReason.Companion.asMediaItemTransitionReason
 import com.flammky.android.medialib.temp.player.event.PlayWhenReadyChangedReason.Companion.asPlayWhenReadyChangedReason
 import com.flammky.android.medialib.temp.player.playback.RepeatMode
 import com.flammky.android.medialib.temp.player.playback.RepeatMode.Companion.asRepeatMode
 import com.flammky.android.medialib.temp.player.playback.RepeatMode.Companion.toRepeatModeInt
-import timber.log.Timber
+import kotlin.time.Duration.Companion.milliseconds
 
 interface LibraryPlayerEventListener {
 
@@ -48,6 +56,8 @@ interface LibraryPlayerEventListener {
 	 * @param [reason] the reason
 	 */
 	fun onMediaItemTransition(old: MediaItem?, new: MediaItem?, reason: MediaItemTransitionReason) {}
+
+	fun onLibMediaItemTransition(oldLib: com.flammky.android.medialib.common.mediaitem.MediaItem?, newLib: com.flammky.android.medialib.common.mediaitem.MediaItem?) {}
 
 	/**
 	 * Called when current [LibraryPlayer.repeatMode] changes
@@ -94,6 +104,7 @@ interface LibraryPlayerEventListener {
 	 * @param new the value of [LibraryPlayer.timeLine] before it changes
 	 */
 	fun onTimelineChanged(old: Timeline, new: Timeline, @Player.TimelineChangeReason reason: Int) {}
+	fun onTimelineChanged(old: com.flammky.android.medialib.temp.media3.Timeline, new: com.flammky.android.medialib.temp.media3.Timeline, reason: Int) {}
 
 	fun onPositionDiscontinuity(
 		oldPos: PositionInfo,
@@ -103,13 +114,17 @@ interface LibraryPlayerEventListener {
 
 	companion object {
 		@Deprecated("Temporary")
-		fun LibraryPlayerEventListener.asPlayerListener(player: LibraryPlayer): Player.Listener {
+		internal fun LibraryPlayerEventListener.asPlayerListener(player: LibraryPlayer, playerContext: PlayerContext): Player.Listener {
 			return object : Player.Listener {
 				val delegated = this@asPlayerListener
 
 				private var rememberIsPlaying = player.isPlaying
 				private var rememberTimeline = player.timeLine
 				private var rememberRepeatMode: Int = player.repeatMode.toRepeatModeInt
+
+				private var rememberLibTimeline = com.flammky.android.medialib.temp.media3.Timeline(
+					Contract.DURATION_UNSET
+				)
 
 				override fun onEvents(player: Player, events: Player.Events) {
 
@@ -124,11 +139,17 @@ interface LibraryPlayerEventListener {
 				}
 
 				private var rememberOldItem: MediaItem? = null
+				private var rememberOldLibItem: com.flammky.android.medialib.common.mediaitem.MediaItem? = null
 				override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
 					delegated.onMediaItemTransition(rememberOldItem, mediaItem, reason.asMediaItemTransitionReason)
 					rememberOldItem = mediaItem
+					val libItem = mediaItem?.let { convertMediaItem(mediaItem) }
+					delegated.onLibMediaItemTransition(
+						rememberOldLibItem,
+						libItem
+					)
+					rememberOldLibItem = libItem
 				}
-
 
 				override fun onRepeatModeChanged(repeatMode: Int) {
 					if (repeatMode != rememberRepeatMode) {
@@ -175,6 +196,9 @@ interface LibraryPlayerEventListener {
 					if (timeline != rememberTimeline) {
 						delegated.onTimelineChanged(rememberTimeline, timeline, reason)
 						rememberTimeline = timeline
+						val libTimeline = com.flammky.android.medialib.temp.media3.Timeline(player.durationMs.milliseconds)
+						delegated.onTimelineChanged(rememberLibTimeline, libTimeline, reason)
+						rememberLibTimeline = libTimeline
 					}
 				}
 
@@ -184,6 +208,51 @@ interface LibraryPlayerEventListener {
 					reason: Int
 				) {
 					delegated.onPositionDiscontinuity(oldPosition, newPosition, reason)
+				}
+
+				@Deprecated("Temporary", ReplaceWith("TODO"))
+				private fun convertMediaItem(item: androidx.media3.common.MediaItem): com.flammky.android.medialib.common.mediaitem.MediaItem {
+					return playerContext.libContext.buildMediaItem {
+						setMediaUri(item.localConfiguration?.uri ?: item.requestMetadata.mediaUri ?: Uri.EMPTY)
+						setMediaId(item.mediaId)
+						setExtra(item.requestMetadata.extras?.toMediaItemExtra() ?: com.flammky.android.medialib.common.mediaitem.MediaItem.Extra.UNSET)
+
+						val hint = item.requestMetadata.extras!!.getString("mediaMetadataType")!!
+						val mediaMetadata = item.mediaMetadata
+
+						val metadata = when {
+							hint.startsWith("audio;") -> {
+								AudioMetadata.build {
+									mediaMetadata.extras?.let { setExtra(MediaMetadata.Extra(it)) }
+									setAlbumArtist(mediaMetadata.albumArtist?.toString())
+									setAlbumTitle(mediaMetadata.albumTitle?.toString())
+									setArtist(mediaMetadata.artist?.toString())
+									setBitrate(mediaMetadata.extras?.getString("bitrate")?.toLong())
+									setDuration(mediaMetadata.extras?.getString("durationMs")?.toLong()?.milliseconds)
+									setPlayable(mediaMetadata.isPlayable)
+									setTitle(mediaMetadata.title?.toString())
+								}
+							}
+							hint.startsWith("playback;") -> {
+								PlaybackMetadata.build {
+									mediaMetadata.extras?.let { setExtra(MediaMetadata.Extra(it)) }
+									setBitrate(mediaMetadata.extras?.getString("bitrate")?.toLong())
+									setDuration(mediaMetadata.extras?.getString("durationMs")?.toLong()?.milliseconds)
+									setPlayable(mediaMetadata.isPlayable)
+									setTitle(mediaMetadata.title?.toString())
+								}
+							}
+							hint.startsWith("base;") -> {
+								MediaMetadata.build {
+									mediaMetadata.extras?.let { setExtra(MediaMetadata.Extra(it)) }
+									setTitle(mediaMetadata.title?.toString())
+								}
+							}
+							else -> error("Invalid Media3Item Internal Info")
+						}
+
+						setMetadata(metadata)
+					}
 				}
 			}
 		}

@@ -3,6 +3,8 @@ package com.flammky.mediaplayer.helper.external
 import android.app.Application
 import android.content.ContentUris
 import android.content.Context
+import android.graphics.Bitmap
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
@@ -11,11 +13,15 @@ import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.widget.Toast
 import androidx.core.net.toUri
+import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.common.mediaitem.MediaItem
+import com.flammky.android.medialib.common.mediaitem.MediaMetadata
+import com.flammky.android.medialib.temp.image.ArtworkProvider
 import com.flammky.android.medialib.temp.provider.mediastore.base.audio.MediaStoreAudioEntity
 import com.flammky.mediaplayer.helper.Preconditions.checkArgument
 import com.flammky.mediaplayer.helper.external.providers.ContentProvidersHelper
 import com.flammky.mediaplayer.helper.external.providers.DocumentProviderHelper
+import com.flammky.musicplayer.domain.media.MediaConnection
 import com.flammky.musicplayer.domain.musiclib.core.MusicLibrary
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory
 import kotlinx.coroutines.*
@@ -24,6 +30,7 @@ import java.io.File
 import java.net.URLDecoder
 import javax.inject.Singleton
 import kotlin.coroutines.coroutineContext
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Interface for handling Media Type [android.content.Intent]
@@ -45,9 +52,11 @@ interface MediaIntentHandler {
 
 @Singleton
 class MediaIntentHandlerImpl(
+	private val artworkProvider: ArtworkProvider,
   private val context: Context,
   private val dispatcher: com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers,
-  private val mediaSource: com.flammky.android.medialib.temp.api.provider.mediastore.MediaStoreProvider
+  private val mediaSource: com.flammky.android.medialib.temp.api.provider.mediastore.MediaStoreProvider,
+	private val mediaConnection: MediaConnection
 ) : MediaIntentHandler {
 
   private val actionViewHandler = ActionViewHandler()
@@ -108,6 +117,13 @@ class MediaIntentHandlerImpl(
               val (song: MediaStoreAudioEntity, list: List<MediaStoreAudioEntity>) = pair
               ensureActive()
               playMediaItem(song, list, true)
+							provideMetadata(song.uid, song.uri)
+							provideArtwork(song.uid)
+							list.forEach {
+								if (it === song) return@forEach
+								provideMetadata(it.uid, it.uri)
+								provideArtwork(it.uid)
+							}
             }
           }
           ?: withContext(dispatcher.main) {
@@ -117,6 +133,8 @@ class MediaIntentHandlerImpl(
             } else {
               ensureActive()
               playMediaItem(item)
+							provideMetadata(item.mediaId, intent.data.toUri())
+							provideArtwork(item.mediaId)
             }
           }
       }
@@ -140,6 +158,7 @@ class MediaIntentHandlerImpl(
     ) {
 			with(MusicLibrary.api.localAgent.session.player) {
 				stop()
+				setMediaItems(emptyList())
 				setMediaItems(list)
 				seekToMediaItem(list.indexOf(item), 0L)
 				prepare()
@@ -152,9 +171,82 @@ class MediaIntentHandlerImpl(
 		) {
 			with(MusicLibrary.api.localAgent.session.player) {
 				stop()
-				seekToDefaultPosition(0)
 				play(item)
 			}
+		}
+
+		private suspend fun provideMetadata(id: String, uri: Uri) {
+			withContext(dispatcher.io) {
+				val metadata = fillMetadata(uri)
+				mediaConnection.repository.provideMetadata(id, metadata)
+			}
+		}
+
+		private suspend fun provideArtwork(id: String) {
+			withContext(dispatcher.io) {
+				val req = ArtworkProvider.Request.Builder(id, Bitmap::class.java)
+					.setStoreMemoryCacheAllowed(true)
+					.setDiskCacheAllowed(false)
+					.build()
+				val result = artworkProvider.request(req).await()
+				if (result.isSuccessful()) mediaConnection.repository.provideArtwork(id, result.get())
+			}
+		}
+
+		private fun fillMetadata(uri: Uri): MediaMetadata {
+			return AudioMetadata.build {
+				try {
+					MediaMetadataRetriever().applyUse {
+						setDataSource(context, uri)
+						setArtist(extractArtist())
+						setAlbumArtist(extractAlbumArtist())
+						setAlbumTitle(extractAlbum())
+						setBitrate(extractBitrate())
+						setDuration(extractDuration()?.milliseconds)
+						setTitle(extractTitle())
+						setPlayable(duration != null)
+						setExtra(MediaMetadata.Extra())
+					}
+				} catch (_: Exception) {}
+			}
+		}
+
+		private fun MediaMetadataRetriever.applyUse(apply: MediaMetadataRetriever.() -> Unit) {
+			try {
+				apply(this)
+			} finally {
+				release()
+			}
+		}
+
+		private fun MediaMetadataRetriever.extractArtist(): String? {
+			return tryOrNull { extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST) }
+		}
+
+		private fun MediaMetadataRetriever.extractAlbumArtist(): String? {
+			return tryOrNull { extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST) }
+		}
+
+		private fun MediaMetadataRetriever.extractAlbum(): String? {
+			return tryOrNull { extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM) }
+		}
+
+		private fun MediaMetadataRetriever.extractBitrate(): Long? {
+			return tryOrNull { extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE) }?.toLong()
+		}
+
+		private fun MediaMetadataRetriever.extractDuration(): Long? {
+			return tryOrNull { extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION) }?.toLong()
+		}
+
+		private fun MediaMetadataRetriever.extractTitle(): String? {
+			return tryOrNull { extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE) }
+		}
+
+		private inline fun <R> tryOrNull(block: () -> R): R? {
+			return try {
+				block()
+			} catch (e: Exception) { null }
 		}
 
     private suspend fun getAudioPathFromContentUri(

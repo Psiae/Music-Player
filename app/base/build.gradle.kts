@@ -32,6 +32,10 @@ dependencies {
         api("io.coil-kt:coil:$v")
     }
 
+    // Collections.Immutable
+    val vCollectionImmutable = "0.3.5"
+    api("org.jetbrains.kotlinx:kotlinx-collections-immutable:$vCollectionImmutable")
+
     /* google.dagger */
     dependencies {
 

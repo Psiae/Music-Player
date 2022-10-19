@@ -77,12 +77,13 @@ class LazyConstructor<T> @JvmOverloads constructor(lock: Any = Any()) {
 
 	/** Construct the delegated value, if not already constructed */
 	fun construct(lazyValue: () -> T): T {
-		if (!isConstructed()) sync {
+		if (isConstructed()) return castValue
+		return sync {
 			if (!isConstructed()) {
 				localValue = lazyValue()
 			}
+			castValue
 		}
-		return castValue
 	}
 
 	private fun sync(): Unit = sync { }

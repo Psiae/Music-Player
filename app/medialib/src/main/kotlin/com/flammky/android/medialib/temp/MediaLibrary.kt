@@ -5,6 +5,7 @@ import androidx.media3.session.MediaLibraryService
 import com.flammky.android.medialib.temp.api.MediaLibraryAPI
 import com.flammky.android.medialib.temp.internal.RealMediaLibrary
 
+@Deprecated("")
 object MediaLibrary {
 
 	private val delegate = RealMediaLibrary

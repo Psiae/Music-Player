@@ -2,8 +2,10 @@ package com.flammky.mediaplayer.domain.musiclib
 
 import android.content.Context
 import androidx.media3.exoplayer.ExoPlayer
+import com.flammky.android.medialib.temp.image.ArtworkProvider
 import com.flammky.mediaplayer.helper.external.MediaIntentHandler
 import com.flammky.mediaplayer.helper.external.MediaIntentHandlerImpl
+import com.flammky.musicplayer.domain.media.MediaConnection
 import com.flammky.musicplayer.domain.musiclib.player.exoplayer.ExoPlayerFactory
 import com.flammky.musicplayer.domain.musiclib.service.MusicLibraryService
 import dagger.Module
@@ -34,11 +36,13 @@ object MusicLibraryModule {
 	@Provides
 	@Singleton
 	fun provideMediaIntentHandler(
+		artworkProvider: ArtworkProvider,
 		@ApplicationContext context: Context,
 		androidCoroutineDispatchers: com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers,
-		mediaStoreProvider: com.flammky.android.medialib.temp.api.provider.mediastore.MediaStoreProvider
+		mediaStoreProvider: com.flammky.android.medialib.temp.api.provider.mediastore.MediaStoreProvider,
+		mediaConnection: MediaConnection,
 	): MediaIntentHandler {
-		return MediaIntentHandlerImpl(context, androidCoroutineDispatchers, mediaStoreProvider)
+		return MediaIntentHandlerImpl(artworkProvider, context, androidCoroutineDispatchers, mediaStoreProvider, mediaConnection)
 	}
 
 	@Provides

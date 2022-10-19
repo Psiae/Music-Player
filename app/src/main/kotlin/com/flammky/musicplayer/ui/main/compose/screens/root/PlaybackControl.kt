@@ -32,14 +32,18 @@ import coil.compose.AsyncImage
 import coil.request.CachePolicy
 import coil.request.ImageRequest
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
+import com.flammky.android.medialib.common.mediaitem.MediaMetadata
+import com.flammky.android.x.lifecycle.viewmodel.compose.activityViewModel
 import com.flammky.common.kotlin.comparable.clamp
 import com.flammky.mediaplayer.domain.viewmodels.MainViewModel
-import com.flammky.mediaplayer.domain.viewmodels.MediaViewModel
 import com.flammky.musicplayer.R
 import com.flammky.musicplayer.domain.musiclib.entity.PlaybackState
 import com.flammky.musicplayer.domain.musiclib.entity.PlaybackState.Companion.isEmpty
 import com.flammky.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isStateBuffering
 import com.flammky.musicplayer.ui.common.compose.LinearIndeterminateProgressIndicator
+import com.flammky.musicplayer.ui.playbackbox.PlaybackBoxModel
+import com.flammky.musicplayer.ui.playbackbox.PlaybackBoxPositions
+import com.flammky.musicplayer.ui.playbackbox.PlaybackBoxViewModel
 import com.flammky.musicplayer.ui.util.compose.NoRipple
 import com.google.accompanist.placeholder.placeholder
 import kotlinx.coroutines.*
@@ -71,7 +75,6 @@ fun PlaybackControl(model: PlaybackControlModel, bottomOffset: Dp) {
 
 	if (animatedOffset.read() > 0.dp) {
 		val density = LocalDensity.current.density
-
 		Box(
 			modifier = Modifier.onGloballyPositioned { bounds ->
 				mainVM.playbackControlShownHeight.rewrite {
@@ -86,6 +89,8 @@ fun PlaybackControl(model: PlaybackControlModel, bottomOffset: Dp) {
 	}
 }
 
+private val UNSET = Any()
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PlaybackControlBox(
@@ -95,26 +100,15 @@ private fun PlaybackControlBox(
 
 	Timber.d("PlaybackControlBox recomposed")
 
-	val mediaVM: MediaViewModel = viewModel()
+	val boxVM: PlaybackBoxViewModel = activityViewModel()
+	val coroutineScope = rememberCoroutineScope()
+	val coroutineDispatcher = Dispatchers.Main.immediate + SupervisorJob()
 
 	val context = LocalContext.current
 	val darkTheme = isSystemInDarkTheme()
-	val defaultCardBackgroundColor = MaterialTheme.colorScheme.surfaceVariant
+	val newModel = remember { boxVM.observeModel() }.collectAsState(initial = PlaybackBoxModel.UNSET)
 
-	val palette = model.palette.read()
-
-	val cardBackgroundColor = remember(palette.hashCode()) {
-		val int = palette?.run {
-			if (darkTheme) {
-				getDarkVibrantColor(getMutedColor(getDominantColor(-1)))
-			} else {
-				getVibrantColor(getLightMutedColor(getDominantColor(-1)))
-			}
-		} ?: -1
-
-		val color = if (int != -1) Color(int) else defaultCardBackgroundColor
-		color.copy(alpha = 0.5f).compositeOver(defaultCardBackgroundColor)
-	}
+	val cardBackgroundColor = cardPaletteColorState(paletteState = paletteState(boxVM = boxVM)).read()
 
 	Card(
 		modifier = Modifier
@@ -125,6 +119,7 @@ private fun PlaybackControlBox(
 		shape = RoundedCornerShape(10),
 		colors = CardDefaults.elevatedCardColors(cardBackgroundColor)
 	) {
+
 		Box(
 			modifier = Modifier.fillMaxSize(),
 			contentAlignment = Alignment.BottomStart
@@ -141,72 +136,13 @@ private fun PlaybackControlBox(
 						.aspectRatio(1f, true),
 					shape = RoundedCornerShape(10),
 				) {
-
-					val art = model.art.read()
-
-					val req = remember(art.hashCode()) {
-						ImageRequest.Builder(context)
-							.crossfade(true)
-							.data(art)
-							.memoryCachePolicy(CachePolicy.ENABLED)
-							.build()
-					}
-
-					AsyncImage(
-						modifier = Modifier
-							.fillMaxSize()
-							.placeholder(
-								art == null,
-								color = MaterialTheme.colorScheme.onSurfaceVariant
-							),
-						model = req,
-						contentScale = ContentScale.Crop,
-						contentDescription = null
-					)
+					ArtworkDisplay(boxVM = boxVM)
 				}
-
 				val isCardDark = cardBackgroundColor.luminance() < 0.4f
-
-				Column(
-					modifier = Modifier
-						.fillMaxHeight()
-						.padding(start = 10.dp, end = 10.dp)
-						.weight(1f, true),
-					verticalArrangement = Arrangement.SpaceEvenly,
-					horizontalAlignment = Alignment.Start,
-				) {
-
-					val textColor = if (isCardDark) Color.White else Color.Black
-
-					val style = MaterialTheme.typography.bodyMedium
-						.copy(
-							color = textColor,
-							fontWeight = FontWeight.SemiBold
-						)
-					val style2 = MaterialTheme.typography.bodyMedium
-						.copy(
-							color = textColor,
-							fontWeight = FontWeight.Medium
-						)
-
-					Text(
-						text = model.playbackTitle.read(),
-						style = style,
-						maxLines = 1,
-						overflow = TextOverflow.Ellipsis,
-					)
-					Text(
-						text = model.playbackArtist.read(),
-						style = style2,
-						maxLines = 1,
-						overflow = TextOverflow.Ellipsis,
-					)
-				}
+				MetadataDescription(boxVM = boxVM, isBackgroundDark = isCardDark)
 
 				// IsPlaying callback from mediaController is somewhat not accurate
-				val showPlay = model.showPlay.read()
-				val playAvailable = model.playAvailable.read()
-
+				val showPlay = !newModel.read().playWhenReady
 				val icon =
 					if (showPlay) {
 						R.drawable.play_filled_round_corner_32
@@ -229,9 +165,9 @@ private fun PlaybackControlBox(
 								indication = null
 							) {
 								if (showPlay) {
-									mediaVM.play()
+									boxVM.play()
 								} else {
-									mediaVM.pause()
+									boxVM.pause()
 								}
 							},
 						painter = painterResource(id = icon),
@@ -242,10 +178,141 @@ private fun PlaybackControlBox(
 			}
 
 			ProgressIndicator(
-				position = model.playbackPosition,
-				bufferedPosition = model.bufferedPosition,
-				duration = model.playbackDuration,
-				loading = remember { derivedStateOf { model.buffering.read() && model.bufferedPosition.read() == 0L } }
+				boxVM = boxVM,
+				bufferingState = model.buffering
+			)
+		}
+	}
+}
+
+@Composable
+private fun paletteState(
+	boxVM: PlaybackBoxViewModel
+): State<Palette?> {
+	val artState = remember { boxVM.observeCurrentArtwork() }.collectAsState(initial = null)
+	val paletteState = remember { mutableStateOf<Palette?>(null) }
+
+	val coroutineScope = rememberCoroutineScope()
+	val coroutineDispatcher = Dispatchers.IO + SupervisorJob()
+
+	val art = artState.read()
+	DisposableEffect(key1 = art) {
+		val paletteJob = coroutineScope.launch(coroutineDispatcher) {
+			if (art is Bitmap) {
+				Palette.from(art).maximumColorCount(16).generate().let {
+					ensureActive()
+					paletteState.overwrite(it)
+				}
+			} else {
+				paletteState.overwrite(null)
+			}
+		}
+		onDispose {
+			paletteJob.cancel()
+			paletteState.overwrite(null)
+		}
+	}
+
+	return paletteState
+}
+
+@Composable
+private fun cardPaletteColorState(
+	paletteState: State<Palette?>
+): State<Color> {
+	val defaultCardBackgroundColor = MaterialTheme.colorScheme.surfaceVariant
+	val colorState = remember {
+		mutableStateOf(defaultCardBackgroundColor)
+	}
+	val palette = paletteState.read()
+	val darkTheme = isSystemInDarkTheme()
+	remember(palette.hashCode()) {
+		val int = palette?.run {
+			if (darkTheme) {
+				getDarkVibrantColor(getMutedColor(getDominantColor(-1)))
+			} else {
+				getVibrantColor(getLightMutedColor(getDominantColor(-1)))
+			}
+		} ?: -1
+		val color = if (int != -1) Color(int) else defaultCardBackgroundColor
+		color.copy(alpha = 0.5f)
+			.compositeOver(defaultCardBackgroundColor)
+			.also { colorState.overwrite(it) }
+	}
+	return colorState
+}
+
+@Composable
+private fun ArtworkDisplay(
+	boxVM: PlaybackBoxViewModel
+) {
+	val artState = remember { boxVM.observeCurrentArtwork() }.collectAsState(initial = null)
+	val art = artState.read()
+	val context = LocalContext.current
+
+	val req = remember(art) {
+		ImageRequest.Builder(context)
+			.crossfade(true)
+			.data(art)
+			.memoryCachePolicy(CachePolicy.ENABLED)
+			.build()
+	}
+
+	AsyncImage(
+		modifier = Modifier
+			.fillMaxSize()
+			.placeholder(
+				art == null,
+				color = MaterialTheme.colorScheme.onSurfaceVariant
+			),
+		model = req,
+		contentScale = ContentScale.Crop,
+		contentDescription = null
+	)
+}
+
+@Composable
+private fun RowScope.MetadataDescription(
+	boxVM: PlaybackBoxViewModel,
+	isBackgroundDark: Boolean
+) {
+	Column(
+		modifier = Modifier
+			.fillMaxHeight()
+			.padding(start = 10.dp, end = 10.dp)
+			.weight(1f, true),
+		verticalArrangement = Arrangement.SpaceEvenly,
+		horizontalAlignment = Alignment.Start,
+	) {
+
+		val textColor = if (isBackgroundDark) Color.White else Color.Black
+		val metadataState = remember { boxVM.observeCurrentMetadata() }.collectAsState(initial = null)
+
+		val metadata = metadataState.read()
+		if (metadata is MediaMetadata) {
+			val style = MaterialTheme.typography.bodyMedium
+				.copy(
+					color = textColor,
+					fontWeight = FontWeight.SemiBold
+				)
+			Text(
+				text = metadata.title ?: "",
+				style = style,
+				maxLines = 1,
+				overflow = TextOverflow.Ellipsis,
+			)
+		}
+		if (metadata is AudioMetadata) {
+			val style = MaterialTheme.typography.bodyMedium
+				.copy(
+					color = textColor,
+					fontWeight = FontWeight.Medium
+				)
+			Text(
+				text = metadata.albumArtistName ?: metadata.artistName ?: "",
+				style = style,
+				maxLines = 1,
+				overflow = TextOverflow.Ellipsis,
 			)
 		}
 	}
@@ -253,11 +320,13 @@ private fun PlaybackControlBox(
 
 @Composable
 private fun ProgressIndicator(
-	position: State<Long>,
-	bufferedPosition: State<Long>,
-	duration: State<Long>,
-	loading: State<Boolean>
+	boxVM: PlaybackBoxViewModel,
+	bufferingState: State<Boolean>,
 ) {
+
+	val positionState = remember { boxVM.observePositions() }.collectAsState(
+		initial = PlaybackBoxPositions()
+	)
 
 	Timber.d("ProgressIndicator recomposed")
 
@@ -280,7 +349,9 @@ private fun ProgressIndicator(
 			mutableStateOf(false)
 		}
 
-		if (loading.read() || shouldTraverse.read()) {
+		val loading = bufferingState.read() && positionState.read().bufferedPosition.inWholeMilliseconds <= 0
+
+		if (loading || shouldTraverse.read()) {
 
 			LinearIndeterminateProgressIndicator(
 				modifier = Modifier
@@ -296,17 +367,17 @@ private fun ProgressIndicator(
 				secondLineTailDuration = 433,
 				secondLineTailDelay = 850 + 333 + 300
 			) {
-				loading.read().also { shouldTraverse.overwrite(it) }
+				loading.also { shouldTraverse.overwrite(it) }
 			}
 
 		} else {
 			AnimatedBufferedProgressIndicator(
-				bufferedPosition = bufferedPosition.read(),
-				duration = duration.read()
+				bufferedPosition = positionState.read().bufferedPosition.inWholeMilliseconds,
+				duration = positionState.read().duration.inWholeMilliseconds
 			)
 			AnimatedPlaybackProgressIndicator(
-				position = position.read(),
-				duration = duration.read()
+				position = positionState.read().position.inWholeMilliseconds,
+				duration = positionState.read().duration.inWholeMilliseconds
 			)
 		}
 	}
@@ -396,6 +467,8 @@ fun AnimatedPlaybackProgressIndicatorPreview() = AnimatedPlaybackProgressIndicat
 // Use ViewModel instead
 class PlaybackControlModel() {
 
+	private val mMediaItem = mutableStateOf<com.flammky.android.medialib.common.mediaitem.MediaItem>(com.flammky.android.medialib.common.mediaitem.MediaItem.UNSET)
+
 	private val mBuffering = mutableStateOf<Boolean>(value = false)
 	private val mBufferedPosition = mutableStateOf<Long>(0)
 
@@ -407,7 +480,6 @@ class PlaybackControlModel() {
 	private val mShowPlay = mutableStateOf<Boolean>(false)
 	private val mPlaybackPosition = mutableStateOf<Long>(0)
 	private val mPlaybackDuration = mutableStateOf<Long>(0)
-
 
 	private val mPlaybackTitle = mutableStateOf<String>("")
 	private val mPlaybackArtist = mutableStateOf<String>("")
@@ -449,18 +521,30 @@ class PlaybackControlModel() {
 
 	private var artJob = Job().job
 
-	var mediaItem: MediaItem = MediaItem.EMPTY
-		private set
+	val mediaItem: State<com.flammky.android.medialib.common.mediaitem.MediaItem>
+		get() = mMediaItem
 
 	var actualMediaItem: com.flammky.android.medialib.common.mediaitem.MediaItem = com.flammky.android.medialib.common.mediaitem.MediaItem.UNSET
 		private set
-	fun updateMediaItem(item: com.flammky.android.medialib.common.mediaitem.MediaItem) {
-		actualMediaItem = item
-		val metadata = item.metadata
-		mPlaybackTitle.overwrite(metadata.title ?: "")
 
-		if (metadata is AudioMetadata) {
-			mPlaybackArtist.overwrite(metadata.artistName ?: metadata.albumArtistName ?: "")
+	fun updateMediaItem(item: com.flammky.android.medialib.common.mediaitem.MediaItem) {
+		mMediaItem.overwrite(item)
+	}
+
+	fun updateMetadata(metadata: MediaMetadata?) {
+		when (metadata) {
+			null -> {
+				mPlaybackTitle.overwrite("")
+				mPlaybackArtist.overwrite("")
+			}
+			is AudioMetadata -> {
+				mPlaybackTitle.overwrite(metadata.title ?: "")
+				mPlaybackArtist.overwrite(metadata.artistName ?: metadata.albumArtistName ?: "")
+			}
+			else -> {
+				mPlaybackTitle.overwrite(metadata.title ?: "")
+				mPlaybackArtist.overwrite("")
+			}
 		}
 	}
 
@@ -488,6 +572,7 @@ class PlaybackControlModel() {
 	}
 
 	fun updateArt(bitmap: Bitmap?) {
+		Timber.d("updateArt $bitmap")
 		mArt.overwrite(bitmap)
 		artJob.cancel()
 
@@ -517,7 +602,9 @@ enum class VISIBILITY {
 
 // is explicit read like this better ?
 @Suppress("NOTHING_TO_INLINE")
-private inline fun <T> State<T>.read(): T = this.value
+private inline fun <T> State<T>.read(): T {
+	return this.value
+}
 
 // is explicit write like this better ?
 @Suppress("NOTHING_TO_INLINE")

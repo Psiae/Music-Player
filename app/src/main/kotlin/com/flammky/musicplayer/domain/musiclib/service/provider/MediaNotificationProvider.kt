@@ -14,10 +14,10 @@ import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaStyleNotificationHelper
 import com.flammky.mediaplayer.helper.Preconditions.checkState
 import com.flammky.musicplayer.R
-import com.flammky.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isOngoing
-import com.flammky.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isStateBuffering
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory.orEmpty
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemInfo
+import com.flammky.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isOngoing
+import com.flammky.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isStateBuffering
 import timber.log.Timber
 
 class MediaNotificationProvider(
@@ -154,6 +154,99 @@ class MediaNotificationProvider(
 			}
 	}
 
+	private fun getFilledMediaNotificationBuilder(
+		channelId: String,
+		title: String?,
+		subtitle: String?,
+		subText: String?,
+		onGoing: Boolean,
+		repeatMode: Int,
+		playerState: Int,
+		hasPreviousMediaItem: Boolean,
+		hasNextMediaItem: Boolean,
+		playWhenReady: Boolean,
+		isPlaying: Boolean,
+		largeIcon: Bitmap?,
+	): NotificationCompat.Builder {
+		return NotificationCompat.Builder(context, channelId)
+			.apply {
+				val contentIntent = PendingIntent
+					.getActivity(
+						context, 445, context.packageManager.getLaunchIntentForPackage(context.packageName),
+						PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+					)
+
+				setChannelId(channelId)
+				setContentIntent(contentIntent)
+
+				setContentTitle(title ?: "")
+				setContentText(subtitle ?: "")
+				setSmallIcon(R.drawable.blu)
+
+				setColorized(true)
+				setOngoing(onGoing)
+				setShowWhen(false)
+
+				if (!subText.isNullOrEmpty()) setSubText(subText)
+
+				val repeatAction = when (repeatMode) {
+					Player.REPEAT_MODE_OFF -> makeActionRepeatOffToOne()
+					Player.REPEAT_MODE_ONE -> makeActionRepeatOneToAll()
+					Player.REPEAT_MODE_ALL -> makeActionRepeatAllToOff()
+					else -> throw IllegalStateException()
+				}
+
+				val prevAction =
+					if (hasPreviousMediaItem) {
+						makeActionPrev()
+					} else {
+						makeActionPrevDisabled()
+					}
+
+				val showPlayAction =
+					if (playerState.isStateBuffering()) {
+						!playWhenReady
+					} else {
+						!isPlaying
+					}
+
+				val playAction =
+					if (showPlayAction) {
+						makeActionPlay()
+					} else {
+						makeActionPause()
+					}
+
+				val nextAction =
+					if (hasNextMediaItem) {
+						makeActionNext()
+					} else {
+						makeActionNextDisabled()
+					}
+
+				val cancelOrStopAction =
+					if (onGoing) {
+						makeActionStop()
+					} else {
+						makeActionCancel()
+					}
+
+				addAction(repeatAction)
+				addAction(prevAction)
+				addAction(playAction)
+				addAction(nextAction)
+				addAction(cancelOrStopAction)
+
+				val fLargeIcon =
+					if (largeIcon == null || largeIcon.width < 64 || largeIcon.height < 64) null else largeIcon
+
+				setLargeIcon(fLargeIcon)
+
+				val dismissIntent = makeDismissPendingIntent()
+				setDeleteIntent(dismissIntent)
+			}
+	}
+
 	fun buildMediaStyleNotification(
 		mediaSession: MediaSession,
 		largeIcon: Bitmap?,
@@ -190,154 +283,181 @@ class MediaNotificationProvider(
 			.build()
 	}
 
-	private fun makeDismissPendingIntent(item: MediaItem): PendingIntent {
+	fun buildMediaStyleNotification(
+		mediaSession: MediaSession,
+		channelId: String,
+		title: String?,
+		subtitle: String?,
+		subText: String?,
+		onGoing: Boolean,
+		repeatMode: Int,
+		playerState: Int,
+		hasPreviousMediaItem: Boolean,
+		hasNextMediaItem: Boolean,
+		playWhenReady: Boolean,
+		isPlaying: Boolean,
+		largeIcon: Bitmap?,
+	): Notification {
+		return getFilledMediaNotificationBuilder(channelId, title, subtitle, subText, onGoing,
+			repeatMode, playerState, hasPreviousMediaItem, hasNextMediaItem, playWhenReady, isPlaying,
+			largeIcon
+		).apply {
+			val style = MediaStyleNotificationHelper.MediaStyle(mediaSession)
+				.setShowActionsInCompactView(1, 2, 3)
+				.setCancelButtonIntent(makeDismissPendingIntent())
+				.setShowCancelButton(true)
+			setStyle(style)
+		}.build()
+	}
+
+	private fun makeDismissPendingIntent(item: MediaItem? = null): PendingIntent {
 		val intent = newActionButtonIntent()
 			.apply {
 				applyActionExtra(ACTION_Dismiss_NAME)
 				setPackage(context.packageName)
-				itemInfoIntentConverter?.applyFromMediaItem(this, item)
+				if (item != null) itemInfoIntentConverter?.applyFromMediaItem(this, item)
 			}
 		val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
 		return PendingIntent.getBroadcast(context, ACTION_Dismiss_CODE, intent, flag)
 	}
 
-	private fun makeActionStop(item: MediaItem): NotificationCompat.Action {
+	private fun makeActionStop(item: MediaItem? = null): NotificationCompat.Action {
 		val resId = R.drawable.ic_notif_stop
 		val title = "Stop"
 		val intent = newActionButtonIntent()
 			.apply {
 				applyActionExtra(ACTION_Stop_NAME)
-				itemInfoIntentConverter?.applyFromMediaItem(this, item)
+				if (item != null) itemInfoIntentConverter?.applyFromMediaItem(this, item)
 			}
 		val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
 		val pIntent = PendingIntent.getBroadcast(context, ACTION_Stop_CODE, intent, flag)
 		return buildNotificationCompatAction(resId, title, pIntent)
 	}
 
-	private fun makeActionCancel(item: MediaItem): NotificationCompat.Action {
+	private fun makeActionCancel(item: MediaItem? = null): NotificationCompat.Action {
 		val resId = R.drawable.ic_notif_close
 		val title = "Cancel"
 		val intent = newActionButtonIntent()
 			.apply {
 				applyActionExtra(ACTION_Cancel_NAME)
-				itemInfoIntentConverter?.applyFromMediaItem(this, item)
+				if (item != null) itemInfoIntentConverter?.applyFromMediaItem(this, item)
 			}
 		val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
 		val pIntent = PendingIntent.getBroadcast(context, ACTION_Cancel_CODE, intent, flag)
 		return buildNotificationCompatAction(resId, title, pIntent)
 	}
 
-	private fun makeActionRepeatOneToAll(item: MediaItem): NotificationCompat.Action {
+	private fun makeActionRepeatOneToAll(item: MediaItem? = null): NotificationCompat.Action {
 		val resId = R.drawable.ic_notif_repeat_one
 		val title = "RepeatAll"
 		val intent = newActionButtonIntent()
 			.apply {
 				applyActionExtra(ACTION_RepeatOneToAll_NAME)
-				itemInfoIntentConverter?.applyFromMediaItem(this, item)
+				if (item != null) itemInfoIntentConverter?.applyFromMediaItem(this, item)
 			}
 		val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
 		val pIntent = PendingIntent.getBroadcast(context, ACTION_RepeatOneToAll_CODE, intent, flag)
 		return buildNotificationCompatAction(resId, title, pIntent)
 	}
 
-	private fun makeActionRepeatOffToOne(item: MediaItem): NotificationCompat.Action {
+	private fun makeActionRepeatOffToOne(item: MediaItem? = null): NotificationCompat.Action {
 		val resId = R.drawable.ic_notif_repeat_off
 		val title = "RepeatOne"
 		val intent = newActionButtonIntent()
 			.apply {
 				applyActionExtra(ACTION_RepeatOffToOne_NAME)
-				itemInfoIntentConverter?.applyFromMediaItem(this, item)
+				if (item != null) itemInfoIntentConverter?.applyFromMediaItem(this, item)
 			}
 		val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
 		val pIntent = PendingIntent.getBroadcast(context, ACTION_RepeatOffToOne_CODE, intent, flag)
 		return buildNotificationCompatAction(resId, title, pIntent)
 	}
 
-	private fun makeActionRepeatAllToOff(item: MediaItem): NotificationCompat.Action {
+	private fun makeActionRepeatAllToOff(item: MediaItem? = null): NotificationCompat.Action {
 		val resId = R.drawable.ic_notif_repeat_all
 		val title = "RepeatOff"
 		val intent = newActionButtonIntent()
 			.apply {
 				applyActionExtra(ACTION_RepeatAllToOff_NAME)
-				itemInfoIntentConverter?.applyFromMediaItem(this, item)
+				if (item != null) itemInfoIntentConverter?.applyFromMediaItem(this, item)
 			}
 		val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
 		val pIntent = PendingIntent.getBroadcast(context, ACTION_RepeatAllToOff_CODE, intent, flag)
 		return buildNotificationCompatAction(resId, title, pIntent)
 	}
 
-	private fun makeActionPlay(item: MediaItem): NotificationCompat.Action {
+	private fun makeActionPlay(item: MediaItem? = null): NotificationCompat.Action {
 		val resId = R.drawable.ic_notif_play
 		val title = "Play"
 		val intent = newActionButtonIntent()
 			.apply {
 				applyActionExtra(ACTION_Play_NAME)
-				itemInfoIntentConverter?.applyFromMediaItem(this, item)
+				if (item != null) itemInfoIntentConverter?.applyFromMediaItem(this, item)
 			}
 		val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
 		val pIntent = PendingIntent.getBroadcast(context, ACTION_Play_CODE, intent, flag)
 		return buildNotificationCompatAction(resId, title, pIntent)
 	}
 
-	private fun makeActionPause(item: MediaItem): NotificationCompat.Action {
+	private fun makeActionPause(item: MediaItem? = null): NotificationCompat.Action {
 		val resId = R.drawable.ic_notif_pause
 		val title = "Pause"
 		val intent = newActionButtonIntent()
 			.apply {
 				applyActionExtra(ACTION_Pause_NAME)
-				itemInfoIntentConverter?.applyFromMediaItem(this, item)
+				if (item != null) itemInfoIntentConverter?.applyFromMediaItem(this, item)
 			}
 		val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
 		val pIntent = PendingIntent.getBroadcast(context, ACTION_Pause_CODE, intent, flag)
 		return buildNotificationCompatAction(resId, title, pIntent)
 	}
 
-	private fun makeActionNext(item: MediaItem): NotificationCompat.Action {
+	private fun makeActionNext(item: MediaItem? = null): NotificationCompat.Action {
 		val resId = R.drawable.ic_notif_next
 		val title = "Next"
 		val intent = newActionButtonIntent()
 			.apply {
 				applyActionExtra(ACTION_Next_NAME)
-				itemInfoIntentConverter?.applyFromMediaItem(this, item)
+				if (item != null) itemInfoIntentConverter?.applyFromMediaItem(this, item)
 			}
 		val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
 		val pIntent = PendingIntent.getBroadcast(context, ACTION_Next_CODE, intent, flag)
 		return buildNotificationCompatAction(resId, title, pIntent)
 	}
 
-	private fun makeActionNextDisabled(item: MediaItem): NotificationCompat.Action {
+	private fun makeActionNextDisabled(item: MediaItem? = null): NotificationCompat.Action {
 		val resId = R.drawable.ic_notif_next_disabled
 		val title = "NoNext"
 		val intent = newActionButtonIntent()
 			.apply {
 				applyActionExtra(ACTION_NoNext_NAME)
-				itemInfoIntentConverter?.applyFromMediaItem(this, item)
+				if (item != null) itemInfoIntentConverter?.applyFromMediaItem(this, item)
 			}
 		val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
 		val pIntent = PendingIntent.getBroadcast(context, ACTION_NoNext_CODE, intent, flag)
 		return buildNotificationCompatAction(resId, title, pIntent)
 	}
 
-	private fun makeActionPrev(item: MediaItem): NotificationCompat.Action {
+	private fun makeActionPrev(item: MediaItem? = null): NotificationCompat.Action {
 		val resId = R.drawable.ic_notif_prev
 		val title = "Previous"
 		val intent = newActionButtonIntent()
 			.apply {
 				applyActionExtra(ACTION_Previous_NAME)
-				itemInfoIntentConverter?.applyFromMediaItem(this, item)
+				if (item != null) itemInfoIntentConverter?.applyFromMediaItem(this, item)
 			}
 		val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
 		val pIntent = PendingIntent.getBroadcast(context, ACTION_Previous_CODE, intent, flag)
 		return buildNotificationCompatAction(resId, title, pIntent)
 	}
 
-	private fun makeActionPrevDisabled(item: MediaItem): NotificationCompat.Action {
+	private fun makeActionPrevDisabled(item: MediaItem? = null): NotificationCompat.Action {
 		val resId = R.drawable.ic_notif_prev_disabled
 		val title = "noPrevious"
 		val intent = newActionButtonIntent()
 			.apply {
 				applyActionExtra(ACTION_NoPrevious_NAME)
-				itemInfoIntentConverter?.applyFromMediaItem(this, item)
+				if (item != null) itemInfoIntentConverter?.applyFromMediaItem(this, item)
 			}
 		val flag = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
 		val pIntent = PendingIntent.getBroadcast(context, ACTION_NoPrevious_CODE, intent, flag)

@@ -17,13 +17,13 @@ import androidx.media3.session.MediaNotification
 import androidx.media3.session.MediaSession
 import coil.Coil
 import coil.size.Scale
-import com.google.common.collect.ImmutableList
+import com.flammky.android.environment.DeviceInfo
+import com.flammky.android.medialib.common.mediaitem.AudioMetadata
+import com.flammky.android.medialib.common.mediaitem.MediaMetadata
+import com.flammky.common.kotlin.comparable.clamp
+import com.flammky.common.kotlin.coroutines.AutoCancelJob
 import com.flammky.mediaplayer.helper.Preconditions.checkState
 import com.flammky.mediaplayer.helper.image.CoilHelper
-import com.flammky.android.environment.DeviceInfo
-import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
-import com.flammky.common.kotlin.coroutines.AutoCancelJob
-import com.flammky.common.kotlin.comparable.clamp
 import com.flammky.musicplayer.core.sdk.VersionHelper
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory.orEmpty
@@ -39,6 +39,7 @@ import com.flammky.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.
 import com.flammky.musicplayer.domain.musiclib.service.MusicLibraryService
 import com.flammky.musicplayer.domain.musiclib.service.provider.MediaNotificationProvider
 import com.flammky.musicplayer.ui.main.MainActivity
+import com.google.common.collect.ImmutableList
 import kotlinx.coroutines.*
 import timber.log.Timber
 import kotlin.coroutines.coroutineContext
@@ -318,14 +319,35 @@ class MediaNotificationManager(
 				"getNotificationFromMediaSession for " +
 					session.player.currentMediaItem.orEmpty().getDebugDescription()
 			)
+			val player = session.player
+			val largeIcon = getItemBitmap(player)
+			val id = player.currentMediaItem.orEmpty().mediaId
 
-			val largeIcon = getItemBitmap(session.player)
-			return notificationProvider.buildMediaStyleNotification(
-				session,
-				largeIcon,
-				onGoing,
-				channelName
-			)
+			val metadata = serviceDelegate.property.mediaConnectionDelegate.repository.getMetadata(id) as? MediaMetadata
+
+			return if (metadata != null ) {
+				when (metadata) {
+					is AudioMetadata -> notificationProvider.buildMediaStyleNotification(
+						session, channelName, metadata.title, metadata.artistName ?: metadata.albumArtistName,
+						metadata.albumTitle, onGoing, player.repeatMode, player.playbackState,
+						player.hasPreviousMediaItem(), player.hasNextMediaItem(), player.playWhenReady,
+						player.isPlaying, largeIcon
+					)
+					else -> notificationProvider.buildMediaStyleNotification(
+						session, channelName, metadata.title, null, null, onGoing, player.repeatMode,
+						player.playbackState,
+						player.hasPreviousMediaItem(), player.hasNextMediaItem(), player.playWhenReady,
+						player.isPlaying, largeIcon
+					)
+				}
+			} else {
+				notificationProvider.buildMediaStyleNotification(
+					session,
+					largeIcon,
+					onGoing,
+					channelName
+				)
+			}
 		}
 
 		suspend fun ensureCurrentItemBitmap(player: Player) {

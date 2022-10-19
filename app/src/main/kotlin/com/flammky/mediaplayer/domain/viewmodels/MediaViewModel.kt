@@ -65,12 +65,6 @@ class MediaViewModel @Inject constructor(
 		viewModelScope.launch(dispatchers.main) {
 			itemStateFlow.safeCollect {
 				val get = playbackControlModel.actualMediaItem
-
-				if (get != it) {
-					playbackControlModel.updateArt(null)
-					dispatchUpdateItemBitmap(it)
-				}
-
 				playbackControlModel.updateMediaItem(it)
 			}
 		}
@@ -111,7 +105,7 @@ class MediaViewModel @Inject constructor(
     }
   }
 
-  suspend fun dispatchUpdateItemBitmap(item: com.flammky.android.medialib.common.mediaitem.MediaItem) {
+  private suspend fun dispatchUpdateItemBitmap(item: com.flammky.android.medialib.common.mediaitem.MediaItem) {
 		updateArtJob.cancel()
     updateArtJob = ioScope.launch {
 			try {

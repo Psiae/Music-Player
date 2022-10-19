@@ -21,6 +21,7 @@ import com.flammky.common.kotlin.coroutines.safeCollect
 import com.flammky.mediaplayer.helper.Preconditions.checkMainThread
 import com.flammky.mediaplayer.helper.Preconditions.checkState
 import com.flammky.musicplayer.BuildConfig
+import com.flammky.musicplayer.base.media.MediaConnectionDelegate
 import com.flammky.musicplayer.core.sdk.VersionHelper
 import com.flammky.musicplayer.domain.musiclib.service.manager.MediaNotificationManager
 import com.flammky.musicplayer.domain.musiclib.service.manager.PlaybackManager
@@ -42,7 +43,11 @@ import kotlin.reflect.KProperty
 import kotlin.system.exitProcess
 
 @AndroidEntryPoint
+@Deprecated("was sandbox, todo rework")
 class MusicLibraryService : MediaLibraryService() {
+
+	@Inject
+	lateinit var iMediaConnectionDelegate: MediaConnectionDelegate
 
 	@Inject
 	@Named("MusicExoPlayer")
@@ -349,6 +354,7 @@ class MusicLibraryService : MediaLibraryService() {
 		val injectedPlayer: ExoPlayer get() = iExoPlayer
 		val serviceDispatchers get() = appDispatchers
 		val serviceMainJob get() = serviceJob
+		val mediaConnectionDelegate get() = iMediaConnectionDelegate
 	}
 
 	inner class ComponentDelegate {

@@ -85,8 +85,7 @@ data class PlaybackState(
 		fun MutableStateFlow<PlaybackState>.byPlayerListener(
 			player: com.flammky.android.medialib.temp.player.LibraryPlayer
 		): com.flammky.android.medialib.temp.player.event.LibraryPlayerEventListener {
-			return object :
-                com.flammky.android.medialib.temp.player.event.LibraryPlayerEventListener {
+			return object : com.flammky.android.medialib.temp.player.event.LibraryPlayerEventListener {
 				val flow = this@byPlayerListener
 
 				override fun onMediaItemTransition(

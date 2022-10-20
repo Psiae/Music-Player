@@ -2,6 +2,7 @@ package com.flammky.musicplayer.ui.main.compose.screens.root
 
 import android.graphics.Bitmap
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -101,15 +102,6 @@ private fun PlaybackControlBox(
 	Timber.d("PlaybackControlBox recomposed")
 
 	val boxVM: PlaybackBoxViewModel = activityViewModel()
-	val coroutineScope = rememberCoroutineScope()
-	val coroutineDispatcher = Dispatchers.Main.immediate + SupervisorJob()
-
-	val context = LocalContext.current
-	val darkTheme = isSystemInDarkTheme()
-	val newModel = remember { boxVM.observeModel() }.collectAsState(initial = PlaybackBoxModel.UNSET)
-
-	val cardBackgroundColor = cardPaletteColorState(paletteState = paletteState(boxVM = boxVM)).read()
-
 	Card(
 		modifier = Modifier
 			.height(55.dp)
@@ -117,40 +109,34 @@ private fun PlaybackControlBox(
 			.padding(start = 5.dp, end = 5.dp)
 			.offset(x = 0.dp, y = -bottomOffset),
 		shape = RoundedCornerShape(10),
-		colors = CardDefaults.elevatedCardColors(cardBackgroundColor)
+		colors = CardDefaults.elevatedCardColors(MaterialTheme.colorScheme.surfaceVariant)
 	) {
-
 		Box(
 			modifier = Modifier.fillMaxSize(),
 			contentAlignment = Alignment.BottomStart
 		) {
+			val artworkState = boxVM.artworkFlow.collectAsState()
+			val backgroundColorState = paletteColorState(paletteState = paletteState(artworkState))
+			PlaybackBoxBackground(colorState = backgroundColorState)
 			Row(
 				modifier = Modifier
 					.fillMaxSize()
 					.padding(7.5.dp),
 				verticalAlignment = Alignment.CenterVertically,
 			) {
-				Card(
-					modifier = Modifier
-						.fillMaxHeight()
-						.aspectRatio(1f, true),
-					shape = RoundedCornerShape(10),
-				) {
-					ArtworkDisplay(boxVM = boxVM)
-				}
-				val isCardDark = cardBackgroundColor.luminance() < 0.4f
-				MetadataDescription(boxVM = boxVM, isBackgroundDark = isCardDark)
-
-				// IsPlaying callback from mediaController is somewhat not accurate
-				val showPlay = !newModel.read().playWhenReady
-				val icon =
-					if (showPlay) {
-						R.drawable.play_filled_round_corner_32
-					} else {
-						R.drawable.pause_filled_narrow_rounded_corner_32
-					}
-
+				ArtworkDisplay(artworkState)
+				MetadataDescription(boxVM = boxVM, backgroundColorState = backgroundColorState)
 				NoRipple {
+					val newModel = remember { boxVM.observeModel() }
+						.collectAsState(initial = PlaybackBoxModel.UNSET)
+					// IsPlaying callback from mediaController is somewhat not accurate
+					val showPlay = !newModel.read().playWhenReady
+					val icon =
+						if (showPlay) {
+							R.drawable.play_filled_round_corner_32
+						} else {
+							R.drawable.pause_filled_narrow_rounded_corner_32
+						}
 
 					val interactionSource = remember { MutableInteractionSource() }
 					val pressed by interactionSource.collectIsPressedAsState()
@@ -172,11 +158,10 @@ private fun PlaybackControlBox(
 							},
 						painter = painterResource(id = icon),
 						contentDescription = null,
-						tint = if (isCardDark) Color.White else Color.Black,
+						tint = if (backgroundColorState.read().luminance() < 0.4f) Color.White else Color.Black,
 					)
 				}
 			}
-
 			ProgressIndicator(
 				boxVM = boxVM,
 				bufferingState = model.buffering
@@ -187,15 +172,14 @@ private fun PlaybackControlBox(
 
 @Composable
 private fun paletteState(
-	boxVM: PlaybackBoxViewModel
+	artworkState: State<Any?>
 ): State<Palette?> {
-	val artState = remember { boxVM.observeCurrentArtwork() }.collectAsState(initial = null)
 	val paletteState = remember { mutableStateOf<Palette?>(null) }
 
 	val coroutineScope = rememberCoroutineScope()
 	val coroutineDispatcher = Dispatchers.IO + SupervisorJob()
 
-	val art = artState.read()
+	val art = artworkState.read()
 	DisposableEffect(key1 = art) {
 		val paletteJob = coroutineScope.launch(coroutineDispatcher) {
 			if (art is Bitmap) {
@@ -217,7 +201,7 @@ private fun paletteState(
 }
 
 @Composable
-private fun cardPaletteColorState(
+private fun paletteColorState(
 	paletteState: State<Palette?>
 ): State<Color> {
 	val defaultCardBackgroundColor = MaterialTheme.colorScheme.surfaceVariant
@@ -243,11 +227,18 @@ private fun cardPaletteColorState(
 }
 
 @Composable
+private fun PlaybackBoxBackground(colorState: State<Color>) {
+	Box(modifier = Modifier
+		.fillMaxSize()
+		.background(colorState.read()))
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 private fun ArtworkDisplay(
-	boxVM: PlaybackBoxViewModel
+	artworkState: State<Any?>
 ) {
-	val artState = remember { boxVM.observeCurrentArtwork() }.collectAsState(initial = null)
-	val art = artState.read()
+	val art = artworkState.read()
 	val context = LocalContext.current
 
 	val req = remember(art) {
@@ -258,23 +249,30 @@ private fun ArtworkDisplay(
 			.build()
 	}
 
-	AsyncImage(
+	Card(
 		modifier = Modifier
-			.fillMaxSize()
-			.placeholder(
-				art == null,
-				color = MaterialTheme.colorScheme.onSurfaceVariant
-			),
-		model = req,
-		contentScale = ContentScale.Crop,
-		contentDescription = null
-	)
+			.fillMaxHeight()
+			.aspectRatio(1f, true),
+		shape = RoundedCornerShape(10),
+	) {
+		AsyncImage(
+			modifier = Modifier
+				.fillMaxSize()
+				.placeholder(
+					art == null,
+					color = MaterialTheme.colorScheme.onSurfaceVariant
+				),
+			model = req,
+			contentScale = ContentScale.Crop,
+			contentDescription = null
+		)
+	}
 }
 
 @Composable
 private fun RowScope.MetadataDescription(
 	boxVM: PlaybackBoxViewModel,
-	isBackgroundDark: Boolean
+	backgroundColorState: State<Color>
 ) {
 	Column(
 		modifier = Modifier
@@ -285,36 +283,31 @@ private fun RowScope.MetadataDescription(
 		horizontalAlignment = Alignment.Start,
 	) {
 
-		val textColor = if (isBackgroundDark) Color.White else Color.Black
-		val metadataState = remember { boxVM.observeCurrentMetadata() }.collectAsState(initial = null)
-
+		val textColor = if (backgroundColorState.read().luminance() < 0.4f) Color.White else Color.Black
+		val metadataState = boxVM.metadataFlow.collectAsState()
 		val metadata = metadataState.read()
-		if (metadata is MediaMetadata) {
-			val style = MaterialTheme.typography.bodyMedium
-				.copy(
-					color = textColor,
-					fontWeight = FontWeight.SemiBold
-				)
-			Text(
-				text = metadata.title ?: "",
-				style = style,
-				maxLines = 1,
-				overflow = TextOverflow.Ellipsis,
+		val style = MaterialTheme.typography.bodyMedium
+			.copy(
+				color = textColor,
+				fontWeight = FontWeight.SemiBold
 			)
-		}
-		if (metadata is AudioMetadata) {
-			val style = MaterialTheme.typography.bodyMedium
-				.copy(
-					color = textColor,
-					fontWeight = FontWeight.Medium
-				)
-			Text(
-				text = metadata.albumArtistName ?: metadata.artistName ?: "",
-				style = style,
-				maxLines = 1,
-				overflow = TextOverflow.Ellipsis,
+		Text(
+			text = metadata?.title ?: "",
+			style = style,
+			maxLines = 1,
+			overflow = TextOverflow.Ellipsis,
+		)
+		val style2 = MaterialTheme.typography.bodyMedium
+			.copy(
+				color = textColor,
+				fontWeight = FontWeight.Medium
 			)
-		}
+		Text(
+			text = metadata?.subtitle ?: "",
+			style = style2,
+			maxLines = 1,
+			overflow = TextOverflow.Ellipsis,
+		)
 	}
 }
 
@@ -467,8 +460,6 @@ fun AnimatedPlaybackProgressIndicatorPreview() = AnimatedPlaybackProgressIndicat
 // Use ViewModel instead
 class PlaybackControlModel() {
 
-	private val mMediaItem = mutableStateOf<com.flammky.android.medialib.common.mediaitem.MediaItem>(com.flammky.android.medialib.common.mediaitem.MediaItem.UNSET)
-
 	private val mBuffering = mutableStateOf<Boolean>(value = false)
 	private val mBufferedPosition = mutableStateOf<Long>(0)
 
@@ -521,15 +512,8 @@ class PlaybackControlModel() {
 
 	private var artJob = Job().job
 
-	val mediaItem: State<com.flammky.android.medialib.common.mediaitem.MediaItem>
-		get() = mMediaItem
-
 	var actualMediaItem: com.flammky.android.medialib.common.mediaitem.MediaItem = com.flammky.android.medialib.common.mediaitem.MediaItem.UNSET
 		private set
-
-	fun updateMediaItem(item: com.flammky.android.medialib.common.mediaitem.MediaItem) {
-		mMediaItem.overwrite(item)
-	}
 
 	fun updateMetadata(metadata: MediaMetadata?) {
 		when (metadata) {

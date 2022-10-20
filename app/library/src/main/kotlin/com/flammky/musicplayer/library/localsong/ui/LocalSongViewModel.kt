@@ -79,7 +79,7 @@ internal class LocalSongViewModel @Inject constructor(
 			if (id == null) {
 				while (scheduledRefresh.isNotEmpty()) {
 					val size = scheduledRefresh.size
-					_listState.overwrite(repository.getModelsAsync().await())
+					_listState.overwrite(repository.requestUpdateAsync().await())
 					scheduledRefresh.drop(size).let {
 						scheduledRefresh.clear()
 						scheduledRefresh.addAll(it)

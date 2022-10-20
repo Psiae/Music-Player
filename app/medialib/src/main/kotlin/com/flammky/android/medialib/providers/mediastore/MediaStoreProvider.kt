@@ -87,7 +87,7 @@ interface MediaStoreProvider : MediaProvider {
 				inline val Flag.isInsert
 					get() = this is Insert
 				inline val Flag.isDelete
-					get() = this is Update
+					get() = this is Delete
 				internal inline val Flag.isUnsupported
 					get() = this is Unsupported
 			}

@@ -1,5 +1,6 @@
-package com.flammky.musicplayer.base.media
+package com.flammky.musicplayer.base.media.mediaconnection
 
+import android.net.Uri
 import android.os.Handler
 import com.flammky.android.medialib.common.Contract
 import com.flammky.android.medialib.common.mediaitem.MediaItem
@@ -19,11 +20,16 @@ import kotlin.time.Duration.Companion.milliseconds
 
 class RealMediaConnectionPlayback : MediaConnectionPlayback {
 
+	private val mediaItemTransitionListeners = mutableListOf<(MediaItem) -> Unit>()
+	private val playlistChangeListeners = mutableListOf<() -> Unit>()
+
 	// TEMP
 	private val s = MediaLibrary.API.sessions.manager.findSessionById("DEBUG")!!
 
+	private val playerDispatcher = Handler(s.mediaController.publicLooper).asCoroutineDispatcher()
+
 	private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-	private val playerScope = CoroutineScope(SupervisorJob() + Handler(s.mediaController.publicLooper).asCoroutineDispatcher())
+	private val playerScope = CoroutineScope(SupervisorJob() + playerDispatcher)
 
 	override var playWhenReady: Boolean
 		get() = s.mediaController.playWhenReady
@@ -57,6 +63,14 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 		return s.mediaController.positionMs.milliseconds
 	}
 
+	override fun duration(): Duration {
+		return s.mediaController.durationMs.milliseconds
+	}
+
+	override fun getCurrentMediaItem(): MediaItem? {
+		return s.mediaController.currentActualMediaItem
+	}
+
 	override fun observeMediaItem(): Flow<MediaItem?> {
 		return callbackFlow {
 			val listener = object : LibraryPlayerEventListener {
@@ -67,7 +81,8 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 					trySend(newLib)
 				}
 			}
-			playerScope.launch { send(s.mediaController.currentActualMediaItem) }
+
+			withContext(playerScope.coroutineContext) { send(s.mediaController.currentActualMediaItem) }
 			s.mediaController.addListener(listener)
 			awaitClose {
 				s.mediaController.removeListener(listener)
@@ -82,8 +97,7 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 					if (reason == 0) trySend(s.mediaController.getAllMediaItem().map { it.mediaId })
 				}
 			}
-
-			playerScope.launch {
+			withContext(playerScope.coroutineContext) {
 				send(s.mediaController.getAllMediaItem().map { it.mediaId })
 			}
 			s.mediaController.addListener(timelineObserver)
@@ -98,12 +112,10 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 			var collectorJob: Job = Job()
 			fun startCollectorJob() {
 				collectorJob.cancel()
-				collectorJob = coroutineScope.launch {
-					s.mediaController.joinSuspend {
-						while (collectorJob.isActive) {
-							send(s.mediaController.positionMs.milliseconds)
-							delay(500)
-						}
+				collectorJob = playerScope.launch {
+					while (collectorJob.isActive) {
+						send(s.mediaController.positionMs.milliseconds)
+						delay(500)
 					}
 				}
 			}
@@ -146,7 +158,6 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 					}
 				}
 			}
-			send(s.mediaController.durationMs.milliseconds)
 			awaitClose {
 				job1.cancel()
 				job2.cancel()
@@ -161,7 +172,7 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 					trySend(isPlaying)
 				}
 			}
-			send(s.mediaController.isPlaying)
+			withContext(playerScope.coroutineContext) { send(s.mediaController.isPlaying) }
 			s.mediaController.addListener(listener)
 			awaitClose {
 				s.mediaController.removeListener(listener)
@@ -179,6 +190,7 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 					trySend(playWhenReady)
 				}
 			}
+			withContext(playerScope.coroutineContext) { send(s.mediaController.playWhenReady) }
 			s.mediaController.addListener(listener)
 			awaitClose {
 				s.mediaController.removeListener(listener)
@@ -193,10 +205,47 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 					trySend(new)
 				}
 			}
+			withContext(playerScope.coroutineContext) { send(Timeline(s.mediaController.durationMs.milliseconds)) }
 			s.mediaController.addListener(timelineObserver)
 			awaitClose {
 				s.mediaController.removeListener(timelineObserver)
 			}
 		}
+	}
+
+	override fun observeDiscontinuity(): Flow<Duration> {
+		return callbackFlow {
+			val discontinuityObserver = object : LibraryPlayerEventListener {
+				override fun onPositionDiscontinuity(newPosition: Duration) {
+					trySend(newPosition)
+				}
+			}
+			s.mediaController.addListener(discontinuityObserver)
+			awaitClose {
+				s.mediaController.removeListener(discontinuityObserver)
+			}
+		}
+	}
+
+	override fun notifyUnplayableMedia(id: String) {
+		playerScope.launch(playerDispatcher.immediate) {
+			var removed = 0
+			s.mediaController.getAllMediaItem().forEachIndexed { index, item ->
+				if (item.mediaId == id) s.mediaController.removeMediaItem(index + removed++)
+			}
+		}
+	}
+
+	override fun notifyUnplayableMedia(uri: Uri) {
+		playerScope.launch(playerDispatcher.immediate) {
+			var removed = 0
+			s.mediaController.getAllMediaItem().forEachIndexed { index, item ->
+				if (item.mediaUri == uri) s.mediaController.removeMediaItem(index + removed++)
+			}
+		}
+	}
+
+	override suspend fun <R> joinDispatcher(block: suspend MediaConnectionPlayback.() -> R): R {
+		return withContext(playerDispatcher.immediate) { block() }
 	}
 }

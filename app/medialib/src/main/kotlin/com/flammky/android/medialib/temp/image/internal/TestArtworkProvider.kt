@@ -64,7 +64,7 @@ class TestArtworkProvider(
 			}
 
 			val resolvedUri = when {
-				request.id.startsWith("MediaStore") -> {
+				request.id.startsWith("MediaStore") || request.id.startsWith("MEDIASTORE") -> {
 					ContentUris.withAppendedId(MediaStore28.Audio.EXTERNAL_CONTENT_URI, request.id.takeLastWhile { it.isDigit() }.toLong())
 				}
 				else -> null

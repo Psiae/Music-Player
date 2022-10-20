@@ -1,6 +1,6 @@
 package com.flammky.musicplayer.domain.media
 
-import com.flammky.musicplayer.base.media.MediaConnectionDelegate
+import com.flammky.musicplayer.base.media.mediaconnection.MediaConnectionDelegate
 import dagger.Provides
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton

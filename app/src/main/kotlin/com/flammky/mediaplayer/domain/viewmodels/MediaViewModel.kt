@@ -35,8 +35,6 @@ class MediaViewModel @Inject constructor(
 	private val ioScope = viewModelScope + dispatchers.io
 	private val computationScope = viewModelScope + dispatchers.computation
 
-	private val positionStateFlow = MusicLibrary.api.localAgent.session.info.playbackPosition
-	private val bufferedPositionStateFlow = MusicLibrary.api.localAgent.session.info.playbackBufferedPosition
 	private val itemStateFlow = MusicLibrary.api.localAgent.session.info.playbackItem
 
 	private val player = MusicLibrary.api.localAgent.session.player
@@ -50,23 +48,6 @@ class MediaViewModel @Inject constructor(
 	init {
 		viewModelScope.launch(dispatchers.main) {
 			collectPlaybackState()
-		}
-		viewModelScope.launch(dispatchers.main) {
-			positionStateFlow.safeCollect {
-				Timber.d("positionStateFlow collected $it")
-				playbackControlModel.updatePosition(it)
-			}
-		}
-		viewModelScope.launch(dispatchers.main) {
-			bufferedPositionStateFlow.safeCollect {
-				playbackControlModel.updateBufferedPosition(it)
-			}
-		}
-		viewModelScope.launch(dispatchers.main) {
-			itemStateFlow.safeCollect {
-				val get = playbackControlModel.actualMediaItem
-				playbackControlModel.updateMediaItem(it)
-			}
 		}
 	}
 

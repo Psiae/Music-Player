@@ -1,13 +1,14 @@
-package com.flammky.musicplayer.base.media
+package com.flammky.musicplayer.base.media.mediaconnection
 
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.kotlin.common.sync.sync
-import com.flammky.musicplayer.base.media.RealMediaConnectionRepository.MapObserver
+import com.flammky.musicplayer.base.media.mediaconnection.RealMediaConnectionRepository.MapObserver
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.Executors
@@ -30,21 +31,19 @@ class RealMediaConnectionRepository(
 		return metadataMap.sync { get(id) }
 	}
 
-	override fun observeMetadata(id: String): Flow<MediaMetadata?> {
-		return callbackFlow {
-			val observer = MapObserver<String, MediaMetadata> { key, value ->
-				check(key == id)
-				trySend(value)
-			}
-			withContext(dispatchers.io) {
-				addMetadataObserver(id, observer)
-				send(getMetadata(id))
-			}
-			awaitClose {
-				removeMetadataObserver(id, observer)
-			}
+	override fun observeMetadata(id: String): Flow<MediaMetadata?> = callbackFlow {
+		val observer = MapObserver<String, MediaMetadata> { key, value ->
+			check(key == id)
+			trySend(value)
 		}
-	}
+		withContext(dispatchers.io) {
+			addMetadataObserver(id, observer)
+			send(getMetadata(id))
+		}
+		awaitClose {
+			removeMetadataObserver(id, observer)
+		}
+	}.flowOn(dispatchers.io)
 
 	private fun addMetadataObserver(id: String, observer: MapObserver<String, MediaMetadata>) {
 		metadataObservers.sync { getOrPut(id) { mutableListOf() }.add(observer) }
@@ -74,21 +73,19 @@ class RealMediaConnectionRepository(
 		return artworkMap.sync { get(id) }
 	}
 
-	override fun observeArtwork(id: String): Flow<Any?> {
-		return callbackFlow {
-			val observer = MapObserver<String, Any> { key, value ->
-				check(key == id)
-				trySend(value)
-			}
-			withContext(dispatchers.io) {
-				addArtworkObserver(id, observer)
-				send(getArtwork(id))
-			}
-			awaitClose {
-				removeArtworkObserver(id, observer)
-			}
+	override fun observeArtwork(id: String): Flow<Any?> = callbackFlow {
+		val observer = MapObserver<String, Any> { key, value ->
+			check(key == id)
+			trySend(value)
 		}
-	}
+		withContext(dispatchers.io) {
+			addArtworkObserver(id, observer)
+			send(getArtwork(id))
+		}
+		awaitClose {
+			removeArtworkObserver(id, observer)
+		}
+	}.flowOn(dispatchers.io)
 
 	private fun addArtworkObserver(id: String, observer: MapObserver<String, Any>) {
 		artworkObservers.sync { getOrPut(id) { mutableListOf() }.add(observer) }

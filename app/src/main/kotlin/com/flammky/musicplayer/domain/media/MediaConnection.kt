@@ -55,8 +55,6 @@ interface MediaConnection {
 	@Immutable
 	data class PlaybackInfo(
 		val id: String = "",
-		val playlist: ImmutableList<String> = persistentListOf(),
-		val currentIndex: Int = Contract.INDEX_UNSET,
 		val playing: Boolean = false,
 		val playWhenReady: Boolean = false,
 	) {

@@ -113,7 +113,7 @@ class MediaIntentHandlerImpl(
 
         findMatchingMediaStoreData(defPath.await(), defSongs.await())
           ?.let { pair ->
-            withContext(dispatcher.main) {
+            withContext(dispatcher.io) {
               val (song: MediaStoreAudioEntity, list: List<MediaStoreAudioEntity>) = pair
               ensureActive()
               playMediaItem(song, list, true)
@@ -126,7 +126,7 @@ class MediaIntentHandlerImpl(
 							}
             }
           }
-          ?: withContext(dispatcher.main) {
+          ?: withContext(dispatcher.io) {
             val item = MediaItemFactory.fromMetaData(context, intent.data.toUri())
             if (item == MediaItemFactory.EMPTY) {
               Toast.makeText(context, "Unable To Play Media", Toast.LENGTH_LONG).show()
@@ -158,9 +158,7 @@ class MediaIntentHandlerImpl(
     ) {
 			with(MusicLibrary.api.localAgent.session.player) {
 				stop()
-				setMediaItems(emptyList())
-				setMediaItems(list)
-				seekToMediaItem(list.indexOf(item), 0L)
+				setMediaItems(list, list.indexOf(item))
 				prepare()
 				play()
 			}

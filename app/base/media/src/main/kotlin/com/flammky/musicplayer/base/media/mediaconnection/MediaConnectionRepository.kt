@@ -1,4 +1,4 @@
-package com.flammky.musicplayer.base.media
+package com.flammky.musicplayer.base.media.mediaconnection
 
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import kotlinx.coroutines.flow.Flow

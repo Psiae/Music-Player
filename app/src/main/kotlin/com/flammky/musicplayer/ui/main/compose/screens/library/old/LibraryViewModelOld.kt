@@ -12,11 +12,9 @@ import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.common.mediaitem.MediaItem
 import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider
-import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider.ContentObserver.Flag.Companion.isDelete
 import com.flammky.android.medialib.temp.image.ArtworkProvider
 import com.flammky.kotlin.common.sync.sync
 import com.flammky.musicplayer.common.android.concurrent.ConcurrencyHelper.checkMainThread
-import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemPropertyHelper.mediaUri
 import com.flammky.musicplayer.library.localsong.data.LocalSongRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -60,21 +58,7 @@ class LibraryViewModelOld @Inject constructor(
 	@Deprecated("Todo: make it listen internally instead")
 	private val onContentChangedListener = MediaStoreProvider.ContentObserver { id, uri, flag ->
 		viewModelScope.launch {
-			if (flag.isDelete) {
-				val list = ArrayList(_localSongModels.value)
-				list.removeAll { it.id == id }
-				_localSongModels.value = list.toList()
-
-				val toRemove = mutableListOf<androidx.media3.common.MediaItem>()
-				val items = sessionInteractor.getAllMediaItems()
-
-				items.find { it.mediaUri == uri }?.let { toRemove.add(it) }
-
-				// maybe `notifyUnplayableMedia sound kind of nicer`
-				sessionInteractor.removeMediaItems(toRemove)
-			} else {
-				scheduleRefresh()
-			}
+			scheduleRefresh()
 		}
 	}
 

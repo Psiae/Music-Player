@@ -10,7 +10,7 @@ import com.flammky.android.medialib.common.mediaitem.MediaItem
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.android.medialib.core.MediaLibrary
 import com.flammky.android.medialib.temp.image.ArtworkProvider
-import com.flammky.musicplayer.base.media.MediaConnectionDelegate
+import com.flammky.musicplayer.base.media.mediaconnection.MediaConnectionDelegate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
@@ -24,6 +24,8 @@ class RealMediaConnection(
 	private val mediaLibrary: MediaLibrary
 ) : MediaConnection {
 	private val coroutineScope = CoroutineScope(SupervisorJob())
+
+	private val m = com.flammky.android.medialib.temp.MediaLibrary.API.sessions.manager.findSessionById("DEBUG")!!.mediaController
 
 	override fun play(id: String, uri: Uri) {
 		delegate.play(createMediaItem(id, uri))

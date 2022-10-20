@@ -1,8 +1,9 @@
 package com.flammky.musicplayer.domain.media
 
+import com.flammky.android.medialib.common.mediaitem.MediaItem
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.common.kotlin.coroutines.safeCollect
-import com.flammky.musicplayer.base.media.MediaConnectionDelegate
+import com.flammky.musicplayer.base.media.mediaconnection.MediaConnectionDelegate
 import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.awaitClose
@@ -11,7 +12,6 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import timber.log.Timber
-import kotlin.time.Duration
 
 class RealMediaConnection(
 	private val delegate: MediaConnectionDelegate
@@ -30,135 +30,134 @@ class RealMediaConnection(
 		override fun observeInfo(): Flow<MediaConnection.PlaybackInfo> {
 			return callbackFlow {
 
-				val mutex = Mutex()
-				var remember = MediaConnection.PlaybackInfo.UNSET
+				suspend fun sendNew() {
+					val new = delegate.playback.joinDispatcher {
+						MediaConnection.PlaybackInfo(
+							id = delegate.playback.getCurrentMediaItem()?.mediaId ?: "",
+							playWhenReady = delegate.playback.playWhenReady,
+							playing = delegate.playback.playing
+						)
+					}
+					send(new)
+				}
 
 				val job1 = ioScope.launch {
-					delegate.playback.observeMediaItem().safeCollect { mediaItem ->
-						Timber.d("observeMediaItemConnection $mediaItem ${mediaItem?.mediaId}")
-						mutex.withLock {
-							if (remember.id != mediaItem?.mediaId) {
-								remember = MediaConnection.PlaybackInfo(
-									id = mediaItem?.mediaId ?: "",
-									playWhenReady = delegate.playback.playWhenReady,
-									playing = delegate.playback.playing,
-									playlist = delegate.playback.getPlaylist().map { it.mediaId }.toPersistentList(),
-									currentIndex = delegate.playback.index
-								)
-								send(remember)
-							}
-						}
-					}
+					delegate.playback.observeMediaItem().safeCollect { sendNew() }
 				}
 
-				val job4 = ioScope.launch {
-					delegate.playback.observePlayWhenReady().safeCollect {
-						mutex.withLock {
-							remember = remember.copy(playWhenReady = it)
-							send(remember)
-						}
-					}
+				val job2 = ioScope.launch {
+					delegate.playback.observePlayWhenReady().safeCollect { sendNew() }
 				}
 
-				val job5 = ioScope.launch {
-					delegate.playback.observeIsPlaying().safeCollect {
-						mutex.withLock {
-							remember = remember.copy(playing = it)
-							send(remember)
-						}
-					}
+				val job3 = ioScope.launch {
+					delegate.playback.observeIsPlaying().safeCollect { sendNew() }
 				}
 
 				awaitClose {
-					job1.cancel();job4.cancel();job5.cancel()
+					job1.cancel();job2.cancel();job3.cancel()
 				}
 			}
 		}
 
 		override fun observePositionStream(): Flow<MediaConnection.Playback.PositionStream> = callbackFlow {
 
-			val mutex = Mutex()
-			var remember = MediaConnection.Playback.PositionStream()
 			var positionCollectorJob: Job? = null
+			val mutex = Mutex()
 
-			suspend fun updateDuration(duration: Duration) = mutex.withLock {
-				Timber.d("observePositionStream $duration")
-				if (remember.duration != duration) {
-					remember = remember.copy(duration = duration)
-					send(remember)
+			suspend fun sendUpdatedPositions() {
+				val new = delegate.playback.joinDispatcher {
+					MediaConnection.Playback.PositionStream(
+						position = delegate.playback.position(),
+						bufferedPosition = delegate.playback.bufferedPosition(),
+						duration = delegate.playback.duration()
+					)
 				}
+				send(new)
 			}
 
 			suspend fun collectPosition() {
 				while (isActive) {
-					mutex.withLock {
-						remember = remember.copy(
-							position = delegate.playback.position(),
-							bufferedPosition = delegate.playback.bufferedPosition()
-						)
-						send(remember)
-					}
+					sendUpdatedPositions()
 					delay(500)
 				}
 			}
 
-			suspend fun restartPositionCollector() = mutex.withLock {
-				positionCollectorJob?.cancel()
-				remember = MediaConnection.Playback.PositionStream()
-				send(remember)
-				positionCollectorJob = launch { collectPosition() }
+			fun stopPositionCollector() = positionCollectorJob?.cancel()
+			suspend fun startPositionCollector() = mutex.withLock {
+				if (positionCollectorJob?.isActive != true) {
+					positionCollectorJob = launch { collectPosition() }
+				}
 			}
 
-			send(remember)
+			suspend fun restartPositionCollector() {
+				stopPositionCollector()
+				send(MediaConnection.Playback.PositionStream())
+				startPositionCollector()
+			}
+
+			sendUpdatedPositions()
 
 			val transitionObserverJob = ioScope.launch {
 				delegate.playback.observeMediaItem().safeCollect { restartPositionCollector() }
 			}
 
 			val timelineObserverJob = ioScope.launch {
-				delegate.playback.observeTimeline().safeCollect { updateDuration(it.duration) }
+				delegate.playback.observeTimeline().safeCollect { sendUpdatedPositions() }
+			}
+
+			val discontinuityJob = ioScope.launch {
+				delegate.playback.observeDiscontinuity().safeCollect { sendUpdatedPositions() }
+			}
+
+			val isPlayingJob = ioScope.launch {
+				delegate.playback.observeIsPlaying().safeCollect {
+					if (!it) stopPositionCollector() else startPositionCollector()
+				}
 			}
 
 			awaitClose {
-				positionCollectorJob?.cancel()
-				timelineObserverJob.cancel()
 				transitionObserverJob.cancel()
+				discontinuityJob.cancel()
+				timelineObserverJob.cancel()
+				positionCollectorJob?.cancel()
+				isPlayingJob.cancel()
 			}
 		}
 
 		override fun observePlaylistStream(): Flow<MediaConnection.Playback.PlaylistStream> = callbackFlow {
-			val mutex = Mutex()
-			var remember = MediaConnection.Playback.PlaylistStream()
+
+			suspend fun sendNew(reason: Int) {
+				val new = delegate.playback.joinDispatcher {
+					MediaConnection.Playback.PlaylistStream(
+						reason = reason,
+						currentIndex = delegate.playback.index,
+						list = delegate.playback.getPlaylist().map { it.mediaId }.toPersistentList()
+					)
+				}
+				send(new)
+				Timber.d("observePlaylistStream sent $new")
+			}
 
 			val playlistObserver = ioScope.launch {
 				delegate.playback.observePlaylist().safeCollect {
-					mutex.withLock {
-						remember = remember.copy(
-							reason = 1,
-							currentIndex = delegate.playback.index,
-							list = it.toPersistentList()
-						)
-						send(remember)
+					if (it.isEmpty()) {
+						return@safeCollect send(MediaConnection.Playback.PlaylistStream())
 					}
+					sendNew(1)
 				}
 			}
 
 			val currentObserver = ioScope.launch {
 				delegate.playback.observeMediaItem().safeCollect {
-					mutex.withLock {
-						remember = remember.copy(
-							reason = 0,
-							currentIndex = delegate.playback.index,
-							list = delegate.playback.getPlaylist().map { it.mediaId }.toPersistentList()
-						)
-						send(remember)
+					if (it == null || it is MediaItem.UNSET) {
+						return@safeCollect send(MediaConnection.Playback.PlaylistStream())
 					}
+					sendNew(0)
 				}
 			}
-
 			awaitClose {
-				playlistObserver.cancel()
 				currentObserver.cancel()
+				playlistObserver.cancel()
 			}
 		}
 	}

@@ -32,10 +32,13 @@ dependencies {
         api("io.coil-kt:coil:$v")
     }
 
-    // Collections.Immutable
-    val vCollectionImmutable = "0.3.5"
-    api("org.jetbrains.kotlinx:kotlinx-collections-immutable:$vCollectionImmutable")
-
+    /* jetbrains.kotlinx */
+    dependencies {
+        // Collections.Immutable
+        val vCollectionImmutable = "0.3.5"
+        api("org.jetbrains.kotlinx:kotlinx-collections-immutable:$vCollectionImmutable")
+    }
+    
     /* google.dagger */
     dependencies {
 
@@ -43,5 +46,12 @@ dependencies {
         val vHiltAndroid = "2.44"
         implementation("com.google.dagger:hilt-android:$vHiltAndroid")
         kapt("com.google.dagger:hilt-android-compiler:$vHiltAndroid")
+    }
+
+    @Suppress("SpellCheckingInspection")
+    /* jakeWharton.timber */
+    dependencies {
+        val v = "5.0.1"
+        api("com.jakewharton.timber:timber:$v")
     }
 }

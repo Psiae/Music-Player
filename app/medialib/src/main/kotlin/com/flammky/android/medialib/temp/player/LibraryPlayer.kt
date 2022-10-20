@@ -52,7 +52,8 @@ interface LibraryPlayer {
 	fun seekToDefaultPosition(index: Int)
 	fun seekToPosition(position: Long)
 	@Throws(IndexOutOfBoundsException::class)
-	fun seekToMediaItem(index: Int, startPosition: Long = 0L)
+	fun seekToMediaItem(index: Int, startPosition: Long)
+	fun seekToMediaItem(index: Int)
 	fun seekToPrevious()
 	fun seekToNext()
 	fun seekToPreviousMediaItem()
@@ -62,6 +63,7 @@ interface LibraryPlayer {
 	fun removeMediaItems(items: List<androidx.media3.common.MediaItem>)
 	fun removeMediaItem(index: Int)
 	fun setMediaItems(items: List<MediaItem>)
+	fun setMediaItems(items: List<MediaItem>, startIndex: Int)
 	fun play()
 
 	fun play(item: androidx.media3.common.MediaItem)

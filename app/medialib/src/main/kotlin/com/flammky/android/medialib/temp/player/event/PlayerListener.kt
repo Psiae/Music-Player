@@ -21,6 +21,8 @@ import com.flammky.android.medialib.temp.player.event.PlayWhenReadyChangedReason
 import com.flammky.android.medialib.temp.player.playback.RepeatMode
 import com.flammky.android.medialib.temp.player.playback.RepeatMode.Companion.asRepeatMode
 import com.flammky.android.medialib.temp.player.playback.RepeatMode.Companion.toRepeatModeInt
+import timber.log.Timber
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
 interface LibraryPlayerEventListener {
@@ -112,6 +114,8 @@ interface LibraryPlayerEventListener {
 		@Player.DiscontinuityReason reason: Int
 	) {}
 
+	fun onPositionDiscontinuity(newPosition: Duration) {}
+
 	companion object {
 		@Deprecated("Temporary")
 		internal fun LibraryPlayerEventListener.asPlayerListener(player: LibraryPlayer, playerContext: PlayerContext): Player.Listener {
@@ -141,14 +145,17 @@ interface LibraryPlayerEventListener {
 				private var rememberOldItem: MediaItem? = null
 				private var rememberOldLibItem: com.flammky.android.medialib.common.mediaitem.MediaItem? = null
 				override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-					delegated.onMediaItemTransition(rememberOldItem, mediaItem, reason.asMediaItemTransitionReason)
-					rememberOldItem = mediaItem
-					val libItem = mediaItem?.let { convertMediaItem(mediaItem) }
-					delegated.onLibMediaItemTransition(
-						rememberOldLibItem,
-						libItem
-					)
-					rememberOldLibItem = libItem
+					Timber.d("onMediaItemTransition $mediaItem, ${mediaItem?.mediaId}, ${mediaItem?.localConfiguration}, $reason, index: ${player.currentMediaItemIndex}")
+					if (mediaItem?.localConfiguration == null) {
+						delegated.onMediaItemTransition(rememberOldItem, mediaItem, reason.asMediaItemTransitionReason)
+						rememberOldItem = mediaItem
+						val libItem = mediaItem?.let { convertMediaItem(mediaItem) }
+						delegated.onLibMediaItemTransition(
+							rememberOldLibItem,
+							libItem
+						)
+						rememberOldLibItem = libItem
+					}
 				}
 
 				override fun onRepeatModeChanged(repeatMode: Int) {
@@ -208,6 +215,7 @@ interface LibraryPlayerEventListener {
 					reason: Int
 				) {
 					delegated.onPositionDiscontinuity(oldPosition, newPosition, reason)
+					delegated.onPositionDiscontinuity(newPosition.positionMs.milliseconds)
 				}
 
 				@Deprecated("Temporary", ReplaceWith("TODO"))

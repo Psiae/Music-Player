@@ -1,5 +1,6 @@
-package com.flammky.musicplayer.base.media
+package com.flammky.musicplayer.base.media.mediaconnection
 
+import android.net.Uri
 import com.flammky.android.medialib.common.mediaitem.MediaItem
 import com.flammky.android.medialib.temp.media3.Timeline
 import kotlinx.coroutines.flow.Flow
@@ -12,8 +13,10 @@ interface MediaConnectionPlayback {
 
 	fun bufferedPosition(): Duration
 	fun position(): Duration
+	fun duration(): Duration
 
 
+	fun getCurrentMediaItem(): MediaItem?
 	fun getPlaylist(): List<MediaItem>
 
 	fun play(mediaItem: MediaItem)
@@ -26,4 +29,10 @@ interface MediaConnectionPlayback {
 	fun observeIsPlaying(): Flow<Boolean>
 	fun observePlayWhenReady(): Flow<Boolean>
 	fun observeTimeline(): Flow<Timeline>
+	fun observeDiscontinuity(): Flow<Duration>
+
+	suspend fun <R> joinDispatcher(block: suspend MediaConnectionPlayback.() -> R): R
+
+	fun notifyUnplayableMedia(id: String)
+	fun notifyUnplayableMedia(uri: Uri)
 }

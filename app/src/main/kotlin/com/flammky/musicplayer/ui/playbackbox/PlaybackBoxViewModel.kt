@@ -6,9 +6,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.medialib.common.Contract
+import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.common.kotlin.coroutines.safeCollect
-import com.flammky.musicplayer.base.media.MediaConnectionDelegate
+import com.flammky.musicplayer.base.media.mediaconnection.MediaConnectionDelegate
 import com.flammky.musicplayer.domain.media.MediaConnection
 import com.flammky.musicplayer.domain.media.MediaConnection.PlaybackInfo.Companion.actuallyUnset
 import com.flammky.musicplayer.domain.media.MediaConnection.PlaybackInfo.Companion.isUnset
@@ -16,8 +17,7 @@ import com.flammky.musicplayer.ui.playbackbox.PlaybackBoxPositions.Companion.asP
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
@@ -31,10 +31,62 @@ class PlaybackBoxViewModel @Inject constructor(
 	// I think we should consider injecting observable instead ?
 ) : ViewModel() {
 
+	val playlistStreamFlow = mediaConnection.playback.observePlaylistStream()
+		.stateIn(viewModelScope, SharingStarted.Lazily, MediaConnection.Playback.PlaylistStream())
+
+	val positionStreamFlow = mediaConnection.playback.observePositionStream()
+		.stateIn(viewModelScope, SharingStarted.Lazily, MediaConnection.Playback.PositionStream())
+		.map { it.asPlaybackBoxPosition }
+
+	val metadataFlow = callbackFlow {
+		val job = viewModelScope.launch {
+			var combinedJob: Job? = null
+			playlistStreamFlow.safeCollect({combinedJob?.cancel()}) { update ->
+				when (update.reason) {
+					-1 -> {
+						// UNSET
+						send(null)
+						combinedJob?.cancel()
+					}
+					0 -> {
+						// TRANSITION
+						send(null)
+						combinedJob?.cancel()
+						combinedJob = launch {
+							val artFlow = observeArtwork(update.list[update.currentIndex])
+							val metadataFlow = observeMetadata(update.list[update.currentIndex])
+							combine(artFlow, metadataFlow) { art, metadata ->
+								PlaybackBoxMetadata(
+									artwork = art,
+									title = metadata?.title ?: "",
+									subtitle = if (metadata is AudioMetadata) metadata.albumArtistName
+										?: metadata.artistName
+										?: ""
+									else ""
+								)
+							}.safeCollect { boxMetadata -> send(boxMetadata) }
+						}
+					}
+					1 -> {
+						// PLAYLIST CHANGE
+					}
+				}
+			}
+		}
+		awaitClose { job.cancel() }
+	}.stateIn(viewModelScope, SharingStarted.Lazily, PlaybackBoxMetadata())
+
+	val artworkFlow = metadataFlow
+		.map { it?.artwork }
+		.stateIn(viewModelScope, SharingStarted.Lazily, PlaybackBoxMetadata())
+
+
 	fun play() = mediaConnectionDelegate.play()
 	fun pause() = mediaConnectionDelegate.pause()
 
 	fun observeModel(): Flow<PlaybackBoxModel> {
+
+
 		Timber.d("observeModel")
 		return callbackFlow {
 
@@ -82,22 +134,22 @@ class PlaybackBoxViewModel @Inject constructor(
 		return callbackFlow {
 
 			var observeArtworkJob: Job? = null
-			var rememberId: String = ""
 
 			send(null)
 
-			val observeStreamJob = launch(dispatchers.main) {
-				mediaConnection.playback.observePlaylistStream().safeCollect {
+			val observeStreamJob = viewModelScope.launch {
+				playlistStreamFlow.safeCollect {
 					when (it.reason) {
 						-1 -> {
 							send(null)
-							rememberId = ""
 							observeArtworkJob?.cancel()
 						}
 						0 -> {
 							send(null)
-							rememberId = it.list[it.currentIndex]
-							observeArtworkJob = launch { observeArtwork(rememberId).safeCollect { art -> send(art) } }
+							observeArtworkJob?.cancel()
+							observeArtworkJob = launch {
+								observeArtwork(it.list[it.currentIndex]).safeCollect { art -> send(art) }
+							}
 						}
 						1 -> {
 
@@ -106,8 +158,8 @@ class PlaybackBoxViewModel @Inject constructor(
 				}
 			}
 			awaitClose {
-				observeArtworkJob?.cancel()
 				observeStreamJob.cancel()
+				observeArtworkJob?.cancel()
 			}
 		}
 	}
@@ -117,22 +169,22 @@ class PlaybackBoxViewModel @Inject constructor(
 		return callbackFlow {
 
 			var observeMetadataJob: Job? = null
-			var rememberId: String
 
 			send(null)
 
-			val observeStreamJob = launch(dispatchers.main) {
-				mediaConnection.playback.observePlaylistStream().safeCollect {
+			val observeStreamJob = viewModelScope.launch {
+				playlistStreamFlow.safeCollect {
 					when (it.reason) {
 						-1 -> {
 							send(null)
-							rememberId = ""
 							observeMetadataJob?.cancel()
 						}
 						0 -> {
 							send(null)
-							rememberId = it.list[it.currentIndex]
-							observeMetadataJob = launch { observeMetadata(rememberId).safeCollect { send(it) } }
+							observeMetadataJob?.cancel()
+							observeMetadataJob = launch {
+								observeMetadata(it.list[it.currentIndex]).safeCollect { metadata -> send(metadata) }
+							}
 						}
 						1 -> {
 
@@ -141,8 +193,8 @@ class PlaybackBoxViewModel @Inject constructor(
 				}
 			}
 			awaitClose {
-				observeMetadataJob?.cancel()
 				observeStreamJob.cancel()
+				observeMetadataJob?.cancel()
 			}
 		}
 	}
@@ -179,6 +231,18 @@ data class PlaybackBoxPositions(
 }
 
 @Immutable
+data class PlaybackBoxMetadata(
+	val artwork: Any? = ART_UNSET,
+	val title: String = "",
+	val subtitle: String = "",
+) {
+	companion object {
+		val ART_UNSET = Any()
+	}
+}
+
+
+@Immutable
 data class PlaybackBoxModel(
 	val id: String = "",
 	val playing: Boolean = false,
@@ -187,12 +251,5 @@ data class PlaybackBoxModel(
 
 	companion object  {
 		val UNSET = PlaybackBoxModel()
-
-		fun MediaConnection.PlaybackInfo.asPlaybackBoxModel(): PlaybackBoxModel {
-			return PlaybackBoxModel(
-				id = this.id,
-				playing = this.playing
-			)
-		}
  	}
 }

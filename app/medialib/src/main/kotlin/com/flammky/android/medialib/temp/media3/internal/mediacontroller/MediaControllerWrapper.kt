@@ -96,7 +96,9 @@ class MediaControllerWrapper internal constructor(
 		get() = joinBlocking { wrapped.currentMediaItem }
 
 	override val currentMediaItemIndex: Int
-		get() = joinBlocking { wrapped.currentMediaItemIndex }
+		get() = joinBlocking { wrapped.currentMediaItemIndex }.also {
+			Timber.d("currentMediaItemIndex $it")
+		}
 
 	override val nextMediaItemIndex: Int
 		get() = joinBlocking { wrapped.nextMediaItemIndex }
@@ -144,6 +146,10 @@ class MediaControllerWrapper internal constructor(
 		this.post { wrapped.seekToMediaItem(index, startPosition) }
 	}
 
+	override fun seekToMediaItem(index: Int) {
+		this.post { wrapped.seekToMediaItem(index) }
+	}
+
 	override fun seekToPrevious() {
 		this.post { wrapped.seekToPrevious() }
 	}
@@ -174,6 +180,13 @@ class MediaControllerWrapper internal constructor(
 
 	override fun setMediaItems(items: List<com.flammky.android.medialib.common.mediaitem.MediaItem>) {
 		this.post { wrapped.setMediaItems(items) }
+	}
+
+	override fun setMediaItems(
+		items: List<com.flammky.android.medialib.common.mediaitem.MediaItem>,
+		startIndex: Int
+	) {
+		this.post { wrapped.setMediaItems(items, startIndex) }
 	}
 
 	override fun play() {
@@ -479,6 +492,10 @@ class MediaControllerWrapper internal constructor(
 			if (isStateConnected()) mediaController.seekTo(index, startPosition)
 		}
 
+		override fun seekToMediaItem(index: Int) {
+			if (isStateConnected()) mediaController.seekToDefaultPosition(index)
+		}
+
 		override fun seekToPrevious() {
 			if (isStateConnected()) mediaController.seekToPrevious()
 		}
@@ -520,7 +537,7 @@ class MediaControllerWrapper internal constructor(
 				val mc = mediaController
 				if (mc.currentMediaItem?.mediaId != item.mediaId) {
 					mc.stop()
-					mc.setMediaItem(item)
+					mc.setMediaItem(item, true)
 				} else if (mc.playbackState == Player.STATE_ENDED) {
 					mc.seekToDefaultPosition()
 				}
@@ -562,6 +579,17 @@ class MediaControllerWrapper internal constructor(
 		override fun setMediaItems(items: List<com.flammky.android.medialib.common.mediaitem.MediaItem>) {
 			if (isStateConnected()) mediaController.setMediaItems(
 				items.map { ((it as RealMediaItem).internalItem as Media3Item).item }
+			)
+		}
+
+		override fun setMediaItems(
+			items: List<com.flammky.android.medialib.common.mediaitem.MediaItem>,
+			startIndex: Int
+		) {
+			if (isStateConnected()) mediaController.setMediaItems(
+				items.map { ((it as RealMediaItem).internalItem as Media3Item).item },
+				startIndex,
+				0L
 			)
 		}
 

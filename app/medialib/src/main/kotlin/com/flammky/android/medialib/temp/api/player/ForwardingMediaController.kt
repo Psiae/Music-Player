@@ -23,22 +23,6 @@ internal class ForwardingMediaController private constructor(
     private val wrapper: MediaControllerWrapper
 ) : MediaController, LibraryPlayer by wrapper {
 
-	private val mediaStore = MediaLib.singleton(playerContext.android).mediaProviders.mediaStore
-
-	private val contentObserver = MediaStoreProvider.ContentObserver { _, uri, flag ->
-		if (flag.isDelete) {
-			wrapper.post {
-				val toRemove = mutableListOf<androidx.media3.common.MediaItem>()
-				getAllMediaItems().forEach {
-					if ((it.localConfiguration?.uri ?: it.requestMetadata.mediaUri) == uri ) {
-						toRemove.add(it)
-					}
-				}
-				removeMediaItems(toRemove)
-			}
-		}
-	}
-
 	override val currentActualMediaItem: MediaItem?
 		get() = wrapper.currentMediaItem?.let { convertMediaItem(it) }
 
@@ -126,7 +110,6 @@ internal class ForwardingMediaController private constructor(
 	inner class WrapperFuture : AbstractFuture<MediaController>() {
 		init {
 			wrapper.connect({}) {
-				mediaStore.audio.observe(contentObserver)
 				set(this@ForwardingMediaController)
 			}
 		}

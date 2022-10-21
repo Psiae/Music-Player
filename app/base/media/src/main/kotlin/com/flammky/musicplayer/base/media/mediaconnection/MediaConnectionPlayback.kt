@@ -11,9 +11,14 @@ interface MediaConnectionPlayback {
 	val playing: Boolean
 	val index: Int
 
+	fun prepare()
+	fun stop()
+
 	fun bufferedPosition(): Duration
 	fun position(): Duration
 	fun duration(): Duration
+
+	fun setMediaItems(items: List<MediaItem>, startIndex: Int, startPosition: Duration)
 
 
 	fun getCurrentMediaItem(): MediaItem?

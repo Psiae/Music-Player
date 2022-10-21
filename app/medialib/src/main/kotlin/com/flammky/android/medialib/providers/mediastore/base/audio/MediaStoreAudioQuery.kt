@@ -4,8 +4,8 @@ import android.net.Uri
 import com.flammky.android.medialib.providers.mediastore.base.media.MediaStoreQuery
 
 abstract class MediaStoreAudioQuery internal constructor(
-	id: Long,
-	uri: Uri,
-	val albumId: Long?,
-	val artistId: Long?
+	override val id: Long,
+	override val uri: Uri,
+	open val albumId: Long?,
+	open val artistId: Long?
 ) : MediaStoreQuery(id, uri)

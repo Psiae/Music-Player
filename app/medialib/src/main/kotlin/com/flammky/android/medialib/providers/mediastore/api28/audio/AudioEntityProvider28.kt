@@ -79,6 +79,33 @@ internal class AudioEntityProvider28 (private val context: MediaStoreContext) {
 	}
 
 	@kotlin.jvm.Throws(ReadExternalStoragePermissionException::class)
+	fun queryUris(): List<Uri> {
+		checkReadExternalStoragePermission()
+		return try {
+			val holder = mutableListOf<Uri>()
+			contentResolver.query(
+				/* uri = */ uri_audio_external,
+				/* projection = */ entityDefaultProjector,
+				/* selection = */ null,
+				/* selectionArgs = */ null,
+				/* sortOrder = */ null
+			)?.use {  cursor ->
+				if (cursor.moveToFirst()) {
+					do {
+						val queryInfo = fillAudioQueryInfoBuilder(cursor, MediaStoreAudioQuery28.Builder())
+						holder.add(ContentUris.withAppendedId(uri_audio_external, queryInfo.id))
+					} while (cursor.moveToNext())
+				}
+			}
+			holder
+		} catch (se: SecurityException) {
+			checkReadExternalStoragePermission()
+			if (BuildConfig.DEBUG) throw se
+			emptyList()
+		}
+	}
+
+	@kotlin.jvm.Throws(ReadExternalStoragePermissionException::class)
 	private fun checkReadExternalStoragePermission() {
 		if (!contextHelper.permissions.common.hasReadExternalStorage) {
 			throw ReadExternalStoragePermissionException()
@@ -91,7 +118,7 @@ internal class AudioEntityProvider28 (private val context: MediaStoreContext) {
 	): MediaStoreAudioEntity28.Builder = builder.apply {
 		val file = MediaStoreAudioFile28
 			.Builder().apply { fillAudioFileBuilder(cursor,this) }.build()
-		val metadata = MediaStoreAudioMetadata28
+		val metadata = MediaStoreAudioMetadataEntry28
 			.Builder().apply { fillAudioMetadataBuilder(cursor, this) }.build()
 		val queryInfo = MediaStoreAudioQuery28
 			.Builder().apply { fillAudioQueryInfoBuilder(cursor, this) }.build()
@@ -140,8 +167,8 @@ internal class AudioEntityProvider28 (private val context: MediaStoreContext) {
 
 	private fun fillAudioMetadataBuilder(
 		cursor: Cursor,
-		builder: MediaStoreAudioMetadata28.Builder
-	): MediaStoreAudioMetadata28.Builder = builder.apply {
+		builder: MediaStoreAudioMetadataEntry28.Builder
+	): MediaStoreAudioMetadataEntry28.Builder = builder.apply {
 		cursor
 			.getColumnIndex(MediaStore28.Audio.AudioColumns.ALBUM)
 			.takeIf { it > -1 }
@@ -229,7 +256,7 @@ internal class AudioEntityProvider28 (private val context: MediaStoreContext) {
 		/**
 		 * Projector to fill [MediaStoreAudioEntity28.metadata]
 		 *
-		 * @see [MediaStoreAudioMetadata28]
+		 * @see [MediaStoreAudioMetadataEntry28]
 		 */
 		private val metadataInfoProjector: Array<String> = arrayOf(
 			MediaStore28.Audio.AudioColumns.ALBUM,

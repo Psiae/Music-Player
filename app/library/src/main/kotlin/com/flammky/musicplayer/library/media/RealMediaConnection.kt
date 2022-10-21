@@ -13,10 +13,11 @@ import com.flammky.android.medialib.temp.image.ArtworkProvider
 import com.flammky.musicplayer.base.media.mediaconnection.MediaConnectionDelegate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 
-class RealMediaConnection(
+internal class RealMediaConnection(
 	private val artworkProvider: ArtworkProvider,
 	private val context: Context,
 	private val delegate: MediaConnectionDelegate,
@@ -31,6 +32,33 @@ class RealMediaConnection(
 		delegate.play(createMediaItem(id, uri))
 		provideMetadata(id, uri)
 		provideArtwork(id)
+	}
+
+	override val repository: MediaConnection.Repository = object : MediaConnection.Repository {
+
+		override suspend fun getArtwork(id: String): Any? {
+			return delegate.repository.getArtwork(id)
+		}
+
+		override fun observeArtwork(id: String): Flow<Any?> {
+			return delegate.repository.observeArtwork(id)
+		}
+
+		override fun provideArtwork(id: String, artwork: Any?, silent: Boolean) {
+			if (silent) {
+				delegate.repository.silentProvideArtwork(id, artwork)
+			} else {
+				delegate.repository.provideArtwork(id, artwork)
+			}
+		}
+
+		override fun evictArtwork(id: String, silent: Boolean) {
+			if (silent) {
+				delegate.repository.silentEvictArtwork(id)
+			} else {
+				delegate.repository.evictArtwork(id)
+			}
+		}
 	}
 
 	/**
@@ -54,8 +82,8 @@ class RealMediaConnection(
 	}
 
 	private fun provideArtwork(id: String) {
-		if (delegate.repository.getArtwork(id) == null) {
-			coroutineScope.launch(dispatcher.io) {
+		coroutineScope.launch(dispatcher.io) {
+			if (delegate.repository.getArtwork(id) == null) {
 				val req = ArtworkProvider.Request.Builder(id, Bitmap::class.java)
 					.setStoreMemoryCacheAllowed(true)
 					.setDiskCacheAllowed(false)

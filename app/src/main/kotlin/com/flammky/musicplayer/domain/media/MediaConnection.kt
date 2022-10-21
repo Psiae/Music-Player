@@ -2,6 +2,7 @@ package com.flammky.musicplayer.domain.media
 
 import androidx.compose.runtime.Immutable
 import com.flammky.android.medialib.common.Contract
+import com.flammky.android.medialib.common.mediaitem.MediaItem
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -19,12 +20,17 @@ interface MediaConnection {
 	 * Playback Interactor
 	 */
 	interface Playback {
+		fun setMediaItems(items: List<MediaItem>, startIndex: Int, startPosition: Duration)
+		fun prepare()
 		fun playWhenReady()
 		fun pause()
+		fun stop()
 		fun observePositionStream(): Flow<PositionStream>
 		fun observePlaylistStream(): Flow<PlaylistStream>
 
 		fun observeInfo(): Flow<PlaybackInfo>
+
+		suspend fun <R> joinSuspend(block: MediaConnection.Playback.() -> R): R
 
 		data class PlaylistStream(
 			val reason: Int = -1,

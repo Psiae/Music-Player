@@ -39,6 +39,7 @@ import java.util.concurrent.Executor
 import java.util.concurrent.locks.LockSupport
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.math.min
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.ExperimentalTime
 import kotlin.time.measureTimedValue
@@ -180,6 +181,14 @@ class MediaControllerWrapper internal constructor(
 
 	override fun setMediaItems(items: List<com.flammky.android.medialib.common.mediaitem.MediaItem>) {
 		this.post { wrapped.setMediaItems(items) }
+	}
+
+	override fun setMediaItems(
+		items: List<com.flammky.android.medialib.common.mediaitem.MediaItem>,
+		startIndex: Int,
+		startPosition: Duration
+	) {
+		this.post { wrapped.setMediaItems(items, startIndex, startPosition) }
 	}
 
 	override fun setMediaItems(
@@ -582,6 +591,8 @@ class MediaControllerWrapper internal constructor(
 			)
 		}
 
+
+
 		override fun setMediaItems(
 			items: List<com.flammky.android.medialib.common.mediaitem.MediaItem>,
 			startIndex: Int
@@ -590,6 +601,18 @@ class MediaControllerWrapper internal constructor(
 				items.map { ((it as RealMediaItem).internalItem as Media3Item).item },
 				startIndex,
 				0L
+			)
+		}
+
+		override fun setMediaItems(
+			items: List<com.flammky.android.medialib.common.mediaitem.MediaItem>,
+			startIndex: Int,
+			startPosition: Duration
+		) {
+			if (isStateConnected()) mediaController.setMediaItems(
+				items.map { ((it as RealMediaItem).internalItem as Media3Item).item },
+				startIndex,
+				startPosition.inWholeMilliseconds
 			)
 		}
 

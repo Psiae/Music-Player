@@ -9,11 +9,11 @@ import com.flammky.android.medialib.providers.mediastore.base.audio.MediaStoreAu
  * @see MediaStore28.MediaColumns
  */
 
-internal class MediaStoreAudioQuery28 private constructor(
-	id: Long,
-	uri: Uri,
-	albumId: Long?,
-	artistId: Long?
+internal data class MediaStoreAudioQuery28 private constructor(
+	override val id: Long,
+	override val uri: Uri,
+	override val albumId: Long?,
+	override val artistId: Long?
 ) : MediaStoreAudioQuery(id, uri, albumId, artistId) {
 
 	class Builder internal constructor() {

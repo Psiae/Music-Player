@@ -9,6 +9,7 @@ import com.flammky.android.medialib.common.mediaitem.MediaItem
 import com.flammky.android.medialib.temp.player.component.VolumeManager
 import com.flammky.android.medialib.temp.player.event.LibraryPlayerEventListener
 import com.flammky.android.medialib.temp.player.playback.RepeatMode
+import kotlin.time.Duration
 
 interface LibraryPlayer {
 
@@ -64,6 +65,7 @@ interface LibraryPlayer {
 	fun removeMediaItem(index: Int)
 	fun setMediaItems(items: List<MediaItem>)
 	fun setMediaItems(items: List<MediaItem>, startIndex: Int)
+	fun setMediaItems(items: List<MediaItem>, startIndex: Int, startPosition: Duration)
 	fun play()
 
 	fun play(item: androidx.media3.common.MediaItem)

@@ -7,12 +7,12 @@ import com.flammky.android.medialib.providers.mediastore.base.audio.MediaStoreAu
  * class representing an Audio Entity
  * @see MediaStore28
  */
-class MediaStoreAudioEntity28 private constructor(
-	uid: String,
-	uri: Uri,
-	override val file: MediaStoreAudioFile28,
-	override val metadata: MediaStoreAudioMetadata28,
-	internal override val queryInfo: MediaStoreAudioQuery28,
+data class MediaStoreAudioEntity28 private constructor(
+    override val uid: String,
+    override val uri: Uri,
+    override val file: MediaStoreAudioFile28,
+    override val metadata: MediaStoreAudioMetadataEntry28,
+    internal override val queryInfo: MediaStoreAudioQuery28,
 ) : MediaStoreAudioEntity(uid, uri, file, metadata, queryInfo) {
 
 	class Builder internal constructor() {
@@ -22,7 +22,7 @@ class MediaStoreAudioEntity28 private constructor(
 			private set
 		var file: MediaStoreAudioFile28 = MediaStoreAudioFile28.empty
 			private set
-		var metadata: MediaStoreAudioMetadata28 = MediaStoreAudioMetadata28.empty
+		var metadata: MediaStoreAudioMetadataEntry28 = MediaStoreAudioMetadataEntry28.empty
 			private set
 		internal var queryInfo: MediaStoreAudioQuery28 = MediaStoreAudioQuery28.empty
 			private set
@@ -30,7 +30,7 @@ class MediaStoreAudioEntity28 private constructor(
 		fun setUID(uid: String) = apply { this.uid = uid }
 		fun setUri(uri: Uri) = apply { this.uri = uri }
 		fun setFile(file: MediaStoreAudioFile28) = apply { this.file = file }
-		fun setMetadata(metadata: MediaStoreAudioMetadata28) = apply { this.metadata = metadata }
+		fun setMetadata(metadata: MediaStoreAudioMetadataEntry28) = apply { this.metadata = metadata }
 		internal fun setQueryInfo(queryInfo: MediaStoreAudioQuery28) = apply { this.queryInfo = queryInfo }
 
 		internal fun build(): MediaStoreAudioEntity28 {

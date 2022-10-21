@@ -2,7 +2,6 @@ package com.flammky.musicplayer.base.media.mediaconnection
 
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
-import com.flammky.kotlin.common.sync.sync
 import com.flammky.musicplayer.base.media.mediaconnection.RealMediaConnectionRepository.MapObserver
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.awaitClose
@@ -10,7 +9,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.Executors
 
 class RealMediaConnectionRepository(
@@ -18,8 +16,8 @@ class RealMediaConnectionRepository(
 ) : MediaConnectionRepository {
 
 	private val mutex = Mutex()
-	private val eventDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
-	private val coroutineScope = CoroutineScope(eventDispatcher + SupervisorJob())
+	private val singleThreadWorker = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
+	private val coroutineScope = CoroutineScope(singleThreadWorker + SupervisorJob())
 
 	private val metadataObservers = mutableMapOf<String, MutableList<MapObserver<String, MediaMetadata>>>()
 	private val metadataMap = mutableMapOf<String, MediaMetadata>()
@@ -27,8 +25,8 @@ class RealMediaConnectionRepository(
 	private val artworkObservers = mutableMapOf<String, MutableList<MapObserver<String, Any>>>()
 	private val artworkMap = mutableMapOf<String, Any?>()
 
-	override fun getMetadata(id: String): MediaMetadata? {
-		return metadataMap.sync { get(id) }
+	override suspend fun getMetadata(id: String): MediaMetadata? {
+		return withContext(singleThreadWorker) { metadataMap[id] }
 	}
 
 	override fun observeMetadata(id: String): Flow<MediaMetadata?> = callbackFlow {
@@ -36,7 +34,7 @@ class RealMediaConnectionRepository(
 			check(key == id)
 			trySend(value)
 		}
-		withContext(dispatchers.io) {
+		withContext(singleThreadWorker) {
 			addMetadataObserver(id, observer)
 			send(getMetadata(id))
 		}
@@ -46,31 +44,53 @@ class RealMediaConnectionRepository(
 	}.flowOn(dispatchers.io)
 
 	private fun addMetadataObserver(id: String, observer: MapObserver<String, MediaMetadata>) {
-		metadataObservers.sync { getOrPut(id) { mutableListOf() }.add(observer) }
-	}
-	private fun removeMetadataObserver(id: String, observer: MapObserver<String, MediaMetadata>) {
-		metadataObservers.sync { get(id)?.remove(observer) }
-	}
-
-	override fun provideMetadata(id: String, metadata: MediaMetadata) {
-		metadataMap.sync {
-			put(id, metadata)
-			dispatchMetadataChange(id, metadata)
+		coroutineScope.launch(singleThreadWorker) {
+			metadataObservers.getOrPut(id) { mutableListOf() }.add(observer)
 		}
 	}
 
-	override fun evictMetadata(id: String) {
-		metadataMap.sync {
-			if (containsKey(id)) {
-				val get = get(id)
-				remove(id)
-				if (get != null) dispatchMetadataChange(id, null)
+	private fun removeMetadataObserver(id: String, observer: MapObserver<String, MediaMetadata>) {
+		coroutineScope.launch(singleThreadWorker) {
+			metadataObservers[id]?.remove(observer)
+		}
+	}
+
+	override fun provideMetadata(id: String, metadata: MediaMetadata) {
+		coroutineScope.launch(singleThreadWorker) {
+			metadataMap.run {
+				put(id, metadata)
+				dispatchMetadataChange(id, metadata)
 			}
 		}
 	}
 
-	override fun getArtwork(id: String): Any? {
-		return artworkMap.sync { get(id) }
+	override fun silentProvideMetadata(id: String, metadata: MediaMetadata) {
+		coroutineScope.launch(singleThreadWorker) {
+			metadataMap[id] = metadata
+		}
+	}
+
+
+	override fun evictMetadata(id: String) {
+		coroutineScope.launch(singleThreadWorker) {
+			metadataMap.run {
+				if (containsKey(id)) {
+					val get = get(id)
+					remove(id)
+					if (get != null) dispatchMetadataChange(id, null)
+				}
+			}
+		}
+	}
+
+	override fun silentEvictMetadata(id: String) {
+		coroutineScope.launch(singleThreadWorker) {
+			metadataMap.remove(id)
+		}
+	}
+
+	override suspend fun getArtwork(id: String): Any? {
+		return withContext(singleThreadWorker) { artworkMap[id] }
 	}
 
 	override fun observeArtwork(id: String): Flow<Any?> = callbackFlow {
@@ -88,44 +108,64 @@ class RealMediaConnectionRepository(
 	}.flowOn(dispatchers.io)
 
 	private fun addArtworkObserver(id: String, observer: MapObserver<String, Any>) {
-		artworkObservers.sync { getOrPut(id) { mutableListOf() }.add(observer) }
+		coroutineScope.launch(singleThreadWorker) {
+			artworkObservers.getOrPut(id) { mutableListOf() }.add(observer)
+		}
 	}
 	private fun removeArtworkObserver(id: String, observer: MapObserver<String, Any>) {
-		artworkObservers.sync { get(id)?.remove(observer) }
+		coroutineScope.launch(singleThreadWorker) {
+			artworkObservers[id]?.remove(observer)
+		}
 	}
 
 	override fun provideArtwork(id: String, artwork: Any?) {
-		artworkMap.sync {
-			put(id, artwork)
+		coroutineScope.launch(singleThreadWorker) {
+			artworkMap[id] = artwork
 			dispatchArtworkChange(id, artwork)
 		}
 	}
 
 	override fun evictArtwork(id: String) {
-		artworkMap.sync {
-			if (containsKey(id)) {
-				val get = get(id)
-				remove(id)
-				if (get != null) dispatchArtworkChange(id, null)
+		coroutineScope.launch(singleThreadWorker) {
+			artworkMap.run {
+				if (containsKey(id)) {
+					val get = get(id)
+					remove(id)
+					if (get != null) dispatchArtworkChange(id, null)
+				}
 			}
+		}
+	}
+
+	override fun silentProvideArtwork(id: String, artwork: Any?) {
+		coroutineScope.launch {
+			artworkMap[id] = artwork
+		}
+	}
+
+	override fun silentEvictArtwork(id: String) {
+		coroutineScope.launch(singleThreadWorker) {
+			artworkMap.remove(id)
 		}
 	}
 
 
 
 	private fun dispatchMetadataChange(id: String, metadata: MediaMetadata?) {
-		val observers = metadataObservers.sync { get(id) } ?: return
-		coroutineScope.launch(eventDispatcher) {
-			mutex.withLock { observers.forEach { observer -> observer.onChanged(id, metadata) } }
+		coroutineScope.launch(singleThreadWorker) {
+			val observers = metadataObservers[id] ?: return@launch
+			observers.forEach { observer -> observer.onChanged(id, metadata) }
 		}
 	}
 
 	private fun dispatchArtworkChange(id: String, artwork: Any?) {
-		val observers = artworkObservers.sync { get(id) } ?: return
-		coroutineScope.launch(eventDispatcher) {
-			mutex.withLock { observers.forEach { observer -> observer.onChanged(id, artwork) } }
+		coroutineScope.launch(singleThreadWorker) {
+			val observers = artworkObservers[id] ?: return@launch
+			observers.forEach { observer -> observer.onChanged(id, artwork) }
 		}
 	}
+
+
 
 	private fun interface MapObserver<K: Any, V> {
 		fun onChanged(key: K, value: V?)

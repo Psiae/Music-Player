@@ -22,9 +22,14 @@ interface MediaStoreProvider : MediaProvider {
 		suspend fun queryById(id: String): MediaStoreEntity?
 		@kotlin.jvm.Throws(ReadExternalStoragePermissionException::class)
 		suspend fun queryByUri(uri: Uri): MediaStoreEntity?
+		@kotlin.jvm.Throws(ReadExternalStoragePermissionException::class)
+		suspend fun queryUris(): List<Uri>
 		fun observe(observer: ContentObserver)
 		fun removeObserver(observer: ContentObserver)
 		fun rescan(callback: (List<Uri>) -> Unit)
+
+		fun uriFromId(id: String): Uri?
+		fun idFromUri(uri: Uri): String?
 	}
 
 	/** Audio Interface */

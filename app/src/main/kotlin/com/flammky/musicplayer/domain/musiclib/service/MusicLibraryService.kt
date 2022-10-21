@@ -119,6 +119,8 @@ class MusicLibraryService : MediaLibraryService() {
 		stateRegistry.onEvent(ServiceEvent.Start, true)
 	}
 
+
+
 	override fun onBind(intent: Intent?): IBinder? {
 		if (!isServiceStarted) onStart()
 		return super.onBind(intent)

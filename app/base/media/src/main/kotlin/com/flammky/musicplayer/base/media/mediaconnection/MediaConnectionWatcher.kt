@@ -30,6 +30,6 @@ class MediaConnectionWatcher(
 
 	private val _audioObserver = MediaStoreProvider.ContentObserver { id, uri, flag ->
 		Timber.d("MediaConnectionWatcher audioObserver $id, $uri, $flag")
-		if (flag.isDelete) mediaConnectionDelegate.playback.notifyUnplayableMedia(id)
+		if (flag.isDelete) mediaConnectionDelegate.playback.notifyUnplayableMedia(uri)
 	}
 }

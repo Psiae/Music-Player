@@ -47,12 +47,24 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 		return s.mediaController.getAllMediaItem()
 	}
 
+	override fun stop() {
+		s.mediaController.stop()
+	}
+
+	override fun setMediaItems(items: List<MediaItem>, startIndex: Int, startPosition: Duration) {
+		s.mediaController.setMediaItems(items, startIndex, startPosition)
+	}
+
 	override fun play(mediaItem: MediaItem) {
 		s.mediaController.play(mediaItem)
 	}
 
 	override fun pause() {
 		s.mediaController.pause()
+	}
+
+	override fun prepare() {
+		s.mediaController.prepare()
 	}
 
 	override fun bufferedPosition(): Duration {

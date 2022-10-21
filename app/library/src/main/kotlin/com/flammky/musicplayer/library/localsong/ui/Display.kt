@@ -5,9 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.ButtonDefaults
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -18,6 +15,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -28,6 +26,8 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import coil.request.CachePolicy
+import coil.request.ImageRequest
 import com.flammky.androidx.viewmodel.compose.activityViewModel
 import com.flammky.common.kotlin.coroutines.safeCollect
 import com.flammky.musicplayer.base.compose.rememberContextHelper
@@ -351,6 +351,7 @@ private fun DisplayContentItem(
 ) {
 	val viewModel: LocalSongViewModel = activityViewModel()
 	val model = remember { mutableStateOf<Any?>(UNSET) }
+	val context = LocalContext.current
 
 	Box(
 		modifier = Modifier
@@ -360,15 +361,23 @@ private fun DisplayContentItem(
 			.background(Color(0xFFC2C2C2))
 			.clickable { onItemClicked(item) }
 	) {
+
+		val coilModel = remember(model.read()) {
+			ImageRequest.Builder(context)
+				.data(model.value)
+				.memoryCachePolicy(CachePolicy.ENABLED)
+				.build()
+		}
+
 		AsyncImage(
 			modifier = Modifier
 				.fillMaxSize()
 				.placeholder(
 					visible = model.value == LOADING,
 					color = Color(0xFFA0A0A0),
-					highlight = PlaceholderHighlight.shimmer(Color.DarkGray)
+					highlight = PlaceholderHighlight.shimmer(Color(0xFFDCDCDC))
 				),
-			model = model.read(),
+			model = coilModel,
 			contentDescription = "art",
 			contentScale = ContentScale.Crop
 		)
@@ -497,6 +506,14 @@ private fun DisplayLastContentItemChild(
 ) {
 	val viewModel: LocalSongViewModel = activityViewModel()
 	val imageModel = remember { mutableStateOf<Any?>(UNSET) }
+	val context = LocalContext.current
+
+	val coilModel = remember(imageModel.read()) {
+		ImageRequest.Builder(context)
+			.data(imageModel.value)
+			.memoryCachePolicy(CachePolicy.ENABLED)
+			.build()
+	}
 
 	AsyncImage(
 		modifier = Modifier
@@ -506,7 +523,7 @@ private fun DisplayLastContentItemChild(
 				visible = imageModel.value === LOADING,
 				color = Color(0xFFA0A0A0)
 			),
-		model = imageModel.read(),
+		model = coilModel,
 		contentDescription = "art",
 		contentScale = ContentScale.Crop
 	)

@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import timber.log.Timber
+import kotlin.time.Duration
 
 class RealMediaConnection(
 	private val delegate: MediaConnectionDelegate
@@ -24,6 +25,19 @@ class RealMediaConnection(
 
 
 	private inner class Playback : MediaConnection.Playback {
+		override fun setMediaItems(items: List<MediaItem>, startIndex: Int, startPosition: Duration) {
+			delegate.playback.setMediaItems(items, startIndex, startPosition)
+		}
+
+		override fun stop() {
+			delegate.playback.stop()
+		}
+
+		override suspend fun <R> joinSuspend(block: MediaConnection.Playback.() -> R): R {
+			return delegate.playback.joinDispatcher { block() }
+		}
+
+		override fun prepare() = delegate.playback.prepare()
 		override fun playWhenReady() = delegate.play()
 		override fun pause() = delegate.pause()
 
@@ -161,6 +175,8 @@ class RealMediaConnection(
 			}
 		}
 	}
+
+
 
 	private inner class Repository : MediaConnection.Repository {
 		// We should localize them

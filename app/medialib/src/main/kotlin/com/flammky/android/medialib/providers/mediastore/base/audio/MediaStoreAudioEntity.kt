@@ -6,9 +6,9 @@ import javax.annotation.concurrent.Immutable
 
 @Immutable
 abstract class MediaStoreAudioEntity internal constructor(
-	uid: String,
-	uri: Uri,
+	override val uid: String,
+	override val uri: Uri,
 	override val file: MediaStoreAudioFile,
-	override val metadata: MediaStoreAudioMetadata,
+	override val metadata: MediaStoreAudioMetadataEntry,
 	internal override val queryInfo: MediaStoreAudioQuery,
 ) : MediaStoreEntity(uid, uri, file, metadata, queryInfo)

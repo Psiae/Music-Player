@@ -8,17 +8,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
-import com.flammky.android.medialib.MediaLib
-import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider
-import com.flammky.android.medialib.temp.MediaLibrary
+import com.flammky.common.kotlin.coroutines.safeCollect
 import com.flammky.musicplayer.library.localsong.data.LocalSongModel
 import com.flammky.musicplayer.library.localsong.data.LocalSongRepository
+import com.flammky.musicplayer.library.localsong.domain.ObservableLocalSongs
 import com.flammky.musicplayer.library.media.MediaConnection
-import com.flammky.musicplayer.library.util.rewrite
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @HiltViewModel
@@ -26,79 +25,36 @@ internal class LocalSongViewModel @Inject constructor(
 	private val dispatcher: AndroidCoroutineDispatchers,
 	private val mediaConnection: MediaConnection,
 	private val repository: LocalSongRepository,
+	private val observableLocalSongs: ObservableLocalSongs,
 ) : ViewModel() {
 
-	private val contentObserver = MediaStoreProvider.ContentObserver { id: String, _, _ ->
-		scheduleRefresh(id)
-	}
-
-	private val mediaController = MediaLibrary.API.sessions.manager.findSessionById("DEBUG")!!.mediaController
 
 	private val _refreshing = mutableStateOf(false)
 	val refreshing = _refreshing.derive()
 
-	private val _listState = mutableStateOf<List<LocalSongModel>>(emptyList())
+	private val _listState = mutableStateOf<ImmutableList<LocalSongModel>>(persistentListOf())
 	val listState = _listState.derive()
 
-	// we could instead expose flow from repository and do scheduling there
-	private val scheduledRefresh = mutableListOf<Any?>()
 
 	init {
-		MediaLib.singleton.mediaProviders.mediaStore.audio.observe(contentObserver)
-		refresh()
+		viewModelScope.launch {
+			observableLocalSongs.collectLocalSongs().safeCollect {
+				_listState.overwrite(it)
+			}
+		}
+		viewModelScope.launch {
+			observableLocalSongs.collectRefresh().collect {
+				_refreshing.overwrite(it)
+			}
+		}
+	}
+
+	fun refresh() {
+		viewModelScope.launch { observableLocalSongs.refresh() }
 	}
 
 	override fun onCleared() {
-		MediaLib.singleton.mediaProviders.mediaStore.audio.removeObserver(contentObserver)
-	}
-
-	// we should rescan
-	fun refresh() {
-		scheduleRefresh()
-	}
-
-	private fun scheduleRefresh(id: String? = null) {
-		fun refreshing(): Boolean {
-			return _refreshing.value
-		}
-		fun markRefreshing(refreshing: Boolean) {
-			_refreshing.value = refreshing
-		}
-		viewModelScope.launch {
-			scheduledRefresh.add(id)
-			if (!refreshing()) {
-				markRefreshing(true)
-				doScheduledRefresh(id)
-				markRefreshing(false)
-			}
-		}
-	}
-
-	private suspend fun doScheduledRefresh(id: String? = null) {
-		withContext(dispatcher.mainImmediate) {
-			if (id == null) {
-				while (scheduledRefresh.isNotEmpty()) {
-					val size = scheduledRefresh.size
-					_listState.overwrite(repository.requestUpdateAsync().await())
-					scheduledRefresh.drop(size).let {
-						scheduledRefresh.clear()
-						scheduledRefresh.addAll(it)
-					}
-				}
-			} else {
-				_listState.rewrite { old ->
-					repository.getModelAsync(id).await()
-						// there's an update
-						?.let { get -> old.map { if (it.id == id) get else it } }
-						// deleted
-						?: old.filter { it.id != id }
-				}
-				scheduledRefresh.filter { it != id }.let {
-					scheduledRefresh.clear()
-					scheduledRefresh.addAll(it)
-				}
-			}
-		}
+		// t
 	}
 
 	fun play(model: LocalSongModel) {

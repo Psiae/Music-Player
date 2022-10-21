@@ -18,8 +18,6 @@ class MediaItemHelper @Inject constructor(
 	@ApplicationContext private val context: Context
 ) {
 
-	fun buildFromMetadata(uri: Uri): MediaItem = MediaItemFactory.fromMetaData(context, uri)
-
 	fun getEmbeddedPicture(item: MediaItem): ByteArray? = item.mediaUri?.let {
 		(Any() as Mutex).tryLock()
 

@@ -80,7 +80,6 @@ class PlaybackBoxViewModel @Inject constructor(
 		.map { it?.artwork }
 		.stateIn(viewModelScope, SharingStarted.Lazily, PlaybackBoxMetadata())
 
-
 	fun play() = mediaConnectionDelegate.play()
 	fun pause() = mediaConnectionDelegate.pause()
 

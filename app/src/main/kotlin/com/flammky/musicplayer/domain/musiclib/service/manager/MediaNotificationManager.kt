@@ -113,12 +113,12 @@ class MediaNotificationManager(
 		}
 	}
 
-	fun getNotification(
+	suspend fun getNotification(
 		session: MediaSession,
 		onGoing: Boolean
 	): Notification = provider.fromMediaSession(session, onGoing, ChannelName)
 
-	fun startForegroundService(
+	suspend fun startForegroundService(
 		session: MediaSession,
 		onGoingNotification: Boolean
 	) {
@@ -134,9 +134,11 @@ class MediaNotificationManager(
 
 	fun onUpdateNotification(session: MediaSession) {
 		if (!isStarted) return
-		val onGoing = isOnGoingCondition(session)
-		val notification = provider.fromMediaSession(session, onGoing, ChannelName)
-		dispatcher.updateNotification(notificationId, notification)
+		mainScope.launch {
+			val onGoing = isOnGoingCondition(session)
+			val notification = provider.fromMediaSession(session, onGoing, ChannelName)
+			dispatcher.updateNotification(notificationId, notification)
+		}
 	}
 
 	private var isComponentInitialized = false
@@ -283,7 +285,7 @@ class MediaNotificationManager(
 			extras: Bundle
 		): Boolean = false
 
-		fun fromMediaSession(
+		suspend fun fromMediaSession(
 			session: MediaSession,
 			onGoing: Boolean,
 			channelName: String
@@ -309,7 +311,7 @@ class MediaNotificationManager(
 			)
 		}
 
-		private fun getNotificationFromMediaSession(
+		private suspend fun getNotificationFromMediaSession(
 			session: MediaSession,
 			onGoing: Boolean,
 			channelName: String
@@ -348,6 +350,28 @@ class MediaNotificationManager(
 					channelName
 				)
 			}
+		}
+
+		private fun getNotificationFromMediaSessionForInternal(
+			session: MediaSession,
+			onGoing: Boolean,
+			channelName: String
+		): Notification {
+
+			Timber.d(
+				"getNotificationFromMediaSession for " +
+					session.player.currentMediaItem.orEmpty().getDebugDescription()
+			)
+			val player = session.player
+			val largeIcon = getItemBitmap(player)
+			val id = player.currentMediaItem.orEmpty().mediaId
+
+			return notificationProvider.buildMediaStyleNotification(
+				session,
+				largeIcon,
+				onGoing,
+				channelName
+			)
 		}
 
 		suspend fun ensureCurrentItemBitmap(player: Player) {
@@ -421,7 +445,7 @@ class MediaNotificationManager(
 			Timber.d("createNotificationInternalImpl")
 
 			val notification =
-				getNotificationFromMediaSession(
+				getNotificationFromMediaSessionForInternal(
 					session,
 					isForegroundCondition(componentDelegate, session), ChannelName
 				)
@@ -479,9 +503,12 @@ class MediaNotificationManager(
 							}
 
 							player.playbackState.isOngoing() && player.playWhenReady -> {
-								val notification = provider
-									.getNotificationFromMediaSession(it, true, ChannelName)
-								return dispatcher.updateNotification(notificationId, notification)
+								mainScope.launch {
+									val notification = provider
+										.getNotificationFromMediaSession(it, true, ChannelName)
+									dispatcher.updateNotification(notificationId, notification)
+								}
+								return
 							}
 						}
 
@@ -498,9 +525,12 @@ class MediaNotificationManager(
 						when {
 							player.playbackState.isStateIdle() -> player.prepare()
 							player.playbackState.isOngoing() && !player.playWhenReady -> {
-								val notification = provider
-									.getNotificationFromMediaSession(it, true, ChannelName)
-								return dispatcher.updateNotification(notificationId, notification)
+								mainScope.launch {
+									val notification = provider
+										.getNotificationFromMediaSession(it, true, ChannelName)
+									dispatcher.updateNotification(notificationId, notification)
+								}
+								return
 							}
 						}
 
@@ -516,9 +546,12 @@ class MediaNotificationManager(
 
 						when {
 							!player.hasNextMediaItem() -> {
-								val notification = provider
-									.getNotificationFromMediaSession(it, true, ChannelName)
-								return dispatcher.updateNotification(notificationId, notification)
+								mainScope.launch {
+									val notification = provider
+										.getNotificationFromMediaSession(it, true, ChannelName)
+									dispatcher.updateNotification(notificationId, notification)
+								}
+								return
 							}
 						}
 
@@ -534,9 +567,12 @@ class MediaNotificationManager(
 
 						when {
 							!player.hasPreviousMediaItem() -> {
-								val notification = provider
-									.getNotificationFromMediaSession(it, true, ChannelName)
-								return dispatcher.updateNotification(notificationId, notification)
+								mainScope.launch {
+									val notification = provider
+										.getNotificationFromMediaSession(it, true, ChannelName)
+									dispatcher.updateNotification(notificationId, notification)
+								}
+								return
 							}
 						}
 
@@ -552,9 +588,12 @@ class MediaNotificationManager(
 
 						when {
 							!player.repeatMode.isRepeatOff() -> {
-								val notification = provider
-									.getNotificationFromMediaSession(it, true, ChannelName)
-								return dispatcher.updateNotification(notificationId, notification)
+								mainScope.launch {
+									val notification = provider
+										.getNotificationFromMediaSession(it, true, ChannelName)
+									dispatcher.updateNotification(notificationId, notification)
+								}
+								return
 							}
 						}
 
@@ -570,9 +609,12 @@ class MediaNotificationManager(
 
 						when {
 							!player.repeatMode.isRepeatOne() -> {
-								val notification = provider
-									.getNotificationFromMediaSession(it, true, ChannelName)
-								return dispatcher.updateNotification(notificationId, notification)
+								mainScope.launch {
+									val notification = provider
+										.getNotificationFromMediaSession(it, true, ChannelName)
+									dispatcher.updateNotification(notificationId, notification)
+								}
+								return
 							}
 						}
 
@@ -588,9 +630,12 @@ class MediaNotificationManager(
 
 						when {
 							!player.repeatMode.isRepeatAll() -> {
-								val notification = provider
-									.getNotificationFromMediaSession(it, true, ChannelName)
-								return dispatcher.updateNotification(notificationId, notification)
+								mainScope.launch {
+									val notification = provider
+										.getNotificationFromMediaSession(it, true, ChannelName)
+									dispatcher.updateNotification(notificationId, notification)
+								}
+								return
 							}
 						}
 
@@ -611,9 +656,12 @@ class MediaNotificationManager(
 
 						when {
 							!isOnGoingCondition(it) -> {
-								val notification = provider
-									.getNotificationFromMediaSession(it, false, ChannelName)
-								return dispatcher.updateNotification(notificationId, notification)
+								mainScope.launch {
+									val notification = provider
+										.getNotificationFromMediaSession(it, true, ChannelName)
+									dispatcher.updateNotification(notificationId, notification)
+								}
+								return
 							}
 						}
 
@@ -634,9 +682,12 @@ class MediaNotificationManager(
 
 						when {
 							isOnGoingCondition(it) -> {
-								val notification = provider
-									.getNotificationFromMediaSession(it, true, ChannelName)
-								return dispatcher.updateNotification(notificationId, notification)
+								mainScope.launch {
+									val notification = provider
+										.getNotificationFromMediaSession(it, true, ChannelName)
+									dispatcher.updateNotification(notificationId, notification)
+								}
+								return
 							}
 						}
 
@@ -749,17 +800,14 @@ class MediaNotificationManager(
 
 	inner class Interactor {
 
-		fun getNotification(
-			session: MediaSession,
-			onGoing: Boolean
-		): Notification = this@MediaNotificationManager.getNotification(session, onGoing)
-
 		fun startForegroundService(
 			mediaSession: MediaSession,
 			onGoingNotification: Boolean
 		) {
-			this@MediaNotificationManager
-				.startForegroundService(mediaSession, onGoingNotification)
+			mainScope.launch {
+				this@MediaNotificationManager
+					.startForegroundService(mediaSession, onGoingNotification)
+			}
 		}
 
 		fun stopForegroundService(removeNotification: Boolean) {

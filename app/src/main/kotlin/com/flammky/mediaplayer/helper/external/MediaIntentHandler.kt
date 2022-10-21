@@ -15,14 +15,15 @@ import android.widget.Toast
 import androidx.core.net.toUri
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.common.mediaitem.MediaItem
+import com.flammky.android.medialib.common.mediaitem.MediaItem.Companion.buildMediaItem
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
+import com.flammky.android.medialib.core.MediaLibrary
 import com.flammky.android.medialib.temp.image.ArtworkProvider
 import com.flammky.android.medialib.temp.provider.mediastore.base.audio.MediaStoreAudioEntity
 import com.flammky.mediaplayer.helper.Preconditions.checkArgument
 import com.flammky.mediaplayer.helper.external.providers.ContentProvidersHelper
 import com.flammky.mediaplayer.helper.external.providers.DocumentProviderHelper
 import com.flammky.musicplayer.domain.media.MediaConnection
-import com.flammky.musicplayer.domain.musiclib.core.MusicLibrary
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory
 import kotlinx.coroutines.*
 import timber.log.Timber
@@ -56,7 +57,8 @@ class MediaIntentHandlerImpl(
   private val context: Context,
   private val dispatcher: com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers,
   private val mediaSource: com.flammky.android.medialib.temp.api.provider.mediastore.MediaStoreProvider,
-	private val mediaConnection: MediaConnection
+	private val mediaConnection: MediaConnection,
+	private val mediaLib: MediaLibrary
 ) : MediaIntentHandler {
 
   private val actionViewHandler = ActionViewHandler()
@@ -156,21 +158,24 @@ class MediaIntentHandlerImpl(
       list: List<MediaItem>,
       fadeOut: Boolean
     ) {
-			with(MusicLibrary.api.localAgent.session.player) {
+			with(mediaConnection.playback) {
 				stop()
-				setMediaItems(list, list.indexOf(item))
+				setMediaItems(list, list.indexOf(item), 0.milliseconds)
 				prepare()
-				play()
+				playWhenReady()
 			}
 		}
 
 		private fun playMediaItem(
 			item: androidx.media3.common.MediaItem
 		) {
-			with(MusicLibrary.api.localAgent.session.player) {
-				stop()
-				play(item)
+			val actual = mediaLib.context.buildMediaItem {
+				setMediaId(item.mediaId)
+				setMediaUri(item.localConfiguration?.uri ?: item.requestMetadata.mediaUri ?: Uri.EMPTY)
+				setExtra(MediaItem.Extra())
+				setMetadata(fillMetadata(mediaUri))
 			}
+			playMediaItem(actual, listOf(actual), true)
 		}
 
 		private suspend fun provideMetadata(id: String, uri: Uri) {

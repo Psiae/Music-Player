@@ -14,7 +14,7 @@ abstract class MediaStoreMetadata internal constructor(
 	/**
 	 * The TITLE metadata
 	 */
-	val title: String?
+	open val title: String?
 ) {
 	override fun hashCode(): Int = Objects.hash(title)
 	override fun equals(other: Any?): Boolean = other is MediaStoreMetadata && other.title == title

@@ -1,9 +1,11 @@
 package com.flammky.android.medialib.providers.mediastore.api28.audio
 
 import android.content.ContentResolver
+import android.content.ContentUris
 import android.database.ContentObserver
 import android.media.MediaScannerConnection
 import android.net.Uri
+import androidx.core.text.isDigitsOnly
 import com.flammky.android.content.context.ContextHelper
 import com.flammky.android.io.exception.ReadExternalStoragePermissionException
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
@@ -14,12 +16,12 @@ import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider.Cont
 import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider.ContentObserver.Flag.Companion.isUnknown
 import com.flammky.android.medialib.providers.mediastore.api28.MediaStore28
 import com.flammky.android.medialib.providers.mediastore.api28.MediaStoreProvider28
-import com.flammky.kotlin.common.sync.sync
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 import kotlin.reflect.KProperty
 
@@ -40,6 +42,7 @@ class MediaStoreAudioProvider28(private val context: MediaStoreContext)
 	private var rememberUris = INVALID_rememberUris
 
 	private val ioDispatcher = AndroidCoroutineDispatchers.DEFAULT.io
+	private val mainDispatcher = AndroidCoroutineDispatchers.DEFAULT.main
 	private val internalIoScope = CoroutineScope(ioDispatcher + SupervisorJob())
 
 	private val contentObserver = InternalContentObserver()
@@ -49,9 +52,9 @@ class MediaStoreAudioProvider28(private val context: MediaStoreContext)
 	}
 
 	@kotlin.jvm.Throws(ReadExternalStoragePermissionException::class)
-	override suspend fun query(): List<MediaStoreAudioEntity28> {
+	override suspend fun query(): List<MediaStoreAudioEntity28> = withContext(ioDispatcher) {
 		val key = rememberMutex.withLock { rememberUrisKey }
-		return entityProvider.query().also { rememberUris(key, it.map { entity -> entity.uri }) }
+		entityProvider.query().also { rememberUris(key, it.map { entity -> entity.uri }) }
 	}
 
 	@kotlin.jvm.Throws(ReadExternalStoragePermissionException::class)
@@ -64,12 +67,30 @@ class MediaStoreAudioProvider28(private val context: MediaStoreContext)
 		return entityProvider.queryByUri(uri)
 	}
 
+	override suspend fun queryUris(): List<Uri> {
+		val key = rememberMutex.withLock { rememberUrisKey }
+		return entityProvider.queryUris().also { rememberUris(key, it) }
+	}
+
+	override fun uriFromId(id: String): Uri? {
+		val trim = id.removePrefix(UID_PREFIX)
+		if (trim.isBlank() || trim == id || !trim.isDigitsOnly()) return null
+		return ContentUris.withAppendedId(uri_audio_external, trim.toLong())
+	}
+
+	override fun idFromUri(uri: Uri): String? {
+		val uriString = uri.toString()
+		val trim = uriString.removePrefix("$uri_audio_external/")
+		if (trim.isBlank() || trim == uriString || !trim.isDigitsOnly()) return null
+		return UID_PREFIX + trim
+	}
+
 	override fun observe(observer: MediaStoreProvider.ContentObserver) {
-		observers.sync { add(observer) }
+		internalIoScope.launch(mainDispatcher) { observers.add(observer) }
 	}
 
 	override fun removeObserver(observer: MediaStoreProvider.ContentObserver) {
-		observers.sync { removeAll { it === observer } }
+		internalIoScope.launch(mainDispatcher) { observers.remove(observer) }
 	}
 
 	override fun rescan(callback: (List<Uri>) -> Unit) {
@@ -157,7 +178,9 @@ class MediaStoreAudioProvider28(private val context: MediaStoreContext)
 
 			// function to invoke
 			fun notifyObservers() {
-				internalIoScope.launch { observers.sync { forEach { it.onChange(id, uri, flag) } } }
+				internalIoScope.launch(mainDispatcher) {
+					observers.forEach { it.onChange(id, uri, flag) }
+				}
 				Timber.d("scheduleNotifyEvent: $key, sent")
 			}
 			// sync to eventLock
@@ -286,5 +309,7 @@ class MediaStoreAudioProvider28(private val context: MediaStoreContext)
 
 		private val INVALID_uri = Uri.parse("InvalidAudio28")
 		private val INVALID_rememberUris = listOf(INVALID_uri)
+
+		private val UID_PREFIX = "MediaStore_28_"
 	}
 }

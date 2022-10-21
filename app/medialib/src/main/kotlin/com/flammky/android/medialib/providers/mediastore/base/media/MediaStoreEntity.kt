@@ -15,10 +15,10 @@ import javax.annotation.concurrent.Immutable
 @Immutable
 abstract class MediaStoreEntity internal constructor(
 	/** The Unique Identifier */
-	val uid: String,
+	open val uid: String,
 
 	/** The [Uri], always content scheme */
-	val uri: Uri,
+	open val uri: Uri,
 
 	/** The File Information. */
 	open val file: MediaStoreFile,

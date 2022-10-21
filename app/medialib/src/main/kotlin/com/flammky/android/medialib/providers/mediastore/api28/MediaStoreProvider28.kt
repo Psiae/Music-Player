@@ -27,6 +27,18 @@ internal class MediaStoreProvider28 (private val context: MediaStoreContext)
 			TODO("Not yet implemented")
 		}
 
+		override suspend fun queryUris(): List<Uri> {
+			TODO("Not yet implemented")
+		}
+
+		override fun uriFromId(id: String): Uri? {
+			TODO("Not yet implemented")
+		}
+
+		override fun idFromUri(uri: Uri): String? {
+			TODO("Not yet implemented")
+		}
+
 		override fun observe(observer: MediaStoreProvider.ContentObserver) {
 			TODO("Not yet implemented")
 		}
@@ -50,6 +62,18 @@ internal class MediaStoreProvider28 (private val context: MediaStoreContext)
 		}
 
 		override suspend fun queryByUri(uri: Uri): MediaStoreEntity? {
+			TODO("Not yet implemented")
+		}
+
+		override suspend fun queryUris(): List<Uri> {
+			TODO("Not yet implemented")
+		}
+
+		override fun uriFromId(id: String): Uri? {
+			TODO("Not yet implemented")
+		}
+
+		override fun idFromUri(uri: Uri): String? {
 			TODO("Not yet implemented")
 		}
 

@@ -8,6 +8,7 @@ import com.flammky.android.medialib.temp.MediaLibrary
 import com.flammky.android.medialib.temp.image.internal.TestArtworkProvider
 import com.flammky.musicplayer.library.localsong.data.LocalSongRepository
 import com.flammky.musicplayer.library.localsong.data.RealLocalSongRepository
+import com.flammky.musicplayer.library.media.MediaConnection
 import dagger.Provides
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
@@ -27,9 +28,11 @@ internal object Module {
 	@Provides
 	internal fun provideLocalSongRepository(
 		@ApplicationContext context: Context,
-		dispatchers: AndroidCoroutineDispatchers
+		dispatchers: AndroidCoroutineDispatchers,
+		mediaConnection: MediaConnection,
 	): LocalSongRepository {
 		val lru = MediaLibrary.API.imageRepository.sharedBitmapLru
-		return RealLocalSongRepository(context, dispatchers, TestArtworkProvider(context, lru))
+		return RealLocalSongRepository(context, dispatchers, TestArtworkProvider(context, lru), mediaConnection)
 	}
+
 }

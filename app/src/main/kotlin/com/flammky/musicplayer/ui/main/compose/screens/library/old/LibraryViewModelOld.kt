@@ -1,6 +1,5 @@
 package com.flammky.musicplayer.ui.main.compose.screens.library.old
 
-import android.content.Context
 import android.graphics.Bitmap
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
@@ -17,7 +16,6 @@ import com.flammky.kotlin.common.sync.sync
 import com.flammky.musicplayer.common.android.concurrent.ConcurrencyHelper.checkMainThread
 import com.flammky.musicplayer.library.localsong.data.LocalSongRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.isActive
@@ -28,7 +26,6 @@ import javax.inject.Inject
 
 @HiltViewModel
 class LibraryViewModelOld @Inject constructor(
-	@ApplicationContext val context: Context,
 	private val dispatchers: AndroidCoroutineDispatchers,
 	/*private val oldMediaStore: MediaStoreProvider,*/
 	private val mediaStoreProvider: MediaStoreProvider,

@@ -69,7 +69,7 @@ private fun LocalSongListsColumn(
 	val supervisorDispatcher = Dispatchers.Main.immediate + SupervisorJob()
 
 	SwipeRefresh(
-		state = rememberSwipeRefreshState(isRefreshing = vm.refreshing.value),
+		state = rememberSwipeRefreshState(isRefreshing = vm.refreshing.read()),
 		onRefresh = { vm.refresh() },
 		indicatorPadding = PaddingValues(top = 10.dp)
 	) {
@@ -83,7 +83,9 @@ private fun LocalSongListsColumn(
 			}
 			item() {
 				val height = activityViewModel<VisibilityViewModel>().bottomVisibilityOffset.read()
-				Spacer(modifier = Modifier.fillMaxWidth().height(height))
+				Spacer(modifier = Modifier
+					.fillMaxWidth()
+					.height(height))
 			}
 		}
 	}
@@ -202,8 +204,7 @@ private fun ItemArtworkCard(model: LocalSongModel, vm: LocalSongViewModel) {
 
 	val imageModel = remember(art.read()) {
 		ImageRequest.Builder(context)
-			.data(art.read())
-			.crossfade(true)
+			.data(art.value)
 			.memoryCachePolicy(CachePolicy.ENABLED)
 			.build()
 	}
@@ -222,8 +223,8 @@ private fun ItemArtworkCard(model: LocalSongModel, vm: LocalSongViewModel) {
 		colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
 	) {
 
-		val shimmerBackground = Color(0xFFC2C2C2)
-		val shimmerColor = Color(0xFFA0A0A0)
+		val shimmerBackground = Color(0xFFA0A0A0)
+		val shimmerColor = Color(0xFFFFFFFF)
 
 		AsyncImage(
 			modifier = Modifier

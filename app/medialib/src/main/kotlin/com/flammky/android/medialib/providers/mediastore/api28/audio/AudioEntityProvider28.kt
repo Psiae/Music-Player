@@ -93,7 +93,7 @@ internal class AudioEntityProvider28 (private val context: MediaStoreContext) {
 				if (cursor.moveToFirst()) {
 					do {
 						val queryInfo = fillAudioQueryInfoBuilder(cursor, MediaStoreAudioQuery28.Builder())
-						holder.add(ContentUris.withAppendedId(uri_audio_external, queryInfo.id))
+						holder.add(queryInfo.uri)
 					} while (cursor.moveToNext())
 				}
 			}
@@ -118,7 +118,7 @@ internal class AudioEntityProvider28 (private val context: MediaStoreContext) {
 	): MediaStoreAudioEntity28.Builder = builder.apply {
 		val file = MediaStoreAudioFile28
 			.Builder().apply { fillAudioFileBuilder(cursor,this) }.build()
-		val metadata = MediaStoreAudioMetadataEntry28
+		val metadata = MediaStoreAudioMetadataEntry28Entry
 			.Builder().apply { fillAudioMetadataBuilder(cursor, this) }.build()
 		val queryInfo = MediaStoreAudioQuery28
 			.Builder().apply { fillAudioQueryInfoBuilder(cursor, this) }.build()
@@ -167,8 +167,8 @@ internal class AudioEntityProvider28 (private val context: MediaStoreContext) {
 
 	private fun fillAudioMetadataBuilder(
 		cursor: Cursor,
-		builder: MediaStoreAudioMetadataEntry28.Builder
-	): MediaStoreAudioMetadataEntry28.Builder = builder.apply {
+		builder: MediaStoreAudioMetadataEntry28Entry.Builder
+	): MediaStoreAudioMetadataEntry28Entry.Builder = builder.apply {
 		cursor
 			.getColumnIndex(MediaStore28.Audio.AudioColumns.ALBUM)
 			.takeIf { it > -1 }
@@ -256,7 +256,7 @@ internal class AudioEntityProvider28 (private val context: MediaStoreContext) {
 		/**
 		 * Projector to fill [MediaStoreAudioEntity28.metadata]
 		 *
-		 * @see [MediaStoreAudioMetadataEntry28]
+		 * @see [MediaStoreAudioMetadataEntry28Entry]
 		 */
 		private val metadataInfoProjector: Array<String> = arrayOf(
 			MediaStore28.Audio.AudioColumns.ALBUM,

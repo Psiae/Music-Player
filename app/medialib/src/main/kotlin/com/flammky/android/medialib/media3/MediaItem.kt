@@ -4,7 +4,6 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaItem.RequestMetadata
-import androidx.media3.session.MediaSession
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.common.mediaitem.InternalMediaItem
 import com.flammky.android.medialib.common.mediaitem.MediaItem.Extra

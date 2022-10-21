@@ -1,11 +1,14 @@
 package com.flammky.android.medialib.providers.mediastore.api30
 
-import com.flammky.android.medialib.providers.mediastore.base.audio.MediaStoreAudioMetadataEntry
+import com.flammky.android.medialib.providers.mediastore.base.audio.MediaStoreAudioMetadataEntryEntry
 
-class MediaStoreAudioMetadataEntry30 private constructor(
+class MediaStoreAudioMetadataEntry30Entry private constructor(
 	// not sure about this field yet
+	@JvmField
 	val dateTaken: Long,
+	@JvmField
 	val albumArtist: String,
+	@JvmField
 	val bitRate: Long,
 
 	album: String,
@@ -15,7 +18,7 @@ class MediaStoreAudioMetadataEntry30 private constructor(
 	durationMs: Long,
 	title: String,
 	year: Int,
-) : MediaStoreAudioMetadataEntry(album, artist, bookmark, composer, durationMs, year, title) {
+) : MediaStoreAudioMetadataEntryEntry(album, artist, bookmark, composer, durationMs, year, title) {
 
 	class Builder internal constructor() {
 		var album: String = ""
@@ -30,8 +33,8 @@ class MediaStoreAudioMetadataEntry30 private constructor(
 		var albumArtist: String = ""
 		var bitRate: Long = -1
 
-		internal fun build(): MediaStoreAudioMetadataEntry30 {
-			return MediaStoreAudioMetadataEntry30(
+		internal fun build(): MediaStoreAudioMetadataEntry30Entry {
+			return MediaStoreAudioMetadataEntry30Entry(
 				album = album,
 				artist = artist,
 				bookmark = bookmark,

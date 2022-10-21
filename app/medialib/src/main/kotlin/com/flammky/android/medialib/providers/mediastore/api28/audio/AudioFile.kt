@@ -8,13 +8,13 @@ import com.flammky.android.medialib.providers.mediastore.base.audio.MediaStoreAu
  * @see MediaStore28.MediaColumns
  * @see MediaStore28.Files
  */
-data class MediaStoreAudioFile28 private constructor(
-	override val absolutePath: String?,
-	override val dateAdded: Long?,
-	override val dateModified: Long?,
-	override val fileName: String?,
-	override val mimeType: String?,
-	override val size: Long?
+class MediaStoreAudioFile28 private constructor(
+	absolutePath: String?,
+	dateAdded: Long?,
+	dateModified: Long?,
+	fileName: String?,
+	mimeType: String?,
+	size: Long?
 ) : MediaStoreAudioFile(absolutePath, dateAdded, dateModified, fileName, mimeType, size) {
 
 	class Builder internal constructor() {

@@ -10,12 +10,12 @@ import javax.annotation.concurrent.Immutable
  */
 
 @Immutable
-abstract class MediaStoreMetadata internal constructor(
+abstract class MediaStoreMetadataEntry internal constructor(
 	/**
 	 * The TITLE metadata
 	 */
-	open val title: String?
+	@JvmField val title: String?
 ) {
 	override fun hashCode(): Int = Objects.hash(title)
-	override fun equals(other: Any?): Boolean = other is MediaStoreMetadata && other.title == title
+	override fun equals(other: Any?): Boolean = other is MediaStoreMetadataEntry && other.title == title
 }

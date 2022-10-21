@@ -8,24 +8,24 @@ import javax.annotation.concurrent.Immutable
  *
  * representation of Media Files within MediaStore API, composed of :
  * + [MediaStoreFile]
- * + [MediaStoreMetadata]
+ * + [MediaStoreMetadataEntry]
  * + [MediaStoreQuery]
  */
 
 @Immutable
 abstract class MediaStoreEntity internal constructor(
-	/** The Unique Identifier */
+    /** The Unique Identifier */
 	open val uid: String,
 
-	/** The [Uri], always content scheme */
+    /** The [Uri], always content scheme */
 	open val uri: Uri,
 
-	/** The File Information. */
+    /** The File Information. */
 	open val file: MediaStoreFile,
 
-	/** The Metadata Information. */
-	open val metadata: MediaStoreMetadata,
+    /** The Metadata Information. */
+	open val metadata: MediaStoreMetadataEntry,
 
-	/** The Query Information, anything that is specific to MediaStore query tables. */
+    /** The Query Information, anything that is specific to MediaStore query tables. */
 	internal open val queryInfo: MediaStoreQuery
 )

@@ -1,6 +1,6 @@
 package com.flammky.android.medialib.temp.provider.mediastore.base.media
 
-import com.flammky.android.medialib.providers.mediastore.base.media.MediaStoreMetadata
+import com.flammky.android.medialib.providers.mediastore.base.media.MediaStoreMetadataEntry
 import java.util.*
 import javax.annotation.concurrent.Immutable
 
@@ -17,5 +17,5 @@ abstract class MediaStoreMetadata internal constructor() {
 	abstract val title: String?
 
 	override fun hashCode(): Int = Objects.hash(title)
-	override fun equals(other: Any?): Boolean = other is MediaStoreMetadata && other.title == title
+	override fun equals(other: Any?): Boolean = other is MediaStoreMetadataEntry && other.title == title
 }

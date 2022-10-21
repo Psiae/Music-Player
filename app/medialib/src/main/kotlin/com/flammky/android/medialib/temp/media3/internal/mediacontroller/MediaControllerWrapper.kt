@@ -546,6 +546,7 @@ class MediaControllerWrapper internal constructor(
 				val mc = mediaController
 				if (mc.currentMediaItem?.mediaId != item.mediaId) {
 					mc.stop()
+					mc.clearMediaItems()
 					mc.setMediaItem(item, true)
 				} else if (mc.playbackState == Player.STATE_ENDED) {
 					mc.seekToDefaultPosition()
@@ -586,22 +587,20 @@ class MediaControllerWrapper internal constructor(
 		}
 
 		override fun setMediaItems(items: List<com.flammky.android.medialib.common.mediaitem.MediaItem>) {
-			if (isStateConnected()) mediaController.setMediaItems(
-				items.map { ((it as RealMediaItem).internalItem as Media3Item).item }
-			)
+			if (isStateConnected()) {
+				mediaController.clearMediaItems()
+				mediaController.setMediaItems(items.map { ((it as RealMediaItem).internalItem as Media3Item).item })
+			}
 		}
-
-
 
 		override fun setMediaItems(
 			items: List<com.flammky.android.medialib.common.mediaitem.MediaItem>,
 			startIndex: Int
 		) {
-			if (isStateConnected()) mediaController.setMediaItems(
-				items.map { ((it as RealMediaItem).internalItem as Media3Item).item },
-				startIndex,
-				0L
-			)
+			if (isStateConnected()) {
+				// TODO: branch out
+				setMediaItems(items, startIndex, 0.milliseconds)
+			}
 		}
 
 		override fun setMediaItems(
@@ -609,11 +608,14 @@ class MediaControllerWrapper internal constructor(
 			startIndex: Int,
 			startPosition: Duration
 		) {
-			if (isStateConnected()) mediaController.setMediaItems(
-				items.map { ((it as RealMediaItem).internalItem as Media3Item).item },
-				startIndex,
-				startPosition.inWholeMilliseconds
-			)
+			if (isStateConnected()) {
+				mediaController.clearMediaItems()
+				mediaController.setMediaItems(
+					items.map { ((it as RealMediaItem).internalItem as Media3Item).item },
+					startIndex,
+					startPosition.inWholeMilliseconds
+				)
+			}
 		}
 
 		override fun addListener(listener: LibraryPlayerEventListener) {

@@ -9,12 +9,12 @@ import javax.annotation.concurrent.Immutable
  */
 @Immutable
 abstract class MediaStoreAudioFile internal constructor(
-	override val absolutePath: String?,
-	override val dateAdded: Long?,
-	override val dateModified: Long?,
-	override val fileName: String?,
-	override val mimeType: String?,
-	override val size: Long?
+	absolutePath: String?,
+	dateAdded: Long?,
+	dateModified: Long?,
+	fileName: String?,
+	mimeType: String?,
+	size: Long?
 ) : MediaStoreFile(
 	absolutePath,
 	dateAdded,

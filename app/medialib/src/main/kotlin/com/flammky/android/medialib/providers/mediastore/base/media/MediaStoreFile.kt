@@ -19,7 +19,8 @@ abstract class MediaStoreFile internal constructor(
 	 *
 	 * @see [MediaStore.Files.FileColumns.DATA]
 	 */
-	open val absolutePath: String?,
+	@JvmField
+	val absolutePath: String?,
 
 	/**
 	 * The `date-added` of this file.
@@ -27,8 +28,9 @@ abstract class MediaStoreFile internal constructor(
 	 *
 	 * @see [MediaStore.Files.FileColumns.DATE_ADDED]
 	 */
+	@JvmField
 	@DurationValue(TimeUnit.SECONDS)
-	open val dateAdded: Long?,
+	val dateAdded: Long?,
 
 	/**
 	 * The `date-modified` of this file.
@@ -36,15 +38,17 @@ abstract class MediaStoreFile internal constructor(
 	 *
 	 * @see [MediaStore.Files.FileColumns.DATE_MODIFIED]
 	 */
+	@JvmField
 	@DurationValue(TimeUnit.SECONDS)
-	open val dateModified: Long?,
+	val dateModified: Long?,
 
 	/**
 	 * The name of the file including its extension
 	 *
 	 * @see [MediaStore.Files.FileColumns.DISPLAY_NAME]
 	 */
-	open val fileName: String?,
+	@JvmField
+	val fileName: String?,
 
 	/**
 	 * The media type (audio, video, image or playlist) of the file,
@@ -52,19 +56,22 @@ abstract class MediaStoreFile internal constructor(
 	 *
 	 * @see [MediaStore.Files.FileColumns.MEDIA_TYPE]
 	 */
-	open val mediaType: Int?,
+	@JvmField
+	val mediaType: Int?,
 
 	/**
 	 * the Mime-Type of the file
 	 *
 	 * @see [MediaStore.Files.FileColumns.MIME_TYPE]
 	 */
-	open val mimeType: String?,
+	@JvmField
+	val mimeType: String?,
 
 	/**
 	 * the size of the file, in bytes
 	 *
 	 * @see [MediaStore.Files.FileColumns.SIZE]
 	 */
-	open val size: Long?
+	@JvmField
+	val size: Long?
 )

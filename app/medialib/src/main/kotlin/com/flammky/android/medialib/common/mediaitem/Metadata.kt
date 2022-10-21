@@ -1,10 +1,14 @@
 package com.flammky.android.medialib.common.mediaitem
 
 import android.os.Bundle
+import com.flammky.android.medialib.common.mediaitem.MediaMetadata.Audio
+import com.flammky.android.medialib.common.mediaitem.MediaMetadata.Audio.Companion
+import com.flammky.android.medialib.providers.metadata.FileMetadata
 import kotlin.time.Duration
 
 typealias PlaybackMetadata = MediaMetadata.Playback
 typealias AudioMetadata = MediaMetadata.Audio
+typealias AudioFileMetadata = MediaMetadata.AudioFile
 
 /**
  * Metadata Information Container for general Media Item.
@@ -12,7 +16,9 @@ typealias AudioMetadata = MediaMetadata.Audio
  * This class is sealed but [Audio], [Image], [Video] are open to extend
  */
 sealed class MediaMetadata(
+	@JvmField
 	val extra: Extra?,
+	@JvmField
 	val title: String?
 ) {
 
@@ -38,9 +44,9 @@ sealed class MediaMetadata(
 	sealed class Playback(
 		extra: Extra?,
 		title: String?,
-		val bitrate: Long?,
+		@JvmField val bitrate: Long?,
 		val duration: Duration?,
-		val playable: Boolean?
+		@JvmField val playable: Boolean?
 	) : MediaMetadata(extra, title) {
 
 		interface Builder : MediaMetadata.Builder {
@@ -78,15 +84,15 @@ sealed class MediaMetadata(
 	 *
 	 * @see [Companion.build] to build instances
 	 */
-	open class Audio protected constructor(
+	abstract class Audio protected constructor(
 		extra: Extra?,
 		title: String?,
 		bitrate: Long?,
 		duration: Duration?,
 		playable: Boolean?,
-		val artistName: String?,
-		val albumTitle: String?,
-		val albumArtistName: String?
+		@JvmField val artistName: String?,
+		@JvmField val albumTitle: String?,
+		@JvmField val albumArtistName: String?
 	) : Playback(extra, title, bitrate, duration, playable) {
 
 		interface Builder : Playback.Builder {
@@ -119,6 +125,21 @@ sealed class MediaMetadata(
 			fun build(apply: Builder.() -> Unit) = DefaultAudioMetadata.Builder().apply(apply).build()
 		}
 	}
+
+	open class AudioFile(
+		val audio: AudioMetadata,
+		val file: FileMetadata,
+		extra: Extra? = Extra()
+	) : AudioMetadata(
+		extra = extra,
+		title = audio.title,
+		bitrate = audio.bitrate,
+		duration = audio.duration,
+		playable = audio.playable,
+		artistName = audio.artistName,
+		albumTitle = audio.albumTitle,
+		albumArtistName = audio.albumArtistName
+	)
 
 	companion object {
 		val UNSET = build { }

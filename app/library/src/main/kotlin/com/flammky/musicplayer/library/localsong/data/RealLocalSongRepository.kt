@@ -6,6 +6,7 @@ import android.media.MediaMetadataRetriever
 import android.net.Uri
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.medialib.MediaLib
+import com.flammky.android.medialib.common.mediaitem.AudioFileMetadata
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.common.mediaitem.MediaItem
 import com.flammky.android.medialib.common.mediaitem.MediaItem.Companion.buildMediaItem
@@ -13,6 +14,7 @@ import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider
 import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider.ContentObserver.Flag.Companion.isDelete
 import com.flammky.android.medialib.providers.mediastore.base.audio.MediaStoreAudioEntity
+import com.flammky.android.medialib.providers.metadata.VirtualFileMetadata
 import com.flammky.android.medialib.temp.image.ArtworkProvider
 import com.flammky.android.medialib.temp.image.internal.TestArtworkProvider
 import com.flammky.common.kotlin.coroutines.safeCollect
@@ -29,6 +31,7 @@ import kotlinx.coroutines.sync.withLock
 import timber.log.Timber
 import kotlin.coroutines.resume
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 internal class RealLocalSongRepository(
 	private val context: Context,
@@ -87,7 +90,7 @@ internal class RealLocalSongRepository(
 	}
 
 	private fun toLocalSongModel(from: MediaStoreAudioEntity): LocalSongModel {
-		val metadata = AudioMetadata.build {
+		val audioMetadata = AudioMetadata.build {
 			val durationMs = from.metadata.durationMs
 			setArtist(from.metadata.artist)
 			setAlbumTitle(from.metadata.album)
@@ -95,6 +98,17 @@ internal class RealLocalSongRepository(
 			setPlayable(if (durationMs != null && durationMs > 0) true else null)
 			setDuration(durationMs?.milliseconds)
 		}
+		val fileMetadata = VirtualFileMetadata.build {
+			setUri(from.uri)
+			setScheme(from.uri.scheme)
+			setAbsolutePath(from.file.absolutePath)
+			setFileName(from.file.fileName)
+			setDateAdded(from.file.dateAdded?.seconds)
+			setLastModified(from.file.dateModified?.seconds)
+			setSize(from.file.size)
+		}
+
+		val metadata = AudioFileMetadata(audioMetadata, fileMetadata, MediaMetadata.Extra())
 
 		val mediaItem = mediaLib.context.buildMediaItem {
 			setMediaId(from.uid)
@@ -103,9 +117,7 @@ internal class RealLocalSongRepository(
 			setMetadata(metadata)
 		}
 
-		val fileInfo = LocalSongModel.FileInfo(fileName = from.file.fileName)
-
-		return LocalSongModel(from.uid, metadata.title, fileInfo, mediaItem)
+		return LocalSongModel(from.uid, metadata.title ?: metadata.file.fileName, mediaItem)
 	}
 
 	private fun toLocalSongModel(from: Uri, id: String): LocalSongModel {
@@ -116,7 +128,7 @@ internal class RealLocalSongRepository(
 			setExtra(MediaItem.Extra())
 			setMetadata(metadata)
 		}
-		return LocalSongModel(id, metadata.title, LocalSongModel.FileInfo(null), mediaItem)
+		return LocalSongModel(id, metadata.title, mediaItem)
 	}
 
 	override suspend fun collectArtwork(model: LocalSongModel): Flow<Bitmap?> {

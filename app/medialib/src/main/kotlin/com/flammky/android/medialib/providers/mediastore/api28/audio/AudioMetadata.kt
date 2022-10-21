@@ -1,7 +1,7 @@
 package com.flammky.android.medialib.providers.mediastore.api28.audio
 
 import com.flammky.android.medialib.providers.mediastore.api28.MediaStore28
-import com.flammky.android.medialib.providers.mediastore.base.audio.MediaStoreAudioMetadataEntry
+import com.flammky.android.medialib.providers.mediastore.base.audio.MediaStoreAudioMetadataEntryEntry
 import javax.annotation.concurrent.Immutable
 
 /**
@@ -11,15 +11,15 @@ import javax.annotation.concurrent.Immutable
  */
 
 @Immutable
-data class MediaStoreAudioMetadataEntry28 private constructor(
-	override val album: String?,
-	override val artist: String?,
-	override val bookmark: Long?,
-	override val composer: String?,
-	override val durationMs: Long?,
-	override val year: Int?,
-	override val title: String?,
-) : MediaStoreAudioMetadataEntry(
+class MediaStoreAudioMetadataEntry28Entry private constructor(
+	album: String?,
+	artist: String?,
+	bookmark: Long?,
+	composer: String?,
+	durationMs: Long?,
+	year: Int?,
+	title: String?,
+) : MediaStoreAudioMetadataEntryEntry(
 	album,
 	artist,
 	bookmark,
@@ -73,8 +73,8 @@ data class MediaStoreAudioMetadataEntry28 private constructor(
 			this.year = year
 		}
 
-		internal fun build(): MediaStoreAudioMetadataEntry28 {
-			return MediaStoreAudioMetadataEntry28(
+		internal fun build(): MediaStoreAudioMetadataEntry28Entry {
+			return MediaStoreAudioMetadataEntry28Entry(
 				album = album,
 				artist = artist,
 				bookmark = bookmark,

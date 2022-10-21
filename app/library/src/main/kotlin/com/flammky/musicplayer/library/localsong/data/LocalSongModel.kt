@@ -7,13 +7,7 @@ import com.flammky.android.medialib.common.mediaitem.MediaItem
 data class LocalSongModel(
 	val id: String,
 	val displayName: String?,
-	val fileInfo: FileInfo,
 	val mediaItem: MediaItem
 ) {
 
-	@Immutable
-	data class FileInfo(
-		val fileName: String?,
-		// More
-	)
 }

@@ -26,8 +26,6 @@ internal class RealMediaConnection(
 ) : MediaConnection {
 	private val coroutineScope = CoroutineScope(SupervisorJob())
 
-	private val m = com.flammky.android.medialib.temp.MediaLibrary.API.sessions.manager.findSessionById("DEBUG")!!.mediaController
-
 	override fun play(id: String, uri: Uri) {
 		delegate.play(createMediaItem(id, uri))
 		provideMetadata(id, uri)

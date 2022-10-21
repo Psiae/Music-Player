@@ -6,6 +6,6 @@ import com.flammky.android.medialib.providers.mediastore.base.media.MediaEntityP
 interface AudioEntityProvider<
 		E : MediaStoreAudioEntity,
 		F : MediaStoreAudioFile,
-		M : MediaStoreAudioMetadataEntry,
+		M : MediaStoreAudioMetadataEntryEntry,
 		Q : MediaStoreAudioQuery
 		> : MediaEntityProvider<E, F, M, Q>

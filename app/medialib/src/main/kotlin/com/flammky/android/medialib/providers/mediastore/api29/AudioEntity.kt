@@ -11,7 +11,7 @@ class MediaStoreAudioEntity29 private constructor(
     uid: String,
     uri: Uri,
     override val file: MediaStoreAudioFile29,
-    override val metadata: MediaStoreAudioMetadataEntry29,
+    override val metadata: MediaStoreAudioMetadataEntry29Entry,
     internal override val queryInfo: MediaStoreAudioQuery29
 ) : MediaStoreAudioEntity(uid, uri, file, metadata, queryInfo) {
 
@@ -19,7 +19,7 @@ class MediaStoreAudioEntity29 private constructor(
 		var uid: String = ""
 		var uri: Uri = Uri.EMPTY
 		var fileInfo: MediaStoreAudioFile29 = MediaStoreAudioFile29.empty
-		var metadataInfo: MediaStoreAudioMetadataEntry29 = MediaStoreAudioMetadataEntry29.empty
+		var metadataInfo: MediaStoreAudioMetadataEntry29Entry = MediaStoreAudioMetadataEntry29Entry.empty
 		var queryInfo: MediaStoreAudioQuery29 = MediaStoreAudioQuery29.empty
 
 		internal fun build(): MediaStoreAudioEntity29 {

@@ -4,6 +4,7 @@ import android.os.Bundle
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata.Audio
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata.Audio.Companion
 import com.flammky.android.medialib.providers.metadata.FileMetadata
+import java.util.*
 import kotlin.time.Duration
 
 typealias PlaybackMetadata = MediaMetadata.Playback
@@ -127,8 +128,8 @@ sealed class MediaMetadata(
 	}
 
 	open class AudioFile(
-		val audio: AudioMetadata,
-		val file: FileMetadata,
+		@JvmField val audio: AudioMetadata,
+		@JvmField val file: FileMetadata,
 		extra: Extra? = Extra()
 	) : AudioMetadata(
 		extra = extra,
@@ -139,7 +140,23 @@ sealed class MediaMetadata(
 		artistName = audio.artistName,
 		albumTitle = audio.albumTitle,
 		albumArtistName = audio.albumArtistName
-	)
+	) {
+		fun copy(
+			audio: AudioMetadata = this.audio,
+			file: FileMetadata = this.file,
+			extra: Extra? = this.extra
+		): AudioFile {
+			return AudioFile(audio, file, extra)
+		}
+
+		override fun hashCode(): Int {
+			return Objects.hash(audio, file, super.hashCode())
+		}
+
+		override fun equals(other: Any?): Boolean {
+			return other is AudioFileMetadata && other.audio == this.audio && other.file == this.file
+		}
+	}
 
 	companion object {
 		val UNSET = build { }

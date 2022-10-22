@@ -67,6 +67,10 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 		s.mediaController.prepare()
 	}
 
+	override fun seekToIndex(int: Int) {
+		s.mediaController.seekToMediaItem(int)
+	}
+
 	override fun bufferedPosition(): Duration {
 		return s.mediaController.bufferedPositionMs.milliseconds
 	}

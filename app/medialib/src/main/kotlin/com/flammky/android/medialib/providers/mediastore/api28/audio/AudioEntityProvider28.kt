@@ -89,7 +89,7 @@ internal class AudioEntityProvider28 (private val context: MediaStoreContext) {
 				/* selection = */ null,
 				/* selectionArgs = */ null,
 				/* sortOrder = */ null
-			)?.use {  cursor ->
+			)?.use { cursor ->
 				if (cursor.moveToFirst()) {
 					do {
 						val queryInfo = fillAudioQueryInfoBuilder(cursor, MediaStoreAudioQuery28.Builder())
@@ -97,7 +97,7 @@ internal class AudioEntityProvider28 (private val context: MediaStoreContext) {
 					} while (cursor.moveToNext())
 				}
 			}
-			holder
+			holder.toList()
 		} catch (se: SecurityException) {
 			checkReadExternalStoragePermission()
 			if (BuildConfig.DEBUG) throw se

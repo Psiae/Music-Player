@@ -48,6 +48,49 @@ internal fun LocalSongDisplay(
 	viewModel: LocalSongViewModel,
 	navigate: (String) -> Unit
 ) {
+	Box(modifier = modifier) {
+		val showShimmerState = viewModel.loadedState.rememberDerived { !it }
+		if (showShimmerState.read()) {
+			ShimmerDisplay(showState = showShimmerState)
+		} else {
+			DisplayColumn(viewModel = viewModel, navigate = navigate)
+		}
+	}
+}
+
+@Composable
+private fun ShimmerDisplay(
+	modifier: Modifier = Modifier,
+	showState: State<Boolean>
+) {
+	Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+		Box(
+			modifier = Modifier.fillMaxWidth(0.3f).height(24.dp)
+				.placeholder(
+					visible = showState.read(),
+					color = Color(0xFFAAAAAA),
+					shape = RoundedCornerShape(5.dp),
+					highlight = PlaceholderHighlight.shimmer(highlightColor = Color(0xFFF0F0F0))
+				)
+		)
+		Box(
+			modifier = Modifier.fillMaxWidth().height(200.dp)
+				.placeholder(
+					visible = showState.read(),
+					color = Color(0xFFAAAAAA),
+					shape = RoundedCornerShape(5.dp),
+					highlight = PlaceholderHighlight.shimmer(highlightColor = Color(0xFFF0F0F0))
+				)
+		)
+	}
+}
+
+@Composable
+private fun DisplayColumn(
+	modifier: Modifier = Modifier,
+	viewModel: LocalSongViewModel,
+	navigate: (String) -> Unit
+) {
 	Column(
 		modifier = Modifier
 			.fillMaxWidth()
@@ -373,9 +416,10 @@ private fun DisplayContentItem(
 			modifier = Modifier
 				.fillMaxSize()
 				.placeholder(
-					visible = model.value == LOADING,
-					color = Color(0xFFA0A0A0),
-					highlight = PlaceholderHighlight.shimmer(Color(0xFFDCDCDC))
+					visible = model.read() === LOADING,
+					color = Color(0xFFAAAAAA),
+					shape = RoundedCornerShape(5.dp),
+					highlight = PlaceholderHighlight.shimmer(highlightColor = Color(0xFFF0F0F0))
 				),
 			model = coilModel,
 			contentDescription = "art",
@@ -520,8 +564,10 @@ private fun DisplayLastContentItemChild(
 			.fillMaxHeight()
 			.aspectRatio(1f, true)
 			.placeholder(
-				visible = imageModel.value === LOADING,
-				color = Color(0xFFA0A0A0)
+				visible = imageModel.read() == LOADING,
+				color = Color(0xFFAAAAAA),
+				shape = RoundedCornerShape(5.dp),
+				highlight = PlaceholderHighlight.shimmer(highlightColor = Color(0xFFF0F0F0))
 			),
 		model = coilModel,
 		contentDescription = "art",
@@ -572,4 +618,13 @@ private fun <T> MutableState<T>.overwrite(value: T) {
 // is explicit write like this better ?
 private fun <T> MutableState<T>.rewrite(block: (T) -> T) {
 	this.value = block(this.value)
+}
+
+private fun <T> State<T>.derive(calculation: (T) -> T): State<T> {
+	return derivedStateOf { calculation(value) }
+}
+
+@Composable
+private fun <T> State<T>.rememberDerived(calculation: (T) -> T): State<T> {
+	return remember { derivedStateOf { calculation(value) } }
 }

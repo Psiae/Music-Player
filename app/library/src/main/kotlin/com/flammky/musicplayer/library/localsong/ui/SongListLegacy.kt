@@ -114,32 +114,10 @@ private fun LocalSongListsItem(
 
 			Spacer(modifier = Modifier.width(8.dp))
 
-			val metadata = model.mediaItem.metadata as AudioMetadata
-
-			val formattedDuration = remember(metadata.duration) {
-				val seconds = metadata.duration?.inWholeSeconds ?: 0
-				if (seconds > 3600) {
-					String.format(
-						"%02d:%02d:%02d",
-						seconds / 3600,
-						seconds % 3600 / 60,
-						seconds % 60
-					)
-				} else {
-					String.format(
-						"%02d:%02d",
-						seconds / 60,
-						seconds % 60
-					)
-				}
-			}
-
-			val separator = String("\u00b7".toByteArray(Charsets.UTF_8))
-
 			ItemTextDescription(
 				modifier = Modifier.weight(1f, true),
-				title = model.displayName ?: "",
-				subtitle = "$formattedDuration " + "$separator ${metadata.artistName ?: "<unknown artist>"}",
+				model,
+				vm,
 			)
 
 			Spacer(modifier = Modifier.width(8.dp))
@@ -194,19 +172,13 @@ private fun ItemArtworkCard(model: LocalSongModel, vm: LocalSongViewModel) {
 
 	DisposableEffect(key1 = model) {
 		val job = coroutineScope.launch(coroutineContext) {
+			art.overwrite(LOADING)
 			vm.collectArtwork(model).safeCollect {
 				Timber.d("ItemArtworkCard collected $it")
 				art.overwrite(it)
 			}
 		}
 		onDispose { job.cancel() }
-	}
-
-	val imageModel = remember(art.read()) {
-		ImageRequest.Builder(context)
-			.data(art.value)
-			.memoryCachePolicy(CachePolicy.ENABLED)
-			.build()
 	}
 
 	val shape: Shape = remember {
@@ -223,17 +195,22 @@ private fun ItemArtworkCard(model: LocalSongModel, vm: LocalSongViewModel) {
 		colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
 	) {
 
-		val shimmerBackground = Color(0xFFA0A0A0)
-		val shimmerColor = Color(0xFFFFFFFF)
+		val imageModel = remember(art.read()) {
+			ImageRequest.Builder(context)
+				.data(art.value)
+				.memoryCachePolicy(CachePolicy.ENABLED)
+				.build()
+		}
 
 		AsyncImage(
 			modifier = Modifier
 				.fillMaxSize()
 				.clip(shape)
 				.placeholder(
-					visible = imageModel.data === UNSET,
-					color = shimmerBackground,
-					highlight = PlaceholderHighlight.shimmer(shimmerColor)
+					visible = imageModel.data === LOADING,
+					color = Color(0xFFAAAAAA),
+					shape = RoundedCornerShape(5.dp),
+					highlight = PlaceholderHighlight.shimmer(highlightColor = Color(0xFFF0F0F0))
 				),
 			model = imageModel,
 			contentDescription = "Artwork",
@@ -245,10 +222,46 @@ private fun ItemArtworkCard(model: LocalSongModel, vm: LocalSongViewModel) {
 @Composable
 private fun ItemTextDescription(
 	modifier: Modifier,
-	title: String,
-	subtitle: String,
+	model: LocalSongModel,
+	vm: LocalSongViewModel,
 	textColor: Color = if (isSystemInDarkTheme()) Color.White else Color.Black
 ) {
+	val context = LocalContext.current
+	val coroutineScope = rememberCoroutineScope()
+	val coroutineContext = Dispatchers.Main.immediate + SupervisorJob()
+
+	val metadata = remember { mutableStateOf<AudioMetadata?>(AudioMetadata.UNSET) }
+
+	DisposableEffect(key1 = model) {
+		val job = coroutineScope.launch(coroutineContext) {
+			vm.collectMetadata(model).safeCollect {
+				metadata.overwrite(it)
+			}
+		}
+		onDispose { job.cancel() }
+	}
+
+	val formattedDuration = remember(metadata.read()?.duration) {
+		val seconds = metadata.value?.duration?.inWholeSeconds ?: 0
+		if (seconds > 3600) {
+			String.format(
+				"%02d:%02d:%02d",
+				seconds / 3600,
+				seconds % 3600 / 60,
+				seconds % 60
+			)
+		} else {
+			String.format(
+				"%02d:%02d",
+				seconds / 60,
+				seconds % 60
+			)
+		}
+	}
+
+	val separator = String("\u00b7".toByteArray(Charsets.UTF_8))
+
+
 	Column(
 		modifier = modifier.fillMaxHeight(),
 		verticalArrangement = Arrangement.Center
@@ -267,14 +280,16 @@ private fun ItemTextDescription(
 			)
 		}
 		Text(
-			text = title,
+			text = metadata.read()?.title ?: model.displayName ?: "",
 			style = style,
 			maxLines = 1,
 			overflow = TextOverflow.Ellipsis,
 		)
 		Spacer(modifier = Modifier.height(3.dp))
 		Text(
-			text = subtitle,
+			text = formattedDuration + " " +
+				separator + " " +
+				(metadata.read()?.albumArtistName ?: metadata.read()?.artistName ?: model.displayName ?: ""),
 			style = style2,
 			maxLines = 1,
 			overflow = TextOverflow.Ellipsis,

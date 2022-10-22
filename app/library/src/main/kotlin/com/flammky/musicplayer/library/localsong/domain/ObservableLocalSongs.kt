@@ -1,6 +1,7 @@
 package com.flammky.musicplayer.library.localsong.domain
 
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
+import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider
 import com.flammky.common.kotlin.coroutines.safeCollect
 import com.flammky.musicplayer.library.localsong.data.LocalSongModel
@@ -25,7 +26,13 @@ interface ObserveLocalSongs {
 interface ObservableLocalSongs {
 	fun collectLocalSongs(): Flow<ImmutableList<LocalSongModel>>
 	fun collectRefresh(): Flow<Boolean>
-	suspend fun refresh()
+	suspend fun refresh(): Job
+
+	suspend fun observeMetadata(id: String): Flow<AudioMetadata?>
+	suspend fun observeArtwork(id: String): Flow<Any?>
+
+	suspend fun refreshMetadata(model: LocalSongModel): Job
+
 
 	fun release()
 }
@@ -37,6 +44,9 @@ class RealObservableLocalSongs(
 	private val dispatchers: AndroidCoroutineDispatchers
 ) : ObservableLocalSongs {
 
+	private val scheduleMutex = Mutex()
+	private var refreshJob: Job? = null
+
 	private val ioScope = CoroutineScope(dispatchers.io + SupervisorJob())
 	private val rememberMutex = Mutex()
 	private var _rememberList: ImmutableList<LocalSongModel> = persistentListOf()
@@ -45,9 +55,10 @@ class RealObservableLocalSongs(
 	private val refreshStateMSF = MutableStateFlow(false)
 	private val localSongsMSF = MutableStateFlow<ImmutableList<LocalSongModel>>(persistentListOf())
 
+	// remove this and use refreshJob active state instead
 	private var _rememberRefreshing = false
 
-	private val scheduleMutex = Mutex()
+
 
 	private suspend fun sendUpdate(
 		list: ImmutableList<LocalSongModel>,
@@ -82,21 +93,25 @@ class RealObservableLocalSongs(
 				if (remains.isEmpty()) return get
 			}
 		} else {
+			repository.refreshMetadata(id)
 			return doScheduledRefresh(null)
 			// TODO
 		}
 	}
 
-	private suspend fun scheduleRefresh(id: String? = null) {
-		ioScope.launch {
-			scheduleMutex.withLock { scheduledRefresh.add(id) }
+	private suspend fun scheduleRefresh(id: String? = null, rescan: Boolean = false): Job {
+		return scheduleMutex.withLock {
+			scheduledRefresh.add(id)
 			val remembered = rememberMutex.withLock {
-				if (_rememberRefreshing) return@launch
+				if (_rememberRefreshing) return refreshJob!!
 				_rememberRefreshing = true
 				_rememberList
 			}
-			sendUpdate(remembered, true)
-			sendUpdate(doScheduledRefresh(id), false)
+			refreshJob = ioScope.launch {
+				sendUpdate(remembered, true)
+				sendUpdate(doScheduledRefresh(id), false)
+			}
+			refreshJob!!
 		}
 	}
 
@@ -108,18 +123,14 @@ class RealObservableLocalSongs(
 	override fun collectLocalSongs(): Flow<ImmutableList<LocalSongModel>> = localSongsMSF.asStateFlow()
 	override fun collectRefresh(): Flow<Boolean> = refreshStateMSF
 
-	override suspend fun refresh() {
-		rememberMutex.withLock {
-			if (_rememberRefreshing) {
-				Timber.d("ObserveLocalSongs rememberRefreshing was true, ignored")
-				return
-			}
-		}
-		coroutineScope {
-			refreshStateMSF.value = true
+	override suspend fun refresh(): Job {
+		if (scheduleMutex.withLock { refreshJob?.isActive } != true) {
 			scheduleRefresh()
 		}
+		return refreshJob!!
 	}
+
+	override suspend fun refreshMetadata(model: LocalSongModel): Job = repository.refreshMetadata(model)
 
 	init {
 		ioScope.launch {
@@ -127,13 +138,15 @@ class RealObservableLocalSongs(
 			localSongsMSF.subscriptionCount.safeCollect {
 				if (it > 0 && observed.compareAndSet(false, true)) {
 					mediaStore.audio.observe(observer)
-					ioScope.launch { scheduleRefresh() }
 				} else if (it == 0 && observed.compareAndSet(true, false)) {
 					mediaStore.audio.removeObserver(observer)
 				}
 			}
 		}
 	}
+
+	override suspend fun observeMetadata(id: String): Flow<AudioMetadata?> = repository.collectMetadata(id)
+	override suspend fun observeArtwork(id: String): Flow<Any?> = repository.collectArtwork(id)
 
 	override fun release() {
 		ioScope.cancel()

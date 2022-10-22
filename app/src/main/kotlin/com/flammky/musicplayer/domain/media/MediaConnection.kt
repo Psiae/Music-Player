@@ -26,13 +26,14 @@ interface MediaConnection {
 		fun pause()
 		fun stop()
 		fun observePositionStream(): Flow<PositionStream>
-		fun observePlaylistStream(): Flow<PlaylistStream>
+		fun observePlaylistStream(): Flow<TracksStream>
+		fun seekIndex(index: Int)
 
 		fun observeInfo(): Flow<PlaybackInfo>
 
 		suspend fun <R> joinSuspend(block: MediaConnection.Playback.() -> R): R
 
-		data class PlaylistStream(
+		data class TracksStream(
 			val reason: Int = -1,
 			val currentIndex: Int = Contract.INDEX_UNSET,
 			val list: ImmutableList<String> = persistentListOf()
@@ -48,10 +49,10 @@ interface MediaConnection {
 	 * Repository Interactor
 	 */
 	interface Repository {
-		fun observeMetadata(id: String): Flow<MediaMetadata?>
-		fun observeArtwork(id: String): Flow<Any?>
-		fun provideMetadata(id: String, metadata: MediaMetadata)
-		fun provideArtwork(id: String, artwork: Any?)
+		suspend fun observeMetadata(id: String): Flow<MediaMetadata?>
+		suspend fun observeArtwork(id: String): Flow<Any?>
+		suspend fun provideMetadata(id: String, metadata: MediaMetadata)
+		suspend fun provideArtwork(id: String, artwork: Any?)
 	}
 
 	/**

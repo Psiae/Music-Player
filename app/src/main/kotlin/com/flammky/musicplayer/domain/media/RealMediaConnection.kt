@@ -41,6 +41,12 @@ class RealMediaConnection(
 		override fun playWhenReady() = delegate.play()
 		override fun pause() = delegate.pause()
 
+		override fun seekIndex(index: Int) {
+			if (delegate.playback.index != index) {
+				delegate.playback.seekToIndex(index)
+			}
+		}
+
 		override fun observeInfo(): Flow<MediaConnection.PlaybackInfo> {
 			return callbackFlow {
 
@@ -138,11 +144,11 @@ class RealMediaConnection(
 			}
 		}
 
-		override fun observePlaylistStream(): Flow<MediaConnection.Playback.PlaylistStream> = callbackFlow {
+		override fun observePlaylistStream(): Flow<MediaConnection.Playback.TracksStream> = callbackFlow {
 
 			suspend fun sendNew(reason: Int) {
 				val new = delegate.playback.joinDispatcher {
-					MediaConnection.Playback.PlaylistStream(
+					MediaConnection.Playback.TracksStream(
 						reason = reason,
 						currentIndex = delegate.playback.index,
 						list = delegate.playback.getPlaylist().map { it.mediaId }.toPersistentList()
@@ -155,7 +161,7 @@ class RealMediaConnection(
 			val playlistObserver = ioScope.launch {
 				delegate.playback.observePlaylist().safeCollect {
 					if (it.isEmpty()) {
-						return@safeCollect send(MediaConnection.Playback.PlaylistStream())
+						return@safeCollect send(MediaConnection.Playback.TracksStream())
 					}
 					sendNew(1)
 				}
@@ -164,7 +170,7 @@ class RealMediaConnection(
 			val currentObserver = ioScope.launch {
 				delegate.playback.observeMediaItem().safeCollect {
 					if (it == null || it is MediaItem.UNSET) {
-						return@safeCollect send(MediaConnection.Playback.PlaylistStream())
+						return@safeCollect send(MediaConnection.Playback.TracksStream())
 					}
 					sendNew(0)
 				}
@@ -180,9 +186,9 @@ class RealMediaConnection(
 
 	private inner class Repository : MediaConnection.Repository {
 		// We should localize them
-		override fun observeMetadata(id: String): Flow<MediaMetadata?> = delegate.repository.observeMetadata(id)
-		override fun observeArtwork(id: String): Flow<Any?> = delegate.repository.observeArtwork(id)
-		override fun provideMetadata(id: String, metadata: MediaMetadata) = delegate.repository.provideMetadata(id, metadata)
-		override fun provideArtwork(id: String, artwork: Any?) = delegate.repository.provideArtwork(id, artwork)
+		override suspend fun observeMetadata(id: String): Flow<MediaMetadata?> = delegate.repository.observeMetadata(id)
+		override suspend fun observeArtwork(id: String): Flow<Any?> = delegate.repository.observeArtwork(id)
+		override suspend fun provideMetadata(id: String, metadata: MediaMetadata) = delegate.repository.provideMetadata(id, metadata)
+		override suspend fun provideArtwork(id: String, artwork: Any?) = delegate.repository.provideArtwork(id, artwork)
 	}
 }

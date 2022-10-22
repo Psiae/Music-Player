@@ -11,6 +11,8 @@ interface MediaConnectionPlayback {
 	val playing: Boolean
 	val index: Int
 
+	fun seekToIndex(int: Int)
+
 	fun prepare()
 	fun stop()
 

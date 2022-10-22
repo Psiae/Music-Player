@@ -4,33 +4,34 @@ import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import kotlinx.coroutines.flow.Flow
 
 interface MediaConnectionRepository {
+	fun getMetadataBlocking(id: String): MediaMetadata?
 	suspend fun getMetadata(id: String): MediaMetadata?
-	fun observeMetadata(id: String): Flow<MediaMetadata?>
-	fun provideMetadata(id: String, metadata: MediaMetadata)
-	fun evictMetadata(id: String)
+	suspend fun observeMetadata(id: String): Flow<MediaMetadata?>
+	suspend fun provideMetadata(id: String, metadata: MediaMetadata)
+	suspend fun evictMetadata(id: String)
 
 	/**
 	 * Provide Metadata silently, meaning that this will not notify existing observers
 	 */
-	fun silentProvideMetadata(id: String, metadata: MediaMetadata)
+	suspend fun silentProvideMetadata(id: String, metadata: MediaMetadata)
 
 	/**
 	 * Evict Metadata silently, meaning that this will not notify existing observers
 	 */
-	fun silentEvictMetadata(id: String)
+	suspend fun silentEvictMetadata(id: String)
 
 	suspend fun getArtwork(id: String): Any?
-	fun observeArtwork(id: String): Flow<Any?>
-	fun provideArtwork(id: String, artwork: Any?)
-	fun evictArtwork(id: String)
+	suspend fun observeArtwork(id: String): Flow<Any?>
+	suspend fun provideArtwork(id: String, artwork: Any?)
+	suspend fun evictArtwork(id: String)
 
 	/**
 	 * Provide Artwork silently, meaning that this will not notify existing observers
 	 */
-	fun silentProvideArtwork(id: String, artwork: Any?)
+	suspend fun silentProvideArtwork(id: String, artwork: Any?)
 
 	/**
 	 * Evict Artwork silently, meaning that this will not notify existing observers
 	 */
-	fun silentEvictArtwork(id: String)
+	suspend fun silentEvictArtwork(id: String)
 }

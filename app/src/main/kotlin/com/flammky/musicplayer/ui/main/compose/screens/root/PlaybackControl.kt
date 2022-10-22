@@ -21,8 +21,6 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -42,6 +40,7 @@ import com.flammky.musicplayer.domain.musiclib.entity.PlaybackState
 import com.flammky.musicplayer.domain.musiclib.entity.PlaybackState.Companion.isEmpty
 import com.flammky.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isStateBuffering
 import com.flammky.musicplayer.ui.common.compose.LinearIndeterminateProgressIndicator
+import com.flammky.musicplayer.ui.main.compose.screens.root.playbackcontrol.TrackDescriptionPager
 import com.flammky.musicplayer.ui.playbackbox.PlaybackBoxModel
 import com.flammky.musicplayer.ui.playbackbox.PlaybackBoxPositions
 import com.flammky.musicplayer.ui.playbackbox.PlaybackBoxViewModel
@@ -274,41 +273,11 @@ private fun RowScope.MetadataDescription(
 	boxVM: PlaybackBoxViewModel,
 	backgroundColorState: State<Color>
 ) {
-	Column(
-		modifier = Modifier
-			.fillMaxHeight()
-			.padding(start = 10.dp, end = 10.dp)
-			.weight(1f, true),
-		verticalArrangement = Arrangement.SpaceEvenly,
-		horizontalAlignment = Alignment.Start,
-	) {
-
-		val textColor = if (backgroundColorState.read().luminance() < 0.4f) Color.White else Color.Black
-		val metadataState = boxVM.metadataFlow.collectAsState()
-		val metadata = metadataState.read()
-		val style = MaterialTheme.typography.bodyMedium
-			.copy(
-				color = textColor,
-				fontWeight = FontWeight.SemiBold
-			)
-		Text(
-			text = metadata?.title ?: "",
-			style = style,
-			maxLines = 1,
-			overflow = TextOverflow.Ellipsis,
-		)
-		val style2 = MaterialTheme.typography.bodyMedium
-			.copy(
-				color = textColor,
-				fontWeight = FontWeight.Medium
-			)
-		Text(
-			text = metadata?.subtitle ?: "",
-			style = style2,
-			maxLines = 1,
-			overflow = TextOverflow.Ellipsis,
-		)
-	}
+	TrackDescriptionPager(
+		modifier = Modifier.weight(1f, true),
+		viewModel = boxVM,
+		backgroundLuminance = backgroundColorState.derive { it.luminance() }
+	)
 }
 
 @Composable

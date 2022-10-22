@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.medialib.common.Contract
+import com.flammky.android.medialib.common.mediaitem.AudioFileMetadata
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.common.kotlin.coroutines.safeCollect
@@ -32,7 +33,7 @@ class PlaybackBoxViewModel @Inject constructor(
 ) : ViewModel() {
 
 	val playlistStreamFlow = mediaConnection.playback.observePlaylistStream()
-		.stateIn(viewModelScope, SharingStarted.Lazily, MediaConnection.Playback.PlaylistStream())
+		.stateIn(viewModelScope, SharingStarted.Lazily, MediaConnection.Playback.TracksStream())
 
 	val positionStreamFlow = mediaConnection.playback.observePositionStream()
 		.stateIn(viewModelScope, SharingStarted.Lazily, MediaConnection.Playback.PositionStream())
@@ -83,6 +84,8 @@ class PlaybackBoxViewModel @Inject constructor(
 	fun play() = mediaConnectionDelegate.play()
 	fun pause() = mediaConnectionDelegate.pause()
 
+	fun seekIndex(index: Int) = mediaConnection.playback.seekIndex(index)
+
 	fun observeModel(): Flow<PlaybackBoxModel> {
 
 
@@ -120,12 +123,21 @@ class PlaybackBoxViewModel @Inject constructor(
 		}
 	}
 
-	fun observeMetadata(id: String): Flow<MediaMetadata?> {
+	suspend fun observeMetadata(id: String): Flow<MediaMetadata?> {
 		return mediaConnectionDelegate.repository.observeMetadata(id)
 	}
 
-	fun observeArtwork(id: String): Flow<Any?> {
+	suspend fun observeArtwork(id: String): Flow<Any?> {
 		return mediaConnectionDelegate.repository.observeArtwork(id)
+	}
+
+	suspend fun observeBoxMetadata(id: String): Flow<PlaybackBoxMetadata> {
+		return combine(observeArtwork(id), observeMetadata(id)) { a: Any?, b: MediaMetadata? ->
+			val subtitle = (b as? AudioMetadata)?.let {
+				it.albumArtistName ?: it.artistName ?: (it as? AudioFileMetadata)?.file?.absolutePath
+			}
+			PlaybackBoxMetadata(a, b?.title ?: "", subtitle ?: "")
+		}
 	}
 
 	// should we pair artwork and metadata together ?

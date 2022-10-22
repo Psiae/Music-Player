@@ -26,6 +26,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import timber.log.Timber
@@ -48,14 +49,7 @@ internal class RealLocalSongRepository(
 	override suspend fun getModelsAsync(): Deferred<List<LocalSongModel>> =
 		coroutineScope {
 			async(dispatchers.io) {
-				val deff = mutableListOf<Deferred<LocalSongModel>>()
-				audioProvider.queryUris().forEach { uri ->
-					async(dispatchers.io) {
-						Timber.d("getModelsAsync ${Thread.currentThread()}")
-						toLocalSongModel(uri, audioProvider.idFromUri(uri).orEmpty())
-					}.let { deff.add(it) }
-				}
-				deff.awaitAll()
+				audioProvider.query().map { toLocalSongModel(it) }
 			}
 		}
 
@@ -84,6 +78,30 @@ internal class RealLocalSongRepository(
 				getModelsAsync().await()
 			}
 		}
+
+	override fun refreshMetadata(model: LocalSongModel): Job {
+		return ioScope.launch {
+			val afm = model.mediaItem.metadata as? AudioFileMetadata
+				?: return@launch
+			(afm.file as? VirtualFileMetadata)?.uri
+				?.let { uri -> refreshMetadata(model.id, uri).join() }
+				?: refreshMetadata(model.id).join()
+		}
+	}
+
+	override fun refreshMetadata(id: String): Job {
+		return ioScope.launch {
+			mediaLib.mediaProviders.mediaStore.audio.uriFromId(id)
+				?.let { uri -> refreshMetadata(id, uri).join() }
+		}
+	}
+
+	override fun refreshMetadata(id: String, uri: Uri): Job {
+		return ioScope.launch {
+			mediaConnection.repository.provideMetadata(id, fillAudioMetadata(uri))
+		}
+	}
+
 
 	override fun buildMediaItem(build: MediaItem.Builder.() -> Unit): MediaItem {
 		return mediaLib.context.buildMediaItem(build)
@@ -193,6 +211,10 @@ internal class RealLocalSongRepository(
 				audioProvider.removeObserver(observer)
 			}
 		}
+	}
+
+	override suspend fun collectMetadata(id: String): Flow<AudioMetadata?> {
+		return mediaConnection.repository.observeMetadata(id).map { it as? AudioMetadata }
 	}
 
 	override fun observeAvailable(): Flow<LocalSongRepository.AvailabilityState> = callbackFlow {

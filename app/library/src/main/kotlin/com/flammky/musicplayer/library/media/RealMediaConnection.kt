@@ -38,11 +38,12 @@ internal class RealMediaConnection(
 			return delegate.repository.getArtwork(id)
 		}
 
-		override fun observeArtwork(id: String): Flow<Any?> {
+		// we should localize
+		override suspend fun observeArtwork(id: String): Flow<Any?> {
 			return delegate.repository.observeArtwork(id)
 		}
 
-		override fun provideArtwork(id: String, artwork: Any?, silent: Boolean) {
+		override suspend fun provideArtwork(id: String, artwork: Any?, silent: Boolean) {
 			if (silent) {
 				delegate.repository.silentProvideArtwork(id, artwork)
 			} else {
@@ -50,12 +51,20 @@ internal class RealMediaConnection(
 			}
 		}
 
-		override fun evictArtwork(id: String, silent: Boolean) {
+		override suspend fun evictArtwork(id: String, silent: Boolean) {
 			if (silent) {
 				delegate.repository.silentEvictArtwork(id)
 			} else {
 				delegate.repository.evictArtwork(id)
 			}
+		}
+
+		override suspend fun observeMetadata(id: String): Flow<MediaMetadata?> {
+			return delegate.repository.observeMetadata(id)
+		}
+
+		override suspend fun provideMetadata(id: String, metadata: MediaMetadata) {
+			return delegate.repository.provideMetadata(id, metadata)
 		}
 	}
 

@@ -36,6 +36,7 @@ dependencies {
 
         // Core UI
         implementation("androidx.compose.ui:ui:$v")
+        implementation("androidx.compose.ui:ui-tooling-preview:$v")
 
         // Foundation
         implementation("androidx.compose.foundation:foundation:$v")

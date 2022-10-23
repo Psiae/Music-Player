@@ -6,7 +6,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.medialib.common.Contract
-import com.flammky.android.medialib.common.mediaitem.AudioFileMetadata
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.common.kotlin.coroutines.safeCollect
@@ -134,79 +133,9 @@ class PlaybackBoxViewModel @Inject constructor(
 	suspend fun observeBoxMetadata(id: String): Flow<PlaybackBoxMetadata> {
 		return combine(observeArtwork(id), observeMetadata(id)) { a: Any?, b: MediaMetadata? ->
 			val subtitle = (b as? AudioMetadata)?.let {
-				it.albumArtistName ?: it.artistName ?: (it as? AudioFileMetadata)?.file?.absolutePath
+				it.albumArtistName ?: it.artistName
 			}
 			PlaybackBoxMetadata(a, b?.title ?: "", subtitle ?: "")
-		}
-	}
-
-	// should we pair artwork and metadata together ?
-	fun observeCurrentArtwork(): Flow<Any?> {
-		return callbackFlow {
-
-			var observeArtworkJob: Job? = null
-
-			send(null)
-
-			val observeStreamJob = viewModelScope.launch {
-				playlistStreamFlow.safeCollect {
-					when (it.reason) {
-						-1 -> {
-							send(null)
-							observeArtworkJob?.cancel()
-						}
-						0 -> {
-							send(null)
-							observeArtworkJob?.cancel()
-							observeArtworkJob = launch {
-								observeArtwork(it.list[it.currentIndex]).safeCollect { art -> send(art) }
-							}
-						}
-						1 -> {
-
-						}
-					}
-				}
-			}
-			awaitClose {
-				observeStreamJob.cancel()
-				observeArtworkJob?.cancel()
-			}
-		}
-	}
-
-	// should we pair artwork and metadata together ?
-	fun observeCurrentMetadata(): Flow<MediaMetadata?> {
-		return callbackFlow {
-
-			var observeMetadataJob: Job? = null
-
-			send(null)
-
-			val observeStreamJob = viewModelScope.launch {
-				playlistStreamFlow.safeCollect {
-					when (it.reason) {
-						-1 -> {
-							send(null)
-							observeMetadataJob?.cancel()
-						}
-						0 -> {
-							send(null)
-							observeMetadataJob?.cancel()
-							observeMetadataJob = launch {
-								observeMetadata(it.list[it.currentIndex]).safeCollect { metadata -> send(metadata) }
-							}
-						}
-						1 -> {
-
-						}
-					}
-				}
-			}
-			awaitClose {
-				observeStreamJob.cancel()
-				observeMetadataJob?.cancel()
-			}
 		}
 	}
 

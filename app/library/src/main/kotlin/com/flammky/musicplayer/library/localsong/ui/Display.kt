@@ -1,5 +1,6 @@
 package com.flammky.musicplayer.library.localsong.ui
 
+import android.content.res.Configuration.UI_MODE_NIGHT_YES
 import android.graphics.Bitmap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -21,6 +22,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
@@ -32,6 +34,7 @@ import com.flammky.androidx.viewmodel.compose.activityViewModel
 import com.flammky.common.kotlin.coroutines.safeCollect
 import com.flammky.musicplayer.base.compose.rememberContextHelper
 import com.flammky.musicplayer.library.localsong.data.LocalSongModel
+import com.flammky.musicplayer.library.ui.theme.Theme
 import com.google.accompanist.placeholder.PlaceholderHighlight
 import com.google.accompanist.placeholder.placeholder
 import com.google.accompanist.placeholder.shimmer
@@ -51,7 +54,7 @@ internal fun LocalSongDisplay(
 	Box(modifier = modifier) {
 		val showShimmerState = viewModel.loadedState.rememberDerived { !it }
 		if (showShimmerState.read()) {
-			ShimmerDisplay(showState = showShimmerState)
+			ShimmerDisplay()
 		} else {
 			DisplayColumn(viewModel = viewModel, navigate = navigate)
 		}
@@ -61,27 +64,39 @@ internal fun LocalSongDisplay(
 @Composable
 private fun ShimmerDisplay(
 	modifier: Modifier = Modifier,
-	showState: State<Boolean>
 ) {
-	Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+	Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
 		Box(
-			modifier = Modifier.fillMaxWidth(0.3f).height(24.dp)
+			modifier = Modifier
+				.fillMaxWidth(0.3f)
+				.height(20.dp)
 				.placeholder(
-					visible = showState.read(),
-					color = Color(0xFFAAAAAA),
+					visible = true,
+					color = Theme.localShimmerSurface(),
 					shape = RoundedCornerShape(5.dp),
-					highlight = PlaceholderHighlight.shimmer(highlightColor = Color(0xFFF0F0F0))
+					highlight = PlaceholderHighlight.shimmer(highlightColor = Theme.localShimmerColor())
 				)
 		)
-		Box(
-			modifier = Modifier.fillMaxWidth().height(200.dp)
-				.placeholder(
-					visible = showState.read(),
-					color = Color(0xFFAAAAAA),
-					shape = RoundedCornerShape(5.dp),
-					highlight = PlaceholderHighlight.shimmer(highlightColor = Color(0xFFF0F0F0))
-				)
-		)
+		Column(
+			modifier = Modifier
+				.fillMaxWidth(),
+			horizontalAlignment = Alignment.CenterHorizontally,
+			verticalArrangement = Arrangement.spacedBy(8.dp)
+		) {
+			repeat(2) {
+				Row(
+					modifier = Modifier
+						.fillMaxWidth(1F)
+						.height(95.dp)
+						.placeholder(
+							visible = true,
+							color = Theme.localShimmerSurface(),
+							shape = RoundedCornerShape(5.dp),
+							highlight = PlaceholderHighlight.shimmer(highlightColor = Theme.localShimmerColor())
+						),
+				) {}
+			}
+		}
 	}
 }
 
@@ -401,7 +416,7 @@ private fun DisplayContentItem(
 			.fillMaxHeight()
 			.aspectRatio(1f, true)
 			.clip(RoundedCornerShape(5.dp))
-			.background(Color(0xFFC2C2C2))
+			.background(Theme.localImageSurfaceColor())
 			.clickable { onItemClicked(item) }
 	) {
 
@@ -416,10 +431,10 @@ private fun DisplayContentItem(
 			modifier = Modifier
 				.fillMaxSize()
 				.placeholder(
-					visible = model.read() === LOADING,
-					color = Color(0xFFAAAAAA),
+					visible = coilModel.data === UNSET,
+					color = Theme.localShimmerSurface(),
 					shape = RoundedCornerShape(5.dp),
-					highlight = PlaceholderHighlight.shimmer(highlightColor = Color(0xFFF0F0F0))
+					highlight = PlaceholderHighlight.shimmer(highlightColor = Theme.localShimmerColor())
 				),
 			model = coilModel,
 			contentDescription = "art",
@@ -432,10 +447,8 @@ private fun DisplayContentItem(
 	}
 
 	val scope = rememberCoroutineScope()
-	val coroutineContext = Dispatchers.Main.immediate + SupervisorJob()
 	DisposableEffect(key1 = item) {
-		val job = scope.launch(coroutineContext) {
-			model.overwrite(LOADING)
+		val job = scope.launch {
 			viewModel.collectArtwork(item).safeCollect { art ->
 				val value = model.value
 				if (art is Bitmap && value is Bitmap && art.sameAs(value)) return@safeCollect
@@ -586,6 +599,32 @@ private fun DisplayLastContentItemChild(
 			}
 		}
 		onDispose { job.cancel() }
+	}
+}
+
+@Composable
+@Preview()
+fun DisplayShimmerPreview() {
+	Box(
+		modifier = Modifier
+			.fillMaxSize()
+			.background(Theme.localSurfaceColor())
+			.padding(10.dp)
+	) {
+		ShimmerDisplay()
+	}
+}
+
+@Composable
+@Preview(uiMode = UI_MODE_NIGHT_YES)
+fun DisplayShimmerPreviewNight() {
+	Box(
+		modifier = Modifier
+			.fillMaxSize()
+			.background(Theme.localSurfaceColor())
+			.padding(10.dp)
+	) {
+		ShimmerDisplay()
 	}
 }
 

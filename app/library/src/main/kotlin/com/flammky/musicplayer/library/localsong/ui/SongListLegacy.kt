@@ -31,6 +31,7 @@ import com.flammky.musicplayer.base.compose.VisibilityViewModel
 import com.flammky.musicplayer.library.R
 import com.flammky.musicplayer.library.localsong.data.LocalSongModel
 import com.flammky.musicplayer.library.ui.base.LibraryViewModel
+import com.flammky.musicplayer.library.ui.theme.Theme
 import com.google.accompanist.placeholder.PlaceholderHighlight
 import com.google.accompanist.placeholder.placeholder
 import com.google.accompanist.placeholder.shimmer
@@ -172,7 +173,6 @@ private fun ItemArtworkCard(model: LocalSongModel, vm: LocalSongViewModel) {
 
 	DisposableEffect(key1 = model) {
 		val job = coroutineScope.launch(coroutineContext) {
-			art.overwrite(LOADING)
 			vm.collectArtwork(model).safeCollect {
 				Timber.d("ItemArtworkCard collected $it")
 				art.overwrite(it)
@@ -205,13 +205,13 @@ private fun ItemArtworkCard(model: LocalSongModel, vm: LocalSongViewModel) {
 		AsyncImage(
 			modifier = Modifier
 				.fillMaxSize()
-				.clip(shape)
 				.placeholder(
-					visible = imageModel.data === LOADING,
-					color = Color(0xFFAAAAAA),
-					shape = RoundedCornerShape(5.dp),
-					highlight = PlaceholderHighlight.shimmer(highlightColor = Color(0xFFF0F0F0))
-				),
+					visible = imageModel.data === UNSET,
+					color = Theme.localShimmerSurface(),
+					shape = shape,
+					highlight = PlaceholderHighlight.shimmer(highlightColor = Theme.localShimmerColor())
+				)
+				.clip(shape),
 			model = imageModel,
 			contentDescription = "Artwork",
 			contentScale = ContentScale.Crop
@@ -226,7 +226,6 @@ private fun ItemTextDescription(
 	vm: LocalSongViewModel,
 	textColor: Color = if (isSystemInDarkTheme()) Color.White else Color.Black
 ) {
-	val context = LocalContext.current
 	val coroutineScope = rememberCoroutineScope()
 	val coroutineContext = Dispatchers.Main.immediate + SupervisorJob()
 
@@ -272,7 +271,6 @@ private fun ItemTextDescription(
 				fontWeight = FontWeight.Medium
 			)
 		}
-
 		val style2 = with(MaterialTheme.typography.bodySmall) {
 			copy(
 				color = textColor,

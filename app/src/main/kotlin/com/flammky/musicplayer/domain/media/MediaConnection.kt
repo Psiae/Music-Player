@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import com.flammky.android.medialib.common.Contract
 import com.flammky.android.medialib.common.mediaitem.MediaItem
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
+import com.flammky.android.medialib.player.Player
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.flow.Flow
@@ -20,29 +21,80 @@ interface MediaConnection {
 	 * Playback Interactor
 	 */
 	interface Playback {
+		val currentIndex: Int
+
 		fun setMediaItems(items: List<MediaItem>, startIndex: Int, startPosition: Duration)
 		fun prepare()
 		fun playWhenReady()
 		fun pause()
 		fun stop()
+
+		//
+		// I think we should add `shared` option on these observable
+		//
+
 		fun observePositionStream(): Flow<PositionStream>
-		fun observePlaylistStream(): Flow<TracksStream>
-		fun seekIndex(index: Int)
+		fun observePlaylistStream(): Flow<TracksInfo>
+		fun observePropertiesInfo(): Flow<PropertiesInfo>
+		fun seekIndex(index: Int, startPosition: Long)
+
+		fun seekPosition(position: Long)
 
 		fun observeInfo(): Flow<PlaybackInfo>
 
 		suspend fun <R> joinSuspend(block: MediaConnection.Playback.() -> R): R
 
-		data class TracksStream(
-			val reason: Int = -1,
+		data class PropertiesInfo(
+			val playWhenReady: Boolean = false,
+			val playing: Boolean = false,
+			val shuffleEnabled: Boolean = false,
+			val hasNextMediaItem: Boolean = false,
+			val hasPreviousMediaItem: Boolean = false,
+			val repeatMode: Player.RepeatMode = Player.RepeatMode.OFF,
+			val playerState: Player.State = Player.State.IDLE
+		) {
+			companion object {
+				val UNSET = PropertiesInfo()
+				inline val PropertiesInfo.isUnset: Boolean
+					get() = this == UNSET
+				inline val PropertiesInfo.actuallyUnset: Boolean
+					get() = this === UNSET
+			}
+		}
+		data class TracksInfo(
+			val changeReason: Int = -1,
 			val currentIndex: Int = Contract.INDEX_UNSET,
 			val list: ImmutableList<String> = persistentListOf()
-		)
+		) {
+			companion object {
+				val UNSET = TracksInfo()
+				inline val TracksInfo.isUnset: Boolean
+					get() = this == UNSET
+				inline val TracksInfo.actuallyUnset: Boolean
+					get() = this === UNSET
+			}
+		}
 		data class PositionStream(
+			val positionChangeReason: PositionChangeReason = PositionChangeReason.UNKN0WN,
 			val position: Duration = Contract.POSITION_UNSET,
 			val bufferedPosition: Duration = Contract.POSITION_UNSET,
 			val duration: Duration = Contract.DURATION_INDEFINITE
-		)
+		) {
+			sealed interface PositionChangeReason {
+				object UNKN0WN : PositionChangeReason
+				object USER_SEEK : PositionChangeReason
+				object AUTO : PositionChangeReason
+				object PERIODIC : PositionChangeReason
+			}
+
+			companion object {
+				val UNSET = PositionStream()
+				inline val PositionStream.isUnset: Boolean
+					get() = this == UNSET
+				inline val PositionStream.actuallyUnset: Boolean
+					get() = this === UNSET
+			}
+		}
 	}
 
 	/**

@@ -25,6 +25,7 @@ import androidx.compose.material.ripple.RippleAlpha
 import androidx.compose.material.ripple.RippleTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.*
@@ -57,6 +58,7 @@ import com.flammky.musicplayer.ui.main.compose.navigation.MainNavigator
 import com.flammky.musicplayer.ui.main.compose.navigation.MainNavigator.ProvideNavHostController
 import com.flammky.musicplayer.ui.main.compose.screens.root.PlaybackControl
 import com.flammky.musicplayer.ui.main.compose.theme.color.ColorHelper
+import com.flammky.musicplayer.ui.playbackdetail.PlaybackBoxDetail
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import timber.log.Timber
 import kotlin.math.roundToInt
@@ -69,6 +71,8 @@ fun MainActivityRoot(
 	val mainVM: MainViewModel = activityViewModel()
 
 	ProvideNavHostController(rememberNavController()) {
+		val showDetails = rememberSaveable { mutableStateOf(false) }
+
 		RootScaffold(
 			appSettings = appSettings,
 			navController = MainNavigator.controller
@@ -83,11 +87,21 @@ fun MainActivityRoot(
 						controller = MainNavigator.controller
 					)
 				}
-				PlaybackControl(mediaVM.playbackControlModel, padding.calculateBottomPadding())
+				PlaybackControl(
+					model = mediaVM.playbackControlModel,
+					bottomOffset = padding.calculateBottomPadding(),
+					onClick = { showDetails.value = true }
+				)
 			}
 		}
+		PlaybackBoxDetail(
+			showSelf = showDetails,
+			viewModel = activityViewModel(),
+			dismiss = { showDetails.value = false }
+		)
 	}
 }
+
 
 @Composable
 private fun StatusBarSpacer() {

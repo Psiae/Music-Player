@@ -21,6 +21,9 @@ interface LibraryPlayer {
 	val playWhenReady: Boolean
 	val playbackState: PlaybackState
 	val repeatMode: RepeatMode
+	val shuffleEnabled: Boolean
+	val hasNextMediaItem: Boolean
+	val hasPreviousMediaItem: Boolean
 
 	// TODO: wrap
 	val isLoading: Boolean

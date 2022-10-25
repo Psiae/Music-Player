@@ -2,15 +2,12 @@ package com.flammky.android.medialib.temp.api.player
 
 import android.net.Uri
 import android.os.Looper
-import com.flammky.android.medialib.MediaLib
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.common.mediaitem.MediaItem
 import com.flammky.android.medialib.common.mediaitem.MediaItem.Companion.buildMediaItem
 import com.flammky.android.medialib.common.mediaitem.MediaItem.Extra.Companion.toMediaItemExtra
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.android.medialib.common.mediaitem.PlaybackMetadata
-import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider
-import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider.ContentObserver.Flag.Companion.isDelete
 import com.flammky.android.medialib.temp.media3.internal.mediacontroller.MediaControllerWrapper
 import com.flammky.android.medialib.temp.player.LibraryPlayer
 import com.flammky.android.medialib.temp.player.PlayerContext
@@ -56,7 +53,8 @@ internal class ForwardingMediaController private constructor(
 			setMediaId(item.mediaId)
 			setExtra(item.requestMetadata.extras?.toMediaItemExtra() ?: MediaItem.Extra.UNSET)
 
-			val hint = item.requestMetadata.extras!!.getString("mediaMetadataType")!!
+			val hint = item.requestMetadata.extras?.getString("mediaMetadataType")
+				?: return@buildMediaItem
 			val mediaMetadata = item.mediaMetadata
 
 			val metadata = when {

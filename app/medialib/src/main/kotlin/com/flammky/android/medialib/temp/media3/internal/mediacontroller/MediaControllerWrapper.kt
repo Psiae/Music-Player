@@ -131,6 +131,15 @@ class MediaControllerWrapper internal constructor(
 	override val seekable: Boolean
 		get() = joinBlocking { wrapped.seekable }
 
+	override val shuffleEnabled: Boolean
+		get() = joinBlocking { wrapped.shuffleEnabled }
+
+	override val hasNextMediaItem: Boolean
+		get() = joinBlocking { wrapped.hasNextMediaItem }
+
+	override val hasPreviousMediaItem: Boolean
+		get() = joinBlocking { wrapped.hasPreviousMediaItem }
+
 	override fun seekToDefaultPosition() {
 		this.post { wrapped.seekToDefaultPosition() }
 	}
@@ -327,7 +336,9 @@ class MediaControllerWrapper internal constructor(
 	 * check if we are already inside internal looper, to avoid deadlock on call to runBlocking
 	 */
 	private fun joined(): Boolean = Looper.myLooper() == publicLooper
-	internal class WrappedMediaController(private val playerContext: PlayerContext) : LibraryPlayer {
+	internal class WrappedMediaController(
+		private val playerContext: PlayerContext
+	) : LibraryPlayer {
 
 		private var future: ListenableFuture<MediaController>? = null
 		private var _mediaController: MediaController? = null
@@ -407,6 +418,15 @@ class MediaControllerWrapper internal constructor(
 
 		override val repeatMode: RepeatMode
 			get() = maybeControllerValue(fallbackInfo.noRepeatMode) { it.repeatMode.asRepeatMode }
+
+		override val shuffleEnabled: Boolean
+			get() = maybeControllerValue(false) { it.shuffleModeEnabled }
+
+		override val hasNextMediaItem: Boolean
+			get() = maybeControllerValue(false) { it.hasNextMediaItem() }
+
+		override val hasPreviousMediaItem: Boolean
+			get() = maybeControllerValue(false) { it.hasPreviousMediaItem() }
 
 		override val isLoading: Boolean
 			get() = maybeControllerValue(false) { it.isLoading}

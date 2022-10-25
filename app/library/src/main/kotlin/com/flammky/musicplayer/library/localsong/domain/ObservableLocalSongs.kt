@@ -28,6 +28,8 @@ interface ObservableLocalSongs {
 	fun collectRefresh(): Flow<Boolean>
 	suspend fun refresh(): Job
 
+	suspend fun refreshAsync(): Deferred<ImmutableList<LocalSongModel>>
+
 	suspend fun observeMetadata(id: String): Flow<AudioMetadata?>
 	suspend fun observeArtwork(id: String): Flow<Any?>
 
@@ -57,8 +59,6 @@ class RealObservableLocalSongs(
 
 	// remove this and use refreshJob active state instead
 	private var _rememberRefreshing = false
-
-
 
 	private suspend fun sendUpdate(
 		list: ImmutableList<LocalSongModel>,
@@ -128,6 +128,13 @@ class RealObservableLocalSongs(
 			scheduleRefresh()
 		}
 		return refreshJob!!
+	}
+
+	override suspend fun refreshAsync(): Deferred<ImmutableList<LocalSongModel>> {
+		return ioScope.async {
+			refresh().join()
+			rememberMutex.withLock { _rememberList }
+		}
 	}
 
 	override suspend fun refreshMetadata(model: LocalSongModel): Job = repository.refreshMetadata(model)

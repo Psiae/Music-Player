@@ -22,7 +22,6 @@ import com.flammky.android.medialib.temp.player.playback.RepeatMode
 import com.flammky.android.medialib.temp.player.playback.RepeatMode.Companion.asRepeatMode
 import com.flammky.android.medialib.temp.player.playback.RepeatMode.Companion.toRepeatModeInt
 import timber.log.Timber
-import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
 interface LibraryPlayerEventListener {
@@ -114,7 +113,9 @@ interface LibraryPlayerEventListener {
 		@Player.DiscontinuityReason reason: Int
 	) {}
 
-	fun onPositionDiscontinuity(newPosition: Duration) {}
+	fun libOnPositionDiscontinuity(oldPosition: Long, newPosition: Long, reason: Int) {}
+
+	fun onShuffleModeEnabledChanged(enabled: Boolean) {}
 
 	companion object {
 		@Deprecated("Temporary")
@@ -132,6 +133,10 @@ interface LibraryPlayerEventListener {
 
 				override fun onEvents(player: Player, events: Player.Events) {
 
+				}
+
+				override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
+					delegated.onShuffleModeEnabledChanged(shuffleModeEnabled)
 				}
 
 				override fun onAudioAttributesChanged(audioAttributes: AudioAttributes) {
@@ -215,7 +220,11 @@ interface LibraryPlayerEventListener {
 					reason: Int
 				) {
 					delegated.onPositionDiscontinuity(oldPosition, newPosition, reason)
-					delegated.onPositionDiscontinuity(newPosition.positionMs.milliseconds)
+					delegatePositionDiscontinuity(oldPosition.positionMs, newPosition.positionMs, reason)
+				}
+
+				private fun delegatePositionDiscontinuity(oldPos: Long, newPos: Long, reason: Int) {
+					delegated.libOnPositionDiscontinuity(oldPos, newPos, reason)
 				}
 
 				@Deprecated("Temporary", ReplaceWith("TODO"))

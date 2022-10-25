@@ -14,12 +14,15 @@ import com.flammky.musicplayer.library.localsong.data.LocalSongModel
 import com.flammky.musicplayer.library.localsong.data.LocalSongRepository
 import com.flammky.musicplayer.library.localsong.domain.ObservableLocalSongs
 import com.flammky.musicplayer.library.media.MediaConnection
+import com.flammky.musicplayer.library.util.read
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -31,8 +34,10 @@ internal class LocalSongViewModel @Inject constructor(
 	private val observableLocalSongs: ObservableLocalSongs,
 ) : ViewModel() {
 
-	private val _refreshing = mutableStateOf(false)
-	val refreshing = _refreshing.derive()
+	private val _repoRefresh = mutableStateOf(false)
+	private val _localRefresh = mutableStateOf(false)
+
+	val refreshing = derivedStateOf { _repoRefresh.read() || _localRefresh.read() }
 
 	private val _listState = mutableStateOf<ImmutableList<LocalSongModel>>(persistentListOf())
 	val listState = _listState.derive()
@@ -55,14 +60,25 @@ internal class LocalSongViewModel @Inject constructor(
 			}
 			viewModelScope.launch {
 				observableLocalSongs.collectRefresh().safeCollect {
-					_refreshing.overwrite(it)
+					_repoRefresh.overwrite(it)
 				}
 			}
 		}
 	}
 
 	fun refresh() {
-		viewModelScope.launch { observableLocalSongs.refresh() }
+		viewModelScope.launch {
+			if (!_localRefresh.value) {
+				_localRefresh.value = true
+				val jobs = mutableListOf<Job>()
+				observableLocalSongs.refreshAsync().await().forEach { model ->
+					// I think we should limit refresh on metadata with validation
+					jobs.add(observableLocalSongs.refreshMetadata(model))
+				}
+				jobs.joinAll()
+				_localRefresh.value = false
+			}
+		}
 	}
 
 	override fun onCleared() {

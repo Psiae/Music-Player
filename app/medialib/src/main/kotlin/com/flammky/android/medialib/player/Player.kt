@@ -181,4 +181,22 @@ interface Player {
 			@JvmStatic fun State.isEnded() = this is ENDED
 		}
 	}
+
+	sealed interface RepeatMode {
+
+		/**
+		 * No Repeat Mode
+		 */
+		object OFF : RepeatMode
+
+		/**
+		 * Repeat currently playing Media Item
+		 */
+		object ONE : RepeatMode
+
+		/**
+		 * Repeat the Playlist
+		 */
+		object ALL : RepeatMode
+	}
 }

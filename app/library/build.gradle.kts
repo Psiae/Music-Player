@@ -49,6 +49,11 @@ dependencies {
     dependencies {
         val v = "1.3.0-alpha01"
 
+        // Animation
+        implementation("androidx.compose.animation:animation:$v")
+        implementation("androidx.compose.animation:animation-core:$v")
+        implementation("androidx.compose.animation:animation-graphics:$v")
+
         // Core UI
         implementation("androidx.compose.ui:ui:$v")
         implementation("androidx.compose.ui:ui-tooling:$v")

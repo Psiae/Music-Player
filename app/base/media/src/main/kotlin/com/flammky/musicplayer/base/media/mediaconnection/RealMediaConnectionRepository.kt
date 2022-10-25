@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import timber.log.Timber
 
 class RealMediaConnectionRepository(
 	private val dispatchers: AndroidCoroutineDispatchers
@@ -95,9 +96,10 @@ class RealMediaConnectionRepository(
 			check(key == id)
 			send(value)
 		}
-		addArtworkObserver(id, observer)
 		send(getArtwork(id))
+		addArtworkObserver(id, observer)
 		awaitClose {
+			Timber.d("observeArtwork closed for $id, $observer")
 			ioScope.launch { removeArtworkObserver(id, observer) }
 		}
 	}
@@ -109,7 +111,10 @@ class RealMediaConnectionRepository(
 	}
 	private suspend fun removeArtworkObserver(id: String, observer: MapObserver<String, Any>) {
 		artMutex.withLock {
-			artworkObservers[id]?.remove(observer)
+			artworkObservers[id]?.remove(observer)?.let {
+				Timber.d("removed Artwork Observer $id, $observer" +
+					"\nremaining: (${artworkObservers[id]?.size ?: 0}) ${artworkObservers[id]?.joinToString()}")
+			}
 		}
 	}
 

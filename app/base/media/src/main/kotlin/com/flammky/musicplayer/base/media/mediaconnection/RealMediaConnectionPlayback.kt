@@ -15,6 +15,7 @@ import kotlinx.coroutines.android.asCoroutineDispatcher
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import timber.log.Timber
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -43,6 +44,15 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 	override val index: Int
 		get() = s.mediaController.currentMediaItemIndex
 
+	override val shuffleEnabled: Boolean
+		get() = s.mediaController.shuffleEnabled
+
+	override val hasNextMediaItem: Boolean
+		get() = s.mediaController.hasNextMediaItem
+
+	override val hasPreviousMediaItem: Boolean
+		get() = s.mediaController.hasPreviousMediaItem
+
 	override fun getPlaylist(): List<MediaItem> {
 		return s.mediaController.getAllMediaItem()
 	}
@@ -67,8 +77,12 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 		s.mediaController.prepare()
 	}
 
-	override fun seekToIndex(int: Int) {
-		s.mediaController.seekToMediaItem(int)
+	override fun seekToIndex(int: Int, startPosition: Long) {
+		s.mediaController.seekToMediaItem(int, startPosition)
+	}
+
+	override fun seekToPosition(position: Long) {
+		s.mediaController.seekToPosition(position)
 	}
 
 	override fun bufferedPosition(): Duration {
@@ -87,18 +101,19 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 		return s.mediaController.currentActualMediaItem
 	}
 
-	override fun observeMediaItem(): Flow<MediaItem?> {
+	override fun observeMediaItemTransition(): Flow<MediaItem?> {
 		return callbackFlow {
 			val listener = object : LibraryPlayerEventListener {
 				override fun onLibMediaItemTransition(
 					oldLib: MediaItem?,
 					newLib: MediaItem?
 				) {
-					trySend(newLib)
+					Timber.d("onMediaItemTransition,\nold: $oldLib,\nnew: $newLib,\nduration: ${duration()}")
+					playerScope.launch(playerDispatcher.immediate) {
+						send(newLib)
+					}
 				}
 			}
-
-			withContext(playerScope.coroutineContext) { send(s.mediaController.currentActualMediaItem) }
 			s.mediaController.addListener(listener)
 			awaitClose {
 				s.mediaController.removeListener(listener)
@@ -106,15 +121,14 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 		}
 	}
 
-	override fun observePlaylist(): Flow<List<String>> {
+	override fun observePlaylistChange(): Flow<List<String>> {
 		return callbackFlow {
 			val timelineObserver = object : LibraryPlayerEventListener {
 				override fun onTimelineChanged(old: Timeline, new: Timeline, reason: Int) {
-					if (reason == 0) trySend(s.mediaController.getAllMediaItem().map { it.mediaId })
+					if (reason == 0) playerScope.launch(playerDispatcher.immediate) {
+						send(s.mediaController.getAllMediaItem().map { it.mediaId })
+					}
 				}
-			}
-			withContext(playerScope.coroutineContext) {
-				send(s.mediaController.getAllMediaItem().map { it.mediaId })
 			}
 			s.mediaController.addListener(timelineObserver)
 			awaitClose {
@@ -123,7 +137,7 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 		}
 	}
 
-	override fun observePosition(): Flow<Duration> {
+	override fun observePositionChange(): Flow<Duration> {
 		return callbackFlow {
 			var collectorJob: Job = Job()
 			fun startCollectorJob() {
@@ -135,8 +149,7 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 					}
 				}
 			}
-
-			observeMediaItem().safeCollect {
+			observeMediaItemTransition().safeCollect {
 				if (it == null) {
 					send(Contract.POSITION_UNSET)
 					collectorJob.cancel()
@@ -150,28 +163,18 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 		}
 	}
 
-	override fun observeDuration(): Flow<Duration> {
+	override fun observeDurationChange(): Flow<Duration> {
 		return callbackFlow {
-			var bool = false
 			val job1 = coroutineScope.launch {
-				observeMediaItem().safeCollect {
+				observeMediaItemTransition().safeCollect {
+					// our first `UNSET` duration callback is given by MediaItemTransition
 					send(Contract.POSITION_UNSET)
-					bool = true
 				}
 			}
 			val job2 = coroutineScope.launch {
-				var rememberDuration = Contract.DURATION_UNSET
-				observeTimeline().safeCollect {
-					if (bool) {
-						send(it.duration)
-						rememberDuration = it.duration
-						bool = false
-					} else {
-						if (rememberDuration != it.duration) {
-							send(it.duration)
-							rememberDuration = it.duration
-						}
-					}
+				observeTimelineChange().safeCollect {
+					// our first `SET` duration callback is given by TimeLineChanged
+					send(it.duration)
 				}
 			}
 			awaitClose {
@@ -181,14 +184,15 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 		}
 	}
 
-	override fun observeIsPlaying(): Flow<Boolean> {
+	override fun observeIsPlayingChange(): Flow<Boolean> {
 		return callbackFlow {
 			val listener = object : LibraryPlayerEventListener {
 				override fun onIsPlayingChanged(isPlaying: Boolean, reason: IsPlayingChangedReason) {
-					trySend(isPlaying)
+					playerScope.launch(playerDispatcher.immediate) {
+						send(isPlaying)
+					}
 				}
 			}
-			withContext(playerScope.coroutineContext) { send(s.mediaController.isPlaying) }
 			s.mediaController.addListener(listener)
 			awaitClose {
 				s.mediaController.removeListener(listener)
@@ -196,17 +200,18 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 		}
 	}
 
-	override fun observePlayWhenReady(): Flow<Boolean> {
+	override fun observePlayWhenReadyChange(): Flow<Boolean> {
 		return callbackFlow {
 			val listener = object : LibraryPlayerEventListener {
 				override fun onPlayWhenReadyChanged(
 					playWhenReady: Boolean,
 					reason: PlayWhenReadyChangedReason
 				) {
-					trySend(playWhenReady)
+					playerScope.launch(playerDispatcher.immediate) {
+						send(playWhenReady)
+					}
 				}
 			}
-			withContext(playerScope.coroutineContext) { send(s.mediaController.playWhenReady) }
 			s.mediaController.addListener(listener)
 			awaitClose {
 				s.mediaController.removeListener(listener)
@@ -214,14 +219,17 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 		}
 	}
 
-	override fun observeTimeline(): Flow<Timeline> {
+	override fun observeTimelineChange(): Flow<Timeline> {
 		return callbackFlow {
 			val timelineObserver = object : LibraryPlayerEventListener {
 				override fun onTimelineChanged(old: Timeline, new: Timeline, reason: Int) {
-					trySend(new)
+					Timber.d("MediaConnectionPlayback onTimelineChanged,\n" +
+						"old: $old,\nnew: $new,\nreason: $reason,\nduration: ${s.mediaController.durationMs}")
+					playerScope.launch(playerDispatcher.immediate) {
+						send(new)
+					}
 				}
 			}
-			withContext(playerScope.coroutineContext) { send(Timeline(s.mediaController.durationMs.milliseconds)) }
 			s.mediaController.addListener(timelineObserver)
 			awaitClose {
 				s.mediaController.removeListener(timelineObserver)
@@ -229,11 +237,29 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 		}
 	}
 
-	override fun observeDiscontinuity(): Flow<Duration> {
+	override fun observeDiscontinuityEvent(): Flow<MediaConnectionPlayback.Events.Discontinuity> {
 		return callbackFlow {
 			val discontinuityObserver = object : LibraryPlayerEventListener {
-				override fun onPositionDiscontinuity(newPosition: Duration) {
-					trySend(newPosition)
+				override fun libOnPositionDiscontinuity(
+					oldPosition: Long,
+					newPosition: Long,
+					reason: Int
+				) {
+					Timber.d("MediaConnectionPlayback onPositionDiscontinuity,\n" +
+						"oldPos: $oldPosition,\nnewPos: $newPosition,\nreason: $reason,\nduration: ${s.mediaController.durationMs}"
+					)
+					val localReason = when(reason) {
+						1 -> MediaConnectionPlayback.Events.Discontinuity.Reason.USER_SEEK
+						else -> MediaConnectionPlayback.Events.Discontinuity.Reason.UNKNOWN
+					}
+					val new = MediaConnectionPlayback.Events.Discontinuity(
+						oldPosition = oldPosition.milliseconds,
+						newPosition = newPosition.milliseconds,
+						reason = localReason
+					)
+					playerScope.launch(playerDispatcher.immediate) {
+						send(new)
+					}
 				}
 			}
 			s.mediaController.addListener(discontinuityObserver)
@@ -243,11 +269,25 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 		}
 	}
 
+	override fun observeShuffleEnabledChange(): Flow<Boolean> {
+		return callbackFlow {
+			val shuffleListener = object : LibraryPlayerEventListener {
+				override fun onShuffleModeEnabledChanged(enabled: Boolean) {
+					trySend(enabled)
+				}
+			}
+			s.mediaController.addListener(shuffleListener)
+			awaitClose {
+				s.mediaController.removeListener(shuffleListener)
+			}
+		}
+	}
+
 	override fun notifyUnplayableMedia(id: String) {
 		playerScope.launch(playerDispatcher.immediate) {
 			var removed = 0
 			s.mediaController.getAllMediaItem().forEachIndexed { index, item ->
-				if (item.mediaId == id) s.mediaController.removeMediaItem(index + removed++)
+				if (item.mediaId == id) s.mediaController.removeMediaItem(index - removed++)
 			}
 		}
 	}
@@ -256,7 +296,7 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 		playerScope.launch(playerDispatcher.immediate) {
 			var removed = 0
 			s.mediaController.getAllMediaItem().forEachIndexed { index, item ->
-				if (item.mediaUri == uri) s.mediaController.removeMediaItem(index + removed++)
+				if (item.mediaUri == uri) s.mediaController.removeMediaItem(index - removed++)
 			}
 		}
 	}

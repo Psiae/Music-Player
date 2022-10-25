@@ -50,7 +50,11 @@ import kotlinx.coroutines.*
 import timber.log.Timber
 
 @Composable
-fun PlaybackControl(model: PlaybackControlModel, bottomOffset: Dp) {
+fun PlaybackControl(
+	model: PlaybackControlModel,
+	bottomOffset: Dp,
+	onClick: () -> Unit
+) {
 	val mainVM: MainViewModel = viewModel()
 
 	val targetState =
@@ -82,7 +86,7 @@ fun PlaybackControl(model: PlaybackControlModel, bottomOffset: Dp) {
 				}
 			}
 		) {
-			PlaybackControlBox(model, animatedOffset.read())
+			PlaybackControlBox(model, animatedOffset.read(), onClick)
 		}
 	} else {
 		mainVM.playbackControlShownHeight.overwrite(0.dp)
@@ -95,7 +99,8 @@ private val UNSET = Any()
 @Composable
 private fun PlaybackControlBox(
 	model: PlaybackControlModel,
-	bottomOffset: Dp
+	bottomOffset: Dp,
+	onClick: () -> Unit
 ) {
 
 	Timber.d("PlaybackControlBox recomposed")
@@ -114,22 +119,31 @@ private fun PlaybackControlBox(
 			modifier = Modifier.fillMaxSize(),
 			contentAlignment = Alignment.BottomStart
 		) {
-			val artworkState = boxVM.artworkFlow.collectAsState()
+			val artworkState = boxVM.artworkFlow.collectAsState(null)
 			val backgroundColorState = paletteColorState(paletteState = paletteState(artworkState))
 			PlaybackBoxBackground(colorState = backgroundColorState)
+			// NoRipple to these later
 			Row(
 				modifier = Modifier
 					.fillMaxSize()
+					.clickable(model.showSelf.read(), onClick = onClick)
 					.padding(7.5.dp),
 				verticalAlignment = Alignment.CenterVertically,
+				horizontalArrangement = Arrangement.SpaceBetween
 			) {
-				ArtworkDisplay(artworkState)
-				MetadataDescription(boxVM = boxVM, backgroundColorState = backgroundColorState)
+				ArtworkDisplay(
+					modifier = Modifier.clickable(model.showSelf.read(), onClick = onClick),
+					artworkState = artworkState
+				)
+				MetadataDescription(
+					boxVM = boxVM,
+					backgroundColorState = backgroundColorState,
+					onClick = { if (model.showSelf.value) onClick() }
+				)
 				NoRipple {
-					val newModel = remember { boxVM.observeModel() }
-						.collectAsState(initial = PlaybackBoxModel.UNSET)
+					val propertiesInfoState = boxVM.playbackPropertiesInfoStateFlow.collectAsState()
 					// IsPlaying callback from mediaController is somewhat not accurate
-					val showPlay = !newModel.read().playWhenReady
+					val showPlay = !propertiesInfoState.read().playWhenReady
 					val icon =
 						if (showPlay) {
 							R.drawable.play_filled_round_corner_32
@@ -141,24 +155,50 @@ private fun PlaybackControlBox(
 					val pressed by interactionSource.collectIsPressedAsState()
 					val size by animateDpAsState(targetValue =  if (pressed) 18.dp else 21.dp)
 
-					Icon(
+					Row(
 						modifier = Modifier
-							.weight(0.2f)
-							.size(size)
-							.clickable(
-								interactionSource = interactionSource,
-								indication = null
-							) {
-								if (showPlay) {
-									boxVM.play()
-								} else {
-									boxVM.pause()
-								}
-							},
-						painter = painterResource(id = icon),
-						contentDescription = null,
-						tint = if (backgroundColorState.read().luminance() < 0.4f) Color.White else Color.Black,
-					)
+							.weight(1f)
+							.fillMaxHeight(),
+						verticalAlignment = Alignment.CenterVertically,
+						horizontalArrangement = Arrangement.SpaceEvenly
+					) {
+						Box(
+							modifier = Modifier
+								.fillMaxHeight()
+								.width(30.dp),
+							contentAlignment = Alignment.Center
+						) {}
+						Box(
+							modifier = Modifier
+								.fillMaxHeight()
+								.width(30.dp),
+							contentAlignment = Alignment.Center
+						) {}
+						Box(
+							modifier = Modifier
+								.fillMaxHeight()
+								.width(30.dp),
+							contentAlignment = Alignment.Center
+						) {
+							Icon(
+								modifier = Modifier
+									.size(size)
+									.clickable(
+										interactionSource = interactionSource,
+										indication = null
+									) {
+										if (showPlay) {
+											boxVM.play()
+										} else {
+											boxVM.pause()
+										}
+									},
+								painter = painterResource(id = icon),
+								contentDescription = null,
+								tint = if (backgroundColorState.read().luminance() < 0.4f) Color.White else Color.Black,
+							)
+						}
+					}
 				}
 			}
 			ProgressIndicator(
@@ -235,6 +275,7 @@ private fun PlaybackBoxBackground(colorState: State<Color>) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ArtworkDisplay(
+	modifier: Modifier = Modifier,
 	artworkState: State<Any?>
 ) {
 	val art = artworkState.read()
@@ -249,7 +290,7 @@ private fun ArtworkDisplay(
 	}
 
 	Card(
-		modifier = Modifier
+		modifier = modifier
 			.fillMaxHeight()
 			.aspectRatio(1f, true),
 		shape = RoundedCornerShape(10),
@@ -270,13 +311,16 @@ private fun ArtworkDisplay(
 
 @Composable
 private fun RowScope.MetadataDescription(
+	modifier: Modifier = Modifier,
 	boxVM: PlaybackBoxViewModel,
-	backgroundColorState: State<Color>
+	backgroundColorState: State<Color>,
+	onClick: () -> Unit
 ) {
 	TrackDescriptionPager(
-		modifier = Modifier.weight(1f, true),
+		modifier = modifier.weight(2f),
 		viewModel = boxVM,
-		backgroundLuminance = backgroundColorState.derive { it.luminance() }
+		backgroundLuminance = backgroundColorState.derive { it.luminance() },
+		onClick = onClick
 	)
 }
 

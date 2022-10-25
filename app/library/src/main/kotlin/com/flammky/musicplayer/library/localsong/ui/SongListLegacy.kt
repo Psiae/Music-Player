@@ -65,10 +65,6 @@ private fun LocalSongListsColumn(
 	vm: LocalSongViewModel,
 	libVM: LibraryViewModel
 ) {
-
-	val rememberScope = rememberCoroutineScope()
-	val supervisorDispatcher = Dispatchers.Main.immediate + SupervisorJob()
-
 	SwipeRefresh(
 		state = rememberSwipeRefreshState(isRefreshing = vm.refreshing.read()),
 		onRefresh = { vm.refresh() },

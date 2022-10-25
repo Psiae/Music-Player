@@ -80,10 +80,14 @@ class AudioFile private constructor() {
 			mFile = _file
 			mFileDescriptor = _fileDescriptor?.fileDescriptor
 
-			when {
-				mFile != null -> mp3File = MP3File(mFile!!)
-				mFileDescriptor != null -> mp3File = MP3File(mFileDescriptor!!)
-			}
+			try {
+				when {
+					mFile != null -> mp3File = MP3File(mFile!!)
+					mFileDescriptor != null -> mp3File = MP3File(mFileDescriptor!!)
+				}
+			} catch (_: Exception) {}
+
+
 
 			_fileDescriptor?.close()
 		}

@@ -10,8 +10,13 @@ interface MediaConnectionPlayback {
 	var playWhenReady: Boolean
 	val playing: Boolean
 	val index: Int
+	val shuffleEnabled: Boolean
 
-	fun seekToIndex(int: Int)
+	val hasNextMediaItem: Boolean
+	val hasPreviousMediaItem: Boolean
+
+	fun seekToIndex(int: Int, startPosition: Long)
+	fun seekToPosition(position: Long)
 
 	fun prepare()
 	fun stop()
@@ -29,17 +34,38 @@ interface MediaConnectionPlayback {
 	fun play(mediaItem: MediaItem)
 	fun pause()
 
-	fun observeMediaItem(): Flow<MediaItem?>
-	fun observePlaylist(): Flow<List<String>>
-	fun observePosition(): Flow<Duration>
-	fun observeDuration(): Flow<Duration>
-	fun observeIsPlaying(): Flow<Boolean>
-	fun observePlayWhenReady(): Flow<Boolean>
-	fun observeTimeline(): Flow<Timeline>
-	fun observeDiscontinuity(): Flow<Duration>
+	fun observeMediaItemTransition(): Flow<MediaItem?>
+	fun observePlaylistChange(): Flow<List<String>>
+	fun observePositionChange(): Flow<Duration>
+	fun observeDurationChange(): Flow<Duration>
+	fun observeIsPlayingChange(): Flow<Boolean>
+	fun observePlayWhenReadyChange(): Flow<Boolean>
+	fun observeTimelineChange(): Flow<Timeline>
+	fun observeDiscontinuityEvent(): Flow<Events.Discontinuity>
+	fun observeShuffleEnabledChange(): Flow<Boolean>
 
 	suspend fun <R> joinDispatcher(block: suspend MediaConnectionPlayback.() -> R): R
 
 	fun notifyUnplayableMedia(id: String)
 	fun notifyUnplayableMedia(uri: Uri)
+
+	sealed interface Events {
+		data class Discontinuity(
+			val oldPosition: Duration,
+			val newPosition: Duration,
+			val reason: Reason
+		) {
+			sealed interface Reason {
+				object UNKNOWN : Reason
+				object USER_SEEK : Reason
+			}
+		}
+
+
+
+	}
+
+	interface EditorScope {
+
+	}
 }

@@ -16,6 +16,15 @@ fun NoRipple(content: @Composable () -> Unit) {
 	)
 }
 
+@Composable
+fun <T> T.NoRipple(content: @Composable T.() -> Unit) {
+	CompositionLocalProvider(
+		LocalRippleTheme provides NoRippleTheme,
+	) {
+		content()
+	}
+}
+
 @Immutable
 private object NoRippleTheme : RippleTheme {
 	@Composable override fun defaultColor(): Color = Color.Transparent

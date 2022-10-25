@@ -73,7 +73,7 @@ private fun ShimmerDisplay(
 				.placeholder(
 					visible = true,
 					color = Theme.localShimmerSurface(),
-					shape = RoundedCornerShape(5.dp),
+					shape = RoundedCornerShape(10.dp),
 					highlight = PlaceholderHighlight.shimmer(highlightColor = Theme.localShimmerColor())
 				)
 		)

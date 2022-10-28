@@ -48,6 +48,7 @@ internal fun PlaybackBoxDetail(
 
 	if (visibility.isVisible) {
 		BackHandler(onBack = dismiss)
+		// Consider Implementing landscape view
 		LockScreenOrientation(landscape = false)
 	}
 
@@ -129,6 +130,7 @@ private fun PlaybackBoxDetails(
 			.statusBarsPadding()
 	) {
 		NoRipple {
+			Spacer(modifier = Modifier.height(10.dp))
 			DetailToolbar(dismiss)
 			DetailsContent(viewModel)
 		}
@@ -284,7 +286,9 @@ private fun TracksPagerItem(
 ) {
 	Box(modifier = Modifier.fillMaxSize()) {
 		AsyncImage(
-			modifier = Modifier.fillMaxSize(0.8f).align(Alignment.Center),
+			modifier = Modifier
+				.fillMaxSize(0.8f)
+				.align(Alignment.Center),
 			model = artState.read(),
 			contentDescription = "art",
 			contentScale = ContentScale.Crop

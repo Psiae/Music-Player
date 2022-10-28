@@ -22,12 +22,18 @@ interface MediaConnection {
 	 */
 	interface Playback {
 		val currentIndex: Int
+		val mediaItemCount: Int
 
 		fun setMediaItems(items: List<MediaItem>, startIndex: Int, startPosition: Duration)
 		fun prepare()
 		fun playWhenReady()
 		fun pause()
 		fun stop()
+
+		fun setRepeatMode(repeatMode: Player.RepeatMode)
+		fun setShuffleMode(enabled: Boolean)
+		fun seekNext()
+		fun seekPrevious()
 
 		//
 		// I think we should add `shared` option on these observable

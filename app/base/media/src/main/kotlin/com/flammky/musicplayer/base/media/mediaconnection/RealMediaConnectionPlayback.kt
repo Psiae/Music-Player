@@ -4,11 +4,14 @@ import android.net.Uri
 import android.os.Handler
 import com.flammky.android.medialib.common.Contract
 import com.flammky.android.medialib.common.mediaitem.MediaItem
+import com.flammky.android.medialib.player.Player
 import com.flammky.android.medialib.temp.MediaLibrary
 import com.flammky.android.medialib.temp.media3.Timeline
+import com.flammky.android.medialib.temp.player.LibraryPlayer.PlaybackState.Companion.toPlaybackStateInt
 import com.flammky.android.medialib.temp.player.event.IsPlayingChangedReason
 import com.flammky.android.medialib.temp.player.event.LibraryPlayerEventListener
 import com.flammky.android.medialib.temp.player.event.PlayWhenReadyChangedReason
+import com.flammky.android.medialib.temp.player.playback.RepeatMode.Companion.toRepeatModeInt
 import com.flammky.common.kotlin.coroutines.safeCollect
 import kotlinx.coroutines.*
 import kotlinx.coroutines.android.asCoroutineDispatcher
@@ -53,6 +56,27 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 	override val hasPreviousMediaItem: Boolean
 		get() = s.mediaController.hasPreviousMediaItem
 
+	override val mediaItemCount: Int
+		get() = s.mediaController.mediaItemCount
+
+	override val repeatMode: Player.RepeatMode
+		get() = when(val mode = s.mediaController.repeatMode.toRepeatModeInt) {
+			0 -> Player.RepeatMode.OFF
+			1 -> Player.RepeatMode.ONE
+			2 -> Player.RepeatMode.ALL
+			else -> error("Unknown Repeat Mode $mode")
+		}
+
+	override val playerState: Player.State
+		get() = when(val state = s.mediaController.playbackState.toPlaybackStateInt) {
+			1 -> Player.State.IDLE
+			2 -> Player.State.BUFFERING
+			3 -> Player.State.READY
+			4 -> Player.State.ENDED
+			// ERROR
+			else -> error("Unknown Player State $state")
+		}
+
 	override fun getPlaylist(): List<MediaItem> {
 		return s.mediaController.getAllMediaItem()
 	}
@@ -63,6 +87,14 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 
 	override fun setMediaItems(items: List<MediaItem>, startIndex: Int, startPosition: Duration) {
 		s.mediaController.setMediaItems(items, startIndex, startPosition)
+	}
+
+	override fun setRepeatMode(repeatMode: Player.RepeatMode) {
+		s.mediaController.setRepeatMode(repeatMode)
+	}
+
+	override fun setShuffleMode(enabled: Boolean) {
+		s.mediaController.setShuffleMode(enabled)
 	}
 
 	override fun play(mediaItem: MediaItem) {
@@ -83,6 +115,14 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 
 	override fun seekToPosition(position: Long) {
 		s.mediaController.seekToPosition(position)
+	}
+
+	override fun seekNext() {
+		s.mediaController.seekToNext()
+	}
+
+	override fun seekPrevious() {
+		s.mediaController.seekToPrevious()
 	}
 
 	override fun bufferedPosition(): Duration {
@@ -109,7 +149,7 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 					newLib: MediaItem?
 				) {
 					Timber.d("onMediaItemTransition,\nold: $oldLib,\nnew: $newLib,\nduration: ${duration()}")
-					playerScope.launch(playerDispatcher.immediate) {
+					playerScope.launch(playerDispatcher) {
 						send(newLib)
 					}
 				}
@@ -125,7 +165,7 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 		return callbackFlow {
 			val timelineObserver = object : LibraryPlayerEventListener {
 				override fun onTimelineChanged(old: Timeline, new: Timeline, reason: Int) {
-					if (reason == 0) playerScope.launch(playerDispatcher.immediate) {
+					if (reason == 0) playerScope.launch(playerDispatcher) {
 						send(s.mediaController.getAllMediaItem().map { it.mediaId })
 					}
 				}
@@ -188,7 +228,7 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 		return callbackFlow {
 			val listener = object : LibraryPlayerEventListener {
 				override fun onIsPlayingChanged(isPlaying: Boolean, reason: IsPlayingChangedReason) {
-					playerScope.launch(playerDispatcher.immediate) {
+					playerScope.launch(playerDispatcher) {
 						send(isPlaying)
 					}
 				}
@@ -207,7 +247,7 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 					playWhenReady: Boolean,
 					reason: PlayWhenReadyChangedReason
 				) {
-					playerScope.launch(playerDispatcher.immediate) {
+					playerScope.launch(playerDispatcher) {
 						send(playWhenReady)
 					}
 				}
@@ -225,7 +265,7 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 				override fun onTimelineChanged(old: Timeline, new: Timeline, reason: Int) {
 					Timber.d("MediaConnectionPlayback onTimelineChanged,\n" +
 						"old: $old,\nnew: $new,\nreason: $reason,\nduration: ${s.mediaController.durationMs}")
-					playerScope.launch(playerDispatcher.immediate) {
+					playerScope.launch(playerDispatcher) {
 						send(new)
 					}
 				}
@@ -257,7 +297,7 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 						newPosition = newPosition.milliseconds,
 						reason = localReason
 					)
-					playerScope.launch(playerDispatcher.immediate) {
+					playerScope.launch(playerDispatcher) {
 						send(new)
 					}
 				}
@@ -273,12 +313,58 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 		return callbackFlow {
 			val shuffleListener = object : LibraryPlayerEventListener {
 				override fun onShuffleModeEnabledChanged(enabled: Boolean) {
-					trySend(enabled)
+					playerScope.launch(playerDispatcher) {
+						send(enabled)
+					}
 				}
 			}
 			s.mediaController.addListener(shuffleListener)
 			awaitClose {
 				s.mediaController.removeListener(shuffleListener)
+			}
+		}
+	}
+
+	override fun observeRepeatModeChange(): Flow<Player.RepeatMode> {
+		return callbackFlow {
+			val repeatListener = object : LibraryPlayerEventListener {
+				override fun onRepeatModeChanged(old: Int, new: Int) {
+					if (old == new) return
+					playerScope.launch(playerDispatcher) {
+						when(new) {
+							0 -> send(Player.RepeatMode.OFF)
+							1 -> send(Player.RepeatMode.ONE)
+							2 -> send(Player.RepeatMode.ALL)
+						}
+					}
+				}
+			}
+			s.mediaController.addListener(repeatListener)
+			awaitClose {
+				s.mediaController.removeListener(repeatListener)
+			}
+		}
+	}
+
+	override fun observePlayerStateChange(): Flow<Player.State> {
+		return callbackFlow {
+			val stateListener = object :LibraryPlayerEventListener {
+				override fun onPlaybackStateChanged(old: Int, new: Int) {
+					if (old == new) return
+					playerScope.launch(playerDispatcher) {
+						when(new) {
+							1 -> send(Player.State.IDLE)
+							2 -> send(Player.State.BUFFERING)
+							3 -> send(Player.State.READY)
+							4 -> send(Player.State.ENDED)
+							// ERROR
+						}
+					}
+				}
+			}
+			s.mediaController.addListener(stateListener)
+			awaitClose {
+				s.mediaController.removeListener(stateListener)
 			}
 		}
 	}
@@ -302,6 +388,6 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 	}
 
 	override suspend fun <R> joinDispatcher(block: suspend MediaConnectionPlayback.() -> R): R {
-		return withContext(playerDispatcher.immediate) { block() }
+		return withContext(playerDispatcher) { block() }
 	}
 }

@@ -86,6 +86,8 @@ android {
 
 dependencies {
 
+    implementation(project("base"))
+    implementation(project("base:compose"))
     implementation(project("medialib"))
     implementation(project("library"))
 

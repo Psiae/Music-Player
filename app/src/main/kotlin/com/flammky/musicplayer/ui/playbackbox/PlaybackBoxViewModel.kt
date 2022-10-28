@@ -32,13 +32,15 @@ class PlaybackBoxViewModel @Inject constructor(
 	private val positionStreamFlow = mediaConnection.playback.observePositionStream()
 	private val playbackPropertiesInfoFlow = mediaConnection.playback.observePropertiesInfo()
 
+	// Localize
 	val playlistStreamStateFlow = playlistStreamFlow
 		.stateIn(viewModelScope, SharingStarted.Eagerly, MediaConnection.Playback.TracksInfo())
 
 	val positionStreamStateFlow = positionStreamFlow
-		.stateIn(viewModelScope, SharingStarted.Eagerly, MediaConnection.Playback.PositionStream())
 		.map { it.asPlaybackBoxPosition }
+		.stateIn(viewModelScope, SharingStarted.Eagerly, PlaybackBoxPositions())
 
+	// Localize
 	val playbackPropertiesInfoStateFlow = playbackPropertiesInfoFlow
 		.stateIn(viewModelScope, SharingStarted.Eagerly, MediaConnection.Playback.PropertiesInfo())
 

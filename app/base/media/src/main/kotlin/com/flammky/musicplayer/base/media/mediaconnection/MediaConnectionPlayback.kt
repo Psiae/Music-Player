@@ -2,6 +2,7 @@ package com.flammky.musicplayer.base.media.mediaconnection
 
 import android.net.Uri
 import com.flammky.android.medialib.common.mediaitem.MediaItem
+import com.flammky.android.medialib.player.Player
 import com.flammky.android.medialib.temp.media3.Timeline
 import kotlinx.coroutines.flow.Flow
 import kotlin.time.Duration
@@ -14,9 +15,15 @@ interface MediaConnectionPlayback {
 
 	val hasNextMediaItem: Boolean
 	val hasPreviousMediaItem: Boolean
+	val repeatMode: Player.RepeatMode
+	val playerState: Player.State
+
+	val mediaItemCount: Int
 
 	fun seekToIndex(int: Int, startPosition: Long)
 	fun seekToPosition(position: Long)
+	fun seekNext()
+	fun seekPrevious()
 
 	fun prepare()
 	fun stop()
@@ -26,6 +33,9 @@ interface MediaConnectionPlayback {
 	fun duration(): Duration
 
 	fun setMediaItems(items: List<MediaItem>, startIndex: Int, startPosition: Duration)
+
+	fun setRepeatMode(repeatMode: Player.RepeatMode)
+	fun setShuffleMode(enabled: Boolean)
 
 
 	fun getCurrentMediaItem(): MediaItem?
@@ -43,6 +53,8 @@ interface MediaConnectionPlayback {
 	fun observeTimelineChange(): Flow<Timeline>
 	fun observeDiscontinuityEvent(): Flow<Events.Discontinuity>
 	fun observeShuffleEnabledChange(): Flow<Boolean>
+	fun observeRepeatModeChange(): Flow<Player.RepeatMode>
+	fun observePlayerStateChange(): Flow<Player.State>
 
 	suspend fun <R> joinDispatcher(block: suspend MediaConnectionPlayback.() -> R): R
 

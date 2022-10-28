@@ -207,6 +207,14 @@ class MediaControllerWrapper internal constructor(
 		this.post { wrapped.setMediaItems(items, startIndex) }
 	}
 
+	override fun setRepeatMode(repeatMode: com.flammky.android.medialib.player.Player.RepeatMode) {
+		this.post { wrapped.setRepeatMode(repeatMode) }
+	}
+
+	override fun setShuffleMode(enabled: Boolean) {
+		this.post { wrapped.setShuffleMode(enabled) }
+	}
+
 	override fun play() {
 		this.post { wrapped.play() }
 	}
@@ -539,6 +547,20 @@ class MediaControllerWrapper internal constructor(
 
 		override fun seekToNextMediaItem() {
 			if (isStateConnected()) mediaController.seekToPreviousMediaItem()
+		}
+
+		override fun setRepeatMode(repeatMode: com.flammky.android.medialib.player.Player.RepeatMode) {
+			if (isStateConnected()) {
+				mediaController.repeatMode = when (repeatMode) {
+					com.flammky.android.medialib.player.Player.RepeatMode.OFF -> 0
+					com.flammky.android.medialib.player.Player.RepeatMode.ONE -> 1
+					com.flammky.android.medialib.player.Player.RepeatMode.ALL -> 2
+				}
+			}
+		}
+
+		override fun setShuffleMode(enabled: Boolean) {
+			if (isStateConnected()) mediaController.shuffleModeEnabled = enabled
 		}
 
 		override fun prepare() {

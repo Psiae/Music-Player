@@ -35,11 +35,12 @@ dependencies {
         val v = "1.3.0-alpha01"
 
         // Core UI
-        implementation("androidx.compose.ui:ui:$v")
-        implementation("androidx.compose.ui:ui-tooling-preview:$v")
+        api("androidx.compose.ui:ui:$v")
+        api("androidx.compose.ui:ui-tooling-preview:$v")
+        api("androidx.compose.ui:ui-util:$v")
 
         // Foundation
-        implementation("androidx.compose.foundation:foundation:$v")
+        api("androidx.compose.foundation:foundation:$v")
     }
 
     dependencies {

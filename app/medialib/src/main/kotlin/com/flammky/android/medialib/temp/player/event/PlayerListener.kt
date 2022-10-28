@@ -14,6 +14,7 @@ import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.android.medialib.common.mediaitem.PlaybackMetadata
 import com.flammky.android.medialib.temp.player.LibraryPlayer
 import com.flammky.android.medialib.temp.player.LibraryPlayer.PlaybackState.Companion.asPlaybackState
+import com.flammky.android.medialib.temp.player.LibraryPlayer.PlaybackState.Companion.toPlaybackStateInt
 import com.flammky.android.medialib.temp.player.PlayerContext
 import com.flammky.android.medialib.temp.player.PlayerContextInfo
 import com.flammky.android.medialib.temp.player.event.MediaItemTransitionReason.Companion.asMediaItemTransitionReason
@@ -68,6 +69,8 @@ interface LibraryPlayerEventListener {
 	 */
 	fun onRepeatModeChanged(old: RepeatMode, new: RepeatMode) {}
 
+	fun onRepeatModeChanged(old: Int, new: Int) {}
+
 	/**
 	 * Called when current [LibraryPlayer.playWhenReady] changes
 	 *
@@ -82,6 +85,8 @@ interface LibraryPlayerEventListener {
 	 * @param [state] the new value of [LibraryPlayer.playbackState]
 	 */
 	fun onPlaybackStateChanged(state: LibraryPlayer.PlaybackState) {}
+
+	fun onPlaybackStateChanged(old: Int, new: Int) {}
 
 	/**
 	 * Called when current [LibraryPlayer.isPlaying] changes
@@ -166,6 +171,7 @@ interface LibraryPlayerEventListener {
 				override fun onRepeatModeChanged(repeatMode: Int) {
 					if (repeatMode != rememberRepeatMode) {
 						delegated.onRepeatModeChanged(rememberRepeatMode.asRepeatMode, repeatMode.asRepeatMode)
+						delegated.onRepeatModeChanged(rememberRepeatMode, repeatMode)
 						rememberRepeatMode = repeatMode
 					}
 				}
@@ -179,9 +185,13 @@ interface LibraryPlayerEventListener {
 					}
 				}
 
+				private var rememberPlaybackState = player.playbackState.toPlaybackStateInt
+
 				override fun onPlaybackStateChanged(playbackState: Int) {
 					val cast = playbackState.asPlaybackState
 					delegated.onPlaybackStateChanged(cast)
+					delegated.onPlaybackStateChanged(rememberPlaybackState, playbackState)
+					rememberPlaybackState = playbackState
 
 					when {
 						cast !== LibraryPlayer.PlaybackState.READY && rememberIsPlaying -> {

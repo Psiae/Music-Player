@@ -62,6 +62,8 @@ interface LibraryPlayer {
 	fun seekToNext()
 	fun seekToPreviousMediaItem()
 	fun seekToNextMediaItem()
+	fun setRepeatMode(repeatMode: com.flammky.android.medialib.player.Player.RepeatMode)
+	fun setShuffleMode(enabled: Boolean)
 
 	fun removeMediaItem(item: androidx.media3.common.MediaItem)
 	fun removeMediaItems(items: List<androidx.media3.common.MediaItem>)

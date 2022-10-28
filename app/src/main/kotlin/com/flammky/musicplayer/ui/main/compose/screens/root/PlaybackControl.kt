@@ -41,8 +41,6 @@ import com.flammky.musicplayer.domain.musiclib.entity.PlaybackState.Companion.is
 import com.flammky.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isStateBuffering
 import com.flammky.musicplayer.ui.common.compose.LinearIndeterminateProgressIndicator
 import com.flammky.musicplayer.ui.main.compose.screens.root.playbackcontrol.TrackDescriptionPager
-import com.flammky.musicplayer.ui.playbackbox.PlaybackBoxModel
-import com.flammky.musicplayer.ui.playbackbox.PlaybackBoxPositions
 import com.flammky.musicplayer.ui.playbackbox.PlaybackBoxViewModel
 import com.flammky.musicplayer.ui.util.compose.NoRipple
 import com.google.accompanist.placeholder.placeholder
@@ -330,9 +328,7 @@ private fun ProgressIndicator(
 	bufferingState: State<Boolean>,
 ) {
 
-	val positionState = remember { boxVM.observePositions() }.collectAsState(
-		initial = PlaybackBoxPositions()
-	)
+	val positionState = boxVM.positionStreamStateFlow.collectAsState()
 
 	Timber.d("ProgressIndicator recomposed")
 

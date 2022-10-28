@@ -6,4 +6,7 @@ import androidx.lifecycle.ViewModel
 
 class VisibilityViewModel() : ViewModel() {
 	val bottomVisibilityOffset = mutableStateOf(0.dp)
+
+	init {
+	}
 }

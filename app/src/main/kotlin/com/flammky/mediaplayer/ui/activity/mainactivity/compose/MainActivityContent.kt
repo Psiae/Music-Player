@@ -72,6 +72,8 @@ fun MainActivityRoot(
 
 	ProvideNavHostController(rememberNavController()) {
 		val showDetails = rememberSaveable { mutableStateOf(false) }
+		val navCalled = remember { mutableStateOf(false) }
+
 		RootScaffold(
 			appSettings = appSettings,
 			navController = MainNavigator.controller
@@ -83,19 +85,20 @@ fun MainActivityRoot(
 				Column {
 					StatusBarSpacer()
 					AnimatedMainAppNavigator(controller = MainNavigator.controller)
+					navCalled.value = true
 				}
 				PlaybackControl(
 					model = mediaVM.playbackControlModel,
 					bottomOffset = padding.calculateBottomPadding(),
 					onClick = { showDetails.value = true }
 				)
-				PlaybackBoxDetail(
-					showSelf = showDetails,
-					viewModel = activityViewModel(),
-					dismiss = { showDetails.value = false }
-				)
 			}
 		}
+		PlaybackBoxDetail(
+			showSelf = remember { derivedStateOf { showDetails.value && navCalled.value } },
+			viewModel = activityViewModel(),
+			dismiss = { showDetails.value = false }
+		)
 	}
 }
 

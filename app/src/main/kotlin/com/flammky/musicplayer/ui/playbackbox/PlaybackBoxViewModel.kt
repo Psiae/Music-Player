@@ -46,7 +46,7 @@ class PlaybackBoxViewModel @Inject constructor(
 
 	@OptIn(ExperimentalCoroutinesApi::class)
 	val artworkFlow = playlistStreamStateFlow.flatMapLatest {
-		val id = if (it.currentIndex >= 0) it.list[it.currentIndex] else "NO_ID"
+		val id = if (it.currentIndex >= 0 && it.list.isNotEmpty()) it.list[it.currentIndex] else "NO_ID"
 		Timber.d("artworkFlow collected id $id, ${it.currentIndex}, ${it.list}")
 		observeArtwork(id)
 	}.stateIn(viewModelScope, SharingStarted.Eagerly, null)

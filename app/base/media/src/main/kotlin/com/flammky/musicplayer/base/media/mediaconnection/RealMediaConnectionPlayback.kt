@@ -121,8 +121,16 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 		s.mediaController.seekToNext()
 	}
 
+	override fun seekNextMedia() {
+		s.mediaController.seekToNextMediaItem()
+	}
+
 	override fun seekPrevious() {
 		s.mediaController.seekToPrevious()
+	}
+
+	override fun seekPreviousMedia() {
+		s.mediaController.seekToPreviousMediaItem()
 	}
 
 	override fun bufferedPosition(): Duration {

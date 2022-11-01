@@ -23,7 +23,9 @@ interface MediaConnectionPlayback {
 	fun seekToIndex(int: Int, startPosition: Long)
 	fun seekToPosition(position: Long)
 	fun seekNext()
+	fun seekNextMedia()
 	fun seekPrevious()
+	fun seekPreviousMedia()
 
 	fun prepare()
 	fun stop()

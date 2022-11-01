@@ -5,6 +5,9 @@ package com.flammky.mediaplayer.ui.activity.mainactivity.compose
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -40,6 +43,8 @@ fun AnimatedMainAppNavigator(
 	controller: NavHostController,
 	modifier: Modifier = Modifier
 ) {
+
+	LocalViewModelStoreOwner
 
 	NavHost(
 		modifier = modifier,

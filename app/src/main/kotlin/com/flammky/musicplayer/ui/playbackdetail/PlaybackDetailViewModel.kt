@@ -7,6 +7,7 @@ import com.flammky.android.medialib.common.mediaitem.AudioFileMetadata
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.android.medialib.player.Player
+import com.flammky.musicplayer.common.android.concurrent.ConcurrencyHelper.checkMainThread
 import com.flammky.musicplayer.domain.media.MediaConnection
 import com.flammky.musicplayer.ui.playbackdetail.PlaybackDetailPositionStream.Companion.asPlaybackDetails
 import com.flammky.musicplayer.ui.playbackdetail.PlaybackDetailPositionStream.PositionChangeReason.Companion.asPlaybackDetails
@@ -16,6 +17,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import timber.log.Timber
 import javax.annotation.concurrent.Immutable
@@ -26,8 +28,20 @@ import kotlin.time.Duration
 internal class PlaybackDetailViewModel @Inject constructor(
 	private val mediaConnection: MediaConnection
 ) : ViewModel() {
-	private val _positionStreamFlow = mediaConnection.playback.observePositionStream()
+
+	private val _metadataStateMap = mutableMapOf<String, StateFlow<PlaybackDetailMetadata>>()
+
+	private val pagerMetadataWatchers = mutableMapOf<String, Job>()
+
+	private val _pagerDataStateFlow = MutableStateFlow(PlaybackDetailPagerData())
+	val pagerDataStateFlow = _pagerDataStateFlow.asStateFlow()
+
 	private val _trackStreamFlow = mediaConnection.playback.observePlaylistStream()
+
+	init {
+	}
+
+	private val _positionStreamFlow = mediaConnection.playback.observePositionStream()
 	private val _playbackPropertiesFlow = mediaConnection.playback.observePropertiesInfo()
 
 	// Inject as Dependency instead
@@ -75,19 +89,29 @@ internal class PlaybackDetailViewModel @Inject constructor(
 	}
 
 	// Inject as Dependency
-	fun observeMetadata(id: String): StateFlow<PlaybackDetailMetadata> = flow {
-		val combined = combine(
-			flow = mediaConnection.repository.observeArtwork(id),
-			flow2 = mediaConnection.repository.observeMetadata(id)
-		) { art: Any?, metadata: MediaMetadata? ->
-			val title = metadata?.title
-				?: (metadata as? AudioFileMetadata)?.file?.fileName
-			val subtitle = (metadata as? AudioMetadata)
-				?.let { it.albumArtistName ?: it.artistName }
-			PlaybackDetailMetadata(id, art, title, subtitle)
+	fun observeMetadata(id: String): StateFlow<PlaybackDetailMetadata> {
+		checkMainThread()
+		if (!_metadataStateMap.containsKey(id)) {
+			_metadataStateMap[id] = createMetadataStateFlowForId(id)
 		}
-		emitAll(combined)
-	}.stateIn(viewModelScope, SharingStarted.Eagerly, PlaybackDetailMetadata())
+		return _metadataStateMap[id]!!
+	}
+
+	private fun createMetadataStateFlowForId(id: String): StateFlow<PlaybackDetailMetadata> {
+		return flow {
+			val combined = combine(
+				flow = mediaConnection.repository.observeArtwork(id),
+				flow2 = mediaConnection.repository.observeMetadata(id)
+			) { art: Any?, metadata: MediaMetadata? ->
+				val title = metadata?.title
+					?: (metadata as? AudioFileMetadata)?.file?.fileName
+				val subtitle = (metadata as? AudioMetadata)
+					?.let { it.albumArtistName ?: it.artistName }
+				PlaybackDetailMetadata(id, art, title, subtitle)
+			}
+			emitAll(combined)
+		}.stateIn(viewModelScope, SharingStarted.Eagerly, PlaybackDetailMetadata(id))
+	}
 
 	fun playWhenReady() {
 		mediaConnection.playback.playWhenReady()
@@ -98,8 +122,20 @@ internal class PlaybackDetailViewModel @Inject constructor(
 	fun seekNext() {
 		mediaConnection.playback.seekNext()
 	}
+
+	suspend fun seekNextMedia(): Boolean {
+		return mediaConnection.playback.joinSuspend {
+			hasNextMediaItem.also {
+				mediaConnection.playback.seekNextMedia()
+			}
+		}
+	}
+
 	fun seekPrevious() {
 		mediaConnection.playback.seekPrevious()
+	}
+	fun seekPreviousMediaForPager() {
+		mediaConnection.playback.seekPreviousMedia()
 	}
 	fun enableShuffleMode() {
 		mediaConnection.playback.setShuffleMode(true)
@@ -116,7 +152,78 @@ internal class PlaybackDetailViewModel @Inject constructor(
 	fun disableRepeatMode() {
 		mediaConnection.playback.setRepeatMode(Player.RepeatMode.OFF)
 	}
+
+	private suspend fun updatePagerDataForIndex(index: Int) {
+
+	}
 }
+
+@Immutable
+data class PlaybackDetailPagerData(
+	val previousItem: PlaybackDetailPagerItem? = null,
+	val currentItem: PlaybackDetailPagerItem? = null,
+	val nextItem: PlaybackDetailPagerItem? = null
+) {
+
+	sealed interface PagerEvent {
+		object SEEK_NEXT : PagerEvent
+		object SEEK_PREVIOUS : PagerEvent
+	}
+
+	companion object {
+		inline val PlaybackDetailPagerData.currentIndex
+			get() = when {
+				nextItem != null && previousItem != null -> 1
+				nextItem != null -> 0
+				previousItem != null -> 1
+				else -> -1
+			}
+
+		fun PlaybackDetailPagerData.idEquals(ids: List<String?>): Boolean {
+			return previousItem?.key == ids.getOrNull(0) &&
+				currentItem?.key == ids.getOrNull(1) &&
+				nextItem?.key == ids.getOrNull(2)
+		}
+
+		fun PlaybackDetailPagerData.toImmutableList(): ImmutableList<PlaybackDetailPagerItem?> {
+			return persistentListOf(previousItem, currentItem, nextItem)
+		}
+
+		fun PlaybackDetailPagerData.updateForId(
+			id: String,
+			item: PlaybackDetailPagerItem
+		): PlaybackDetailPagerData {
+			return when (id) {
+				previousItem?.key -> copy(previousItem = item)
+				currentItem?.key -> copy(currentItem = item)
+				nextItem?.key -> copy(nextItem = item)
+				else -> this
+			}
+		}
+
+		fun List<PlaybackDetailPagerItem?>.toPagerData(): PlaybackDetailPagerData {
+			return PlaybackDetailPagerData(
+				getOrNull(0),
+				getOrNull(1),
+				getOrNull(2)
+			)
+		}
+
+		fun PlaybackDetailPagerData.toNotNullList(): List<PlaybackDetailPagerItem> {
+			val holder = mutableListOf<PlaybackDetailPagerItem>()
+			if (previousItem != null) holder.add(previousItem)
+			if (currentItem != null) holder.add(currentItem)
+			if (nextItem != null) holder.add(nextItem)
+			return holder
+		}
+	}
+}
+
+@Immutable
+data class PlaybackDetailPagerItem(
+	val key: String,
+	val metadata: PlaybackDetailMetadata
+)
 
 @Immutable
 data class PlaybackDetailMetadata(

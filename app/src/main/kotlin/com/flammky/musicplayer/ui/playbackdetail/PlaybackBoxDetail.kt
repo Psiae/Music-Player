@@ -17,24 +17,26 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.times
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.flammky.android.medialib.player.Player
 import com.flammky.androidx.content.context.findActivity
 import com.flammky.common.kotlin.comparable.clamp
+import com.flammky.common.kotlin.comparable.clampPositive
 import com.flammky.musicplayer.R
-import com.flammky.musicplayer.base.compose.rememberContextHelper
+import com.flammky.musicplayer.base.compose.rememberLocalContextHelper
 import com.flammky.musicplayer.ui.Theme
 import com.flammky.musicplayer.ui.util.compose.NoRipple
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.rememberPagerState
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 @Composable
 internal fun PlaybackBoxDetail(
@@ -123,6 +125,8 @@ private fun PlaybackBoxDetails(
 	viewModel: PlaybackDetailViewModel,
 	dismiss: () -> Unit
 ) {
+	// Change to Guard until we implement horizontal orientation
+	AssertVerticalOrientation()
 	Column(
 		modifier = Modifier
 			.fillMaxSize()
@@ -132,6 +136,7 @@ private fun PlaybackBoxDetails(
 		NoRipple {
 			Spacer(modifier = Modifier.height(10.dp))
 			DetailToolbar(dismiss)
+			Spacer(modifier = Modifier.height(20.dp))
 			DetailsContent(viewModel)
 		}
 	}
@@ -201,14 +206,15 @@ private fun DetailsContent(
 			val positionState = viewModel.positionStreamStateFlow.collectAsState()
 			val trackState = viewModel.trackStreamStateFlow.collectAsState()
 			TracksPagerDisplay(viewModel = viewModel)
-			CurrentTrackPlaybackDescriptions(viewModel)
-			Spacer(modifier = Modifier.height(5.dp))
+			Spacer(modifier = Modifier.height(15.dp))
+			CurrentTrackPlaybackDescriptions(viewModel = viewModel)
+			Spacer(modifier = Modifier.height(15.dp))
 			PlaybackControlProgressSeekbar(
 				positionState = positionState,
 				trackState = trackState,
 				seek = { requestIndex, requestPosition -> viewModel.seek(requestIndex, requestPosition) }
 			)
-			Spacer(modifier = Modifier.height(5.dp))
+			Spacer(modifier = Modifier.height(15.dp))
 			PlaybackControls(viewModel)
 			Spacer(modifier = Modifier
 				.fillMaxWidth()
@@ -221,20 +227,15 @@ private fun DetailsContent(
 private fun TracksPagerDisplay(
 	viewModel: PlaybackDetailViewModel
 ) {
-	val landScape = rememberContextHelper().configurations.isOrientationLandscape()
 	val trackState = viewModel.trackStreamStateFlow.collectAsState()
-	BoxWithConstraints(
-		modifier = Modifier
-			.fillMaxHeight(0.5f)
-			.fillMaxWidth()
-	) {
-		Box(modifier = Modifier.fillMaxSize()) {
-			TracksPager(
-				trackState = trackState,
-				artFlowForId = { id -> viewModel.observeMetadata(id).map { it.artwork } },
-				seekIndex = { index -> viewModel.seek(trackState.value.currentIndex, index) }
-			)
-		}
+	BoxWithConstraints() {
+		TracksPager(
+			trackState = trackState,
+			metadataStateForId = { id ->
+				viewModel.observeMetadata(id).collectAsState()
+			},
+			seekIndex = { viewModel.seek(trackState.value.currentIndex, it) }
+		)
 	}
 }
 
@@ -242,54 +243,81 @@ private fun TracksPagerDisplay(
 @Composable
 private fun TracksPager(
 	trackState: State<PlaybackDetailTracksInfo>,
-	artFlowForId: (String) -> Flow<Any?>,
-	seekIndex: suspend (Int) -> /* Boolean */ Unit
+	metadataStateForId: @Composable (String) -> State<PlaybackDetailMetadata>,
+	seekIndex: suspend (Int) -> Boolean,
 ) {
-	val tracks = trackState.read().tracks
-	val currentIndex = trackState.read().currentIndex
-	val firstEntryState = remember { mutableStateOf(true) }
-	val pagerState = rememberPagerState()
+	val tracks by trackState.rememberDerive { it.tracks }
+	val currentIndex by trackState.rememberDerive { it.currentIndex }
 
-	HorizontalPager(
-		modifier = Modifier.fillMaxSize(),
-		state = pagerState,
-		count = tracks.size,
-		userScrollEnabled = pagerState.currentPage == currentIndex || pagerState.isScrollInProgress
-	) {
-		TracksPagerItem(artState = artFlowForId(tracks[it]).collectAsState(initial = null))
+	val pagerState = rememberPagerState(currentIndex.clampPositive())
+
+	Column {
+		HorizontalPager(
+			modifier = Modifier
+				.fillMaxWidth()
+				.height(300.dp),
+			state = pagerState,
+			count = tracks.size,
+		) {
+			TracksPagerItem(art = metadataStateForId(tracks[it]).read().artwork)
+		}
+	}
+
+	val isDragged by pagerState.interactionSource.collectIsDraggedAsState()
+	val pressed by pagerState.interactionSource.collectIsPressedAsState()
+
+	val touched = remember { mutableStateOf(false) }
+
+	if (isDragged || pressed) {
+		touched.overwrite(true)
 	}
 
 	LaunchedEffect(key1 = currentIndex) {
-		if (currentIndex > 0) {
-			if (firstEntryState.value) {
-				pagerState.scrollToPage(currentIndex)
-				firstEntryState.value = false
-			} else {
+		if (currentIndex >= 0 && pagerState.currentPage != currentIndex && !isDragged) {
+			touched.value = false
+			if (pagerState.currentPage.inRangeSpread(currentIndex, 1)) {
 				pagerState.animateScrollToPage(currentIndex)
+			} else {
+				pagerState.scrollToPage(currentIndex)
 			}
 		}
 	}
 
 	LaunchedEffect(
-		key1 = pagerState.currentPage,
-		key2 = pagerState.isScrollInProgress
+		key1 = isDragged,
+		key2 = pagerState.currentPage,
+		key3 = pagerState.isScrollInProgress
 	) {
-		if (!pagerState.isScrollInProgress) {
-			if (pagerState.currentPage != currentIndex) seekIndex(pagerState.currentPage)
+		val page = pagerState.currentPage
+		if (page != currentIndex) {
+			if (!isDragged && touched.value) seekIndex(page)
 		}
 	}
 }
 
+private fun Int.inRangeSpread(a: Int, amount: Int): Boolean {
+	return (this in a..a + amount || this in a.. a - amount)
+}
+
 @Composable
 private fun TracksPagerItem(
-	artState: State<Any?>
+	art: Any?
 ) {
+	Timber.d("TracksPagerItem, art: $art")
 	Box(modifier = Modifier.fillMaxSize()) {
+		val context = LocalContext.current
+		val req = remember(art) {
+			ImageRequest.Builder(context)
+				.data(art)
+				.crossfade(100)
+				.build()
+		}
 		AsyncImage(
 			modifier = Modifier
-				.fillMaxSize(0.8f)
+				.fillMaxWidth(0.8f)
+				.height(300.dp)
 				.align(Alignment.Center),
-			model = artState.read(),
+			model = req,
 			contentDescription = "art",
 			contentScale = ContentScale.Crop
 		)
@@ -307,16 +335,21 @@ private fun CurrentTrackPlaybackDescriptions(
 
 @Composable
 private fun PlaybackDescription(metadataState: State<PlaybackDetailMetadata>) {
-	Column(
-		modifier = Modifier.fillMaxWidth(0.7f),
-		horizontalAlignment = Alignment.CenterHorizontally,
-		verticalArrangement = Arrangement.spacedBy(5.dp)
-	) {
-		val titleState = metadataState.rememberDerive { metadata -> metadata.title ?: "" }
-		val subtitleState = metadataState.rememberDerive { metadata -> metadata.subtitle ?: "" }
-		PlaybackDescriptionTitle(textState = titleState)
-		PlaybackDescriptionSubtitle(textState = subtitleState)
+	Box(modifier = Modifier.fillMaxWidth()) {
+		Column(
+			modifier = Modifier
+				.fillMaxWidth(0.7f)
+				.align(Alignment.Center),
+			horizontalAlignment = Alignment.CenterHorizontally,
+			verticalArrangement = Arrangement.spacedBy(5.dp)
+		) {
+			val titleState = metadataState.rememberDerive { metadata -> metadata.title ?: "" }
+			val subtitleState = metadataState.rememberDerive { metadata -> metadata.subtitle ?: "" }
+			PlaybackDescriptionTitle(textState = titleState)
+			PlaybackDescriptionSubtitle(textState = subtitleState)
+		}
 	}
+
 }
 
 @Composable
@@ -324,7 +357,7 @@ private fun PlaybackDescriptionTitle(textState: State<String>) {
 	Text(
 		text = textState.read(),
 		color = Theme.dayNightAbsoluteContentColor(),
-		style = MaterialTheme.typography.titleMedium,
+		style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
 		overflow = TextOverflow.Ellipsis
 	)
 }
@@ -334,7 +367,7 @@ private fun PlaybackDescriptionSubtitle(textState: State<String>) {
 	Text(
 		text = textState.read(),
 		color = Theme.dayNightAbsoluteContentColor(),
-		style = MaterialTheme.typography.bodyMedium,
+		style = MaterialTheme.typography.titleMedium,
 		overflow = TextOverflow.Ellipsis
 	)
 }
@@ -579,6 +612,24 @@ private fun LockScreenOrientation(landscape: Boolean) {
 				ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
 			}
 		onDispose { activity.requestedOrientation = original }
+	}
+}
+
+@Composable
+private fun verticalLayoutGuard(): State<Boolean> {
+	val contextHelper = rememberLocalContextHelper()
+	val verticalLayoutState = remember { mutableStateOf(false) }
+	verticalLayoutState.overwrite(contextHelper.configurations.isOrientationPortrait())
+	return verticalLayoutState
+}
+
+@Composable
+private fun AssertVerticalOrientation(lazyMessage: (Int) -> Any = {}) {
+	val contextHelper = rememberLocalContextHelper()
+	check(contextHelper.configurations.isOrientationPortrait()) {
+		val int = contextHelper.configurations.orientationInt
+		"AssertVerticalLayout detected non-portrait orientation: ${int}\n" +
+			"msg: ${lazyMessage(int)}"
 	}
 }
 

@@ -32,7 +32,7 @@ import coil.request.CachePolicy
 import coil.request.ImageRequest
 import com.flammky.androidx.viewmodel.compose.activityViewModel
 import com.flammky.common.kotlin.coroutines.safeCollect
-import com.flammky.musicplayer.base.compose.rememberContextHelper
+import com.flammky.musicplayer.base.compose.rememberLocalContextHelper
 import com.flammky.musicplayer.library.localsong.data.LocalSongModel
 import com.flammky.musicplayer.library.ui.theme.Theme
 import com.google.accompanist.placeholder.PlaceholderHighlight
@@ -241,7 +241,7 @@ private fun DynamicDisplayContent(
 		1, 2, 3 -> Unit // maybe something else
 	}
 
-	val contextHelper = rememberContextHelper()
+	val contextHelper = rememberLocalContextHelper()
 
 	fun calculateHorizontalSpacer(amount: Int): Float {
 		return contentSpacer.toFloat() * if (amount <= 0) 0 else amount - 1

@@ -35,6 +35,12 @@ class RealMediaConnection(
 		override val mediaItemCount: Int
 			get() = delegate.playback.mediaItemCount
 
+		override val hasNextMediaItem: Boolean
+			get() = delegate.playback.hasNextMediaItem
+
+		override val hasPreviousMediaItem: Boolean
+			get() = delegate.playback.hasPreviousMediaItem
+
 		override fun setMediaItems(items: List<MediaItem>, startIndex: Int, startPosition: Duration) {
 			delegate.playback.setMediaItems(items, startIndex, startPosition)
 		}
@@ -51,15 +57,23 @@ class RealMediaConnection(
 			delegate.playback.seekNext()
 		}
 
+		override fun seekNextMedia() {
+			delegate.playback.seekNextMedia()
+		}
+
 		override fun seekPrevious() {
 			delegate.playback.seekPrevious()
+		}
+
+		override fun seekPreviousMedia() {
+			delegate.playback.seekPreviousMedia()
 		}
 
 		override fun stop() {
 			delegate.playback.stop()
 		}
 
-		override suspend fun <R> joinSuspend(block: MediaConnection.Playback.() -> R): R {
+		override suspend fun <R> joinSuspend(block: suspend MediaConnection.Playback.() -> R): R {
 			return delegate.playback.joinDispatcher { block() }
 		}
 
@@ -284,7 +298,8 @@ class RealMediaConnection(
 
 
 	private inner class Repository : MediaConnection.Repository {
-		// We should localize them
+		override suspend fun getMetadata(id: String): MediaMetadata? = delegate.repository.getMetadata(id)
+		override suspend fun getArtwork(id: String): Any? = delegate.repository.getArtwork(id)
 		override suspend fun observeMetadata(id: String): Flow<MediaMetadata?> = delegate.repository.observeMetadata(id)
 		override suspend fun observeArtwork(id: String): Flow<Any?> = delegate.repository.observeArtwork(id)
 		override suspend fun provideMetadata(id: String, metadata: MediaMetadata) = delegate.repository.provideMetadata(id, metadata)

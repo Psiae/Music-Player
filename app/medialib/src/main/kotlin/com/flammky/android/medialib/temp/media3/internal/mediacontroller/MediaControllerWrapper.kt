@@ -546,7 +546,7 @@ class MediaControllerWrapper internal constructor(
 		}
 
 		override fun seekToNextMediaItem() {
-			if (isStateConnected()) mediaController.seekToPreviousMediaItem()
+			if (isStateConnected()) mediaController.seekToNextMediaItem()
 		}
 
 		override fun setRepeatMode(repeatMode: com.flammky.android.medialib.player.Player.RepeatMode) {

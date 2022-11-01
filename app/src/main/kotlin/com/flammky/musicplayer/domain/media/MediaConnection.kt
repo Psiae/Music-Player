@@ -23,6 +23,8 @@ interface MediaConnection {
 	interface Playback {
 		val currentIndex: Int
 		val mediaItemCount: Int
+		val hasNextMediaItem: Boolean
+		val hasPreviousMediaItem: Boolean
 
 		fun setMediaItems(items: List<MediaItem>, startIndex: Int, startPosition: Duration)
 		fun prepare()
@@ -33,7 +35,9 @@ interface MediaConnection {
 		fun setRepeatMode(repeatMode: Player.RepeatMode)
 		fun setShuffleMode(enabled: Boolean)
 		fun seekNext()
+		fun seekNextMedia()
 		fun seekPrevious()
+		fun seekPreviousMedia()
 
 		//
 		// I think we should add `shared` option on these observable
@@ -48,7 +52,7 @@ interface MediaConnection {
 
 		fun observeInfo(): Flow<PlaybackInfo>
 
-		suspend fun <R> joinSuspend(block: MediaConnection.Playback.() -> R): R
+		suspend fun <R> joinSuspend(block: suspend MediaConnection.Playback.() -> R): R
 
 		data class PropertiesInfo(
 			val playWhenReady: Boolean = false,
@@ -107,10 +111,15 @@ interface MediaConnection {
 	 * Repository Interactor
 	 */
 	interface Repository {
+		suspend fun getMetadata(id: String): MediaMetadata?
+		suspend fun getArtwork(id: String): Any?
 		suspend fun observeMetadata(id: String): Flow<MediaMetadata?>
 		suspend fun observeArtwork(id: String): Flow<Any?>
 		suspend fun provideMetadata(id: String, metadata: MediaMetadata)
 		suspend fun provideArtwork(id: String, artwork: Any?)
+
+		data class MetadataChangeInfo(val id: String, val metadata: MediaMetadata?)
+		data class ArtworkChangeInfo(val id: String, val artwork: Any?)
 	}
 
 	/**

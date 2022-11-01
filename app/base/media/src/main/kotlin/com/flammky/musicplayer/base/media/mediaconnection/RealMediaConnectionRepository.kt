@@ -9,6 +9,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import timber.log.Timber
@@ -162,11 +163,16 @@ class RealMediaConnectionRepository(
 	}
 
 	private fun <R> Mutex.withLockBlocking(block: () -> R): R {
-		return try {
-			while (!tryLock()) continue
-			block()
-		} finally {
-			unlock()
+		return if (tryLock()) {
+			try {
+				block()
+			} finally {
+				unlock()
+			}
+		} else {
+			runBlocking {
+				withLock(action = block)
+			}
 		}
 	}
 

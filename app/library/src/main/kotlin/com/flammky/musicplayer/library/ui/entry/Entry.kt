@@ -13,7 +13,6 @@ internal fun LibraryEntry() {
 	if (libraryGuard().read()) {
 		LibraryRoot()
 	}
-	
 }
 
 // If we want to restrict something

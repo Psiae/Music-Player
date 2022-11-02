@@ -95,7 +95,8 @@ fun MainActivityRoot(
 			}
 		}
 		PlaybackBoxDetail(
-			showSelf = remember { derivedStateOf { showDetails.value && navCalled.value } },
+			showSelf = showDetails,
+			attachBackHandler = remember { derivedStateOf { showDetails.value && navCalled.value } },
 			viewModel = activityViewModel(),
 			dismiss = { showDetails.value = false }
 		)

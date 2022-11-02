@@ -14,6 +14,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -48,6 +49,7 @@ import timber.log.Timber
 @Composable
 internal fun PlaybackBoxDetail(
 	showSelf: State<Boolean>,
+	attachBackHandler: State<Boolean>,
 	viewModel: PlaybackControlViewModel,
 	dismiss: () -> Unit
 ) {
@@ -56,7 +58,7 @@ internal fun PlaybackBoxDetail(
 	val visibility = if (showSelf.read()) Visibility.VISIBLE else Visibility.GONE
 
 	if (visibility.isVisible) {
-		BackHandler(onBack = dismiss)
+		if (attachBackHandler.read()) BackHandler(onBack = dismiss)
 		// Consider Implementing landscape view
 		LockScreenOrientation(landscape = false)
 	}
@@ -75,6 +77,7 @@ internal fun PlaybackBoxDetail(
 			)
 		}
 
+		// TODO: Something meaningful while transitioning
 		val animatedHeight = updateTransition(targetState = visibility, label = "")
 			.animateDp(
 				label = "",
@@ -104,11 +107,15 @@ private fun PlaybackBoxDetailTransition(
 	viewModel: PlaybackControlViewModel,
 	dismiss: () -> Unit
 ) {
+	val savedTransitioned = rememberSaveable { mutableStateOf(false) }
 	val transitioned = remember { mutableStateOf(false) }
+
+	val yOffset =
+		if (savedTransitioned.value) 0.dp else -(heightState.read() - target)
 
 	Box(
 		modifier = Modifier
-			.offset(0.dp, -(heightState.read() - target))
+			.offset(0.dp, yOffset)
 			.height(target)
 			.fillMaxWidth()
 			.background(
@@ -118,13 +125,16 @@ private fun PlaybackBoxDetailTransition(
 			)
 
 	) {
-		if (heightState.read() == target) {
+		if (-yOffset == 0.dp) {
 			transitioned.overwrite(true)
-		} else if (heightState.read() == 0.dp && transitioned.read()) {
+		} else if (heightState.read() == 0.dp) {
 			transitioned.overwrite(false)
 		}
 		if (transitioned.read()) {
-			PlaybackBoxDetails(viewModel, dismiss)
+			PlaybackBoxDetails(viewModel) {
+				savedTransitioned.overwrite(false)
+				dismiss()
+			}
 		}
 	}
 }
@@ -283,7 +293,8 @@ private fun RadialPlaybackBackground(
 						color.copy(alpha = 0.45f).compositeOver(compositeBase),
 						color.copy(alpha = 0.35f).compositeOver(compositeBase),
 						color.copy(alpha = 0.15f).compositeOver(compositeBase),
-						color.copy(alpha = 0.1f).compositeOver(compositeBase)
+						color.copy(alpha = 0.1f).compositeOver(compositeBase),
+						color.copy(alpha = 0.0f).compositeOver(compositeBase)
 					),
 					center = Offset(constraints.maxWidth.toFloat() / 2, constraints.maxHeight.toFloat() / 4),
 					radius = constraints.maxWidth.toFloat()
@@ -652,7 +663,11 @@ private fun PlaybackControlProgressSeekbar(
 		},
 		interactionSource = interactionSource,
 		trackHeight = 4.dp,
-		thumbSize = 14.dp
+		thumbSize = 14.dp,
+		colors = SliderDefaults.colors(
+			activeTrackColor = Theme.dayNightAbsoluteContentColor(),
+			thumbColor = Theme.dayNightAbsoluteContentColor()
+		)
 	)
 
 	Spacer(modifier = Modifier.height(3.dp))
@@ -722,8 +737,6 @@ private fun PlaybackControlProgressSeekbar(
 			)
 		}
 	}
-
-
 
 	LaunchedEffect(key1 = positionChangeReason) {
 		if (positionChangeReason == PlaybackDetailPositionStream.PositionChangeReason.USER_SEEK) {

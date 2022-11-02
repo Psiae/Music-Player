@@ -13,11 +13,13 @@ import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.widget.Toast
 import androidx.core.net.toUri
+import com.flammky.android.medialib.common.mediaitem.AudioFileMetadata
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.common.mediaitem.MediaItem
 import com.flammky.android.medialib.common.mediaitem.MediaItem.Companion.buildMediaItem
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.android.medialib.core.MediaLibrary
+import com.flammky.android.medialib.providers.metadata.VirtualFileMetadata
 import com.flammky.android.medialib.temp.image.ArtworkProvider
 import com.flammky.android.medialib.temp.provider.mediastore.base.audio.MediaStoreAudioEntity
 import com.flammky.mediaplayer.helper.Preconditions.checkArgument
@@ -25,6 +27,7 @@ import com.flammky.mediaplayer.helper.external.providers.ContentProvidersHelper
 import com.flammky.mediaplayer.helper.external.providers.DocumentProviderHelper
 import com.flammky.musicplayer.domain.media.MediaConnection
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory
+import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemPropertyHelper.mediaUri
 import kotlinx.coroutines.*
 import timber.log.Timber
 import java.io.File
@@ -32,6 +35,7 @@ import java.net.URLDecoder
 import javax.inject.Singleton
 import kotlin.coroutines.coroutineContext
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Interface for handling Media Type [android.content.Intent]
@@ -123,8 +127,10 @@ class MediaIntentHandlerImpl(
 							provideArtwork(song.uid)
 							list.forEach {
 								if (it === song) return@forEach
-								provideMetadata(it.uid, it.uri)
-								provideArtwork(it.uid)
+								launch(dispatcher.io) {
+									provideMetadata(it.uid, it.uri)
+									provideArtwork(it.uid)
+								}
 							}
             }
           }
@@ -166,14 +172,15 @@ class MediaIntentHandlerImpl(
 			}
 		}
 
-		private fun playMediaItem(
+		private suspend fun playMediaItem(
 			item: androidx.media3.common.MediaItem
 		) {
+			val metadata = fillMetadata(item.mediaUri ?: Uri.EMPTY)
 			val actual = mediaLib.context.buildMediaItem {
 				setMediaId(item.mediaId)
 				setMediaUri(item.localConfiguration?.uri ?: item.requestMetadata.mediaUri ?: Uri.EMPTY)
 				setExtra(MediaItem.Extra())
-				setMetadata(fillMetadata(mediaUri))
+				setMetadata(metadata)
 			}
 			playMediaItem(actual, listOf(actual), true)
 		}
@@ -196,7 +203,30 @@ class MediaIntentHandlerImpl(
 			}
 		}
 
-		private fun fillMetadata(uri: Uri): MediaMetadata {
+		private suspend fun fillMetadata(uri: Uri): MediaMetadata {
+			mediaLib.mediaProviders.mediaStore.audio.queryByUri(uri)?.let { from ->
+				val audioMetadata = fillAudioMetadata(uri)
+				val fileMetadata = VirtualFileMetadata.build {
+					setUri(from.uri)
+					setScheme(from.uri.scheme)
+					setAbsolutePath(from.file.absolutePath)
+					setFileName(from.file.fileName)
+					setDateAdded(from.file.dateAdded?.seconds)
+					setLastModified(from.file.dateModified?.seconds)
+					setSize(from.file.size)
+				}
+				return AudioFileMetadata(audioMetadata, fileMetadata)
+			}
+
+			val vfm = VirtualFileMetadata.build {
+				setUri(uri)
+				setScheme(uri.scheme)
+			}
+
+			return AudioFileMetadata(fillAudioMetadata(uri), vfm)
+		}
+
+		private fun fillAudioMetadata(uri: Uri): AudioMetadata {
 			return AudioMetadata.build {
 				try {
 					MediaMetadataRetriever().applyUse {

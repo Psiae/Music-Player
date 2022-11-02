@@ -59,6 +59,9 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 	override val mediaItemCount: Int
 		get() = s.mediaController.mediaItemCount
 
+	override val position: Duration
+		get() = s.mediaController.positionMs.milliseconds
+
 	override val repeatMode: Player.RepeatMode
 		get() = when(val mode = s.mediaController.repeatMode.toRepeatModeInt) {
 			0 -> Player.RepeatMode.OFF

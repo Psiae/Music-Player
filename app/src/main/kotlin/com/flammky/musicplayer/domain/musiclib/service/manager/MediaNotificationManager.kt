@@ -18,8 +18,10 @@ import androidx.media3.session.MediaSession
 import coil.Coil
 import coil.size.Scale
 import com.flammky.android.environment.DeviceInfo
+import com.flammky.android.medialib.common.mediaitem.AudioFileMetadata
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
+import com.flammky.android.medialib.providers.metadata.VirtualFileMetadata
 import com.flammky.common.kotlin.comparable.clamp
 import com.flammky.common.kotlin.coroutines.AutoCancelJob
 import com.flammky.mediaplayer.helper.Preconditions.checkState
@@ -330,7 +332,11 @@ class MediaNotificationManager(
 			return if (metadata != null ) {
 				when (metadata) {
 					is AudioMetadata -> notificationProvider.buildMediaStyleNotification(
-						session, channelName, metadata.title, metadata.artistName ?: metadata.albumArtistName,
+						session, channelName,
+						metadata.title?.ifBlank { null }
+							?: (metadata as? AudioFileMetadata)?.file?.fileName?.ifBlank { null }
+							?: ((metadata as? AudioFileMetadata)?.file as? VirtualFileMetadata)?.uri?.toString(),
+						metadata.artistName ?: metadata.albumArtistName,
 						metadata.albumTitle, onGoing, player.repeatMode, player.playbackState,
 						player.hasPreviousMediaItem(), player.hasNextMediaItem(), player.playWhenReady,
 						player.isPlaying, largeIcon

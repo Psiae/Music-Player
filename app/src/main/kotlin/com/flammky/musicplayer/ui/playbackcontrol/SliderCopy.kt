@@ -1,4 +1,4 @@
-package com.flammky.musicplayer.ui.playbackdetail
+package com.flammky.musicplayer.ui.playbackcontrol
 
 /*
  * Copyright 2022 The Android Open Source Project

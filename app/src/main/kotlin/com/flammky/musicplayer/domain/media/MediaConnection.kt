@@ -22,6 +22,8 @@ interface MediaConnection {
 	 */
 	interface Playback {
 		val currentIndex: Int
+		val currentPosition: Duration
+		val currentDuration: Duration
 		val mediaItemCount: Int
 		val hasNextMediaItem: Boolean
 		val hasPreviousMediaItem: Boolean

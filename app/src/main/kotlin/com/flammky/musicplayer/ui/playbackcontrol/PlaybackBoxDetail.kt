@@ -1,11 +1,14 @@
-package com.flammky.musicplayer.ui.playbackdetail
+package com.flammky.musicplayer.ui.playbackcontrol
 
 import android.content.pm.ActivityInfo
+import android.graphics.Bitmap
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.*
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -13,7 +16,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -22,6 +28,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.times
+import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.flammky.android.medialib.player.Player
@@ -35,13 +42,13 @@ import com.flammky.musicplayer.ui.util.compose.NoRipple
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.rememberPagerState
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import timber.log.Timber
 
 @Composable
 internal fun PlaybackBoxDetail(
 	showSelf: State<Boolean>,
-	viewModel: PlaybackDetailViewModel,
+	viewModel: PlaybackControlViewModel,
 	dismiss: () -> Unit
 ) {
 
@@ -94,20 +101,22 @@ internal fun PlaybackBoxDetail(
 private fun PlaybackBoxDetailTransition(
 	target: Dp,
 	heightState: State<Dp>,
-	viewModel: PlaybackDetailViewModel,
+	viewModel: PlaybackControlViewModel,
 	dismiss: () -> Unit
 ) {
 	val transitioned = remember { mutableStateOf(false) }
 
 	Box(
 		modifier = Modifier
-			.height(heightState.read())
+			.offset(0.dp, -(heightState.read() - target))
+			.height(target)
 			.fillMaxWidth()
 			.background(
 				Theme
 					.dayNightAbsoluteColor()
 					.copy(alpha = 0.9f)
 			)
+
 	) {
 		if (heightState.read() == target) {
 			transitioned.overwrite(true)
@@ -122,22 +131,27 @@ private fun PlaybackBoxDetailTransition(
 
 @Composable
 private fun PlaybackBoxDetails(
-	viewModel: PlaybackDetailViewModel,
+	viewModel: PlaybackControlViewModel,
 	dismiss: () -> Unit
 ) {
 	// Change to Guard until we implement horizontal orientation
 	AssertVerticalOrientation()
-	Column(
-		modifier = Modifier
-			.fillMaxSize()
-			.background(Theme.backgroundColor())
-			.statusBarsPadding()
+	Box(modifier = Modifier
+		.fillMaxSize()
+		.background(Theme.backgroundColor())
 	) {
-		NoRipple {
-			Spacer(modifier = Modifier.height(10.dp))
-			DetailToolbar(dismiss)
-			Spacer(modifier = Modifier.height(20.dp))
-			DetailsContent(viewModel)
+		RadialPlaybackBackground(viewModel = viewModel)
+		Column(
+			modifier = Modifier
+				.fillMaxSize()
+				.statusBarsPadding()
+		) {
+			NoRipple {
+				Spacer(modifier = Modifier.height(10.dp))
+				DetailToolbar(dismiss)
+				Spacer(modifier = Modifier.height(20.dp))
+				DetailsContent(viewModel)
+			}
 		}
 	}
 }
@@ -194,7 +208,7 @@ private fun RowScope.DismissAction(
 
 @Composable
 private fun DetailsContent(
-	viewModel: PlaybackDetailViewModel
+	viewModel: PlaybackControlViewModel
 ) {
 	BoxWithConstraints {
 		val maxHeight = maxHeight
@@ -212,9 +226,12 @@ private fun DetailsContent(
 			PlaybackControlProgressSeekbar(
 				positionState = positionState,
 				trackState = trackState,
-				seek = { requestIndex, requestPosition -> viewModel.seek(requestIndex, requestPosition) }
+				seek = { requestIndex, requestPosition ->
+					Timber.d("Progressbar request seek pos $requestPosition")
+					viewModel.seek(requestIndex, requestPosition)
+				}
 			)
-			Spacer(modifier = Modifier.height(15.dp))
+			Spacer(modifier = Modifier.height(5.dp))
 			PlaybackControls(viewModel)
 			Spacer(modifier = Modifier
 				.fillMaxWidth()
@@ -225,7 +242,7 @@ private fun DetailsContent(
 
 @Composable
 private fun TracksPagerDisplay(
-	viewModel: PlaybackDetailViewModel
+	viewModel: PlaybackControlViewModel
 ) {
 	val trackState = viewModel.trackStreamStateFlow.collectAsState()
 	BoxWithConstraints() {
@@ -238,6 +255,80 @@ private fun TracksPagerDisplay(
 		)
 	}
 }
+
+@Composable
+private fun RadialPlaybackBackground(
+	art: Any?
+) {
+	val absoluteBackgroundColor = Theme.dayNightAbsoluteColor()
+	val backgroundColor = Theme.backgroundColor()
+	val radialPaletteColor = remember { mutableStateOf(backgroundColor) }
+
+	val compositeBase =
+		if (isSystemInDarkTheme()) {
+			backgroundColor
+		} else {
+			absoluteBackgroundColor
+		}
+
+	BoxWithConstraints {
+		val color = animateColorAsState(
+			targetValue = radialPaletteColor.read(),
+			animationSpec = tween(500)
+		).value
+		val brush = remember(color) {
+			if (color != backgroundColor) {
+				Brush.radialGradient(
+					colors = listOf(
+						color.copy(alpha = 0.45f).compositeOver(compositeBase),
+						color.copy(alpha = 0.35f).compositeOver(compositeBase),
+						color.copy(alpha = 0.15f).compositeOver(compositeBase),
+						color.copy(alpha = 0.1f).compositeOver(compositeBase)
+					),
+					center = Offset(constraints.maxWidth.toFloat() / 2, constraints.maxHeight.toFloat() / 4),
+					radius = constraints.maxWidth.toFloat()
+				)
+			} else {
+				Brush.verticalGradient(1f to color, 1f to color, 1f to color)
+			}
+		}
+		Box(
+			modifier = Modifier
+				.fillMaxSize()
+				.background(brush)
+		)
+	}
+	val darkTheme = isSystemInDarkTheme()
+	val artwork = art
+	LaunchedEffect(artwork) {
+		val color = if (artwork is Bitmap) {
+			withContext(Dispatchers.IO) {
+				val palette = Palette.from(artwork).maximumColorCount(16).generate()
+				ensureActive()
+				val argb = palette.run {
+					if (darkTheme) {
+						getDarkVibrantColor(getMutedColor(getDominantColor(-1)))
+					} else {
+						getVibrantColor(getLightMutedColor(getDominantColor(-1)))
+					}
+				}
+				if (argb != -1) {
+					Color(argb)
+				} else {
+					absoluteBackgroundColor
+				}
+			}
+		} else {
+			absoluteBackgroundColor
+		}
+		if (isActive) radialPaletteColor.overwrite(color)
+	}
+}
+
+@Composable
+private fun RadialPlaybackBackground(
+	viewModel: PlaybackControlViewModel
+) = RadialPlaybackBackground(viewModel.currentMetadataStateFlow.collectAsState().read().artwork)
 
 @OptIn(ExperimentalPagerApi::class)
 @Composable
@@ -259,7 +350,7 @@ private fun TracksPager(
 			state = pagerState,
 			count = tracks.size,
 		) {
-			TracksPagerItem(art = metadataStateForId(tracks[it]).read().artwork)
+			TracksPagerItem(metadataStateForId(tracks[it]))
 		}
 	}
 
@@ -301,21 +392,21 @@ private fun Int.inRangeSpread(a: Int, amount: Int): Boolean {
 
 @Composable
 private fun TracksPagerItem(
-	art: Any?
+	metadataState: State<PlaybackDetailMetadata>
 ) {
-	Timber.d("TracksPagerItem, art: $art")
-	Box(modifier = Modifier.fillMaxSize()) {
+	val art = metadataState.value.artwork
+	Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
 		val context = LocalContext.current
 		val req = remember(art) {
 			ImageRequest.Builder(context)
 				.data(art)
-				.crossfade(100)
+				.crossfade(200)
 				.build()
 		}
 		AsyncImage(
 			modifier = Modifier
 				.fillMaxWidth(0.8f)
-				.height(300.dp)
+				.height(280.dp)
 				.align(Alignment.Center),
 			model = req,
 			contentDescription = "art",
@@ -326,7 +417,7 @@ private fun TracksPagerItem(
 
 @Composable
 private fun CurrentTrackPlaybackDescriptions(
-	viewModel: PlaybackDetailViewModel
+	viewModel: PlaybackControlViewModel
 ) {
 	PlaybackDescription(metadataState = viewModel.currentMetadataStateFlow.collectAsState(
 		PlaybackDetailMetadata()
@@ -349,7 +440,6 @@ private fun PlaybackDescription(metadataState: State<PlaybackDetailMetadata>) {
 			PlaybackDescriptionSubtitle(textState = subtitleState)
 		}
 	}
-
 }
 
 @Composable
@@ -373,7 +463,7 @@ private fun PlaybackDescriptionSubtitle(textState: State<String>) {
 }
 
 @Composable
-private fun PlaybackControls(viewModel: PlaybackDetailViewModel) {
+private fun PlaybackControls(viewModel: PlaybackControlViewModel) {
 	PlaybackControlButtons(
 		viewModel.playbackPropertiesStateFlow.collectAsState(),
 		play = viewModel::playWhenReady,
@@ -416,7 +506,7 @@ private fun PlaybackControlButtons(
 			Icon(
 				modifier = Modifier
 					.size(30.dp)
-					.align(Alignment.TopCenter)
+					.align(Alignment.Center)
 					.clickable { if (propertiesInfo.shuffleOn) disableShuffle() else enableShuffle() }
 				,
 				painter = painterResource(id = R.drawable.ios_glyph_shuffle_100),
@@ -434,7 +524,7 @@ private fun PlaybackControlButtons(
 			Icon(
 				modifier = Modifier
 					.size(35.dp)
-					.align(Alignment.TopCenter)
+					.align(Alignment.Center)
 					.clickable { previous() }
 				,
 				painter = painterResource(id = R.drawable.ios_glyph_seek_previos_100),
@@ -451,7 +541,7 @@ private fun PlaybackControlButtons(
 			Icon(
 				modifier = Modifier
 					.size(40.dp)
-					.align(Alignment.TopCenter)
+					.align(Alignment.Center)
 					.clickable { if (propertiesInfo.playWhenReady) pause() else play() }
 				,
 				painter = if (propertiesInfo.playWhenReady)
@@ -470,7 +560,7 @@ private fun PlaybackControlButtons(
 			Icon(
 				modifier = Modifier
 					.size(35.dp)
-					.align(Alignment.TopCenter)
+					.align(Alignment.Center)
 					.clickable { if (propertiesInfo.hasNextMediaItem) next() }
 				,
 				painter = painterResource(id = R.drawable.ios_glyph_seek_next_100),
@@ -493,16 +583,14 @@ private fun PlaybackControlButtons(
 				}
 			}
 		) {
-			val rememberRepeatPainter = painterResource(id = R.drawable.ios_glyph_repeat_100)
-			val rememberRepeatOnePainter = painterResource(id = R.drawable.ios_glyph_repeat_one_100)
 			Icon(
 				modifier = Modifier
 					.size(30.dp)
-					.align(Alignment.TopCenter),
+					.align(Alignment.Center),
 				painter = when (propertiesInfo.repeatMode) {
-					Player.RepeatMode.OFF -> rememberRepeatPainter
-					Player.RepeatMode.ONE -> rememberRepeatOnePainter
-					Player.RepeatMode.ALL -> rememberRepeatPainter
+					Player.RepeatMode.OFF -> painterResource(id = R.drawable.ios_glyph_repeat_100)
+					Player.RepeatMode.ONE -> painterResource(id = R.drawable.ios_glyph_repeat_one_100)
+					Player.RepeatMode.ALL -> painterResource(id = R.drawable.ios_glyph_repeat_100)
 				},
 				contentDescription = "repeat",
 				tint = if (propertiesInfo.repeatMode == Player.RepeatMode.OFF)
@@ -524,12 +612,13 @@ private fun PlaybackControlProgressSeekbar(
 	val duration = positionState.read().duration
 	val positionChangeReason = positionState.read().positionChangeReason
 
-	fun clampedPosition(): Float = (position / duration).toFloat().clamp(0f, 1f)
+	fun clampedPositionProgress(): Float = (position / duration).toFloat().clamp(0f, 1f)
+	fun clampedPosition(): Long = (duration.inWholeMilliseconds * clampedPositionProgress()).toLong()
 
 	val interactionSource = remember { MutableInteractionSource() }
 	val draggedState = interactionSource.collectIsDraggedAsState()
 	val pressedState = interactionSource.collectIsPressedAsState()
-	val changedValue = remember { mutableStateOf(clampedPosition()) }
+	val changedValue = remember { mutableStateOf(clampedPositionProgress()) }
 	val suppressSeekRequest = remember { mutableStateOf(false) }
 
 	val suppressedUpdateValue = draggedState.read() || pressedState.read() || suppressSeekRequest.read()
@@ -540,33 +629,101 @@ private fun PlaybackControlProgressSeekbar(
 
 	Slider(
 		modifier = Modifier
-			.fillMaxWidth(0.9f)
+			.fillMaxWidth(0.85f)
 			.height(14.dp),
 		value = if (suppressedUpdateValue) {
 			changedValue.read()
 		} else {
-			clampedPosition()
+			clampedPositionProgress()
 		},
 		onValueChange = {
 			rememberedIndex.overwrite(trackState.value.currentIndex)
 			changedValue.overwrite(it)
 		},
 		onValueChangeFinished = {
-			suppressSeekRequest.overwrite(true)
-			val currentIndex = trackState.value.currentIndex
-			if (currentIndex == rememberedIndex.value) {
-				changedValue.value.takeIf { it > 0 }?.let {
-					coroutineScope.launch {
-						if (!seek(currentIndex, (duration.inWholeMilliseconds * it).toLong()))
-							suppressSeekRequest.overwrite(false)
-					}
+			changedValue.value.takeIf { it >= 0 }?.let {
+				suppressSeekRequest.overwrite(true)
+				coroutineScope.launch {
+					if (!seek(trackState.value.currentIndex, (duration.inWholeMilliseconds * it).toLong()))
+						suppressSeekRequest.overwrite(false)
 				}
+				return@Slider
 			}
 		},
 		interactionSource = interactionSource,
 		trackHeight = 4.dp,
 		thumbSize = 14.dp
 	)
+
+	Spacer(modifier = Modifier.height(3.dp))
+
+	BoxWithConstraints {
+		// Width of the Slider track, which is maxWidth minus Thumb Radius on both side
+		val width = maxWidth * 0.85f - 14.dp
+		Row(
+			modifier = Modifier.width(width),
+			verticalAlignment = Alignment.CenterVertically,
+			horizontalArrangement = Arrangement.SpaceBetween
+		) {
+			val formattedDuration = remember(duration) {
+				val seconds =
+					if (duration.isNegative() || duration.isInfinite()) 0
+					else duration.inWholeSeconds
+				if (seconds > 3600) {
+					String.format(
+						"%02d:%02d:%02d",
+						seconds / 3600,
+						seconds % 3600 / 60,
+						seconds % 60
+					)
+				} else {
+					String.format(
+						"%02d:%02d",
+						seconds / 60,
+						seconds % 60
+					)
+				}
+			}
+
+			val displayPositionProgress = if (suppressedUpdateValue) {
+				changedValue.read()
+			} else {
+				clampedPositionProgress()
+			}
+
+			val formattedPosition = remember(displayPositionProgress) {
+				val seconds =
+					if (duration.isNegative()) 0
+					else (duration.inWholeSeconds * displayPositionProgress).toLong()
+				if (seconds > 3600) {
+					String.format(
+						"%02d:%02d:%02d",
+						seconds / 3600,
+						seconds % 3600 / 60,
+						seconds % 60
+					)
+				} else {
+					String.format(
+						"%02d:%02d",
+						seconds / 60,
+						seconds % 60
+					)
+				}
+			}
+
+			Text(
+				text = formattedPosition,
+				style = MaterialTheme.typography.bodySmall
+			)
+
+			Text(
+				text = formattedDuration,
+				style = MaterialTheme.typography.bodySmall
+			)
+		}
+	}
+
+
 
 	LaunchedEffect(key1 = positionChangeReason) {
 		if (positionChangeReason == PlaybackDetailPositionStream.PositionChangeReason.USER_SEEK) {

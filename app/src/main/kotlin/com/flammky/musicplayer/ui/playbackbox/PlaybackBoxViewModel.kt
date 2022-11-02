@@ -5,8 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.medialib.common.Contract
+import com.flammky.android.medialib.common.mediaitem.AudioFileMetadata
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
+import com.flammky.android.medialib.providers.metadata.VirtualFileMetadata
 import com.flammky.common.kotlin.coroutines.safeCollect
 import com.flammky.musicplayer.base.media.mediaconnection.MediaConnectionDelegate
 import com.flammky.musicplayer.domain.media.MediaConnection
@@ -65,11 +67,14 @@ class PlaybackBoxViewModel @Inject constructor(
 	}
 
 	suspend fun observeBoxMetadata(id: String): Flow<PlaybackBoxMetadata> {
-		return combine(observeArtwork(id), observeMetadata(id)) { a: Any?, b: MediaMetadata? ->
-			val subtitle = (b as? AudioMetadata)?.let {
+		return combine(observeArtwork(id), observeMetadata(id)) { art: Any?, metadata: MediaMetadata? ->
+			val title = metadata?.title?.ifBlank { null }
+				?: (metadata as? AudioFileMetadata)?.file?.fileName?.ifBlank { null }
+				?: ((metadata as? AudioFileMetadata)?.file as? VirtualFileMetadata)?.uri?.toString()
+			val subtitle = (metadata as? AudioMetadata)?.let {
 				it.albumArtistName ?: it.artistName
 			}
-			PlaybackBoxMetadata(a, b?.title ?: "", subtitle ?: "")
+			PlaybackBoxMetadata(art, title ?: "", subtitle ?: "")
 		}
 	}
 

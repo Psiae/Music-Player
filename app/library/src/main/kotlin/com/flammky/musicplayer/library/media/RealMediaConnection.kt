@@ -5,10 +5,12 @@ import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
+import com.flammky.android.medialib.common.mediaitem.AudioFileMetadata
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.common.mediaitem.MediaItem
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.android.medialib.core.MediaLibrary
+import com.flammky.android.medialib.providers.metadata.VirtualFileMetadata
 import com.flammky.android.medialib.temp.image.ArtworkProvider
 import com.flammky.musicplayer.base.media.mediaconnection.MediaConnectionDelegate
 import kotlinx.coroutines.CoroutineScope
@@ -16,6 +18,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 internal class RealMediaConnection(
 	private val artworkProvider: ArtworkProvider,
@@ -101,7 +104,25 @@ internal class RealMediaConnection(
 		}
 	}
 
-	private fun fillMetadata(uri: Uri): MediaMetadata {
+	private suspend fun fillMetadata(uri: Uri): MediaMetadata {
+		mediaLibrary.mediaProviders.mediaStore.audio.queryByUri(uri)?.let { from ->
+			val audioMetadata = fillAudioMetadata(uri)
+			val fileMetadata = VirtualFileMetadata.build {
+				setUri(from.uri)
+				setScheme(from.uri.scheme)
+				setAbsolutePath(from.file.absolutePath)
+				setFileName(from.file.fileName)
+				setDateAdded(from.file.dateAdded?.seconds)
+				setLastModified(from.file.dateModified?.seconds)
+				setSize(from.file.size)
+			}
+			return AudioFileMetadata(audioMetadata, fileMetadata)
+		}
+
+		return fillAudioMetadata(uri)
+	}
+
+	private fun fillAudioMetadata(uri: Uri): AudioMetadata {
 		return AudioMetadata.build {
 			try {
 				MediaMetadataRetriever().applyUse {

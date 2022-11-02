@@ -32,6 +32,12 @@ class RealMediaConnection(
 		override val currentIndex: Int
 			get() = delegate.playback.index
 
+		override val currentPosition: Duration
+			get() = delegate.playback.position
+
+		override val currentDuration: Duration
+			get() = delegate.playback.duration()
+
 		override val mediaItemCount: Int
 			get() = delegate.playback.mediaItemCount
 
@@ -242,6 +248,7 @@ class RealMediaConnection(
 			val playlistObserver = ioScope.launch {
 				delegate.playback.observePlaylistChange().safeCollect {
 					if (it.isEmpty()) {
+						Timber.d("onPlaylistChange safeCollect $it")
 						return@safeCollect send(MediaConnection.Playback.TracksInfo())
 					}
 					sendNew(1, currentList = it.toPersistentList())
@@ -251,6 +258,7 @@ class RealMediaConnection(
 			val currentObserver = ioScope.launch {
 				delegate.playback.observeMediaItemTransition().safeCollect {
 					if (it == null || it is MediaItem.UNSET) {
+						Timber.d("onMediaItemTransition safeCollect $it")
 						return@safeCollect send(MediaConnection.Playback.TracksInfo())
 					}
 					sendNew(0)

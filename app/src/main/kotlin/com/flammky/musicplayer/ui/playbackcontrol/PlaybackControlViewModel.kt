@@ -1,4 +1,4 @@
-package com.flammky.musicplayer.ui.playbackdetail
+package com.flammky.musicplayer.ui.playbackcontrol
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -7,12 +7,13 @@ import com.flammky.android.medialib.common.mediaitem.AudioFileMetadata
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.android.medialib.player.Player
+import com.flammky.android.medialib.providers.metadata.VirtualFileMetadata
 import com.flammky.musicplayer.common.android.concurrent.ConcurrencyHelper.checkMainThread
 import com.flammky.musicplayer.domain.media.MediaConnection
-import com.flammky.musicplayer.ui.playbackdetail.PlaybackDetailPositionStream.Companion.asPlaybackDetails
-import com.flammky.musicplayer.ui.playbackdetail.PlaybackDetailPositionStream.PositionChangeReason.Companion.asPlaybackDetails
-import com.flammky.musicplayer.ui.playbackdetail.PlaybackDetailPropertiesInfo.Companion.asPlaybackDetails
-import com.flammky.musicplayer.ui.playbackdetail.PlaybackDetailTracksInfo.Companion.asPlaybackDetails
+import com.flammky.musicplayer.ui.playbackcontrol.PlaybackDetailPositionStream.Companion.asPlaybackDetails
+import com.flammky.musicplayer.ui.playbackcontrol.PlaybackDetailPositionStream.PositionChangeReason.Companion.asPlaybackDetails
+import com.flammky.musicplayer.ui.playbackcontrol.PlaybackDetailPropertiesInfo.Companion.asPlaybackDetails
+import com.flammky.musicplayer.ui.playbackcontrol.PlaybackDetailTracksInfo.Companion.asPlaybackDetails
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -25,7 +26,7 @@ import javax.inject.Inject
 import kotlin.time.Duration
 
 @HiltViewModel
-internal class PlaybackDetailViewModel @Inject constructor(
+internal class PlaybackControlViewModel @Inject constructor(
 	private val mediaConnection: MediaConnection
 ) : ViewModel() {
 
@@ -79,8 +80,17 @@ internal class PlaybackDetailViewModel @Inject constructor(
 
 	suspend fun seek(currentIndex: Int, toIndex: Int): Boolean {
 		return mediaConnection.playback.joinSuspend playback@ {
-			(this@playback.currentIndex == currentIndex && this@playback.mediaItemCount >= toIndex)
-				.also { if (it) seekIndex(toIndex, 0L) }
+			(this@playback.currentIndex == currentIndex && this@playback.mediaItemCount >= toIndex).also {
+				if (it) seekIndex(toIndex, 0L)
+			}
+		}
+	}
+
+	suspend fun seekPosition(position: Long): Boolean {
+		return mediaConnection.playback.joinSuspend {
+			(position <= currentDuration.inWholeMilliseconds).also {
+				if (it) seekPosition(position)
+			}
 		}
 	}
 
@@ -103,8 +113,9 @@ internal class PlaybackDetailViewModel @Inject constructor(
 				flow = mediaConnection.repository.observeArtwork(id),
 				flow2 = mediaConnection.repository.observeMetadata(id)
 			) { art: Any?, metadata: MediaMetadata? ->
-				val title = metadata?.title
-					?: (metadata as? AudioFileMetadata)?.file?.fileName
+				val title = metadata?.title?.ifBlank { null }
+					?: (metadata as? AudioFileMetadata)?.file?.fileName?.ifBlank { null }
+					?: ((metadata as? AudioFileMetadata)?.file as? VirtualFileMetadata)?.uri?.toString()
 				val subtitle = (metadata as? AudioMetadata)
 					?.let { it.albumArtistName ?: it.artistName }
 				PlaybackDetailMetadata(id, art, title, subtitle)

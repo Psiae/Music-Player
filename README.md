@@ -15,23 +15,13 @@ Simple Music Player `100% Made in Kotlin` with Jetpack Compose & AndroidX Media3
 # Preview
 > Image Preview below will be updated accordingly on any changes made
 
-| Dark Mode + Palette + mini Playback Control (List Screen is Temporary) |
+| Library Screen on Dark Mode (other destinations are not yet implemented, Playback services aren't shaped yet) |
 | -------------- |
-| <img src="https://user-images.githubusercontent.com/94031495/194948482-c9bcb0ea-3a68-4f23-b73f-ae0b7d73d652.png" width="390"> <img src="https://user-images.githubusercontent.com/94031495/194948498-d1d647c4-afb0-4124-9ea2-2c5fb42ddf24.png" width="390"> |
+| <img src="https://user-images.githubusercontent.com/94031495/199476765-6ae296fd-24dc-4e2f-b26a-c362b009fc5f.png" width="390"> <img src="https://user-images.githubusercontent.com/94031495/199476803-a413d9e9-acb8-4123-9d81-027920d22928.png" width="390"> |
 
-> background shown is taken from Device Home Background or current MediaItem Metadata (removed temporarily)
-
-| Light Mode + Material You + AutoScroll background |
+| Playback Control on Dark Mode |
 | -------------- |
-| <img src="https://user-images.githubusercontent.com/94031495/181478449-cf42d07e-6942-468e-8a25-aed088ad3cdb.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/181478463-5c089ebc-c0f2-4e9c-b999-164ca87a962f.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/181478467-7f626574-1c39-41e1-96e8-7bdea4af9095.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/181478471-3f46d509-9598-4c5e-aae4-4c8559cc0080.png" width="195"> |
-
-| Dark Mode + Material You + AutoScroll background |
-| -------------- |
-| <img src="https://user-images.githubusercontent.com/94031495/181480559-8f9c4b7b-d675-4d8f-9e3f-115793fe2106.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/181479643-54af1d30-6702-47ce-928c-3800a8195e96.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/181479646-28869290-e42d-49ab-b793-9ef9290c94cd.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/181479623-297c2509-3773-4ad7-a540-bbc330fb6e9b.png" width="195"> |
-
-| Dark Mode + Material You + AutoScroll background + MediaItem Metadata |
-| -------------- |
-| <img src="https://user-images.githubusercontent.com/94031495/181488641-af0437d8-d676-4c2b-bc2d-0615259131cc.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/181488687-a336de90-8e04-48c6-8d6c-5854508f84b1.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/181488720-da247248-da4d-496e-bfe1-619b0fe45712.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/181488752-f807d04c-42ee-4afa-beaa-d68a77667334.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/181488791-533f8d7d-d53e-4536-b8a6-65ee93f82b55.png" width="195"> |
+| <img src="https://user-images.githubusercontent.com/94031495/199474607-5a383a6b-9872-4829-9000-8427f622704b.png" width="390"> <img src="https://user-images.githubusercontent.com/94031495/199474916-4a96eff2-aff8-4c1f-af11-7d889de56cb6.png" width="390"> |
 
 | Permission Pager + Light Mode|
 | -------------- |

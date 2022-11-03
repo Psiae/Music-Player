@@ -11,7 +11,6 @@ import com.flammky.musicplayer.common.media.audio.uri.AndroidFileBuilder
 import com.flammky.musicplayer.common.media.audio.uri.ContentFileBuilder
 import java.io.File
 import java.io.FileDescriptor
-import java.io.FileNotFoundException
 
 interface IDK
 class IDKImpl : IDK
@@ -65,10 +64,10 @@ class AudioFile private constructor() {
 		constructor(context: Context, uri: Uri) : this(context) {
 			val fd: ParcelFileDescriptor? = try {
 				when {
-					uri.scheme == ContentResolver.SCHEME_CONTENT -> context.contentResolver.openFileDescriptor(uri, "r")!!
+					uri.scheme == ContentResolver.SCHEME_CONTENT || uri.scheme == ContentResolver.SCHEME_FILE -> context.contentResolver.openFileDescriptor(uri, "r")!!
 					else -> TODO("Uri not yet supported")
 				}
-			} catch (fnf: FileNotFoundException) {
+			} catch (ex: Exception) {
 				null
 			}
 

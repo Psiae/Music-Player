@@ -1,5 +1,6 @@
 package com.flammky.android.medialib.temp.image.internal
 
+import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.Context
 import android.graphics.Bitmap
@@ -15,6 +16,7 @@ import com.flammky.android.medialib.temp.provider.mediastore.api28.MediaStore28
 import com.flammky.common.media.audio.AudioFile
 import com.flammky.kotlin.common.sync.sync
 import kotlinx.coroutines.*
+import timber.log.Timber
 
 class TestArtworkProvider(
 	private val context: Context,
@@ -67,8 +69,11 @@ class TestArtworkProvider(
 				request.id.startsWith("MediaStore") || request.id.startsWith("MEDIASTORE") -> {
 					ContentUris.withAppendedId(MediaStore28.Audio.EXTERNAL_CONTENT_URI, request.id.takeLastWhile { it.isDigit() }.toLong())
 				}
+				request.uri?.scheme == ContentResolver.SCHEME_CONTENT || request.uri?.scheme == ContentResolver.SCHEME_FILE -> request.uri
 				else -> null
 			}
+
+			Timber.d("TestArtworkProvider, resolvedUri: $resolvedUri")
 
 			val embed = resolvedUri?.let { uri ->
 				AudioFile.Builder(context, uri).build().let { af ->

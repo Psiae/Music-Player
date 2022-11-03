@@ -124,12 +124,12 @@ class MediaIntentHandlerImpl(
               ensureActive()
               playMediaItem(song, list, true)
 							provideMetadata(song.uid, song.uri)
-							provideArtwork(song.uid)
+							provideArtwork(song.uid, song.uri)
 							list.forEach {
 								if (it === song) return@forEach
 								launch(dispatcher.io) {
 									provideMetadata(it.uid, it.uri)
-									provideArtwork(it.uid)
+									provideArtwork(it.uid, it.uri)
 								}
 							}
             }
@@ -142,7 +142,7 @@ class MediaIntentHandlerImpl(
               ensureActive()
               playMediaItem(item)
 							provideMetadata(item.mediaId, intent.data.toUri())
-							provideArtwork(item.mediaId)
+							provideArtwork(item.mediaId, intent.data.toUri())
             }
           }
       }
@@ -192,11 +192,14 @@ class MediaIntentHandlerImpl(
 			}
 		}
 
-		private suspend fun provideArtwork(id: String) {
+		private suspend fun provideArtwork(id: String, uri: Uri) {
 			withContext(dispatcher.io) {
 				val req = ArtworkProvider.Request.Builder(id, Bitmap::class.java)
-					.setStoreMemoryCacheAllowed(true)
+					.setStoreMemoryCacheAllowed(false)
 					.setDiskCacheAllowed(false)
+					.setStoreDiskCacheAllowed(false)
+					.setStoreMemoryCacheAllowed(false)
+					.setUri(uri)
 					.build()
 				val result = artworkProvider.request(req).await()
 				if (result.isSuccessful()) mediaConnection.repository.provideArtwork(id, result.get())

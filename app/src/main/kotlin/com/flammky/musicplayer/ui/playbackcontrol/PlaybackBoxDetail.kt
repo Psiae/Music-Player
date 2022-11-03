@@ -287,21 +287,17 @@ private fun RadialPlaybackBackground(
 			animationSpec = tween(500)
 		).value
 		val brush = remember(color) {
-			if (color != backgroundColor) {
-				Brush.radialGradient(
-					colors = listOf(
-						color.copy(alpha = 0.45f).compositeOver(compositeBase),
-						color.copy(alpha = 0.35f).compositeOver(compositeBase),
-						color.copy(alpha = 0.15f).compositeOver(compositeBase),
-						color.copy(alpha = 0.1f).compositeOver(compositeBase),
-						color.copy(alpha = 0.0f).compositeOver(compositeBase)
-					),
-					center = Offset(constraints.maxWidth.toFloat() / 2, constraints.maxHeight.toFloat() / 4),
-					radius = constraints.maxWidth.toFloat()
-				)
-			} else {
-				Brush.verticalGradient(1f to color, 1f to color, 1f to color)
-			}
+			Brush.radialGradient(
+				colors = listOf(
+					color.copy(alpha = 0.45f).compositeOver(compositeBase),
+					color.copy(alpha = 0.35f).compositeOver(compositeBase),
+					color.copy(alpha = 0.15f).compositeOver(compositeBase),
+					color.copy(alpha = 0.1f).compositeOver(compositeBase),
+					color.copy(alpha = 0.0f).compositeOver(compositeBase)
+				),
+				center = Offset(constraints.maxWidth.toFloat() / 2, constraints.maxHeight.toFloat() / 4),
+				radius = constraints.maxWidth.toFloat()
+			)
 		}
 		Box(
 			modifier = Modifier
@@ -326,11 +322,11 @@ private fun RadialPlaybackBackground(
 				if (argb != -1) {
 					Color(argb)
 				} else {
-					absoluteBackgroundColor
+					backgroundColor
 				}
 			}
 		} else {
-			absoluteBackgroundColor
+			backgroundColor
 		}
 		if (isActive) radialPaletteColor.overwrite(color)
 	}

@@ -1,5 +1,6 @@
 package com.flammky.musicplayer.ui.main.compose.entry
 
+import android.app.Activity
 import android.content.Context
 import android.content.pm.PackageManager
 import android.content.res.Configuration
@@ -17,11 +18,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.flammky.android.app.permission.AndroidPermission
 import com.flammky.android.content.context.ContextInfo
 import com.flammky.android.content.context.rememberContextInfo
+import com.flammky.androidx.content.context.findActivity
 import com.flammky.musicplayer.R
 import com.flammky.musicplayer.ui.main.compose.theme.MainMaterial3Theme
 import com.flammky.musicplayer.ui.main.compose.theme.color.ColorHelper
@@ -32,8 +35,6 @@ import com.google.accompanist.pager.rememberPagerState
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
-import com.google.accompanist.permissions.shouldShowRationale
-import kotlinx.coroutines.Deferred
 
 class EntryViewModel() : ViewModel() {
 	var shouldPersistPager: Boolean? = null
@@ -143,16 +144,22 @@ private fun EntryPermissionPager(contextInfo: ContextInfo, onGranted: () -> Unit
 				onResult = {}
 			)
 
+			val activity = LocalContext.current.findActivity()!!
+
 			PermissionPage(
 				resId = resId,
 				description = title + if (optional) " (Optional)" else " (Required)",
 				isGranted = state.status.isGranted
 			) {
-				if (state.status.shouldShowRationale) {
-					state.launchPermissionRequest()
-				} else {
-					rememberLauncher.launch(contextInfo.commonIntent.appDetailSetting)
+				if (state.status.isGranted) {
+					return@PermissionPage
 				}
+				if (isPermissionRequestBlocked(activity, perm.manifestPath)) {
+					rememberLauncher.launch(contextInfo.commonIntent.appDetailSetting)
+					return@PermissionPage
+				}
+				state.launchPermissionRequest()
+				savePermissionRequested(activity, perm.manifestPath)
 			}
 
 			allPermissionGranted.value = pageItems
@@ -198,6 +205,18 @@ private fun EntryPermissionPager(contextInfo: ContextInfo, onGranted: () -> Unit
 			}
 		}
 	}
+}
+
+private fun savePermissionRequested(activity: Activity, permissionString: String) {
+	val sharedPref = activity.getSharedPreferences("perm", Context.MODE_PRIVATE)
+	sharedPref.edit { putBoolean(permissionString, true) }
+}
+
+private fun isPermissionRequestBlocked(activity: Activity, permission: String): Boolean {
+	val sharedPref = activity.getSharedPreferences("perm", Context.MODE_PRIVATE)
+	return ContextCompat.checkSelfPermission(activity, permission) != PackageManager.PERMISSION_GRANTED
+		&& !activity.shouldShowRequestPermissionRationale(permission)
+		&& sharedPref.getBoolean(permission, false)
 }
 
 @Suppress("NOTHING_TO_INLINE")

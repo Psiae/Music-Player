@@ -1,5 +1,6 @@
 package com.flammky.android.medialib.temp.image
 
+import android.net.Uri
 import androidx.annotation.IntRange
 import androidx.annotation.Px
 
@@ -27,6 +28,7 @@ interface ArtworkProvider {
 	class Request <R> private constructor(
 		val id: String,
 		val cls: Class<R>,
+		val uri: Uri?,
 		@Px val minimumWidth: Int,
 		@Px val minimumHeight: Int,
 		val diskCacheAllowed: Boolean,
@@ -75,6 +77,9 @@ interface ArtworkProvider {
 			var storeMemoryCacheAllowed: Boolean = true
 				private set
 
+			var uri: Uri? = null
+				private set
+
 			fun setMinimumSize(@Px @IntRange(from = 0, to = MAX_WIDTH) size: Int): Builder<R> =
 				apply {
 					setMinimumSize(size, size)
@@ -120,9 +125,14 @@ interface ArtworkProvider {
 				storeMemoryCacheAllowed = allowed
 			}
 
+			fun setUri(uri: Uri?) = apply {
+				this.uri = uri
+			}
+
 			fun build(): Request<R> = Request(
 				id = id,
 				cls = cls,
+				uri = uri,
 				minimumWidth = minimumWidth,
 				minimumHeight = minimumHeight,
 				diskCacheAllowed = diskCacheAllowed,

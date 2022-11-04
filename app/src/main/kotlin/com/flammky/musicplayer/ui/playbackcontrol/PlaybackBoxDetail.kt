@@ -42,6 +42,7 @@ import com.flammky.musicplayer.ui.Theme
 import com.flammky.musicplayer.ui.util.compose.NoRipple
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
+import com.google.accompanist.pager.PagerState
 import com.google.accompanist.pager.rememberPagerState
 import kotlinx.coroutines.*
 import timber.log.Timber
@@ -130,6 +131,7 @@ private fun PlaybackBoxDetailTransition(
 		} else if (heightState.read() == 0.dp) {
 			transitioned.overwrite(false)
 		}
+		// we should do it visually instead
 		if (transitioned.read()) {
 			PlaybackBoxDetails(viewModel) {
 				savedTransitioned.overwrite(false)
@@ -261,7 +263,7 @@ private fun TracksPagerDisplay(
 			metadataStateForId = { id ->
 				viewModel.observeMetadata(id).collectAsState()
 			},
-			seekIndex = { viewModel.seek(trackState.value.currentIndex, it) }
+			seekIndex = { viewModel.seek(it) }
 		)
 	}
 }
@@ -345,9 +347,7 @@ private fun TracksPager(
 	seekIndex: suspend (Int) -> Boolean,
 ) {
 	val tracks by trackState.rememberDerive { it.tracks }
-	val currentIndex by trackState.rememberDerive { it.currentIndex }
-
-	val pagerState = rememberPagerState(currentIndex.clampPositive())
+	val pagerState = rememberPagerState(trackState.value.currentIndex.clampPositive())
 
 	Column {
 		HorizontalPager(
@@ -355,46 +355,95 @@ private fun TracksPager(
 				.fillMaxWidth()
 				.height(300.dp),
 			state = pagerState,
-			count = tracks.size,
+			count = tracks.size
 		) {
 			TracksPagerItem(metadataStateForId(tracks[it]))
 		}
 	}
 
-	val isDragged by pagerState.interactionSource.collectIsDraggedAsState()
-	val pressed by pagerState.interactionSource.collectIsPressedAsState()
-
 	val touched = remember { mutableStateOf(false) }
 
-	if (isDragged || pressed) {
+	PagerListenMediaIndexChange(
+		indexState = trackState.rememberDerive { it.currentIndex },
+		pagerState = pagerState,
+		onScroll = { touched.overwrite(false) }
+	)
+
+	PagerListenUserDrag(pagerState = pagerState) {
 		touched.overwrite(true)
 	}
 
-	LaunchedEffect(key1 = currentIndex) {
-		if (currentIndex >= 0 && pagerState.currentPage != currentIndex && !isDragged) {
-			touched.value = false
-			if (pagerState.currentPage.inRangeSpread(currentIndex, 1)) {
+	PagerListenPageChange(
+		pagerState = pagerState,
+		touchedState = touched,
+		seekIndex = seekIndex
+	)
+}
+
+@OptIn(ExperimentalPagerApi::class)
+@Composable
+private fun PagerListenMediaIndexChange(
+	indexState: State<Int>,
+	pagerState: PagerState,
+	onScroll: suspend () -> Unit
+) {
+	val currentIndex = indexState.read()
+	LaunchedEffect(
+		key1 = currentIndex
+	) {
+		// TODO: Velocity check, if the user is dragging the pager but aren't moving
+		// or if the user drag velocity will ends in another page
+		if (currentIndex >= 0 &&
+			pagerState.currentPage != currentIndex &&
+			!pagerState.isScrollInProgress
+		) {
+			Timber.d("PagerListenMediaIndexChange ${indexState.value}")
+			onScroll()
+			if (currentIndex.inRangeSpread(pagerState.currentPage, 2)) {
 				pagerState.animateScrollToPage(currentIndex)
 			} else {
 				pagerState.scrollToPage(currentIndex)
 			}
 		}
 	}
+}
 
+@OptIn(ExperimentalPagerApi::class)
+@Composable
+private fun PagerListenUserDrag(
+	pagerState: PagerState,
+	onUserInteract: () -> Unit
+) {
+	val dragged = pagerState.interactionSource.collectIsDraggedAsState()
 	LaunchedEffect(
-		key1 = isDragged,
-		key2 = pagerState.currentPage,
-		key3 = pagerState.isScrollInProgress
+		dragged.value
 	) {
-		val page = pagerState.currentPage
-		if (page != currentIndex) {
-			if (!isDragged && touched.value) seekIndex(page)
+		if (dragged.value) onUserInteract()
+	}
+}
+
+@OptIn(ExperimentalPagerApi::class)
+@Composable
+private fun PagerListenPageChange(
+	pagerState: PagerState,
+	touchedState: State<Boolean>,
+	seekIndex: suspend (Int) -> Boolean
+) {
+	val draggedState = pagerState.interactionSource.collectIsDraggedAsState()
+	LaunchedEffect(
+		pagerState.currentPage,
+		pagerState.isScrollInProgress,
+		draggedState.read(),
+		touchedState.read()
+	) {
+		if (touchedState.value && !draggedState.value) {
+			seekIndex(pagerState.currentPage)
 		}
 	}
 }
 
 private fun Int.inRangeSpread(a: Int, amount: Int): Boolean {
-	return (this in a..a + amount || this in a.. a - amount)
+	return (this in a - amount.. a + amount)
 }
 
 @Composable
@@ -510,11 +559,19 @@ private fun PlaybackControlButtons(
 		Box(
 			modifier = Modifier.size(40.dp)
 		) {
+			val interactionSource = remember { MutableInteractionSource() }
+			val size by animateDpAsState(
+				targetValue = if (interactionSource.collectIsPressedAsState().read()) 27.dp else 30.dp
+			)
 			Icon(
 				modifier = Modifier
-					.size(30.dp)
+					.size(size)
 					.align(Alignment.Center)
-					.clickable { if (propertiesInfo.shuffleOn) disableShuffle() else enableShuffle() }
+					.clickable(
+						interactionSource = interactionSource,
+						indication = null,
+						onClick = { if (propertiesInfo.shuffleOn) disableShuffle() else enableShuffle() }
+					)
 				,
 				painter = painterResource(id = R.drawable.ios_glyph_shuffle_100),
 				contentDescription = "shuffle",
@@ -528,11 +585,19 @@ private fun PlaybackControlButtons(
 		// Previous
 		Box(modifier = Modifier.size(40.dp)) {
 			// later check for command availability
+			val interactionSource = remember { MutableInteractionSource() }
+			val size by animateDpAsState(
+				targetValue = if (interactionSource.collectIsPressedAsState().read()) 32.dp else 35.dp
+			)
 			Icon(
 				modifier = Modifier
-					.size(35.dp)
+					.size(size)
 					.align(Alignment.Center)
-					.clickable { previous() }
+					.clickable(
+						interactionSource = interactionSource,
+						indication = null,
+						onClick = { previous() }
+					)
 				,
 				painter = painterResource(id = R.drawable.ios_glyph_seek_previos_100),
 				contentDescription = "previous",
@@ -545,11 +610,19 @@ private fun PlaybackControlButtons(
 			// later check for command availability
 			val rememberPlayPainter = painterResource(id = R.drawable.ios_glyph_play_100)
 			val rememberPausePainter = painterResource(id = R.drawable.ios_glyph_pause_100)
+			val interactionSource = remember { MutableInteractionSource() }
+			val size by animateDpAsState(
+				targetValue = if (interactionSource.collectIsPressedAsState().read()) 37.dp else 40.dp
+			)
 			Icon(
 				modifier = Modifier
-					.size(40.dp)
+					.size(size)
 					.align(Alignment.Center)
-					.clickable { if (propertiesInfo.playWhenReady) pause() else play() }
+					.clickable(
+						interactionSource = interactionSource,
+						indication = null,
+						onClick = { if (propertiesInfo.playWhenReady) pause() else play() }
+					)
 				,
 				painter = if (propertiesInfo.playWhenReady)
 					rememberPausePainter
@@ -564,11 +637,20 @@ private fun PlaybackControlButtons(
 		// Next
 		Box(modifier = Modifier.size(40.dp)) {
 			// later check for command availability
+
+			val interactionSource = remember { MutableInteractionSource() }
+			val size by animateDpAsState(
+				targetValue = if (interactionSource.collectIsPressedAsState().read()) 32.dp else 35.dp
+			)
 			Icon(
 				modifier = Modifier
-					.size(35.dp)
+					.size(size)
 					.align(Alignment.Center)
-					.clickable { if (propertiesInfo.hasNextMediaItem) next() }
+					.clickable(
+						interactionSource = interactionSource,
+						indication = null,
+						onClick = { if (propertiesInfo.hasNextMediaItem) next() }
+					)
 				,
 				painter = painterResource(id = R.drawable.ios_glyph_seek_next_100),
 				contentDescription = "next",
@@ -580,20 +662,26 @@ private fun PlaybackControlButtons(
 		}
 
 		// Repeat
-		Box(modifier = Modifier
-			.size(40.dp)
-			.clickable {
-				when (propertiesInfo.repeatMode) {
-					Player.RepeatMode.OFF -> enableRepeat()
-					Player.RepeatMode.ONE -> enableRepeatAll()
-					Player.RepeatMode.ALL -> disableRepeat()
-				}
-			}
-		) {
+		Box(modifier = Modifier.size(40.dp)) {
+			val interactionSource = remember { MutableInteractionSource() }
+			val size by animateDpAsState(
+				targetValue = if (interactionSource.collectIsPressedAsState().read()) 32.dp else 35.dp
+			)
 			Icon(
 				modifier = Modifier
-					.size(30.dp)
-					.align(Alignment.Center),
+					.size(size)
+					.align(Alignment.Center)
+					.clickable(
+						interactionSource = interactionSource,
+						indication = null,
+						onClick = {
+							when (propertiesInfo.repeatMode) {
+								Player.RepeatMode.OFF -> enableRepeat()
+								Player.RepeatMode.ONE -> enableRepeatAll()
+								Player.RepeatMode.ALL -> disableRepeat()
+							}
+						}
+					),
 				painter = when (propertiesInfo.repeatMode) {
 					Player.RepeatMode.OFF -> painterResource(id = R.drawable.ios_glyph_repeat_100)
 					Player.RepeatMode.ONE -> painterResource(id = R.drawable.ios_glyph_repeat_one_100)
@@ -734,7 +822,7 @@ private fun PlaybackControlProgressSeekbar(
 		}
 	}
 
-	LaunchedEffect(key1 = positionChangeReason) {
+	LaunchedEffect(key1 = position) {
 		if (positionChangeReason == PlaybackDetailPositionStream.PositionChangeReason.USER_SEEK) {
 			suppressSeekRequest.overwrite(false)
 		}

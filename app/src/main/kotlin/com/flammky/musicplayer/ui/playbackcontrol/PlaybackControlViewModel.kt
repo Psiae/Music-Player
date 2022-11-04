@@ -8,6 +8,7 @@ import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.android.medialib.player.Player
 import com.flammky.android.medialib.providers.metadata.VirtualFileMetadata
+import com.flammky.common.kotlin.coroutines.safeCollect
 import com.flammky.musicplayer.common.android.concurrent.ConcurrencyHelper.checkMainThread
 import com.flammky.musicplayer.domain.media.MediaConnection
 import com.flammky.musicplayer.ui.playbackcontrol.PlaybackDetailPositionStream.Companion.asPlaybackDetails
@@ -20,6 +21,7 @@ import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.annotation.concurrent.Immutable
 import javax.inject.Inject
@@ -37,9 +39,12 @@ internal class PlaybackControlViewModel @Inject constructor(
 	private val _pagerDataStateFlow = MutableStateFlow(PlaybackDetailPagerData())
 	val pagerDataStateFlow = _pagerDataStateFlow.asStateFlow()
 
-	private val _trackStreamFlow = mediaConnection.playback.observePlaylistStream()
+	private val _trackStreamFlow = MutableStateFlow(MediaConnection.Playback.TracksInfo())
 
 	init {
+		viewModelScope.launch {
+			mediaConnection.playback.observePlaylistStream().safeCollect { _trackStreamFlow.value = it }
+		}
 	}
 
 	private val _positionStreamFlow = mediaConnection.playback.observePositionStream()
@@ -71,17 +76,36 @@ internal class PlaybackControlViewModel @Inject constructor(
 
 	suspend fun seek(currentIndex: Int, position: Long): Boolean {
 		return mediaConnection.playback.joinSuspend {
-			if (this@joinSuspend.currentIndex == currentIndex) {
-				this@joinSuspend.seekPosition(position)
-				true
-			} else false
+			val playback = this@joinSuspend
+			(playback.currentIndex == currentIndex &&
+				playback.currentPosition.inWholeMilliseconds != position).also {
+					if (it) playback.seekPosition(position)
+				}
 		}
 	}
 
 	suspend fun seek(currentIndex: Int, toIndex: Int): Boolean {
 		return mediaConnection.playback.joinSuspend playback@ {
-			(this@playback.currentIndex == currentIndex && this@playback.mediaItemCount >= toIndex).also {
-				if (it) seekIndex(toIndex, 0L)
+			(this@playback.currentIndex == currentIndex &&
+				this@playback.currentIndex != toIndex &&
+				this@playback.mediaItemCount >= toIndex
+			).also {
+				if (it) {
+					seekIndex(toIndex, 0L)
+					_trackStreamFlow.update { old -> old.copy(changeReason = 0, currentIndex = toIndex) }
+				}
+			}
+		}
+	}
+
+	suspend fun seek(toIndex: Int): Boolean {
+		return mediaConnection.playback.joinSuspend playback@ {
+			(this@playback.currentIndex != toIndex &&
+				this@playback.mediaItemCount >= toIndex
+			).also {
+				if (it) {
+					seekIndex(toIndex, 0L)
+				}
 			}
 		}
 	}

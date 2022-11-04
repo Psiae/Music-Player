@@ -329,7 +329,7 @@ class MediaNotificationManager(
 
 			val metadata = serviceDelegate.property.mediaConnectionDelegate.repository.getMetadata(id) as? MediaMetadata
 
-			return if (metadata != null ) {
+			return if (metadata != null) {
 				when (metadata) {
 					is AudioMetadata -> notificationProvider.buildMediaStyleNotification(
 						session, channelName,

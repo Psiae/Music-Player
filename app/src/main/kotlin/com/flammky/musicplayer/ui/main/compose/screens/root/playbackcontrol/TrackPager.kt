@@ -2,6 +2,7 @@ package com.flammky.musicplayer.ui.main.compose.screens.root.playbackcontrol
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.*
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -59,19 +60,32 @@ private fun TrackDescriptionHorizontalPager(
 		"Playing Index($index) > size($tracks), must ensure playback info delivery is consistent on both"
 	}
 
-	val pagerState = rememberPagerState()
+	val pagerState = rememberPagerState(index)
 
 	val count = tracks.size
 
-	LaunchedEffect(key1 = index) {
+	val touched = remember { mutableStateOf(false) }
+	val dragging by pagerState.interactionSource.collectIsDraggedAsState()
+
+	LaunchedEffect(
+		key1 = index
+	) {
 		if (!pagerState.isScrollInProgress) {
+			touched.value = false
 			pagerState.animateScrollToPage(page = index)
 		}
 	}
 
-	LaunchedEffect(key1 = pagerState.currentPage, !pagerState.isScrollInProgress) {
-		if (!pagerState.isScrollInProgress) {
-			if (pagerState.currentPage != index) viewModel.seekIndex(pagerState.currentPage)
+	LaunchedEffect(
+		key1 = pagerState.currentPage,
+		key2 = dragging
+	) {
+		if (!dragging) {
+			if (touched.value && pagerState.currentPage != index) {
+				viewModel.seekIndex(pagerState.currentPage)
+			}
+		} else {
+			touched.value = true
 		}
 	}
 

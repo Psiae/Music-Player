@@ -138,8 +138,10 @@ internal class PlaybackControlViewModel @Inject constructor(
 				flow2 = mediaConnection.repository.observeMetadata(id)
 			) { art: Any?, metadata: MediaMetadata? ->
 				val title = metadata?.title?.ifBlank { null }
-					?: (metadata as? AudioFileMetadata)?.file?.fileName?.ifBlank { null }
-					?: ((metadata as? AudioFileMetadata)?.file as? VirtualFileMetadata)?.uri?.toString()
+					?: (metadata as? AudioFileMetadata)?.file?.let { fileMetadata ->
+						fileMetadata.fileName?.ifBlank { null }
+							?: (fileMetadata as? VirtualFileMetadata)?.uri?.toString()
+					}
 				val subtitle = (metadata as? AudioMetadata)
 					?.let { it.albumArtistName ?: it.artistName }
 				PlaybackDetailMetadata(id, art, title, subtitle)

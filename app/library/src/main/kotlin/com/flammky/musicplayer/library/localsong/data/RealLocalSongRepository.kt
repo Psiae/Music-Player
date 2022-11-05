@@ -98,7 +98,7 @@ internal class RealLocalSongRepository(
 
 	override fun refreshMetadata(id: String, uri: Uri): Job {
 		return ioScope.launch {
-			mediaConnection.repository.provideMetadata(id, fillAudioMetadata(uri))
+			mediaConnection.repository.provideMetadata(id, fillMetadata(uri))
 		}
 	}
 
@@ -285,6 +285,24 @@ internal class RealLocalSongRepository(
 		awaitClose {
 			mediaLib.mediaProviders.mediaStore.audio.removeObserver(observer)
 		}
+	}
+
+	private suspend fun fillMetadata(uri: Uri): MediaMetadata {
+		mediaLib.mediaProviders.mediaStore.audio.queryByUri(uri)?.let { from ->
+			val audioMetadata = fillAudioMetadata(uri)
+			val fileMetadata = VirtualFileMetadata.build {
+				setUri(from.uri)
+				setScheme(from.uri.scheme)
+				setAbsolutePath(from.file.absolutePath)
+				setFileName(from.file.fileName)
+				setDateAdded(from.file.dateAdded?.seconds)
+				setLastModified(from.file.dateModified?.seconds)
+				setSize(from.file.size)
+			}
+			return AudioFileMetadata(audioMetadata, fileMetadata)
+		}
+
+		return fillAudioMetadata(uri)
 	}
 
 	private fun fillAudioMetadata(uri: Uri): AudioMetadata {

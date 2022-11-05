@@ -96,6 +96,7 @@ internal class RealMediaConnection(
 			if (delegate.repository.getArtwork(id) == null) {
 				val req = ArtworkProvider.Request.Builder(id, Bitmap::class.java)
 					.setStoreMemoryCacheAllowed(true)
+					.setMemoryCacheAllowed(false)
 					.setDiskCacheAllowed(false)
 					.build()
 				val result = artworkProvider.request(req).await()

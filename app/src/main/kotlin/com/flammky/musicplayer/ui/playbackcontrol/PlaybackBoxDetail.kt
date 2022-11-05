@@ -17,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -84,7 +85,7 @@ internal fun PlaybackBoxDetail(
 				label = "",
 				transitionSpec = {
 					tween(
-						durationMillis = 200,
+						durationMillis = if (targetState.isVisible) 250 else 150,
 						easing = if (visibility.isVisible) FastOutSlowInEasing else LinearOutSlowInEasing
 					)
 				}
@@ -126,16 +127,26 @@ private fun PlaybackBoxDetailTransition(
 			)
 
 	) {
-		if (-yOffset == 0.dp) {
-			transitioned.overwrite(true)
-		} else if (heightState.read() == 0.dp) {
-			transitioned.overwrite(false)
+		when (0.dp) {
+			-yOffset -> {
+				transitioned.overwrite(true)
+			}
+			heightState.read() -> {
+				transitioned.overwrite(false)
+			}
 		}
-		// we should do it visually instead
-		if (transitioned.read()) {
-			PlaybackBoxDetails(viewModel) {
-				savedTransitioned.overwrite(false)
-				dismiss()
+		val animatedAlpha = animateFloatAsState(
+			targetValue = if (transitioned.read()) 1f else 0f,
+			animationSpec = tween(if (transitioned.read()) 250 else 0)
+		)
+		Box(
+			modifier = Modifier.alpha(animatedAlpha.read())
+		) {
+			if (yOffset != target) {
+				PlaybackBoxDetails(viewModel) {
+					savedTransitioned.overwrite(false)
+					dismiss()
+				}
 			}
 		}
 	}
@@ -152,6 +163,7 @@ private fun PlaybackBoxDetails(
 		.fillMaxSize()
 		.background(Theme.backgroundColor())
 	) {
+		// we should find alternatives for light mode
 		RadialPlaybackBackground(viewModel = viewModel)
 		Column(
 			modifier = Modifier
@@ -397,7 +409,6 @@ private fun PagerListenMediaIndexChange(
 			pagerState.currentPage != currentIndex &&
 			!pagerState.isScrollInProgress
 		) {
-			Timber.d("PagerListenMediaIndexChange ${indexState.value}")
 			onScroll()
 			if (currentIndex.inRangeSpread(pagerState.currentPage, 2)) {
 				pagerState.animateScrollToPage(currentIndex)

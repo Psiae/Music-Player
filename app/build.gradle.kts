@@ -88,6 +88,8 @@ dependencies {
 
     implementation(project("base"))
     implementation(project("base:compose"))
+    implementation(project("base:lifecycle"))
+    implementation(project("media"))
     implementation(project("medialib"))
     implementation(project("library"))
 

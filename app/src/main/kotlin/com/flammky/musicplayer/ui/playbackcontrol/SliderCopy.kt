@@ -106,7 +106,7 @@ fun Slider(
 	interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
 	colors: SliderColors = SliderDefaults.colors(),
 	trackHeight: Dp,
-	thumbSize: Dp
+	thumbSize: Dp,
 ) {
 	require(steps >= 0) { "steps should be >= 0" }
 	val onValueChangeState = rememberUpdatedState<(Float) -> Unit> {
@@ -322,7 +322,7 @@ private fun SliderImpl(
 	interactionSource: MutableInteractionSource,
 	modifier: Modifier,
 	trackHeight: Dp,
-	thumbSize: Dp
+	thumbDrawSize: Dp,
 ) {
 	Box(modifier.then(DefaultSliderConstraints)) {
 		val trackStrokeWidth: Float
@@ -334,7 +334,9 @@ private fun SliderImpl(
 
 		val offset = widthDp * positionFraction
 		Track(
-			Modifier.height(40.dp).fillMaxWidth(),
+			Modifier
+				.height(40.dp)
+				.fillMaxWidth(),
 			colors,
 			enabled,
 			0f,
@@ -343,7 +345,14 @@ private fun SliderImpl(
 			ThumbWidth,
 			trackStrokeWidth
 		)
-		SliderThumb(Modifier, offset, interactionSource, colors, enabled, DpSize(thumbSize, thumbSize))
+		SliderThumb(
+			Modifier,
+			offset,
+			interactionSource,
+			colors,
+			enabled,
+			DpSize(thumbDrawSize, thumbDrawSize)
+		)
 	}
 }
 
@@ -354,7 +363,7 @@ private fun BoxScope.SliderThumb(
 	interactionSource: MutableInteractionSource,
 	colors: SliderColors,
 	enabled: Boolean,
-	thumbSize: DpSize
+	thumbSize: DpSize,
 ) {
 	Box(
 		Modifier

@@ -676,7 +676,7 @@ private fun PlaybackControlButtons(
 		Box(modifier = Modifier.size(40.dp)) {
 			val interactionSource = remember { MutableInteractionSource() }
 			val size by animateDpAsState(
-				targetValue = if (interactionSource.collectIsPressedAsState().read()) 32.dp else 35.dp
+				targetValue = if (interactionSource.collectIsPressedAsState().read()) 27.dp else 30.dp
 			)
 			Icon(
 				modifier = Modifier
@@ -740,7 +740,11 @@ private fun PlaybackControlProgressSeekbar(
 		value = if (suppressedUpdateValue) {
 			changedValue.read()
 		} else {
-			clampedPositionProgress()
+			val animated = animateFloatAsState(
+				targetValue = clampedPositionProgress(),
+				animationSpec = TweenSpec(durationMillis = 200)
+			)
+			animated.value
 		},
 		onValueChange = {
 			rememberedIndex.overwrite(trackState.value.currentIndex)
@@ -758,7 +762,7 @@ private fun PlaybackControlProgressSeekbar(
 		},
 		interactionSource = interactionSource,
 		trackHeight = 4.dp,
-		thumbSize = 14.dp,
+		thumbSize = 12.dp,
 		colors = SliderDefaults.colors(
 			activeTrackColor = Theme.dayNightAbsoluteContentColor(),
 			thumbColor = Theme.dayNightAbsoluteContentColor()

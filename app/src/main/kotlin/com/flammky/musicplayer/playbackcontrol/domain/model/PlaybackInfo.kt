@@ -1,4 +1,4 @@
-package com.flammky.musicplayer.playbackcontrol.data
+package com.flammky.musicplayer.playbackcontrol.domain.model
 
 import com.flammky.musicplayer.core.media.MediaConstants
 import kotlinx.collections.immutable.ImmutableList
@@ -61,6 +61,10 @@ data class PlaybackInfo(
 				playbackState = PlaybackState.IDLE
 			)
 		}
+	}
+
+	companion object {
+		val UNSET = PlaybackInfo(Position.UNSET, Playlist.UNSET, Properties.UNSET)
 	}
 
 	sealed interface RepeatMode {

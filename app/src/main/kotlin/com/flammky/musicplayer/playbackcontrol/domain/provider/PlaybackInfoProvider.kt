@@ -1,7 +1,7 @@
 package com.flammky.musicplayer.playbackcontrol.domain.provider
 
-import com.flammky.musicplayer.playbackcontrol.data.PlaybackInfo
-import com.google.firebase.inject.Deferred
+import com.flammky.musicplayer.playbackcontrol.domain.model.PlaybackInfo
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.flow.Flow
 
 internal interface PlaybackInfoProvider {

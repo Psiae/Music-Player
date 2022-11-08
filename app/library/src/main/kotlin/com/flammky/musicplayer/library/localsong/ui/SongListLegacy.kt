@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -70,6 +71,7 @@ private fun LocalSongListsColumn(
 		onRefresh = { vm.refresh() },
 		indicatorPadding = PaddingValues(top = 10.dp)
 	) {
+		val lazyColumnState = rememberLazyListState()
 		LazyColumn(
 			verticalArrangement = Arrangement.spacedBy(4.dp)
 		) {
@@ -163,7 +165,7 @@ private val LOADING = Any()
 private fun ItemArtworkCard(model: LocalSongModel, vm: LocalSongViewModel) {
 	val context = LocalContext.current
 	val coroutineScope = rememberCoroutineScope()
-	val coroutineContext = Dispatchers.Main.immediate + SupervisorJob()
+	val coroutineContext = Dispatchers.Main + SupervisorJob()
 
 	val art = remember { mutableStateOf<Any?>(UNSET) }
 

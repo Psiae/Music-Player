@@ -18,9 +18,16 @@ internal class PlaybackControlViewModel(
 ) : ViewModel() {
 	private val _trackInfoChannelFlow = mutableMapOf<String, Flow<TrackInfo>>()
 
-	val playbackInfoStateFlow = flow<PlaybackInfo> {
+	val playbackInfoStateFlow = flow {
 		emitAll(playbackInfoUseCase.observe())
 	}.stateIn(viewModelScope, SharingStarted.Eagerly, PlaybackInfo.UNSET)
+
+	val currentTrackInfoStateFlow: StateFlow<TrackInfo> = playbackInfoStateFlow
+		.map { it.playlist }
+		.transform { playlist ->
+			emitAll(observeTrackInfo(playlist.currentTrackId ?: ""))
+		}
+		.stateIn(viewModelScope, SharingStarted.Eagerly, TrackInfo.UNSET)
 
 	// I think we should have this Flow channel in repository instead ?
 
@@ -38,4 +45,8 @@ internal class PlaybackControlViewModel(
 			}
 		}
 	}
+
+
+	private inline val PlaybackInfo.Playlist.currentTrackId: String?
+		get() = takeIf { currentIndex >= 0 && list.isNotEmpty() }?.list?.get(currentIndex)
 }

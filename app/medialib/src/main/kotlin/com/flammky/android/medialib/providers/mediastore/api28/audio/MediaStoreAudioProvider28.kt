@@ -109,7 +109,7 @@ class MediaStoreAudioProvider28(private val context: MediaStoreContext)
 	private fun rememberUris(key: Long, uris: List<Uri>) {
 		internalIoScope.launch {
 			rememberMutex.withLock {
-				if (key == rememberUrisKey) {
+				if (key == _rememberUrisKey - 1) {
 					rememberUris = uris
 				}
 			}

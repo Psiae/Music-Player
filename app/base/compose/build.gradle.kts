@@ -43,8 +43,16 @@ dependencies {
         api("androidx.compose.foundation:foundation:$v")
     }
 
+    /* Coil-kt */
     dependencies {
         val v = "2.2.2"
         api("io.coil-kt:coil-compose:$v")
+    }
+
+    /* Lottie */
+    dependencies {
+        val v = "5.2.0"
+        api("com.airbnb.android:lottie:$v")
+        api("com.airbnb.android:lottie-compose:$v")
     }
 }

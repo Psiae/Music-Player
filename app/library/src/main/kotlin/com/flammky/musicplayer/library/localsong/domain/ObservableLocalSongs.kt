@@ -3,6 +3,7 @@ package com.flammky.musicplayer.library.localsong.domain
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider
+import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider.ContentObserver.Flag.Companion.isUpdate
 import com.flammky.common.kotlin.coroutines.safeCollect
 import com.flammky.musicplayer.library.localsong.data.LocalSongModel
 import com.flammky.musicplayer.library.localsong.data.LocalSongRepository
@@ -93,7 +94,6 @@ class RealObservableLocalSongs(
 				if (remains.isEmpty()) return get
 			}
 		} else {
-			repository.refreshMetadata(id)
 			return doScheduledRefresh(null)
 			// TODO
 		}
@@ -103,7 +103,9 @@ class RealObservableLocalSongs(
 		return scheduleMutex.withLock {
 			scheduledRefresh.add(id)
 			val remembered = rememberMutex.withLock {
-				if (_rememberRefreshing) return refreshJob!!
+				if (_rememberRefreshing) {
+					return refreshJob!!
+				}
 				_rememberRefreshing = true
 				_rememberList
 			}
@@ -117,7 +119,13 @@ class RealObservableLocalSongs(
 
 	private val observer = MediaStoreProvider.ContentObserver { id, uri, flag ->
 		Timber.d("ObserveCurrentAvailable $id, $uri, $flag")
-		ioScope.launch { scheduleRefresh(id) }
+		ioScope.launch {
+			if (flag.isUpdate) {
+				repository.refreshMetadata(id, uri)
+				repository.refreshArtwork(id, uri)
+			}
+			scheduleRefresh(null)
+		}
 	}
 
 	override fun collectLocalSongs(): Flow<ImmutableList<LocalSongModel>> = localSongsMSF.asStateFlow()

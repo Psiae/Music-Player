@@ -102,6 +102,41 @@ internal class RealLocalSongRepository(
 		}
 	}
 
+	override fun refreshArtwork(model: LocalSongModel): Job {
+		return ioScope.launch {
+			val afm = model.mediaItem.metadata as? AudioFileMetadata
+				?: return@launch
+			(afm.file as? VirtualFileMetadata)?.uri
+				?.let { uri -> refreshArtwork(model.id, uri).join() }
+				?: refreshMetadata(model.id).join()
+		}
+	}
+
+	override fun refreshArtwork(id: String): Job {
+		return ioScope.launch {
+			mediaLib.mediaProviders.mediaStore.audio.uriFromId(id)
+				?.let { uri -> refreshArtwork(id, uri).join() }
+		}
+	}
+
+	override fun refreshArtwork(id: String, uri: Uri): Job {
+		Timber.d("refreshArtwork: $id, $uri")
+
+		return ioScope.launch {
+			val artReq = ArtworkProvider.Request.Builder(id, Bitmap::class.java)
+				.setDiskCacheAllowed(false)
+				.setMemoryCacheAllowed(false)
+				.setStoreDiskCacheAllowed(false)
+				.setStoreMemoryCacheAllowed(true)
+				.setUri(uri)
+				.build()
+			val artReqResult = artworkProvider.request(artReq).await()
+			if (artReqResult.isSuccessful()) {
+				mediaConnection.repository.provideArtwork(id, artReqResult.get(), false)
+			}
+		}
+	}
+
 
 	override fun buildMediaItem(build: MediaItem.Builder.() -> Unit): MediaItem {
 		return mediaLib.context.buildMediaItem(build)

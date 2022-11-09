@@ -29,6 +29,9 @@ interface LocalSongRepository {
 	fun refreshMetadata(id: String): Job
 	fun refreshMetadata(id: String, uri: Uri): Job
 	fun refreshMetadata(model: LocalSongModel): Job
+	fun refreshArtwork(id: String): Job
+	fun refreshArtwork(id: String, uri: Uri): Job
+	fun refreshArtwork(model: LocalSongModel): Job
 
 
 	@Immutable

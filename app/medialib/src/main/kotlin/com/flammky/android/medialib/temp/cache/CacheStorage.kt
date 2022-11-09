@@ -90,5 +90,5 @@ interface CacheStorage<K: Any, V: Any> {
 	 * on those cases null is usually returned, but may also
 	 * throw [RejectionException] which extends [IOException] for convenience
 	 */
-	fun get(key: K): V?
+    operator fun get(key: K): V?
 }

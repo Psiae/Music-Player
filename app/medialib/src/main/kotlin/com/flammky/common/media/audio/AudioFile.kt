@@ -9,6 +9,7 @@ import com.flammky.android.app.AppDelegate
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.mp3.MP3File
 import com.flammky.musicplayer.common.media.audio.uri.AndroidFileBuilder
 import com.flammky.musicplayer.common.media.audio.uri.ContentFileBuilder
+import timber.log.Timber
 import java.io.File
 import java.io.FileDescriptor
 
@@ -23,6 +24,7 @@ class AudioFile private constructor() {
 	private var mContext: Context? = null
 	private var mFile: File? = null
 	private var mFileDescriptor: FileDescriptor? = null
+	private var mUri: Uri? = null
 	private var mp3File: MP3File? = null
 
 	val imageData: ByteArray?
@@ -37,6 +39,7 @@ class AudioFile private constructor() {
 		private var _context: Context? = null
 		private var _file: File? = null
 		private var _fileDescriptor: ParcelFileDescriptor? = null
+		private var _uri: Uri? = null
 
 		private constructor()
 
@@ -68,25 +71,26 @@ class AudioFile private constructor() {
 					else -> TODO("Uri not yet supported")
 				}
 			} catch (ex: Exception) {
+				Timber.d("AudioFileBuilder ex: $ex")
 				null
 			}
 
 			_fileDescriptor = fd
+			_uri = uri
 		}
 
 		fun build(): AudioFile = AudioFile().apply {
 			mContext = _context
 			mFile = _file
 			mFileDescriptor = _fileDescriptor?.fileDescriptor
+			mUri = _uri
 
 			try {
 				when {
 					mFile != null -> mp3File = MP3File(mFile!!)
-					mFileDescriptor != null -> mp3File = MP3File(mFileDescriptor!!)
+					mFileDescriptor != null -> mp3File = MP3File(mFileDescriptor!!, mUri!!)
 				}
 			} catch (_: Exception) {}
-
-
 
 			_fileDescriptor?.close()
 		}

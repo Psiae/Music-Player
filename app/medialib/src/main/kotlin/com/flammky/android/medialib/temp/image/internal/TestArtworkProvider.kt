@@ -4,7 +4,6 @@ import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.os.Handler
 import android.os.Looper
 import com.flammky.android.app.AppDelegate
@@ -53,7 +52,7 @@ class TestArtworkProvider(
 				}
 			}
 
-			if (request.diskCacheAllowed) {
+			/*if (request.diskCacheAllowed) {
 				cacheManager.retrieveImageCacheFile(request.id, "TestArtworkProvider")?.let { file ->
 					BitmapFactory.decodeFile(file.absolutePath)?.let { bitmap ->
 						listenable.setResult(bitmap as? R)
@@ -63,7 +62,7 @@ class TestArtworkProvider(
 						file.delete()
 					}
 				}
-			}
+			}*/
 
 			val resolvedUri = when {
 				request.id.startsWith("MediaStore") || request.id.startsWith("MEDIASTORE") -> {
@@ -79,6 +78,7 @@ class TestArtworkProvider(
 				AudioFile.Builder(context, uri).build().let { af ->
 					af.file?.delete()
 					val data = af.imageData
+					Timber.d("AF($resolvedUri) data: ${data?.size}")
 					if (data != null && data.isNotEmpty()) {
 						BitmapSampler.ByteArray.toSampledBitmap(data, 0, data.size, 1000000)
 							?.let { bitmap ->
@@ -96,6 +96,7 @@ class TestArtworkProvider(
 					}
 				}
 			}
+			Timber.d("TestArtworkProvider, result: $embed")
 			listenable.setResult(embed as R?)
 		}
 	}

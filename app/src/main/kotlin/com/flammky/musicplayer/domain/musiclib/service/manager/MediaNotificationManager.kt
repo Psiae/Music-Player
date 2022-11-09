@@ -245,7 +245,6 @@ class MediaNotificationManager(
 		private val emptyItem = MediaItem.fromUri("empty")
 
 		private val lruCache: com.flammky.android.medialib.temp.cache.lru.LruCache<String, Bitmap> = com.flammky.android.medialib.temp.MediaLibrary.API.imageRepository.sharedBitmapLru
-		private var localStored: Pair<String, Bitmap> = "" to NO_BITMAP
 
 		// config later
 		private val cacheConfig
@@ -389,8 +388,7 @@ class MediaNotificationManager(
 			currentCompleted: suspend () -> Unit = {}
 		): Unit = withContext(this@MediaNotificationManager.appDispatchers.main) {
 			val currentItem = player.currentMediaItem.orEmpty()
-			val bitmap = (getItemBitmap(currentItem, true)?.second ?: NO_BITMAP)
-			localStored = currentItem.mediaId to bitmap
+			getItemBitmap(currentItem, true)
 			currentCompleted()
 		}
 
@@ -399,7 +397,7 @@ class MediaNotificationManager(
 			try {
 
 				if (cache) {
-					lruCache.get(item.mediaId + "500")?.let { return@withContext item to it }
+					lruCache[item.mediaId]?.let { return@withContext item to it }
 				}
 
 				val reqSize = 500
@@ -427,7 +425,7 @@ class MediaNotificationManager(
 				val squaredBitmap = coilHelper.loadSquaredBitmap(source, reqSize, scale)
 
 				if (squaredBitmap != null) {
-					lruCache.put(item.mediaId + "500", squaredBitmap)
+					lruCache.put(item.mediaId, squaredBitmap)
 				}
 
 				item to squaredBitmap
@@ -438,10 +436,7 @@ class MediaNotificationManager(
 
 		private fun getItemBitmap(player: Player): Bitmap? {
 			return player.currentMediaItem?.mediaId?.let { id ->
-				when (id) {
-					localStored.first -> localStored.second
-					else -> null
-				}
+				lruCache[id]
 			}
 		}
 

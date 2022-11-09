@@ -139,20 +139,6 @@ private fun PlaybackControlBox(
 					onClick = { if (model.showSelf.value) onClick() }
 				)
 				NoRipple {
-					val propertiesInfoState = boxVM.playbackPropertiesInfoStateFlow.collectAsState()
-					// IsPlaying callback from mediaController is somewhat not accurate
-					val showPlay = !propertiesInfoState.read().playWhenReady
-					val icon =
-						if (showPlay) {
-							R.drawable.play_filled_round_corner_32
-						} else {
-							R.drawable.pause_filled_narrow_rounded_corner_32
-						}
-
-					val interactionSource = remember { MutableInteractionSource() }
-					val pressed by interactionSource.collectIsPressedAsState()
-					val size by animateDpAsState(targetValue =  if (pressed) 18.dp else 21.dp)
-
 					Row(
 						modifier = Modifier
 							.weight(1f)
@@ -171,13 +157,28 @@ private fun PlaybackControlBox(
 								.fillMaxHeight()
 								.width(30.dp),
 							contentAlignment = Alignment.Center
-						) {}
+						) {
+
+						}
 						Box(
 							modifier = Modifier
 								.fillMaxHeight()
 								.width(30.dp),
 							contentAlignment = Alignment.Center
 						) {
+							val propertiesInfoState = boxVM.playbackPropertiesInfoStateFlow.collectAsState()
+							// IsPlaying callback from mediaController is somewhat not accurate
+							val showPlay = !propertiesInfoState.read().playWhenReady
+							val icon =
+								if (showPlay) {
+									R.drawable.play_filled_round_corner_32
+								} else {
+									R.drawable.pause_filled_narrow_rounded_corner_32
+								}
+
+							val interactionSource = remember { MutableInteractionSource() }
+							val pressed by interactionSource.collectIsPressedAsState()
+							val size by animateDpAsState(targetValue =  if (pressed) 18.dp else 21.dp)
 							Icon(
 								modifier = Modifier
 									.size(size)
@@ -206,6 +207,50 @@ private fun PlaybackControlBox(
 		}
 	}
 }
+
+private operator fun Boolean.inc(): Boolean = !this
+
+/*@Composable
+private fun FavoriteButton(
+	modifier: Modifier,
+	isDark: Boolean,
+	isFavorite: Boolean
+) {
+	val skip = remember { mutableStateOf(true) }
+
+	val rawRes =
+		if (isDark) R.raw.lottie_favorite_light else R.raw.lottie_favorite_light
+
+	val lottieComposition = rememberLottieComposition(
+		spec = LottieCompositionSpec.RawRes(rawRes)
+	).value
+
+	val lottieClipSpec =
+		if (isFavorite) LottieClipSpec.Progress(0f, 0.5f) else LottieClipSpec.Progress(0.5f, 1f)
+
+	val animatable = rememberLottieAnimatable()
+
+	LottieAnimation(
+		modifier = modifier,
+		composition = lottieComposition,
+		progress = { animatable.progress }
+	)
+
+	LaunchedEffect(
+		key1 = isFavorite,
+	) {
+		animatable.resetToBeginning()
+
+		if (skip.value) {
+			skip.value = false
+			return@LaunchedEffect
+		}
+
+		animatable.animate(
+			lottieComposition, 1, 1, 1f, lottieClipSpec, lottieClipSpec.min,
+		)
+	}
+}*/
 
 @Composable
 private fun paletteState(

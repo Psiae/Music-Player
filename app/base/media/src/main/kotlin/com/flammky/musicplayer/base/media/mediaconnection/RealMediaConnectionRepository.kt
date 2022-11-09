@@ -144,23 +144,12 @@ class RealMediaConnectionRepository(
 		}
 	}
 
-	private fun dispatchMetadataChange(id: String, metadata: MediaMetadata?) {
-		ioScope.launch {
-			val observers = metadataMutex.withLock {
-				metadataObservers[id] ?: return@launch
-			}
-			observers.forEach { observer -> observer.onChanged(id, metadata) }
-		}
+	private suspend fun dispatchMetadataChange(id: String, metadata: MediaMetadata?) {
+		metadataObservers[id]?.forEach { observer -> observer.onChanged(id, metadata) }
 	}
 
-	private fun dispatchArtworkChange(id: String, artwork: Any?) {
-		ioScope.launch {
-			val observers = artMutex.withLock {
-				artworkObservers[id] ?: return@launch
-			}
-			observers.forEach { observer -> observer.onChanged(id, artwork) }
-		}
-
+	private suspend fun dispatchArtworkChange(id: String, artwork: Any?) {
+		artworkObservers[id]?.forEach { observer -> observer.onChanged(id, artwork) }
 	}
 
 	private fun <R> Mutex.withLockBlocking(block: () -> R): R {

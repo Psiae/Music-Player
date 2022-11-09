@@ -29,6 +29,7 @@ dependencies {
     dependencies {
         val v = "2.2.2"
         api("io.coil-kt:coil:$v")
+        api("io.coil-kt:coil-gif:$v")
     }
 
     /* jetbrains.kotlinx */

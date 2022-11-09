@@ -103,7 +103,6 @@ fun MainActivityRoot(
 	}
 }
 
-
 @Composable
 private fun StatusBarSpacer() {
 	val height = LocalDensity.current.run {

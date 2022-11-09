@@ -116,7 +116,7 @@ private fun FavoriteButton(
 	}
 
 	val compositionSpec = LottieCompositionSpec.RawRes(
-		resId = if (dark) R.raw.Lottie_Favorite_dark else R.raw.lottie_favorite_light
+		resId = if (dark) R.raw.lottie_favorite_dark else R.raw.lottie_favorite_light
 	)
 
 	val clipSpec = LottieClipSpec.Progress(

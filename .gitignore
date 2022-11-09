@@ -1,6 +1,7 @@
 #Default
 *.iml
 .gradle
+/keystore.properties
 /local.properties
 /.idea/deploymentTargetDropDown.xml
 /.idea/caches

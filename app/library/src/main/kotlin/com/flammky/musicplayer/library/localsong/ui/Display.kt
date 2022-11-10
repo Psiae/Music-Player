@@ -449,7 +449,7 @@ private fun DisplayContentItem(
 	val scope = rememberCoroutineScope()
 	DisposableEffect(key1 = item) {
 		val job = scope.launch {
-			viewModel.collectArtwork(item).safeCollect { art ->
+			viewModel.observeArtwork(item).safeCollect { art ->
 				val value = model.value
 				if (art is Bitmap && value is Bitmap && art.sameAs(value)) return@safeCollect
 				model.overwrite(art)
@@ -592,7 +592,7 @@ private fun DisplayLastContentItemChild(
 	DisposableEffect(key1 = model) {
 		val job = scope.launch(coroutineContext) {
 			imageModel.overwrite(LOADING)
-			viewModel.collectArtwork(model).safeCollect { art ->
+			viewModel.observeArtwork(model).safeCollect { art ->
 				val value = imageModel.value
 				if (art is Bitmap && value is Bitmap && art.sameAs(value)) return@safeCollect
 				imageModel.overwrite(art)

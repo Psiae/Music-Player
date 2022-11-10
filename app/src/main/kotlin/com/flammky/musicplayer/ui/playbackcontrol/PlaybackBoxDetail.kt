@@ -399,7 +399,7 @@ private fun PagerListenMediaIndexChange(
 	pagerState: PagerState,
 	onScroll: suspend () -> Unit
 ) {
-	val currentIndex = indexState.read()
+	val currentIndex by indexState
 	LaunchedEffect(
 		key1 = currentIndex
 	) {
@@ -440,14 +440,14 @@ private fun PagerListenPageChange(
 	touchedState: State<Boolean>,
 	seekIndex: suspend (Int) -> Boolean
 ) {
-	val draggedState = pagerState.interactionSource.collectIsDraggedAsState()
+	val dragging by pagerState.interactionSource.collectIsDraggedAsState()
+	val touched by touchedState
 	LaunchedEffect(
 		pagerState.currentPage,
-		pagerState.isScrollInProgress,
-		draggedState.read(),
-		touchedState.read()
+		dragging,
+		touched
 	) {
-		if (touchedState.value && !draggedState.value) {
+		if (touched && !dragging) {
 			seekIndex(pagerState.currentPage)
 		}
 	}

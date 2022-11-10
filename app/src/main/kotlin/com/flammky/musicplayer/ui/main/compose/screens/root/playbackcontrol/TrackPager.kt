@@ -4,7 +4,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -13,12 +12,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.*
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.ViewConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
-import com.flammky.common.kotlin.coroutines.safeCollect
 import com.flammky.musicplayer.ui.playbackbox.PlaybackBoxMetadata
 import com.flammky.musicplayer.ui.playbackbox.PlaybackBoxViewModel
 import com.google.accompanist.pager.*
@@ -81,7 +80,9 @@ private fun TrackDescriptionHorizontalPager(
 		key2 = dragging
 	) {
 		if (!dragging) {
-			if (touched.value && pagerState.currentPage != index) {
+			if (touched.value &&
+				pagerState.currentPage != index
+			) {
 				viewModel.seekIndex(pagerState.currentPage)
 			}
 		} else {
@@ -127,15 +128,7 @@ private fun TrackDescriptionPagerItem(
 	require(backgroundLuminance in 0f..1f) {
 		"BackgroundLuminance($backgroundLuminance) not in 0f..1f"
 	}
-	val metadataState = remember { mutableStateOf(PlaybackBoxMetadata()) }
-	val coroutineScope = rememberCoroutineScope()
-
-	DisposableEffect(key1 = id) {
-		val collector = coroutineScope.launch {
-			viewModel.observeBoxMetadata(id).safeCollect { metadataState.value = it }
-		}
-		onDispose { collector.cancel() }
-	}
+	val metadataState = viewModel.observeBoxMetadata(id).collectAsState(initial = PlaybackBoxMetadata())
 
 	Column(
 		modifier = Modifier
@@ -143,35 +136,37 @@ private fun TrackDescriptionPagerItem(
 			.padding(start = 10.dp, end = 10.dp)
 			.clickable { onClick(id) }
 		,
-		verticalArrangement = Arrangement.SpaceEvenly,
-		horizontalAlignment = Alignment.Start,
 	) {
 		val textColor = if (backgroundLuminance < 0.4f) Color.White else Color.Black
 		val metadata = metadataState.read()
-		val style = MaterialTheme.typography.bodyMedium
-			.copy(
+
+		BoxWithConstraints(
+			modifier = Modifier.fillMaxWidth().fillMaxHeight(0.5f),
+			contentAlignment = Alignment.CenterStart
+		) {
+			Text(
+				text = metadata.title,
+				fontSize = with(LocalDensity.current) { constraints.maxHeight.toSp() * 0.74f },
+				fontWeight = FontWeight.Bold,
 				color = textColor,
-				fontWeight = FontWeight.SemiBold
+				maxLines = 1,
+				overflow = TextOverflow.Ellipsis,
 			)
-		Text(
-			modifier = Modifier.align(Alignment.Start),
-			text = metadata.title,
-			style = style,
-			maxLines = 1,
-			overflow = TextOverflow.Ellipsis,
-		)
-		val style2 = MaterialTheme.typography.bodyMedium
-			.copy(
+		}
+
+		BoxWithConstraints(
+			modifier = Modifier.fillMaxWidth().fillMaxHeight(1f),
+			contentAlignment = Alignment.CenterStart
+		) {
+			Text(
+				text = metadata.subtitle,
+				fontSize = with(LocalDensity.current) { constraints.maxHeight.toSp() * 0.7f },
+				fontWeight = FontWeight.SemiBold,
 				color = textColor,
-				fontWeight = FontWeight.Medium
+				maxLines = 1,
+				overflow = TextOverflow.Ellipsis,
 			)
-		Text(
-			modifier = Modifier.align(Alignment.Start),
-			text = metadata.subtitle,
-			style = style2,
-			maxLines = 1,
-			overflow = TextOverflow.Ellipsis,
-		)
+		}
 	}
 }
 

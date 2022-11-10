@@ -9,7 +9,6 @@ import com.flammky.musicplayer.playbackcontrol.domain.usecase.PlaybackInfoUseCas
 import com.flammky.musicplayer.playbackcontrol.domain.usecase.TrackInfoUseCase
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.withContext
 
 internal class PlaybackControlViewModel(
 	private val coroutineDispatchers: AndroidCoroutineDispatchers,
@@ -31,8 +30,8 @@ internal class PlaybackControlViewModel(
 
 	// I think we should have this Flow channel in repository instead ?
 
-	suspend fun observeTrackInfo(id: String): Flow<TrackInfo> = withContext(coroutineDispatchers.main) {
-		_trackInfoChannelFlow[id]?.let { flow -> return@withContext flow }
+	fun observeTrackInfo(id: String): Flow<TrackInfo> = flow {
+		_trackInfoChannelFlow[id]?.let { flow -> return@flow emitAll(flow) }
 
 		callbackFlow {
 			trackUseCase.observe(id).collect(::send)

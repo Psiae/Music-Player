@@ -41,7 +41,6 @@ import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import timber.log.Timber
 
 @Composable
 internal fun LocalSongListsLegacy() {
@@ -164,20 +163,8 @@ private val LOADING = Any()
 @Composable
 private fun ItemArtworkCard(model: LocalSongModel, vm: LocalSongViewModel) {
 	val context = LocalContext.current
-	val coroutineScope = rememberCoroutineScope()
-	val coroutineContext = Dispatchers.Main + SupervisorJob()
 
-	val art = remember { mutableStateOf<Any?>(UNSET) }
-
-	DisposableEffect(key1 = model) {
-		val job = coroutineScope.launch(coroutineContext) {
-			vm.collectArtwork(model).safeCollect {
-				Timber.d("ItemArtworkCard collected $it")
-				art.overwrite(it)
-			}
-		}
-		onDispose { job.cancel() }
-	}
+	val art = vm.observeArtwork(model).collectAsState(initial = UNSET).value
 
 	val shape: Shape = remember {
 		RoundedCornerShape(5)
@@ -193,9 +180,9 @@ private fun ItemArtworkCard(model: LocalSongModel, vm: LocalSongViewModel) {
 		colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
 	) {
 
-		val imageModel = remember(art.read()) {
+		val imageModel = remember(art) {
 			ImageRequest.Builder(context)
-				.data(art.value)
+				.data(art)
 				.memoryCachePolicy(CachePolicy.ENABLED)
 				.build()
 		}

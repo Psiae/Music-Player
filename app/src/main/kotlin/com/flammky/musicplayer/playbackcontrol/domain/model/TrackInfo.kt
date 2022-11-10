@@ -10,5 +10,6 @@ data class TrackInfo(
 	object NO_ARTWORK
 	companion object {
 		val UNSET = TrackInfo("", null, MediaMetadata.UNSET)
+		val UNKNOWN = UNSET.copy()
 	}
 }

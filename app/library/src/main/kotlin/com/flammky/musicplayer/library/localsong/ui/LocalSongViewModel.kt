@@ -19,9 +19,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -89,8 +87,9 @@ internal class LocalSongViewModel @Inject constructor(
 		mediaConnection.play(model.id, model.mediaItem.mediaUri)
 	}
 
-	suspend fun collectArtwork(model: LocalSongModel): Flow<Bitmap?> {
-		return observableLocalSongs.observeArtwork(model.id).map { it as Bitmap? }
+	fun observeArtwork(model: LocalSongModel): Flow<Bitmap?> = flow {
+		val observed = observableLocalSongs.observeArtwork(model.id).map { it as Bitmap? }
+		emitAll(observed)
 	}
 
 	suspend fun collectMetadata(model: LocalSongModel): Flow<AudioMetadata?> {

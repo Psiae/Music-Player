@@ -19,7 +19,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -33,12 +32,6 @@ internal class PlaybackControlViewModel @Inject constructor(
 ) : ViewModel() {
 
 	private val _metadataStateMap = mutableMapOf<String, StateFlow<PlaybackDetailMetadata>>()
-
-	private val pagerMetadataWatchers = mutableMapOf<String, Job>()
-
-	private val _pagerDataStateFlow = MutableStateFlow(PlaybackDetailPagerData())
-	val pagerDataStateFlow = _pagerDataStateFlow.asStateFlow()
-
 	private val _trackStreamFlow = MutableStateFlow(MediaConnection.Playback.TracksInfo())
 
 	init {

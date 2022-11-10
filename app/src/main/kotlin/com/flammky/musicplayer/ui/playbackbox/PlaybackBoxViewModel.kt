@@ -66,8 +66,8 @@ class PlaybackBoxViewModel @Inject constructor(
 		return mediaConnectionDelegate.repository.observeArtwork(id)
 	}
 
-	suspend fun observeBoxMetadata(id: String): Flow<PlaybackBoxMetadata> {
-		return combine(observeArtwork(id), observeMetadata(id)) { art: Any?, metadata: MediaMetadata? ->
+	fun observeBoxMetadata(id: String): Flow<PlaybackBoxMetadata> = flow {
+		combine(observeArtwork(id), observeMetadata(id)) { art: Any?, metadata: MediaMetadata? ->
 			val title = metadata?.title?.ifBlank { null }
 				?: (metadata as? AudioFileMetadata)?.file?.fileName?.ifBlank { null }
 				?: ((metadata as? AudioFileMetadata)?.file as? VirtualFileMetadata)?.uri?.toString()
@@ -75,7 +75,7 @@ class PlaybackBoxViewModel @Inject constructor(
 				it.albumArtistName ?: it.artistName
 			}
 			PlaybackBoxMetadata(art, title ?: "", subtitle ?: "")
-		}
+		}.collect(this)
 	}
 
 	/**

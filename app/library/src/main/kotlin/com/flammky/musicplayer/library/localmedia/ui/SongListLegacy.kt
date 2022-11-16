@@ -1,4 +1,4 @@
-package com.flammky.musicplayer.library.localsong.ui
+package com.flammky.musicplayer.library.localmedia.ui
 
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -30,7 +31,7 @@ import com.flammky.androidx.viewmodel.compose.activityViewModel
 import com.flammky.common.kotlin.coroutines.safeCollect
 import com.flammky.musicplayer.base.compose.VisibilityViewModel
 import com.flammky.musicplayer.library.R
-import com.flammky.musicplayer.library.localsong.data.LocalSongModel
+import com.flammky.musicplayer.library.localmedia.data.LocalSongModel
 import com.flammky.musicplayer.library.ui.base.LibraryViewModel
 import com.flammky.musicplayer.library.ui.theme.Theme
 import com.google.accompanist.placeholder.PlaceholderHighlight
@@ -41,6 +42,7 @@ import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 @Composable
 internal fun LocalSongListsLegacy() {
@@ -75,8 +77,12 @@ private fun LocalSongListsColumn(
 			verticalArrangement = Arrangement.spacedBy(4.dp)
 		) {
 			val localSongs = vm.listState.read()
-			items(localSongs.size) { i ->
-				val model = localSongs[i]
+
+
+			items(
+				items = localSongs,
+				key = { item -> item.id }
+			) { model ->
 				LocalSongListsItem(vm, model)
 			}
 			item() {
@@ -164,7 +170,9 @@ private val LOADING = Any()
 private fun ItemArtworkCard(model: LocalSongModel, vm: LocalSongViewModel) {
 	val context = LocalContext.current
 
-	val art = vm.observeArtwork(model).collectAsState(initial = UNSET).value
+	val art by vm.observeArtwork(model).collectAsState()
+
+	Timber.d("ItemArtworkCard, model: $model, art: $art")
 
 	val shape: Shape = remember {
 		RoundedCornerShape(5)

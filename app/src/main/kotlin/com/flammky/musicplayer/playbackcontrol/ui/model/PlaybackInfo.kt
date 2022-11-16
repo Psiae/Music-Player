@@ -1,24 +1,27 @@
-package com.flammky.musicplayer.playbackcontrol.domain.model
+package com.flammky.musicplayer.playbackcontrol.ui.model
 
 import com.flammky.musicplayer.core.media.MediaConstants
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlin.time.Duration
 
-data class PlaybackInfo(
-	val position: Position,
-	val playlist: Playlist,
-	val properties: Properties
-) {
+object PlaybackInfo {
 
+
+	// should we have Playlist and Position Together ?
 	data class Playlist(
-		val infoChangeReason: PlaylistInfoChangeReason,
+		val infoChangeReason: ChangeReason,
 		val currentIndex: Int,
 		val list: ImmutableList<String>,
 	) {
+		sealed interface ChangeReason {
+			object UNKNOWN : ChangeReason
+			object MEDIA_TRANSITION : ChangeReason
+			object PLAYLIST_CHANGE : ChangeReason
+		}
 		companion object {
 			val UNSET = Playlist(
-				infoChangeReason = PlaylistInfoChangeReason.UNKNOWN,
+				infoChangeReason = ChangeReason.UNKNOWN,
 				currentIndex = MediaConstants.INDEX_UNSET,
 				list = persistentListOf()
 			)
@@ -63,10 +66,6 @@ data class PlaybackInfo(
 		}
 	}
 
-	companion object {
-		val UNSET = PlaybackInfo(Position.UNSET, Playlist.UNSET, Properties.UNSET)
-	}
-
 	sealed interface RepeatMode {
 
 		/**
@@ -103,8 +102,4 @@ sealed interface PositionInfoChangeReason {
 	object PROGRESS_DISCONTINUITY : PositionInfoChangeReason
 }
 
-sealed interface PlaylistInfoChangeReason {
-	object UNKNOWN : PlaylistInfoChangeReason
-	object MEDIA_TRANSITION : PlaylistInfoChangeReason
-	object PLAYLIST_CHANGE : PlaylistInfoChangeReason
-}
+

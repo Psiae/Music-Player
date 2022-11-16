@@ -1,4 +1,4 @@
-package com.flammky.musicplayer.library.localsong.data
+package com.flammky.musicplayer.library.localmedia.data
 
 import android.graphics.Bitmap
 import android.net.Uri

@@ -1,12 +1,12 @@
-package com.flammky.musicplayer.library.localsong.domain
+package com.flammky.musicplayer.library.localmedia.domain
 
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider
 import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider.ContentObserver.Flag.Companion.isUpdate
 import com.flammky.common.kotlin.coroutines.safeCollect
-import com.flammky.musicplayer.library.localsong.data.LocalSongModel
-import com.flammky.musicplayer.library.localsong.data.LocalSongRepository
+import com.flammky.musicplayer.library.localmedia.data.LocalSongModel
+import com.flammky.musicplayer.library.localmedia.data.LocalSongRepository
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toPersistentList

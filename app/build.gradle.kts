@@ -92,6 +92,7 @@ dependencies {
     implementation(project("media"))
     implementation(project("medialib"))
     implementation(project("library"))
+    implementation("com.google.firebase:firebase-firestore-ktx:24.3.1")
 
     /* Android.material */
     dependencies {

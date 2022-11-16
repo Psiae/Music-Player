@@ -25,6 +25,3 @@ plugins {
 task<Delete>("clean") {
     delete(rootProject.buildDir)
 }
-repositories {
-    google()
-}

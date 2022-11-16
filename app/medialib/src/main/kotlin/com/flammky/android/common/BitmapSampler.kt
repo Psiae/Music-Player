@@ -97,7 +97,13 @@ object BitmapSampler {
 			targetHeight: Int
 		): Bitmap? {
 			val target = CalculationTarget.SizeTarget(targetWidth, targetHeight)
-			return decodeToSampledBitmap(array, offset, buffer, target)
+			val bm = decodeToSampledBitmap(array, offset, buffer, target)
+
+			val alloc = bm?.allocationByteCount ?: 0
+
+			Timber.d("toSampledBitmap from arr: ${array.size},to $target alloc: $alloc")
+
+			return bm
 		}
 
 		fun toSampledBitmap(
@@ -111,7 +117,7 @@ object BitmapSampler {
 
 			val alloc = bm?.allocationByteCount ?: 0
 
-			Timber.d("toSampledBitmap from arr: ${array.size}, alloc: $alloc")
+			Timber.d("toSampledBitmap from arr: ${array.size}, to max $maxByteAlloc alloc: $alloc")
 
 			check(alloc <= maxByteAlloc)
 

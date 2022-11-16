@@ -5,8 +5,10 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.flow.Flow
 
 interface TracksConnection {
+
+
 	val repository: Repository
-	val provider: Provider
+	val providers: Provider
 
 	interface Repository {
 		suspend fun getAsync(id: String): Deferred<Track?>
@@ -35,5 +37,14 @@ interface TracksConnection {
 			suspend fun notifyTrackChange(id: String, track: Track)
 			suspend fun close()
 		}
+
+
+
+
+
+	}
+
+	class TrackRequest() {
+
 	}
 }

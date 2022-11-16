@@ -1,13 +1,17 @@
 package com.flammky.musicplayer.playbackcontrol.domain.usecase
 
-import com.flammky.musicplayer.playbackcontrol.domain.model.PlaybackInfo
-import com.flammky.musicplayer.playbackcontrol.domain.provider.PlaybackInfoProvider
+import com.flammky.musicplayer.media.mediaconnection.playback.PlaybackInfo
+import com.flammky.musicplayer.media.mediaconnection.playback.PlaybackProperties
+import com.flammky.musicplayer.media.mediaconnection.playback.PlaylistInfo
+import com.flammky.musicplayer.media.mediaconnection.playback.PositionInfo
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.flow.Flow
 
-internal class PlaybackInfoUseCase (
-	private val infoProvider: PlaybackInfoProvider
-) {
-	suspend fun getInfoAsync(): Deferred<PlaybackInfo> = infoProvider.getAsync()
-	suspend fun observe(): Flow<PlaybackInfo> = infoProvider.observe()
+interface PlaybackInfoUseCase {
+	suspend fun getInfoAsync(): Deferred<PlaybackInfo>
+	fun observeCurrent(): Flow<PlaybackInfo>
+
+	fun observeProperties(): Flow<PlaybackProperties>
+	fun observePlaylist(): Flow<PlaylistInfo>
+	fun observePosition(): Flow<PositionInfo>
 }

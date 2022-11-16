@@ -23,8 +23,22 @@ sealed class MediaMetadata(
 	val title: String?
 ) {
 
+	override fun hashCode(): Int = Objects.hash(extra, title)
+	override fun equals(other: Any?): Boolean {
+		return other is MediaMetadata && other.extra == extra && other.title == title
+	}
+
 	/** Extra configuration regardless of class type */
-	class Extra(val bundle: Bundle = Bundle())
+	class Extra(val bundle: Bundle = Bundle()) {
+
+		override fun hashCode(): Int {
+			return bundle.hashCode()
+		}
+
+		override fun equals(other: Any?): Boolean {
+			return other is Extra && other.bundle == bundle
+		}
+	}
 
 	/** Builder interface for [MediaMetadata] subclass builders */
 	interface Builder {

@@ -22,8 +22,8 @@ import com.flammky.android.content.context.ContextHelper
 import com.flammky.androidx.content.context.findBase
 import com.flammky.androidx.viewmodel.compose.activityViewModel
 import com.flammky.musicplayer.base.compose.VisibilityViewModel
-import com.flammky.musicplayer.library.localsong.ui.LocalSongDisplay
-import com.flammky.musicplayer.library.localsong.ui.LocalSongNavigator
+import com.flammky.musicplayer.library.localmedia.ui.LocalSongDisplay
+import com.flammky.musicplayer.library.localmedia.ui.LocalSongNavigator
 import com.flammky.musicplayer.library.util.read
 
 @Composable

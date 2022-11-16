@@ -17,8 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import com.flammky.musicplayer.R
-import com.flammky.musicplayer.playbackcontrol.domain.model.PlaybackInfo
+import com.flammky.musicplayer.playbackcontrol.ui.model.PlaybackInfo
 import com.flammky.musicplayer.playbackcontrol.ui.PlaybackControlViewModel
 
 @Composable

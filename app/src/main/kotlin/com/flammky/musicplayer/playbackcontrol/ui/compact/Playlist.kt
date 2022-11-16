@@ -12,9 +12,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
-import com.flammky.musicplayer.playbackcontrol.domain.model.PlaybackInfo
-import com.flammky.musicplayer.playbackcontrol.ui.model.PlaylistInfo
-import com.flammky.musicplayer.playbackcontrol.ui.model.TrackDisplayInfo
+import com.flammky.musicplayer.playbackcontrol.ui.model.PlaybackInfo
+import com.flammky.musicplayer.playbackcontrol.ui.model.TrackDescription
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.PagerState
@@ -28,7 +27,7 @@ internal fun PlaylistControlPager(
 	playlistState: State<PlaybackInfo.Playlist>,
 	dark: Boolean,
 	seek: suspend (Int) -> Unit,
-	observeTrackDisplayInfo: (String) -> Flow<TrackDisplayInfo>
+	observeTrackDisplayInfo: (String) -> Flow<TrackDescription>
 ) {
 	BoxWithConstraints {
 
@@ -39,21 +38,21 @@ internal fun PlaylistControlPager(
 @Composable
 private fun PlaylistPager(
 	modifier: Modifier,
-	playlistInfoState: State<PlaylistInfo>,
+	playlistInfoState: State<PlaybackInfo.Playlist>,
 	dark: Boolean,
 	seek: suspend (Int) -> Boolean,
-	observeTrackDisplayInfo: (String) -> Flow<TrackDisplayInfo>
+	observeTrackDisplayInfo: (String) -> Flow<TrackDescription>
 ) {
 	val playlistInfo by playlistInfoState
-	val pagerState = rememberPagerState(playlistInfo.index.clampPositive())
+	val pagerState = rememberPagerState(playlistInfo.currentIndex)
 
 	HorizontalPager(
 		modifier = modifier,
 		count = playlistInfo.list.size,
 	) {
-		val flow = observeTrackDisplayInfo(playlistInfo.list[playlistInfo.index])
+		val flow = observeTrackDisplayInfo(playlistInfo.list[playlistInfo.currentIndex])
 		TrackDescription(
-			trackState = flow.collectAsState(initial = TrackDisplayInfo.UNSET),
+			trackState = flow.collectAsState(initial = TrackDescription.UNSET),
 			dark = dark
 		)
 	}
@@ -68,14 +67,14 @@ private fun PlaylistPager(
 @Composable
 private fun PagerStateListeners(
 	pagerState: PagerState,
-	playlistInfoState: State<PlaylistInfo>,
+	playlistInfoState: State<PlaybackInfo.Playlist>,
 	seek: suspend (Int) -> Boolean
 ) {
 	val rememberUserTouch = remember { mutableStateOf(false) }
 
 	ListenPlaybackIndexChange(
 		pagerState = pagerState,
-		indexState = playlistInfoState.rememberDerive(derive = { it.index }),
+		indexState = playlistInfoState.rememberDerive(derive = { it.currentIndex }),
 		onScroll = {
 			coroutineContext.ensureActive()
 			rememberUserTouch.value = false
@@ -145,7 +144,7 @@ private fun ListenUserDrag(
 private fun ListenPageSeek(
 	pagerState: PagerState,
 	touchedState: State<Boolean>,
-	playlistInfoState: State<PlaylistInfo>,
+	playlistInfoState: State<PlaybackInfo.Playlist>,
 	seek: suspend (Int) -> Boolean
 ) {
 	val dragged by pagerState.interactionSource.collectIsDraggedAsState()
@@ -156,7 +155,7 @@ private fun ListenPageSeek(
 		key3 = pagerState.isScrollInProgress,
 	) {
 		if (!dragged && touched &&
-			pagerState.currentPage != playlistInfoState.value.index
+			pagerState.currentPage != playlistInfoState.value.currentIndex
 		) {
 			@Suppress("ControlFlowWithEmptyBody")
 			if (seek(pagerState.currentPage)) {
@@ -170,7 +169,7 @@ private fun ListenPageSeek(
 
 @Composable
 private fun TrackDescription(
-	trackState: State<TrackDisplayInfo>,
+	trackState: State<TrackDescription>,
 	dark: Boolean,
 ) {
 	Column(

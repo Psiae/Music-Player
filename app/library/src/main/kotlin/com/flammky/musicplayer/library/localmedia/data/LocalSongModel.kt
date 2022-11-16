@@ -1,4 +1,4 @@
-package com.flammky.musicplayer.library.localsong.data
+package com.flammky.musicplayer.library.localmedia.data
 
 import androidx.compose.runtime.Immutable
 import com.flammky.android.medialib.common.mediaitem.MediaItem

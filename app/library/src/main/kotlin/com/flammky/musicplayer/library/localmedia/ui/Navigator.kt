@@ -1,4 +1,4 @@
-package com.flammky.musicplayer.library.localsong.ui
+package com.flammky.musicplayer.library.localmedia.ui
 
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable

@@ -33,6 +33,7 @@ dependencies {
     api(project(":app:base"))
     api(project(":app:base:compose"))
     api(project(":app:base:media"))
+    api(project(":app:media"))
 
     /* android.accompanist */
     dependencies {

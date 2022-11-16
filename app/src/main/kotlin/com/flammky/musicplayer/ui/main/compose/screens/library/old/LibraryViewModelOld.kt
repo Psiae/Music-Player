@@ -14,7 +14,7 @@ import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider
 import com.flammky.android.medialib.temp.image.ArtworkProvider
 import com.flammky.kotlin.common.sync.sync
 import com.flammky.musicplayer.common.android.concurrent.ConcurrencyHelper.checkMainThread
-import com.flammky.musicplayer.library.localsong.data.LocalSongRepository
+import com.flammky.musicplayer.library.localmedia.data.LocalSongRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow

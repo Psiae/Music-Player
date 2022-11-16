@@ -1,4 +1,4 @@
-package com.flammky.musicplayer.library.localsong.ui
+package com.flammky.musicplayer.library.localmedia.ui
 
 import android.content.res.Configuration.UI_MODE_NIGHT_YES
 import android.graphics.Bitmap
@@ -33,7 +33,7 @@ import coil.request.ImageRequest
 import com.flammky.androidx.viewmodel.compose.activityViewModel
 import com.flammky.common.kotlin.coroutines.safeCollect
 import com.flammky.musicplayer.base.compose.rememberLocalContextHelper
-import com.flammky.musicplayer.library.localsong.data.LocalSongModel
+import com.flammky.musicplayer.library.localmedia.data.LocalSongModel
 import com.flammky.musicplayer.library.ui.theme.Theme
 import com.google.accompanist.placeholder.PlaceholderHighlight
 import com.google.accompanist.placeholder.placeholder

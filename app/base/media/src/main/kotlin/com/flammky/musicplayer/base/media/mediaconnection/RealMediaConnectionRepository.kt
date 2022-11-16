@@ -1,5 +1,6 @@
 package com.flammky.musicplayer.base.media.mediaconnection
 
+import android.content.Context
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.musicplayer.base.media.mediaconnection.RealMediaConnectionRepository.MapObserver
@@ -15,6 +16,7 @@ import kotlinx.coroutines.sync.withLock
 import timber.log.Timber
 
 class RealMediaConnectionRepository(
+	private val context: Context,
 	private val dispatchers: AndroidCoroutineDispatchers
 ) : MediaConnectionRepository {
 
@@ -24,11 +26,15 @@ class RealMediaConnectionRepository(
 	private val metadataObservers = mutableMapOf<String, MutableList<MapObserver<String, MediaMetadata>>>()
 	private val metadataMap = mutableMapOf<String, MediaMetadata>()
 
+	private val artLock = Any()
 	private val artMutex = Mutex()
 	private val artworkObservers = mutableMapOf<String, MutableList<MapObserver<String, Any>>>()
 	private val artworkMap = mutableMapOf<String, Any?>()
 
+
 	private val ioScope = CoroutineScope(dispatchers.io + SupervisorJob())
+
+	private val mainScope = CoroutineScope(dispatchers.main + SupervisorJob())
 
 	override suspend fun getMetadata(id: String): MediaMetadata? {
 		return metadataMutex.withLock { metadataMap[id] }

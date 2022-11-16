@@ -1,9 +1,9 @@
-package com.flammky.musicplayer.library.localsong.domain
+package com.flammky.musicplayer.library.localmedia.domain
 
 import android.content.Context
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.medialib.MediaLib
-import com.flammky.musicplayer.library.localsong.data.LocalSongRepository
+import com.flammky.musicplayer.library.localmedia.data.LocalSongRepository
 import dagger.Provides
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent

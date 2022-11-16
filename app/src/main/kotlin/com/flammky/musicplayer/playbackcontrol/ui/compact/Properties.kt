@@ -17,16 +17,14 @@ import com.airbnb.lottie.compose.*
 import com.flammky.musicplayer.R
 import com.flammky.musicplayer.playbackcontrol.domain.model.TrackInfo
 import com.flammky.musicplayer.playbackcontrol.ui.PlaybackControlViewModel
+import com.flammky.musicplayer.playbackcontrol.ui.model.TrackDescription
 
 @Composable
 internal fun PropertiesControl(
 	viewModel: PlaybackControlViewModel,
 	dark: Boolean,
 ) {
-	val playbackInfoState = viewModel.playbackInfoStateFlow.collectAsState()
-	val playbackPropertiesState = playbackInfoState.rememberDerive(
-		derive = { info -> info.properties }
-	)
+	val playbackPropertiesState = viewModel.propertiesInfoStateFlow.collectAsState()
 	BoxWithConstraints {
 		val baseIconSize = min(maxHeight, maxWidth / 3 - 10.dp)
 
@@ -48,7 +46,7 @@ internal fun PropertiesControl(
 				size = baseIconSize,
 				contentSize = baseIconSize - 3.dp,
 				dark = dark,
-				trackInfoState = viewModel.currentTrackInfoStateFlow.collectAsState(),
+				trackInfoState = viewModel.currentTrackDisplayInfoStateFlow.collectAsState(),
 				changeFavorite = { info, favorite -> /* Impl */ }
 			)
 			QueueButton(
@@ -103,8 +101,8 @@ private fun FavoriteButton(
 	size: Dp,
 	contentSize: Dp,
 	dark: Boolean,
-	trackInfoState: State<TrackInfo>,
-	changeFavorite: (TrackInfo, Boolean) -> Unit
+	trackInfoState: State<TrackDescription>,
+	changeFavorite: (TrackDescription, Boolean) -> Unit
 ) {
 	val trackInfo = trackInfoState.value
 

@@ -80,14 +80,11 @@ class TestArtworkProvider(
 					val data = af.imageData
 					Timber.d("AF($resolvedUri) data: ${data?.size}")
 					if (data != null && data.isNotEmpty()) {
-						BitmapSampler.ByteArray.toSampledBitmap(data, 0, data.size, 1000000)
+						BitmapSampler.ByteArray.toSampledBitmap(data, 0, data.size, 500, 500)
 							?.let { bitmap ->
 								bitmap.also {
 									if (request.storeMemoryCacheAllowed) {
 										lru.put(request.id, it)
-									}
-									if (request.storeDiskCacheAllowed) {
-										cacheManager.insertImageToCache(it, request.id, "TestArtworkProvider")
 									}
 								}
 							}

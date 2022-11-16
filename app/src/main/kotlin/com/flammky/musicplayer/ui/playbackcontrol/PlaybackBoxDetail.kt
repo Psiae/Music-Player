@@ -303,14 +303,17 @@ private fun RadialPlaybackBackground(
 		val brush = remember(color) {
 			Brush.radialGradient(
 				colors = listOf(
+					color.copy(alpha = 0.55f).compositeOver(compositeBase),
 					color.copy(alpha = 0.45f).compositeOver(compositeBase),
 					color.copy(alpha = 0.35f).compositeOver(compositeBase),
+					color.copy(alpha = 0.2f).compositeOver(compositeBase),
 					color.copy(alpha = 0.15f).compositeOver(compositeBase),
 					color.copy(alpha = 0.1f).compositeOver(compositeBase),
+					color.copy(alpha = 0.05f).compositeOver(compositeBase),
 					color.copy(alpha = 0.0f).compositeOver(compositeBase)
 				),
-				center = Offset(constraints.maxWidth.toFloat() / 2, constraints.maxHeight.toFloat() / 4),
-				radius = constraints.maxWidth.toFloat()
+				center = Offset(constraints.maxWidth.toFloat() / 2, constraints.maxHeight.toFloat() / 3.5f),
+				radius = constraints.maxWidth.toFloat() * 0.9f
 			)
 		}
 		Box(
@@ -496,9 +499,9 @@ private fun PlaybackDescription(metadataState: State<PlaybackDetailMetadata>) {
 	Box(modifier = Modifier.fillMaxWidth()) {
 		Column(
 			modifier = Modifier
-				.fillMaxWidth(0.7f)
+				.fillMaxWidth(0.8f)
 				.align(Alignment.Center),
-			horizontalAlignment = Alignment.CenterHorizontally,
+			horizontalAlignment = Alignment.Start,
 			verticalArrangement = Arrangement.spacedBy(5.dp)
 		) {
 			val titleState = metadataState.rememberDerive { metadata -> metadata.title ?: "" }

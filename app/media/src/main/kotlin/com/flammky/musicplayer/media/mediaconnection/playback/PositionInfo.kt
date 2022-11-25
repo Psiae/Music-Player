@@ -1,6 +1,6 @@
 package com.flammky.musicplayer.media.mediaconnection.playback
 
-import com.flammky.musicplayer.media.PlaybackConstants
+import com.flammky.musicplayer.media.playback.PlaybackConstants
 import kotlin.time.Duration
 
 data class PositionInfo(
@@ -11,8 +11,8 @@ data class PositionInfo(
 ) {
 	companion object {
 		val UNSET = PositionInfo(
-			progress = PlaybackConstants.POSITION_UNSET,
-			bufferedProgress = PlaybackConstants.POSITION_UNSET,
+			progress = PlaybackConstants.PROGRESS_UNSET,
+			bufferedProgress = PlaybackConstants.PROGRESS_UNSET,
 			duration = PlaybackConstants.DURATION_UNSET,
 			changeReason = ChangeReason.UNKNOWN
 		)

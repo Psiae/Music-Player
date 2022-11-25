@@ -7,7 +7,6 @@ import android.os.Handler
 import android.os.HandlerThread
 import android.os.Looper
 import androidx.media3.common.MediaItem
-import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.session.MediaController
@@ -63,9 +62,6 @@ class MediaControllerWrapper internal constructor(
 	override val availableCommands: Player.Commands
 		get() = joinBlocking { wrapped.availableCommands }
 
-	override val playbackParameters: PlaybackParameters
-		get() = joinBlocking { wrapped.playbackParameters }
-
 	override val playWhenReady: Boolean
 		get() = joinBlocking { wrapped.playWhenReady }
 
@@ -119,6 +115,9 @@ class MediaControllerWrapper internal constructor(
 	override val durationMs: Long
 		get() = joinBlocking { wrapped.durationMs }
 
+	override val speed: Float
+		get() = joinBlocking { wrapped.speed }
+
 	override val contextInfo: PlayerContextInfo
 		get() = joinBlocking { wrapped.contextInfo }
 
@@ -148,8 +147,8 @@ class MediaControllerWrapper internal constructor(
 		this.post { wrapped.seekToDefaultPosition(index) }
 	}
 
-	override fun seekToPosition(position: Long) {
-		this.post { wrapped.seekToPosition(position) }
+	override fun postSeekToPosition(position: Long) {
+		this.post { wrapped.postSeekToPosition(position) }
 	}
 
 	override fun seekToMediaItem(index: Int, startPosition: Long) {
@@ -261,6 +260,10 @@ class MediaControllerWrapper internal constructor(
 
 	override fun getAllMediaItem(): List<com.flammky.android.medialib.common.mediaitem.MediaItem> {
 		return joinBlocking { wrapped.getAllMediaItem() }
+	}
+
+	override suspend fun seekToPosition(position: Long): Boolean {
+		return joinSuspend { wrapped.seekToPosition(position) }
 	}
 
 	fun connect(
@@ -415,9 +418,6 @@ class MediaControllerWrapper internal constructor(
 		override val availableCommands: Player.Commands
 			get() = maybeControllerValue(fallbackInfo.noAvailableCommands) { it.availableCommands }
 
-		override val playbackParameters: PlaybackParameters
-			get() = maybeControllerValue(fallbackInfo.noPlaybackParameters) { it.playbackParameters }
-
 		override val playWhenReady: Boolean
 			get() = maybeControllerValue(false) { it.playWhenReady }
 
@@ -481,6 +481,9 @@ class MediaControllerWrapper internal constructor(
 		override val durationMs: Long
 			get() = maybeControllerValue(fallbackInfo.noDurationMs) { it.duration }
 
+		override val speed: Float
+			get() = maybeControllerValue(1f) { it.playbackParameters.speed }
+
 		override val contextInfo: PlayerContextInfo
 			get() = playerContext.run {
 				PlayerContextInfo(
@@ -521,7 +524,7 @@ class MediaControllerWrapper internal constructor(
 			if (isStateConnected()) mediaController.seekToDefaultPosition(index)
 		}
 
-		override fun seekToPosition(position: Long) {
+		override fun postSeekToPosition(position: Long) {
 			if (isStateConnected()) mediaController.seekTo(position)
 		}
 
@@ -694,6 +697,13 @@ class MediaControllerWrapper internal constructor(
 			}
 
 			return holder
+		}
+
+		override suspend fun seekToPosition(position: Long): Boolean {
+			return isStateConnected() && mediaController.duration >= position && run {
+				mediaController.seekTo(position)
+				true
+			}
 		}
 
 		override fun getAllMediaItem(): List<com.flammky.android.medialib.common.mediaitem.MediaItem> {

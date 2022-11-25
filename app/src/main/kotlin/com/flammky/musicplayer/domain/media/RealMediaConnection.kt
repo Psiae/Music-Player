@@ -6,6 +6,10 @@ import com.flammky.android.medialib.player.Player
 import com.flammky.common.kotlin.coroutines.safeCollect
 import com.flammky.musicplayer.base.media.mediaconnection.MediaConnectionDelegate
 import com.flammky.musicplayer.base.media.mediaconnection.MediaConnectionPlayback
+import com.flammky.musicplayer.media.mediaconnection.playback.PlaybackConnection
+import com.flammky.musicplayer.media.playback.ProgressDiscontinuityReason
+import com.flammky.musicplayer.media.playback.RepeatMode
+import com.flammky.musicplayer.media.playback.ShuffleMode
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.*
@@ -19,13 +23,137 @@ import kotlin.time.Duration
 
 class RealMediaConnection(
 	private val delegate: MediaConnectionDelegate
-) : MediaConnection {
+) : MediaConnection, /* Temp */ PlaybackConnection {
 
 	private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
 	override val playback: MediaConnection.Playback = Playback()
 	override val repository: MediaConnection.Repository = Repository()
 
+	//
+	// Temp Start
+	//
+
+	override suspend fun getRepeatMode(): RepeatMode = delegate.playback.joinDispatcher {
+		when (delegate.playback.repeatMode) {
+			Player.RepeatMode.OFF -> RepeatMode.OFF
+			Player.RepeatMode.ONE -> RepeatMode.ONE
+			Player.RepeatMode.ALL -> RepeatMode.ALL
+		}
+	}
+
+	override suspend fun observeRepeatMode(): Flow<RepeatMode> {
+		return callbackFlow {
+
+			delegate.playback.joinDispatcher {
+				send(getRepeatMode())
+				observeRepeatModeChange().collect {
+					send(getRepeatMode())
+				}
+			}
+
+			awaitClose()
+		}
+	}
+
+	override suspend fun getShuffleMode(): ShuffleMode = delegate.playback.joinDispatcher {
+		if (delegate.playback.shuffleEnabled) {
+			ShuffleMode.ON
+		} else {
+			ShuffleMode.OFF
+		}
+	}
+
+	override suspend fun observeShuffleMode(): Flow<ShuffleMode> {
+		return callbackFlow {
+
+			delegate.playback.joinDispatcher {
+				send(getShuffleMode())
+				observeShuffleEnabledChange().collect {
+					send(getShuffleMode())
+				}
+			}
+
+			awaitClose()
+		}
+	}
+
+	override suspend fun getProgress(): Duration = delegate.playback.joinDispatcher {
+		position
+	}
+
+	override suspend fun observeProgressDiscontinuity(): Flow<PlaybackConnection.ProgressDiscontinuity> {
+		return callbackFlow {
+
+			delegate.playback.joinDispatcher {
+
+				delegate.playback.observeDiscontinuityEvent().collect {
+					send(PlaybackConnection.ProgressDiscontinuity(
+						old = it.oldPosition,
+						new = it.newPosition,
+						reason = when (it.reason) {
+							MediaConnectionPlayback.Events.Discontinuity.Reason.UNKNOWN -> ProgressDiscontinuityReason.UNKNOWN
+							MediaConnectionPlayback.Events.Discontinuity.Reason.USER_SEEK -> ProgressDiscontinuityReason.USER_SEEK
+						}
+					))
+				}
+			}
+
+			awaitClose()
+		}
+	}
+
+	override suspend fun getBufferedProgress(): Duration = delegate.playback.joinDispatcher {
+		bufferedPosition()
+	}
+
+	override suspend fun getIsPlaying(): Boolean = delegate.playback.joinDispatcher {
+		playing
+	}
+
+	override suspend fun observeIsPlaying(): Flow<Boolean> {
+		return callbackFlow {
+
+			delegate.playback.joinDispatcher {
+				send(playing)
+				observeIsPlayingChange().collect {
+					send(playing)
+				}
+			}
+
+			awaitClose()
+		}
+	}
+
+	override suspend fun getDuration(): Duration = delegate.playback.joinDispatcher {
+		duration()
+	}
+
+	override suspend fun observeDuration(): Flow<Duration> {
+		return callbackFlow {
+
+			delegate.playback.joinDispatcher {
+				send(duration())
+				observeDurationChange().collect {
+					send(duration())
+				}
+			}
+
+			awaitClose()
+		}
+	}
+
+	override suspend fun getPlaybackSpeed(): Float = delegate.playback.joinDispatcher {
+		playbackSpeed()
+	}
+
+	override suspend fun <R> joinContext(block: suspend PlaybackConnection.() -> R): R {
+		return delegate.playback.joinDispatcher { block() }
+	}
+
+	//
+	// Temp end
+	//
 
 	private inner class Playback : MediaConnection.Playback {
 
@@ -93,8 +221,12 @@ class RealMediaConnection(
 			}
 		}
 
-		override fun seekPosition(position: Long) {
-			delegate.playback.seekToPosition(position)
+		override fun postSeekPosition(position: Long) {
+			delegate.playback.postSeekToPosition(position)
+		}
+
+		override suspend fun seekToPosition(position: Long): Boolean {
+			return delegate.playback.seekToPosition(position)
 		}
 
 		override fun observeInfo(): Flow<MediaConnection.PlaybackInfo> {
@@ -131,7 +263,7 @@ class RealMediaConnection(
 			}
 		}
 
-		override fun observePositionStream(): Flow<MediaConnection.Playback.PositionStream> = callbackFlow {
+		override fun observePositionStream(interval: Duration): Flow<MediaConnection.Playback.PositionStream> = callbackFlow {
 
 			var positionCollectorJob: Job? = null
 			val mutex = Mutex()
@@ -159,7 +291,7 @@ class RealMediaConnection(
 						sendUpdatedPositions(
 							reason = MediaConnection.Playback.PositionStream.PositionChangeReason.PERIODIC
 						)
-						delay(500)
+						delay(interval.inWholeMilliseconds)
 					}
 				}
 			}
@@ -184,19 +316,19 @@ class RealMediaConnection(
 
 			sendUpdatedPositions(MediaConnection.Playback.PositionStream.PositionChangeReason.PERIODIC)
 
-			val transitionObserverJob = ioScope.launch {
+			val transitionObserverJob = launch {
 				delegate.playback.observeMediaItemTransition().safeCollect {
 					restartPositionCollector(MediaConnection.Playback.PositionStream.PositionChangeReason.AUTO)
 				}
 			}
 
-			val timelineObserverJob = ioScope.launch {
+			val timelineObserverJob = launch {
 				delegate.playback.observeTimelineChange().safeCollect {
 					sendUpdatedPositions(MediaConnection.Playback.PositionStream.PositionChangeReason.AUTO)
 				}
 			}
 
-			val discontinuityJob = ioScope.launch {
+			val discontinuityJob = launch {
 				delegate.playback.observeDiscontinuityEvent().safeCollect {
 					val updateReason =
 						if (it.reason == MediaConnectionPlayback.Events.Discontinuity.Reason.USER_SEEK) {
@@ -208,11 +340,14 @@ class RealMediaConnection(
 				}
 			}
 
-			val isPlayingJob = ioScope.launch {
+			val isPlayingJob = launch {
 				delegate.playback.observeIsPlayingChange().safeCollect {
-					if (!it) stopPositionCollector() else startPositionCollector(
-						MediaConnection.Playback.PositionStream.PositionChangeReason.UNKN0WN
-					)
+					if (!it) {
+						stopPositionCollector()
+						sendUpdatedPositions(MediaConnection.Playback.PositionStream.PositionChangeReason.UNKN0WN)
+					} else {
+						startPositionCollector(MediaConnection.Playback.PositionStream.PositionChangeReason.UNKN0WN)
+					}
 				}
 			}
 

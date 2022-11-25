@@ -47,6 +47,8 @@ import com.google.accompanist.pager.PagerState
 import com.google.accompanist.pager.rememberPagerState
 import kotlinx.coroutines.*
 import timber.log.Timber
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 internal fun PlaybackBoxDetail(
@@ -236,19 +238,24 @@ private fun DetailsContent(
 ) {
 	BoxWithConstraints {
 		val maxHeight = maxHeight
+		val progressObserver = viewModel.progressObserver
+		val positionState = viewModel.positionStreamStateFlow.collectAsState()
+		val progressState = viewModel.progressObserver.progressStateFlow.collectAsState()
+		val durationState = viewModel.progressObserver.durationStateFlow.collectAsState()
+		val trackState = viewModel.trackStreamStateFlow.collectAsState()
 		Column(
 			modifier = Modifier.fillMaxSize(),
 			verticalArrangement = Arrangement.Top,
 			horizontalAlignment = Alignment.CenterHorizontally
 		) {
-			val positionState = viewModel.positionStreamStateFlow.collectAsState()
-			val trackState = viewModel.trackStreamStateFlow.collectAsState()
 			TracksPagerDisplay(viewModel = viewModel)
 			Spacer(modifier = Modifier.height(15.dp))
 			CurrentTrackPlaybackDescriptions(viewModel = viewModel)
 			Spacer(modifier = Modifier.height(15.dp))
 			PlaybackControlProgressSeekbar(
 				positionState = positionState,
+				progressState = progressState,
+				durationState = durationState,
 				trackState = trackState,
 				seek = { requestIndex, requestPosition ->
 					Timber.d("Progressbar request seek pos $requestPosition")
@@ -260,6 +267,17 @@ private fun DetailsContent(
 			Spacer(modifier = Modifier
 				.fillMaxWidth()
 				.height(2f / 10 * maxHeight))
+		}
+
+		LaunchedEffect(key1 = maxWidth, key2 = durationState.value) {
+			val pref = durationState.value.inWholeMilliseconds / (maxWidth.value * 0.8f)
+			progressObserver.setPreferredProgressCheckInterval(
+				interval = pref.toLong().milliseconds
+			)
+		}
+
+		DisposableEffect(key1 = null) {
+			onDispose { progressObserver.setPreferredProgressCheckInterval(null) }
 		}
 	}
 }
@@ -358,7 +376,7 @@ private fun RadialPlaybackBackground(
 @Composable
 private fun TracksPager(
 	trackState: State<PlaybackDetailTracksInfo>,
-	metadataStateForId: @Composable (String) -> State<PlaybackDetailMetadata>,
+	metadataStateForId: @Composable (String) -> State<PlaybackControlTrackMetadata>,
 	seekIndex: suspend (Int) -> Boolean,
 ) {
 	val tracks by trackState.rememberDerive { it.tracks }
@@ -462,7 +480,7 @@ private fun Int.inRangeSpread(a: Int, amount: Int): Boolean {
 
 @Composable
 private fun TracksPagerItem(
-	metadataState: State<PlaybackDetailMetadata>
+	metadataState: State<PlaybackControlTrackMetadata>
 ) {
 	val art = metadataState.value.artwork
 	Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -490,12 +508,12 @@ private fun CurrentTrackPlaybackDescriptions(
 	viewModel: PlaybackControlViewModel
 ) {
 	PlaybackDescription(metadataState = viewModel.currentMetadataStateFlow.collectAsState(
-		PlaybackDetailMetadata()
+		PlaybackControlTrackMetadata()
 	))
 }
 
 @Composable
-private fun PlaybackDescription(metadataState: State<PlaybackDetailMetadata>) {
+private fun PlaybackDescription(metadataState: State<PlaybackControlTrackMetadata>) {
 	Box(modifier = Modifier.fillMaxWidth()) {
 		Column(
 			modifier = Modifier
@@ -714,12 +732,13 @@ private fun PlaybackControlButtons(
 @Composable
 private fun PlaybackControlProgressSeekbar(
 	positionState: State<PlaybackDetailPositionStream>,
+	progressState: State<Duration>,
+	durationState: State<Duration>,
 	trackState: State<PlaybackDetailTracksInfo>,
 	seek: suspend (Int, Long) -> Boolean
 ) {
-	val position = positionState.read().position
-	val duration = positionState.read().duration
-	val positionChangeReason = positionState.read().positionChangeReason
+	val position by progressState
+	val duration by durationState
 
 	fun clampedPositionProgress(): Float = (position / duration).toFloat().clamp(0f, 1f)
 	fun clampedPosition(): Long = (duration.inWholeMilliseconds * clampedPositionProgress()).toLong()
@@ -728,9 +747,9 @@ private fun PlaybackControlProgressSeekbar(
 	val draggedState = interactionSource.collectIsDraggedAsState()
 	val pressedState = interactionSource.collectIsPressedAsState()
 	val changedValue = remember { mutableStateOf(clampedPositionProgress()) }
-	val suppressSeekRequest = remember { mutableStateOf(false) }
+	val suppressSeekRequest = remember { mutableStateOf(0) }
 
-	val suppressedUpdateValue = draggedState.read() || pressedState.read() || suppressSeekRequest.read()
+	val suppressedUpdateValue = draggedState.read() || pressedState.read() || suppressSeekRequest.value > 0
 
 	val rememberedIndex = remember { mutableStateOf(-1) }
 
@@ -745,7 +764,7 @@ private fun PlaybackControlProgressSeekbar(
 		} else {
 			val animated = animateFloatAsState(
 				targetValue = clampedPositionProgress(),
-				animationSpec = TweenSpec(durationMillis = 200)
+				animationSpec = TweenSpec(durationMillis = 100)
 			)
 			animated.value
 		},
@@ -755,10 +774,11 @@ private fun PlaybackControlProgressSeekbar(
 		},
 		onValueChangeFinished = {
 			changedValue.value.takeIf { it >= 0 }?.let {
-				suppressSeekRequest.overwrite(true)
+				suppressSeekRequest.value++
 				coroutineScope.launch {
-					if (!seek(trackState.value.currentIndex, (duration.inWholeMilliseconds * it).toLong()))
-						suppressSeekRequest.overwrite(false)
+					val seekTo = (duration.inWholeMilliseconds * it).toLong()
+					seek(trackState.value.currentIndex, seekTo)
+					suppressSeekRequest.value--
 				}
 				return@Slider
 			}
@@ -840,10 +860,8 @@ private fun PlaybackControlProgressSeekbar(
 		}
 	}
 
-	LaunchedEffect(key1 = position) {
-		if (positionChangeReason == PlaybackDetailPositionStream.PositionChangeReason.USER_SEEK) {
-			suppressSeekRequest.overwrite(false)
-		}
+	LaunchedEffect(key1 = suppressSeekRequest.value) {
+		Timber.d("PlaybackBox suppress: ${suppressSeekRequest.value}, progress: ${progressState.value}")
 	}
 
 	LaunchedEffect(key1 = trackState.read().currentIndex) {

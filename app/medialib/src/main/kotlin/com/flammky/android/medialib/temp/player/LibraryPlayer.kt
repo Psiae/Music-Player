@@ -1,7 +1,6 @@
 package com.flammky.android.medialib.temp.player
 
 import androidx.annotation.IntRange
-import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.common.Timeline.Period
@@ -15,7 +14,6 @@ interface LibraryPlayer {
 
 	// TODO: wrap
 	val availableCommands: Player.Commands
-	val playbackParameters: PlaybackParameters
 
 	// TODO: wrap
 	val playWhenReady: Boolean
@@ -45,6 +43,7 @@ interface LibraryPlayer {
 	val bufferedPositionMs: Long
 	val bufferedDurationMs: Long
 	val durationMs: Long
+	val speed: Float
 
 	val contextInfo: PlayerContextInfo
 	val volumeManager: VolumeManager
@@ -54,7 +53,7 @@ interface LibraryPlayer {
 	val seekable: Boolean
 	fun seekToDefaultPosition()
 	fun seekToDefaultPosition(index: Int)
-	fun seekToPosition(position: Long)
+	fun postSeekToPosition(position: Long)
 	@Throws(IndexOutOfBoundsException::class)
 	fun seekToMediaItem(index: Int, startPosition: Long)
 	fun seekToMediaItem(index: Int)
@@ -91,6 +90,8 @@ interface LibraryPlayer {
 
 	fun getAllMediaItems(@IntRange(from = 0, to = 2147483647) limit: Int = Int.MAX_VALUE): List<androidx.media3.common.MediaItem>
 	fun getAllMediaItem(): List<MediaItem>
+
+	suspend fun seekToPosition(position: Long): Boolean
 
 	sealed class PlaybackState {
 		object IDLE : PlaybackState()

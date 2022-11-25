@@ -45,15 +45,16 @@ interface MediaConnection {
 		// I think we should add `shared` option on these observable
 		//
 
-		fun observePositionStream(): Flow<PositionStream>
+		fun observePositionStream(interval: Duration): Flow<PositionStream>
 		fun observePlaylistStream(): Flow<TracksInfo>
 		fun observePropertiesInfo(): Flow<PropertiesInfo>
 		fun seekIndex(index: Int, startPosition: Long)
 
-		fun seekPosition(position: Long)
+		fun postSeekPosition(position: Long)
 
 		fun observeInfo(): Flow<PlaybackInfo>
 
+		suspend fun seekToPosition(position: Long): Boolean
 		suspend fun <R> joinSuspend(block: suspend MediaConnection.Playback.() -> R): R
 
 		data class PropertiesInfo(

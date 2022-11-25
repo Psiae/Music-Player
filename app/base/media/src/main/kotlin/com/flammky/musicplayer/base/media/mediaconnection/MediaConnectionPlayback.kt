@@ -23,7 +23,7 @@ interface MediaConnectionPlayback {
 	val position: Duration
 
 	fun seekToIndex(int: Int, startPosition: Long)
-	fun seekToPosition(position: Long)
+	fun postSeekToPosition(position: Long)
 	fun seekNext()
 	fun seekNextMedia()
 	fun seekPrevious()
@@ -35,6 +35,7 @@ interface MediaConnectionPlayback {
 	fun bufferedPosition(): Duration
 	fun position(): Duration
 	fun duration(): Duration
+	fun playbackSpeed(): Float
 
 	fun setMediaItems(items: List<MediaItem>, startIndex: Int, startPosition: Duration)
 
@@ -60,10 +61,12 @@ interface MediaConnectionPlayback {
 	fun observeRepeatModeChange(): Flow<Player.RepeatMode>
 	fun observePlayerStateChange(): Flow<Player.State>
 
+	suspend fun seekToPosition(position: Long): Boolean
 	suspend fun <R> joinDispatcher(block: suspend MediaConnectionPlayback.() -> R): R
 
 	fun notifyUnplayableMedia(id: String)
 	fun notifyUnplayableMedia(uri: Uri)
+
 
 	sealed interface Events {
 		data class Discontinuity(

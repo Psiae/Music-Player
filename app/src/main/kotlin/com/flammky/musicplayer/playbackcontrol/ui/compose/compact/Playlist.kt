@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalPagerApi::class)
 
-package com.flammky.musicplayer.playbackcontrol.ui.compact
+package com.flammky.musicplayer.playbackcontrol.ui.compose.compact
 
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.*

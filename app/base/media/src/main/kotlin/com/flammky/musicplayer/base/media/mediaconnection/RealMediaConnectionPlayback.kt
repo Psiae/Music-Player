@@ -36,6 +36,7 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 	private var _playlist: ImmutableList<String> = persistentListOf()
 
 	// TEMP
+	@Deprecated("Should not all Depend on the Player property")
 	private val s = MediaLibrary.API.sessions.manager.findSessionById("DEBUG")!!
 
 	private val playerDispatcher = Handler(s.mediaController.publicLooper).asCoroutineDispatcher()
@@ -124,8 +125,8 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 		s.mediaController.seekToMediaItem(int, startPosition)
 	}
 
-	override fun seekToPosition(position: Long) {
-		s.mediaController.seekToPosition(position)
+	override fun postSeekToPosition(position: Long) {
+		s.mediaController.postSeekToPosition(position)
 	}
 
 	override fun seekNext() {
@@ -154,6 +155,10 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 
 	override fun duration(): Duration {
 		return s.mediaController.durationMs.milliseconds
+	}
+
+	override fun playbackSpeed(): Float {
+		return s.mediaController.speed
 	}
 
 	override fun getCurrentMediaItem(): MediaItem? {
@@ -404,6 +409,12 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 			s.mediaController.getAllMediaItem().forEachIndexed { index, item ->
 				if (item.mediaUri == uri) s.mediaController.removeMediaItem(index - removed++)
 			}
+		}
+	}
+
+	override suspend fun seekToPosition(position: Long): Boolean {
+		return joinDispatcher {
+			s.mediaController.seekToPosition(position)
 		}
 	}
 

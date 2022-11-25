@@ -1,9 +1,20 @@
 package com.flammky.musicplayer.playbackcontrol.ui.model
 
 import com.flammky.musicplayer.core.media.MediaConstants
+import com.flammky.musicplayer.media.playback.PlaybackConstants
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlin.time.Duration
+
+// Think of better name
+sealed class PlayPauseCommand(open val enabled: Boolean) {
+	data class Play(override val enabled: Boolean) : PlayPauseCommand(enabled)
+	data class Pause(override val enabled: Boolean) : PlayPauseCommand(enabled)
+
+	companion object {
+		val UNSET = Play(false)
+	}
+}
 
 object PlaybackInfo {
 
@@ -29,14 +40,21 @@ object PlaybackInfo {
 	}
 
 	data class Position(
-		val infoChangeReason: PositionInfoChangeReason,
+		val infoChangeReason: ChangeReason,
 		val progress: Duration,
 		val bufferedProgress: Duration,
 		val duration: Duration
 	) {
+		sealed interface ChangeReason {
+			object UNKNOWN : ChangeReason
+			object PERIODIC : ChangeReason
+			object SEEK_REQUEST : ChangeReason
+			object MEDIA_TRANSITION : ChangeReason
+			object PROGRESS_DISCONTINUITY : ChangeReason
+		}
 		companion object {
 			val UNSET = Position(
-				infoChangeReason = PositionInfoChangeReason.UNKNOWN,
+				infoChangeReason = ChangeReason.UNKNOWN,
 				progress = MediaConstants.POSITION_UNSET,
 				bufferedProgress = MediaConstants.POSITION_UNSET,
 				duration = MediaConstants.DURATION_UNSET
@@ -48,8 +66,8 @@ object PlaybackInfo {
 		val playWhenReady: Boolean,
 		val playing: Boolean,
 		val shuffleEnabled: Boolean,
-		val hasNextMediaItem: Boolean,
-		val hasPreviousMediaItem: Boolean,
+		val canSeekNext: Boolean,
+		val canSeekPrevious: Boolean,
 		val repeatMode: RepeatMode,
 		val playbackState: PlaybackState
 	) {
@@ -58,8 +76,8 @@ object PlaybackInfo {
 				playWhenReady = false,
 				playing = false,
 				shuffleEnabled = false,
-				hasNextMediaItem = false,
-				hasPreviousMediaItem = false,
+				canSeekNext = false,
+				canSeekPrevious = false,
 				repeatMode = RepeatMode.OFF,
 				playbackState = PlaybackState.IDLE
 			)
@@ -93,13 +111,69 @@ object PlaybackInfo {
 	}
 }
 
+object PlaybackCommands {
 
-sealed interface PositionInfoChangeReason {
-	object UNKNOWN : PositionInfoChangeReason
-	object PERIODIC : PositionInfoChangeReason
-	object SEEK_REQUEST : PositionInfoChangeReason
-	object MEDIA_TRANSITION : PositionInfoChangeReason
-	object PROGRESS_DISCONTINUITY : PositionInfoChangeReason
+
 }
 
+// Is this unnecessary ?, would like to remove any domain import in UI component except presenter
+object PlaybackProperties {
 
+	sealed interface RepeatMode {
+
+		/**
+		 * No Repeat Mode
+		 */
+		object OFF : RepeatMode
+
+		/**
+		 * Repeat currently playing Media Item
+		 */
+		object ONE : RepeatMode
+
+		/**
+		 * Repeat the Playlist
+		 */
+		object ALL : RepeatMode
+	}
+
+	sealed interface ShuffleMode {
+
+		object OFF : ShuffleMode
+
+		object ON : ShuffleMode
+
+		companion object {
+			inline val ShuffleMode.on: Boolean
+				get() = this == ON
+			inline val ShuffleMode.off: Boolean
+				get() = this == OFF
+		}
+	}
+
+
+
+	@JvmInline
+	value class Progress(val value: kotlin.time.Duration) {
+
+		companion object {
+			val UNSET = Progress(PlaybackConstants.PROGRESS_UNSET)
+		}
+	}
+
+	@JvmInline
+	value class BufferedProgress(val value: kotlin.time.Duration) {
+
+		companion object {
+			val UNSET = BufferedProgress(PlaybackConstants.PROGRESS_UNSET)
+		}
+	}
+
+	@JvmInline
+	value class Duration(val value: kotlin.time.Duration) {
+
+		companion object {
+			val UNSET = Duration(PlaybackConstants.DURATION_UNSET)
+		}
+	}
+}

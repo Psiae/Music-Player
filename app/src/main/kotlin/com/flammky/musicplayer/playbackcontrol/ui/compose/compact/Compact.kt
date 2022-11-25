@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalMaterial3Api::class)
 
-package com.flammky.musicplayer.playbackcontrol.ui.compact
+package com.flammky.musicplayer.playbackcontrol.ui.compose.compact
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,8 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import com.flammky.musicplayer.playbackcontrol.ui.model.PlaybackInfo
 import com.flammky.musicplayer.playbackcontrol.ui.PlaybackControlViewModel
+import com.flammky.musicplayer.playbackcontrol.ui.model.PlaybackInfo
 
 @Composable
 internal fun CompactPlaybackControl(

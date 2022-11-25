@@ -11,6 +11,7 @@ import com.flammky.android.medialib.providers.metadata.VirtualFileMetadata
 import com.flammky.common.kotlin.coroutines.safeCollect
 import com.flammky.musicplayer.common.android.concurrent.ConcurrencyHelper.checkMainThread
 import com.flammky.musicplayer.domain.media.MediaConnection
+import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
 import com.flammky.musicplayer.ui.playbackcontrol.PlaybackDetailPositionStream.Companion.asPlaybackDetails
 import com.flammky.musicplayer.ui.playbackcontrol.PlaybackDetailPositionStream.PositionChangeReason.Companion.asPlaybackDetails
 import com.flammky.musicplayer.ui.playbackcontrol.PlaybackDetailPropertiesInfo.Companion.asPlaybackDetails
@@ -25,22 +26,30 @@ import timber.log.Timber
 import javax.annotation.concurrent.Immutable
 import javax.inject.Inject
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 @HiltViewModel
 internal class PlaybackControlViewModel @Inject constructor(
-	private val mediaConnection: MediaConnection
+	private val mediaConnection: MediaConnection,
+	private val presenter: PlaybackControlPresenter,
 ) : ViewModel() {
 
-	private val _metadataStateMap = mutableMapOf<String, StateFlow<PlaybackDetailMetadata>>()
+	val progressObserver: PlaybackObserver = presenter.createPlaybackObserver(viewModelScope)
+
+
+	private val _metadataStateMap = mutableMapOf<String, StateFlow<PlaybackControlTrackMetadata>>()
 	private val _trackStreamFlow = MutableStateFlow(MediaConnection.Playback.TracksInfo())
 
 	init {
+
+
 		viewModelScope.launch {
 			mediaConnection.playback.observePlaylistStream().safeCollect { _trackStreamFlow.value = it }
 		}
 	}
 
-	private val _positionStreamFlow = mediaConnection.playback.observePositionStream()
+	// our View should decide the appropriate interval
+	private val _positionStreamFlow = mediaConnection.playback.observePositionStream(1.seconds)
 	private val _playbackPropertiesFlow = mediaConnection.playback.observePropertiesInfo()
 
 	// Inject as Dependency instead
@@ -59,20 +68,24 @@ internal class PlaybackControlViewModel @Inject constructor(
 		.stateIn(viewModelScope, SharingStarted.Eagerly, PlaybackDetailPropertiesInfo())
 
 	@OptIn(ExperimentalCoroutinesApi::class)
-	val currentMetadataStateFlow = _trackStreamFlow.flatMapLatest { tracksInfo ->
+	val currentMetadataStateFlow = _trackStreamFlow.mapLatest { tracksInfo ->
 		val id = tracksInfo.takeIf { it.currentIndex >= 0 && it.list.isNotEmpty() }
 			?.let { safeTrackInfo -> safeTrackInfo.list[safeTrackInfo.currentIndex] }
 			?: ""
 		Timber.d("PlaybackDetailViewModel currentMetadata observing $id, $tracksInfo")
-		observeMetadata(id)
-	}.stateIn(viewModelScope, SharingStarted.Eagerly, PlaybackDetailMetadata())
+		id
+	}.distinctUntilChanged()
+		.flatMapLatest { id -> observeMetadata(id) }
+		.stateIn(viewModelScope, SharingStarted.Lazily, PlaybackControlTrackMetadata())
 
 	suspend fun seek(currentIndex: Int, position: Long): Boolean {
 		return mediaConnection.playback.joinSuspend {
 			val playback = this@joinSuspend
 			(playback.currentIndex == currentIndex &&
-				playback.currentPosition.inWholeMilliseconds != position).also {
-					if (it) playback.seekPosition(position)
+				playback.seekToPosition(position)).also {
+					if (it) {
+						progressObserver.updatePosition()
+					}
 				}
 		}
 	}
@@ -106,7 +119,7 @@ internal class PlaybackControlViewModel @Inject constructor(
 	suspend fun seekPosition(position: Long): Boolean {
 		return mediaConnection.playback.joinSuspend {
 			(position <= currentDuration.inWholeMilliseconds).also {
-				if (it) seekPosition(position)
+				if (it) postSeekPosition(position)
 			}
 		}
 	}
@@ -116,7 +129,7 @@ internal class PlaybackControlViewModel @Inject constructor(
 	}
 
 	// Inject as Dependency
-	fun observeMetadata(id: String): StateFlow<PlaybackDetailMetadata> {
+	fun observeMetadata(id: String): StateFlow<PlaybackControlTrackMetadata> {
 		checkMainThread()
 		if (!_metadataStateMap.containsKey(id)) {
 			_metadataStateMap[id] = createMetadataStateFlowForId(id)
@@ -124,7 +137,7 @@ internal class PlaybackControlViewModel @Inject constructor(
 		return _metadataStateMap[id]!!
 	}
 
-	private fun createMetadataStateFlowForId(id: String): StateFlow<PlaybackDetailMetadata> {
+	private fun createMetadataStateFlowForId(id: String): StateFlow<PlaybackControlTrackMetadata> {
 		return flow {
 			val combined = combine(
 				flow = mediaConnection.repository.observeArtwork(id),
@@ -137,10 +150,10 @@ internal class PlaybackControlViewModel @Inject constructor(
 					}
 				val subtitle = (metadata as? AudioMetadata)
 					?.let { it.albumArtistName ?: it.artistName }
-				PlaybackDetailMetadata(id, art, title, subtitle)
+				PlaybackControlTrackMetadata(id, art, title, subtitle)
 			}
 			emitAll(combined)
-		}.stateIn(viewModelScope, SharingStarted.Eagerly, PlaybackDetailMetadata(id))
+		}.stateIn(viewModelScope, SharingStarted.Lazily, PlaybackControlTrackMetadata(id))
 	}
 
 	fun playWhenReady() {
@@ -252,11 +265,11 @@ data class PlaybackDetailPagerData(
 @Immutable
 data class PlaybackDetailPagerItem(
 	val key: String,
-	val metadata: PlaybackDetailMetadata
+	val metadata: PlaybackControlTrackMetadata
 )
 
 @Immutable
-data class PlaybackDetailMetadata(
+data class PlaybackControlTrackMetadata(
 	val id: String = "",
 	val artwork: Any? = null,
 	val title: String? = null,

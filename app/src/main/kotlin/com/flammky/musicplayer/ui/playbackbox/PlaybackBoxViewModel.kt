@@ -1,5 +1,6 @@
 package com.flammky.musicplayer.ui.playbackbox
 
+import androidx.annotation.MainThread
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -21,6 +22,8 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 @HiltViewModel
 class PlaybackBoxViewModel @Inject constructor(
@@ -30,28 +33,32 @@ class PlaybackBoxViewModel @Inject constructor(
 	// I think we should consider injecting observable instead ?
 ) : ViewModel() {
 
+	private val _metadataStateMap = mutableMapOf<String, StateFlow<PlaybackBoxMetadata>>()
+
 	private val playlistStreamFlow = mediaConnection.playback.observePlaylistStream()
-	private val positionStreamFlow = mediaConnection.playback.observePositionStream()
+	private val positionStreamFlow = mediaConnection.playback.observePositionStream(1.seconds)
 	private val playbackPropertiesInfoFlow = mediaConnection.playback.observePropertiesInfo()
 
 	// Localize
 	val playlistStreamStateFlow = playlistStreamFlow
-		.stateIn(viewModelScope, SharingStarted.Eagerly, MediaConnection.Playback.TracksInfo())
+		.stateIn(viewModelScope, SharingStarted.Lazily, MediaConnection.Playback.TracksInfo())
 
 	val positionStreamStateFlow = positionStreamFlow
 		.map { it.asPlaybackBoxPosition }
-		.stateIn(viewModelScope, SharingStarted.Eagerly, PlaybackBoxPositions())
+		.stateIn(viewModelScope, SharingStarted.Lazily, PlaybackBoxPositions())
 
 	// Localize
 	val playbackPropertiesInfoStateFlow = playbackPropertiesInfoFlow
-		.stateIn(viewModelScope, SharingStarted.Eagerly, MediaConnection.Playback.PropertiesInfo())
+		.stateIn(viewModelScope, SharingStarted.Lazily, MediaConnection.Playback.PropertiesInfo())
 
 	@OptIn(ExperimentalCoroutinesApi::class)
-	val artworkFlow = playlistStreamStateFlow.flatMapLatest {
+	val artworkFlow = playlistStreamStateFlow.mapLatest {
 		val id = if (it.currentIndex >= 0 && it.list.isNotEmpty()) it.list[it.currentIndex] else "NO_ID"
 		Timber.d("artworkFlow collected id $id, ${it.currentIndex}, ${it.list}")
-		observeArtwork(id)
-	}.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+		id
+	}.distinctUntilChanged()
+		.flatMapLatest { id -> observeArtwork(id) }
+		.stateIn(viewModelScope, SharingStarted.Lazily, null)
 
 	fun play() = mediaConnectionDelegate.play()
 	fun pause() = mediaConnectionDelegate.pause()
@@ -66,16 +73,27 @@ class PlaybackBoxViewModel @Inject constructor(
 		return mediaConnectionDelegate.repository.observeArtwork(id)
 	}
 
-	fun observeBoxMetadata(id: String): Flow<PlaybackBoxMetadata> = flow {
-		combine(observeArtwork(id), observeMetadata(id)) { art: Any?, metadata: MediaMetadata? ->
-			val title = metadata?.title?.ifBlank { null }
-				?: (metadata as? AudioFileMetadata)?.file?.fileName?.ifBlank { null }
-				?: ((metadata as? AudioFileMetadata)?.file as? VirtualFileMetadata)?.uri?.toString()
-			val subtitle = (metadata as? AudioMetadata)?.let {
-				it.albumArtistName ?: it.artistName
+	@MainThread
+	fun observeBoxMetadata(id: String): StateFlow<PlaybackBoxMetadata> {
+		_metadataStateMap[id]?.let { return it }
+
+		val state = flow {
+			combine(observeArtwork(id), observeMetadata(id)) { art: Any?, metadata: MediaMetadata? ->
+				val title = metadata?.title?.ifBlank { null }
+					?: (metadata as? AudioFileMetadata)?.file?.fileName?.ifBlank { null }
+					?: ((metadata as? AudioFileMetadata)?.file as? VirtualFileMetadata)?.uri?.toString()
+				val subtitle = (metadata as? AudioMetadata)?.let {
+					it.albumArtistName ?: it.artistName
+				}
+				PlaybackBoxMetadata(art, title ?: "", subtitle ?: "")
+			}.collect(this)
+		}.stateIn(viewModelScope, SharingStarted.Lazily, PlaybackBoxMetadata())
+
+		return state.also {
+			if (_metadataStateMap.put(id, state) != null) {
+				error("Duplicate StateFlow ($id)")
 			}
-			PlaybackBoxMetadata(art, title ?: "", subtitle ?: "")
-		}.collect(this)
+		}
 	}
 
 	/**
@@ -84,7 +102,7 @@ class PlaybackBoxViewModel @Inject constructor(
 	fun observePositions(): Flow<PlaybackBoxPositions> {
 		return callbackFlow {
 			val job = launch(dispatchers.io) {
-				mediaConnection.playback.observePositionStream().safeCollect { stream ->
+				mediaConnection.playback.observePositionStream(500.milliseconds).safeCollect { stream ->
 					send(stream.asPlaybackBoxPosition)
 				}
 			}

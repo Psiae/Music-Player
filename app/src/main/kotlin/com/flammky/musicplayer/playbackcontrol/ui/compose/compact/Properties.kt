@@ -1,4 +1,4 @@
-package com.flammky.musicplayer.playbackcontrol.ui.compact
+package com.flammky.musicplayer.playbackcontrol.ui.compose.compact
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -9,22 +9,21 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import com.airbnb.lottie.compose.*
 import com.flammky.musicplayer.R
-import com.flammky.musicplayer.playbackcontrol.domain.model.TrackInfo
 import com.flammky.musicplayer.playbackcontrol.ui.PlaybackControlViewModel
-import com.flammky.musicplayer.playbackcontrol.ui.model.TrackDescription
+import com.flammky.musicplayer.playbackcontrol.ui.model.PlayPauseCommand
 
 @Composable
 internal fun PropertiesControl(
 	viewModel: PlaybackControlViewModel,
 	dark: Boolean,
 ) {
-	val playbackPropertiesState = viewModel.propertiesInfoStateFlow.collectAsState()
 	BoxWithConstraints {
 		val baseIconSize = min(maxHeight, maxWidth / 3 - 10.dp)
 
@@ -33,20 +32,19 @@ internal fun PropertiesControl(
 			verticalAlignment = Alignment.CenterVertically,
 			horizontalArrangement = Arrangement.SpaceAround,
 		) {
-			PlayWhenReadyButton(
+			PlayPauseButton(
 				size = baseIconSize,
 				contentSize = baseIconSize - 3.dp,
 				dark = dark,
-				playWhenReadyState = playbackPropertiesState.rememberDerive(
-					derive = { properties -> properties.playWhenReady }
-				),
-				onClick = { play -> /* Impl */ },
+				commandState = viewModel.playPauseCommandStateFlow.collectAsState(),
+				play = {  },
+				pause = {  }
 			)
 			FavoriteButton(
 				size = baseIconSize,
 				contentSize = baseIconSize - 3.dp,
 				dark = dark,
-				trackInfoState = viewModel.currentTrackDisplayInfoStateFlow.collectAsState(),
+				trackId = "",
 				changeFavorite = { info, favorite -> /* Impl */ }
 			)
 			QueueButton(
@@ -60,17 +58,22 @@ internal fun PropertiesControl(
 }
 
 @Composable
-private fun PlayWhenReadyButton(
+private fun PlayPauseButton(
 	size: Dp,
 	contentSize: Dp,
 	dark: Boolean,
-	playWhenReadyState: State<Boolean>,
-	onClick: (Boolean) -> Unit
+	commandState: State<PlayPauseCommand>,
+	play: () -> Unit,
+	pause: () -> Unit,
 ) {
-	val playWhenReady by playWhenReadyState
+	val command by commandState
 
 	val resId =
-		if (playWhenReady) R.drawable.ios_glyph_pause_100 else R.drawable.ios_glyph_play_100
+		if (command is PlayPauseCommand.Pause) {
+			R.drawable.ios_glyph_pause_100
+		} else {
+			R.drawable.ios_glyph_play_100
+		}
 
 	val interactionSource = remember { MutableInteractionSource() }
 
@@ -81,17 +84,28 @@ private fun PlayWhenReadyButton(
 		modifier = Modifier
 			.size(size)
 			.clickable(
+				enabled = command.enabled,
 				interactionSource = interactionSource,
 				indication = null,
-				onClick = { onClick(playWhenReady) }
+				onClick = {
+					when (command) {
+						is PlayPauseCommand.Pause -> pause()
+						is PlayPauseCommand.Play -> play()
+					}
+				}
 			),
 		contentAlignment = Alignment.Center
 	) {
 		Icon(
 			modifier = Modifier.size(interactedSize),
 			painter = painterResource(id = resId),
-			contentDescription = if (playWhenReady) "Pause" else "Play",
-			tint = if (dark) Color.Black else Color.White
+			contentDescription = when (command) {
+				is PlayPauseCommand.Pause -> "Pause" + if (!command.enabled) "_NO" else ""
+				is PlayPauseCommand.Play -> "Play" + if (!command.enabled) "_NO" else ""
+			},
+			tint = (if (dark) Color.Black else Color.White).let {
+				if (command.enabled) it else Color.Gray.copy(alpha = 0.35f).compositeOver(it)
+			}
 		)
 	}
 }
@@ -101,11 +115,9 @@ private fun FavoriteButton(
 	size: Dp,
 	contentSize: Dp,
 	dark: Boolean,
-	trackInfoState: State<TrackDescription>,
-	changeFavorite: (TrackDescription, Boolean) -> Unit
+	trackId: String,
+	changeFavorite: (String, Boolean) -> Unit
 ) {
-	val trackInfo = trackInfoState.value
-
 	var changed by remember {
 		mutableStateOf(false)
 	}
@@ -128,7 +140,7 @@ private fun FavoriteButton(
 	Box(
 		modifier = Modifier
 			.size(size)
-			.clickable { changeFavorite(trackInfo, !favorite) },
+			.clickable { changeFavorite(trackId, !favorite) },
 		contentAlignment = Alignment.Center,
 	) {
 		LottieAnimation(
@@ -139,7 +151,7 @@ private fun FavoriteButton(
 	}
 
 	LaunchedEffect(
-		key1 = trackInfo
+		key1 = trackId
 	) {
 		changed = false
 		favorite = /* User pref */ false

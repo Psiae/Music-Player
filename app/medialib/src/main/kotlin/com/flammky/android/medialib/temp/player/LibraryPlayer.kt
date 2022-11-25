@@ -91,7 +91,7 @@ interface LibraryPlayer {
 	fun getAllMediaItems(@IntRange(from = 0, to = 2147483647) limit: Int = Int.MAX_VALUE): List<androidx.media3.common.MediaItem>
 	fun getAllMediaItem(): List<MediaItem>
 
-	suspend fun seekToPosition(position: Long): Boolean
+	fun seekToPosition(position: Long): Boolean
 
 	sealed class PlaybackState {
 		object IDLE : PlaybackState()

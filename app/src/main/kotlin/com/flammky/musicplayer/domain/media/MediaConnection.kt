@@ -54,7 +54,7 @@ interface MediaConnection {
 
 		fun observeInfo(): Flow<PlaybackInfo>
 
-		suspend fun seekToPosition(position: Long): Boolean
+		fun seekToPosition(position: Long): Boolean
 		suspend fun <R> joinSuspend(block: suspend MediaConnection.Playback.() -> R): R
 
 		data class PropertiesInfo(

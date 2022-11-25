@@ -262,8 +262,8 @@ class MediaControllerWrapper internal constructor(
 		return joinBlocking { wrapped.getAllMediaItem() }
 	}
 
-	override suspend fun seekToPosition(position: Long): Boolean {
-		return joinSuspend { wrapped.seekToPosition(position) }
+	override fun seekToPosition(position: Long): Boolean {
+		return wrapped.seekToPosition(position)
 	}
 
 	fun connect(
@@ -699,7 +699,7 @@ class MediaControllerWrapper internal constructor(
 			return holder
 		}
 
-		override suspend fun seekToPosition(position: Long): Boolean {
+		override fun seekToPosition(position: Long): Boolean {
 			return isStateConnected() && mediaController.duration >= position && run {
 				mediaController.seekTo(position)
 				true

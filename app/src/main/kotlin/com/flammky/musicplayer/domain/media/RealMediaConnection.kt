@@ -225,7 +225,7 @@ class RealMediaConnection(
 			delegate.playback.postSeekToPosition(position)
 		}
 
-		override suspend fun seekToPosition(position: Long): Boolean {
+		override fun seekToPosition(position: Long): Boolean {
 			return delegate.playback.seekToPosition(position)
 		}
 

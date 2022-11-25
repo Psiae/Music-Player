@@ -412,10 +412,8 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 		}
 	}
 
-	override suspend fun seekToPosition(position: Long): Boolean {
-		return joinDispatcher {
-			s.mediaController.seekToPosition(position)
-		}
+	override fun seekToPosition(position: Long): Boolean {
+		return s.mediaController.seekToPosition(position)
 	}
 
 	override suspend fun <R> joinDispatcher(block: suspend MediaConnectionPlayback.() -> R): R {

@@ -61,7 +61,7 @@ interface MediaConnectionPlayback {
 	fun observeRepeatModeChange(): Flow<Player.RepeatMode>
 	fun observePlayerStateChange(): Flow<Player.State>
 
-	suspend fun seekToPosition(position: Long): Boolean
+	fun seekToPosition(position: Long): Boolean
 	suspend fun <R> joinDispatcher(block: suspend MediaConnectionPlayback.() -> R): R
 
 	fun notifyUnplayableMedia(id: String)

@@ -7,7 +7,10 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.*
+import androidx.compose.foundation.interaction.InteractionSource
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Icon
@@ -238,8 +241,8 @@ private fun DetailsContent(
 ) {
 	BoxWithConstraints {
 		val maxHeight = maxHeight
+		val maxWidth = maxWidth
 		val progressObserver = viewModel.progressObserver
-		val positionState = viewModel.positionStreamStateFlow.collectAsState()
 		val progressState = viewModel.progressObserver.progressStateFlow.collectAsState()
 		val durationState = viewModel.progressObserver.durationStateFlow.collectAsState()
 		val trackState = viewModel.trackStreamStateFlow.collectAsState()
@@ -253,12 +256,14 @@ private fun DetailsContent(
 			CurrentTrackPlaybackDescriptions(viewModel = viewModel)
 			Spacer(modifier = Modifier.height(15.dp))
 			PlaybackControlProgressSeekbar(
-				positionState = positionState,
+				maxWidth = maxWidth,
 				progressState = progressState,
 				durationState = durationState,
 				trackState = trackState,
+				changeInterval = { duration ->
+					viewModel.progressObserver.setPreferredProgressCheckInterval(duration)
+				},
 				seek = { requestIndex, requestPosition ->
-					Timber.d("Progressbar request seek pos $requestPosition")
 					viewModel.seek(requestIndex, requestPosition)
 				}
 			)
@@ -267,13 +272,6 @@ private fun DetailsContent(
 			Spacer(modifier = Modifier
 				.fillMaxWidth()
 				.height(2f / 10 * maxHeight))
-		}
-
-		LaunchedEffect(key1 = maxWidth, key2 = durationState.value) {
-			val pref = durationState.value.inWholeMilliseconds / (maxWidth.value * 0.8f)
-			progressObserver.setPreferredProgressCheckInterval(
-				interval = pref.toLong().milliseconds
-			)
 		}
 
 		DisposableEffect(key1 = null) {
@@ -731,12 +729,29 @@ private fun PlaybackControlButtons(
 
 @Composable
 private fun PlaybackControlProgressSeekbar(
-	positionState: State<PlaybackDetailPositionStream>,
+	maxWidth: Dp,
 	progressState: State<Duration>,
 	durationState: State<Duration>,
 	trackState: State<PlaybackDetailTracksInfo>,
+	changeInterval: (Duration) -> Unit,
 	seek: suspend (Int, Long) -> Boolean
 ) {
+
+	val sliderWidth = remember(maxWidth) {
+		maxWidth * 0.85f
+	}
+
+	val sliderTrackWidth = remember(sliderWidth) {
+		sliderWidth - 14.dp
+	}
+
+	remember(sliderTrackWidth, durationState.value) {
+		changeInterval(
+			(durationState.value.inWholeMilliseconds / sliderTrackWidth.value).toLong().milliseconds
+		)
+		null
+	}
+
 	val position by progressState
 	val duration by durationState
 
@@ -754,6 +769,11 @@ private fun PlaybackControlProgressSeekbar(
 	val rememberedIndex = remember { mutableStateOf(-1) }
 
 	val coroutineScope = rememberCoroutineScope()
+
+	remember(suppressSeekRequest.value) {
+		Timber.d("PlaybackBox suppress: ${suppressSeekRequest.value}, progress: $position")
+		null
+	}
 
 	Slider(
 		modifier = Modifier
@@ -858,14 +878,6 @@ private fun PlaybackControlProgressSeekbar(
 				style = MaterialTheme.typography.bodySmall
 			)
 		}
-	}
-
-	LaunchedEffect(key1 = suppressSeekRequest.value) {
-		Timber.d("PlaybackBox suppress: ${suppressSeekRequest.value}, progress: ${progressState.value}")
-	}
-
-	LaunchedEffect(key1 = trackState.read().currentIndex) {
-		interactionSource.emit(DragInteraction.Cancel(DragInteraction.Start()))
 	}
 }
 

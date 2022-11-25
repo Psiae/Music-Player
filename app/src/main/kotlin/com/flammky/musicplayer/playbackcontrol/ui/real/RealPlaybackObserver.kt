@@ -64,7 +64,7 @@ class RealPlaybackObserver(
 		if (preferredProgressCheckInterval == interval) return
 		preferredProgressCheckInterval = interval
 		if (progressCollector?.isActive == true) {
-			dispatchProgressCollector()
+			dispatchProgressCollector(preferredProgressCheckInterval)
 		}
 	}
 
@@ -73,9 +73,12 @@ class RealPlaybackObserver(
 	}
 
 	@MainThread
-	private fun dispatchProgressCollector() {
+	private fun dispatchProgressCollector(
+		startIn: Duration? = null,
+	) {
 		progressCollector?.cancel()
 		progressCollector = scope.launch {
+			if (startIn != null) delay(progressCollectionDelay(startIn))
 			collectPlaybackProgress()
 		}
 	}
@@ -120,7 +123,7 @@ class RealPlaybackObserver(
 	private suspend fun collectPlaybackProgress() {
 		do {
 			updateProgress()
-			delay(progressCollectionInterval(preferredProgressCheckInterval))
+			delay(progressCollectionDelay(preferredProgressCheckInterval))
 		} while (coroutineContext.job.isActive)
 	}
 
@@ -167,21 +170,57 @@ class RealPlaybackObserver(
 		}
 	}
 
+	/**
+	 * Calculate the delay
+	 *
+	 * @param preferred the preferred delay, useful for display related purposes
+	 */
 	@MainThread
-	private suspend fun progressCollectionInterval(
+	private suspend fun progressCollectionDelay(
 		preferred: Duration?
 	): Duration {
 		return playbackConnection.joinContext {
 			val speed = getPlaybackSpeed()
+
+			require(speed > 0f) {
+				"Playback Speed ($speed) should be > 0f"
+			}
+
 			val duration = getDuration()
+				.takeIf { it != PlaybackConstants.DURATION_UNSET }
+				?: Duration.ZERO
+
+			require(duration >= Duration.ZERO) {
+				"Playback Duration should be constrained >= ${Duration.ZERO}"
+			}
+
 			val progress = getProgress()
+				.takeIf { it != PlaybackConstants.PROGRESS_UNSET }
+				?: Duration.ZERO
+
+			require(progress >= Duration.ZERO) {
+				"Playback Progress should be constrained > ${Duration.ZERO}"
+			}
+
 			val left = duration - progress
-			val abs = minOf(preferred ?: MAX_PROGRESS_COLLECTION_INTERVAL, left)
-				.coerceIn(MIN_PROGRESS_COLLECTION_INTERVAL, MAX_PROGRESS_COLLECTION_INTERVAL)
-				.inWholeMilliseconds
-			(abs / speed).toLong().milliseconds
+			val nextSecond = (1000 - progress.inWholeMilliseconds % 1000).milliseconds
+			val speedConstrained = minOf(
+				preferred ?: MAX_PROGRESS_COLLECTION_INTERVAL,
+				left,
+				nextSecond
+			).inWholeMilliseconds / speed
+			speedConstrained.toLong().milliseconds.coerceIn(
+				// Should be handled by other callback
+				MIN_PROGRESS_COLLECTION_INTERVAL,
+				MAX_PROGRESS_COLLECTION_INTERVAL
+			)
 		}.also {
 			Timber.d("RealPlaybackObserver progressCollectionInterval: $it")
+			// Safeguard
+			check(it in MIN_PROGRESS_COLLECTION_INTERVAL .. MAX_PROGRESS_COLLECTION_INTERVAL) {
+				"Delay($it) was !in $MIN_PROGRESS_COLLECTION_INTERVAL .. " +
+					"$MAX_PROGRESS_COLLECTION_INTERVAL inclusive"
+			}
 		}
 	}
 

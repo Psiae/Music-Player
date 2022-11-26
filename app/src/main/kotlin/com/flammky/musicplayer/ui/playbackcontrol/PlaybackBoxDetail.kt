@@ -50,6 +50,7 @@ import com.google.accompanist.pager.PagerState
 import com.google.accompanist.pager.rememberPagerState
 import kotlinx.coroutines.*
 import timber.log.Timber
+import kotlin.reflect.KProperty
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -261,7 +262,7 @@ private fun DetailsContent(
 				durationState = durationState,
 				trackState = trackState,
 				changeInterval = { duration ->
-					viewModel.progressObserver.setPreferredProgressCheckInterval(duration)
+					viewModel.progressObserver.setPreferredProgressCollectionDelay(duration)
 				},
 				seek = { requestIndex, requestPosition ->
 					viewModel.seek(requestIndex, requestPosition)
@@ -275,7 +276,7 @@ private fun DetailsContent(
 		}
 
 		DisposableEffect(key1 = null) {
-			onDispose { progressObserver.setPreferredProgressCheckInterval(null) }
+			onDispose { progressObserver.setPreferredProgressCollectionDelay(null) }
 		}
 	}
 }
@@ -761,46 +762,49 @@ private fun PlaybackControlProgressSeekbar(
 	val interactionSource = remember { MutableInteractionSource() }
 	val draggedState = interactionSource.collectIsDraggedAsState()
 	val pressedState = interactionSource.collectIsPressedAsState()
-	val changedValue = remember { mutableStateOf(clampedPositionProgress()) }
-	val suppressSeekRequest = remember { mutableStateOf(0) }
-
-	val suppressedUpdateValue = draggedState.read() || pressedState.read() || suppressSeekRequest.value > 0
-
-	val rememberedIndex = remember { mutableStateOf(-1) }
+	val changedValue = remember {
+		// the Slider should constraint it to 0, consider change it to nullable Float
+		mutableStateOf(-1f)
+	}
+	val seekRequest = remember { mutableStateOf(0) }
 
 	val coroutineScope = rememberCoroutineScope()
 
-	remember(suppressSeekRequest.value) {
-		Timber.d("PlaybackBox suppress: ${suppressSeekRequest.value}, progress: $position")
+	remember(seekRequest.value) {
+		Timber.d("PlaybackBox suppress: ${seekRequest.value}, progress: $position")
 		null
 	}
 
+	val suppressedUpdateValue = draggedState.value ||
+		pressedState.value ||
+		changedValue.value > 0 ||
+		seekRequest.value > 0
+
 	Slider(
 		modifier = Modifier
-			.fillMaxWidth(0.85f)
-			.height(14.dp),
+			.width(sliderWidth)
+			.height(16.dp),
 		value = if (suppressedUpdateValue) {
-			changedValue.read()
+			changedValue.value
 		} else {
 			val animated = animateFloatAsState(
 				targetValue = clampedPositionProgress(),
-				animationSpec = TweenSpec(durationMillis = 100)
+				animationSpec = TweenSpec(durationMillis = 50)
 			)
 			animated.value
 		},
-		onValueChange = {
-			rememberedIndex.overwrite(trackState.value.currentIndex)
-			changedValue.overwrite(it)
+		// unfortunately There's no guarantee these 2 will be called in order
+		onValueChange = { value ->
+			changedValue.value = value
 		},
 		onValueChangeFinished = {
 			changedValue.value.takeIf { it >= 0 }?.let {
-				suppressSeekRequest.value++
-				coroutineScope.launch {
+				seekRequest.value++
+				coroutineScope.launch(Dispatchers.Main) {
 					val seekTo = (duration.inWholeMilliseconds * it).toLong()
 					seek(trackState.value.currentIndex, seekTo)
-					suppressSeekRequest.value--
+					if (--seekRequest.value == 0) changedValue.value = -1f
 				}
-				return@Slider
 			}
 		},
 		interactionSource = interactionSource,
@@ -959,4 +963,10 @@ private inline fun <T> MutableState<T>.overwrite(value: T) {
 @Suppress("NOTHING_TO_INLINE")
 private inline fun <T> MutableState<T>.rewrite(value: (T) -> T) {
 	this.value = value(this.value)
+}
+
+private class ValueWrapper <T> (var value: T)
+private operator fun <T> ValueWrapper<T>.getValue(receiver: Any?, property: KProperty<*>): T = value
+private operator fun <T> ValueWrapper<T>.setValue(receiver: Any?, property: KProperty<*>, value: T) {
+	this.value = value
 }

@@ -49,6 +49,15 @@ class RealPlaybackObserver(
 
 	init {
 		scope.launch(dispatcher.mainImmediate) {
+			combine(
+				_progressMSF.subscriptionCount,
+				_bufferedProgressMSF.subscriptionCount,
+				_durationMSF.subscriptionCount
+			) { a, b, c ->
+				maxOf(a, b, c)
+			}.first {
+				it > 0
+			}
 			dispatchProgressCollector()
 			dispatchDurationCollector()
 			dispatchDiscontinuityCollector()
@@ -57,11 +66,14 @@ class RealPlaybackObserver(
 	}
 
 	@MainThread
-	override fun setPreferredProgressCheckInterval(interval: Duration?) {
+	override fun setPreferredProgressCollectionDelay(interval: Duration?) {
 		checkInMainThread {
 			"setPreferredProgressCheckInterval is confined to `Thread-Main`"
 		}
-		if (preferredProgressCheckInterval == interval) return
+		if (preferredProgressCheckInterval == interval) {
+			return
+		}
+
 		preferredProgressCheckInterval = interval
 		if (progressCollector?.isActive == true) {
 			dispatchProgressCollector(preferredProgressCheckInterval)
@@ -222,6 +234,11 @@ class RealPlaybackObserver(
 					"$MAX_PROGRESS_COLLECTION_INTERVAL inclusive"
 			}
 		}
+	}
+
+
+	override fun release() {
+
 	}
 
 	private fun checkInMainThread(lazyMsg: () -> Any) {

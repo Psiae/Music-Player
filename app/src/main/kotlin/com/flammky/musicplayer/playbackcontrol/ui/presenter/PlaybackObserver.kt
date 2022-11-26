@@ -11,10 +11,18 @@ interface PlaybackObserver {
 	val durationStateFlow: StateFlow<Duration>
 
 	/**
-	 * Change the Preferred interval, the presenter will recalculate the absolute interval.
+	 * Change the Preferred interval, the absolute interval will be recalculated.
+	 *
+	 * @param interval the interval, null for `DEFAULT`
 	 */
 	@MainThread
-	fun setPreferredProgressCheckInterval(interval: Duration?)
+	fun setPreferredProgressCollectionDelay(interval: Duration?)
 
 	suspend fun updatePosition()
+
+	/**
+	 * release the Observer
+	 */
+	@MainThread
+	fun release()
 }

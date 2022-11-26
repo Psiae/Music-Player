@@ -11,7 +11,10 @@ interface PlaybackControlPresenter {
 	/**
 	 * create a Playback Observer
 	 */
-	fun createPlaybackObserver(scope: CoroutineScope): PlaybackObserver = throw NotImplementedError()
+	fun observePlayback(
+		owner: Any,
+		scope: CoroutineScope
+	): PlaybackObserver = throw NotImplementedError()
 }
 
 
@@ -20,7 +23,10 @@ class RealPlaybackControlPresenter(
 	private val playbackConnection: PlaybackConnection
 ): PlaybackControlPresenter {
 
-	override fun createPlaybackObserver(scope: CoroutineScope): PlaybackObserver {
+	override fun observePlayback(
+		owner: Any,
+		scope: CoroutineScope
+	): PlaybackObserver {
 		return RealPlaybackObserver(scope, dispatchers, playbackConnection)
 	}
 }

@@ -2,6 +2,7 @@ package com.flammky.musicplayer.base.media.mediaconnection
 
 import android.net.Uri
 import android.os.Handler
+import android.os.Looper
 import com.flammky.android.medialib.common.Contract
 import com.flammky.android.medialib.common.mediaitem.MediaItem
 import com.flammky.android.medialib.player.Player
@@ -13,27 +14,16 @@ import com.flammky.android.medialib.temp.player.event.LibraryPlayerEventListener
 import com.flammky.android.medialib.temp.player.event.PlayWhenReadyChangedReason
 import com.flammky.android.medialib.temp.player.playback.RepeatMode.Companion.toRepeatModeInt
 import com.flammky.common.kotlin.coroutines.safeCollect
-import kotlinx.collections.immutable.ImmutableList
-import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.*
 import kotlinx.coroutines.android.asCoroutineDispatcher
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.callbackFlow
 import timber.log.Timber
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
 class RealMediaConnectionPlayback : MediaConnectionPlayback {
-
-
-
-	private val mediaItemTransitionListeners = mutableListOf<(MediaItem) -> Unit>()
-	private val playlistChangeListeners = mutableListOf<() -> Unit>()
-
-	private val _playlistSharedFlow = MutableSharedFlow<ImmutableList<String>>()
-	private var _playlist: ImmutableList<String> = persistentListOf()
 
 	// TEMP
 	@Deprecated("Should not all Depend on the Player property")
@@ -416,7 +406,14 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 		return s.mediaController.seekToPosition(position)
 	}
 
-	override suspend fun <R> joinDispatcher(block: suspend MediaConnectionPlayback.() -> R): R {
-		return withContext(playerDispatcher) { block() }
+	override suspend fun <R> joinDispatcher(
+		block: suspend MediaConnectionPlayback.() -> R
+	): R {
+		return if (Looper.myLooper() == s.mediaController.publicLooper) {
+			// fast-path
+			block()
+		} else {
+			withContext(playerDispatcher) { block() }
+		}
 	}
 }

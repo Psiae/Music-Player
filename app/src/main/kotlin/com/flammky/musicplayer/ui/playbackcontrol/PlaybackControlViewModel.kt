@@ -12,7 +12,6 @@ import com.flammky.common.kotlin.coroutines.safeCollect
 import com.flammky.musicplayer.common.android.concurrent.ConcurrencyHelper.checkMainThread
 import com.flammky.musicplayer.domain.media.MediaConnection
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
-import com.flammky.musicplayer.ui.playbackcontrol.PlaybackDetailPositionStream.Companion.asPlaybackDetails
 import com.flammky.musicplayer.ui.playbackcontrol.PlaybackDetailPositionStream.PositionChangeReason.Companion.asPlaybackDetails
 import com.flammky.musicplayer.ui.playbackcontrol.PlaybackDetailPropertiesInfo.Companion.asPlaybackDetails
 import com.flammky.musicplayer.ui.playbackcontrol.PlaybackDetailTracksInfo.Companion.asPlaybackDetails
@@ -34,15 +33,13 @@ internal class PlaybackControlViewModel @Inject constructor(
 	private val presenter: PlaybackControlPresenter,
 ) : ViewModel() {
 
-	val progressObserver: PlaybackObserver = presenter.createPlaybackObserver(viewModelScope)
+	val progressObserver: PlaybackObserver = presenter.observePlayback(this, viewModelScope)
 
 
 	private val _metadataStateMap = mutableMapOf<String, StateFlow<PlaybackControlTrackMetadata>>()
 	private val _trackStreamFlow = MutableStateFlow(MediaConnection.Playback.TracksInfo())
 
 	init {
-
-
 		viewModelScope.launch {
 			mediaConnection.playback.observePlaylistStream().safeCollect { _trackStreamFlow.value = it }
 		}
@@ -51,11 +48,6 @@ internal class PlaybackControlViewModel @Inject constructor(
 	// our View should decide the appropriate interval
 	private val _positionStreamFlow = mediaConnection.playback.observePositionStream(1.seconds)
 	private val _playbackPropertiesFlow = mediaConnection.playback.observePropertiesInfo()
-
-	// Inject as Dependency instead
-	val positionStreamStateFlow = _positionStreamFlow
-		.map { it.asPlaybackDetails }
-		.stateIn(viewModelScope, SharingStarted.Eagerly, PlaybackDetailPositionStream())
 
 	// Inject as Dependency instead
 	val trackStreamStateFlow = _trackStreamFlow
@@ -87,20 +79,6 @@ internal class PlaybackControlViewModel @Inject constructor(
 						progressObserver.updatePosition()
 					}
 				}
-		}
-	}
-
-	suspend fun seek(currentIndex: Int, toIndex: Int): Boolean {
-		return mediaConnection.playback.joinSuspend playback@ {
-			(this@playback.currentIndex == currentIndex &&
-				this@playback.currentIndex != toIndex &&
-				this@playback.mediaItemCount >= toIndex
-			).also {
-				if (it) {
-					seekIndex(toIndex, 0L)
-					_trackStreamFlow.update { old -> old.copy(changeReason = 0, currentIndex = toIndex) }
-				}
-			}
 		}
 	}
 

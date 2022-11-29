@@ -2,7 +2,7 @@ package com.flammky.common.media.audio.meta_tag.audio.generic
 
 import android.util.Log
 import com.flammky.android.core.sdk.VersionHelper
-import com.flammky.common.kotlin.triple.triple
+import com.flammky.common.kotlin.triple.toTriple
 import java.io.File
 import java.io.IOException
 import java.nio.file.Files
@@ -25,7 +25,7 @@ object Permissions {
 		sb.append("File $file permissions\n")
 		try {
 			val (read: Boolean, write: Boolean, execute: Boolean) = file.run {
-				canRead() to canWrite() triple canExecute()
+				canRead() to canWrite() toTriple canExecute()
 			}
 
 			sb.append("\nread: $read")

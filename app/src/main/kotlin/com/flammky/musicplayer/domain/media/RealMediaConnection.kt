@@ -89,8 +89,8 @@ class RealMediaConnection(
 
 				delegate.playback.observeDiscontinuityEvent().collect {
 					send(PlaybackConnection.ProgressDiscontinuity(
-						old = it.oldPosition,
-						new = it.newPosition,
+						oldProgress = it.oldPosition,
+						newProgress = it.newPosition,
 						reason = when (it.reason) {
 							MediaConnectionPlayback.Events.Discontinuity.Reason.UNKNOWN -> ProgressDiscontinuityReason.UNKNOWN
 							MediaConnectionPlayback.Events.Discontinuity.Reason.USER_SEEK -> ProgressDiscontinuityReason.USER_SEEK

@@ -33,31 +33,9 @@ interface PlaybackConnection {
 
 	suspend fun <R> joinContext(block: suspend PlaybackConnection.() -> R): R
 
-	interface Properties {
-		val repeat: Repeat
-		val shuffle: Shuffle
-		val progress: Progress
-
-		interface Progress {
-			suspend fun get(): Duration
-			suspend fun getBuffered(): Duration
-
-			suspend fun observeDiscontinuity(): Flow<Duration>
-		}
-		interface Shuffle {
-			suspend fun get(): ShuffleMode
-			suspend fun observeChange(): Flow<ShuffleMode>
-		}
-		interface Repeat {
-			suspend fun get(): RepeatMode
-			suspend fun observeChange(): Flow<RepeatMode>
-		}
-	}
-
-
 	data class ProgressDiscontinuity(
-		val old: Duration,
-		val new: Duration,
+		val oldProgress: Duration,
+		val newProgress: Duration,
 		val reason: ProgressDiscontinuityReason
 	)
 }

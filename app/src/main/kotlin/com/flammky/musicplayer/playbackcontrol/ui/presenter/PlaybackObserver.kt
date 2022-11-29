@@ -6,23 +6,19 @@ import kotlin.time.Duration
 
 @MainThread
 interface PlaybackObserver {
+
+	// should they be `Composable` getter ?
+
 	val progressStateFlow: StateFlow<Duration>
 	val bufferedProgressStateFlow: StateFlow<Duration>
 	val durationStateFlow: StateFlow<Duration>
 
-	/**
-	 * Change the Preferred interval, the absolute interval will be recalculated.
-	 *
-	 * @param interval the interval, null for `DEFAULT`
-	 */
-	@MainThread
-	fun setPreferredProgressCollectionDelay(interval: Duration?)
+	fun collectProgress(
+		initialInterval: Duration?,
+		// event array instead ?
+		includeEvent: Boolean,
+		nextInterval: suspend (isEvent: Boolean, progress: Duration, duration: Duration, speed: Float) -> Duration?
+	): StateFlow<Duration>
 
 	suspend fun updatePosition()
-
-	/**
-	 * release the Observer
-	 */
-	@MainThread
-	fun release()
 }

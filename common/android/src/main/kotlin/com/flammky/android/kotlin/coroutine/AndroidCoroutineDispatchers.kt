@@ -2,12 +2,13 @@ package com.flammky.android.kotlin.coroutine
 
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.MainCoroutineDispatcher
 
 data class AndroidCoroutineDispatchers(
 	val computation: CoroutineDispatcher,
 	val io: CoroutineDispatcher,
-	val main: CoroutineDispatcher,
-	val mainImmediate: CoroutineDispatcher,
+	val main: MainCoroutineDispatcher,
+	val mainImmediate: MainCoroutineDispatcher,
 	val unconfined: CoroutineDispatcher
 ) {
 

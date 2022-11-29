@@ -49,10 +49,8 @@ import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.PagerState
 import com.google.accompanist.pager.rememberPagerState
 import kotlinx.coroutines.*
-import timber.log.Timber
 import kotlin.reflect.KProperty
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 internal fun PlaybackBoxDetail(
@@ -261,9 +259,6 @@ private fun DetailsContent(
 				progressState = progressState,
 				durationState = durationState,
 				trackState = trackState,
-				changeInterval = { duration ->
-					viewModel.progressObserver.setPreferredProgressCollectionDelay(duration)
-				},
 				seek = { requestIndex, requestPosition ->
 					viewModel.seek(requestIndex, requestPosition)
 				}
@@ -273,10 +268,6 @@ private fun DetailsContent(
 			Spacer(modifier = Modifier
 				.fillMaxWidth()
 				.height(2f / 10 * maxHeight))
-		}
-
-		DisposableEffect(key1 = null) {
-			onDispose { progressObserver.setPreferredProgressCollectionDelay(null) }
 		}
 	}
 }
@@ -734,23 +725,11 @@ private fun PlaybackControlProgressSeekbar(
 	progressState: State<Duration>,
 	durationState: State<Duration>,
 	trackState: State<PlaybackDetailTracksInfo>,
-	changeInterval: (Duration) -> Unit,
 	seek: suspend (Int, Long) -> Boolean
 ) {
 
 	val sliderWidth = remember(maxWidth) {
 		maxWidth * 0.85f
-	}
-
-	val sliderTrackWidth = remember(sliderWidth) {
-		sliderWidth - 14.dp
-	}
-
-	remember(sliderTrackWidth, durationState.value) {
-		changeInterval(
-			(durationState.value.inWholeMilliseconds / sliderTrackWidth.value).toLong().milliseconds
-		)
-		null
 	}
 
 	val position by progressState
@@ -766,32 +745,35 @@ private fun PlaybackControlProgressSeekbar(
 		// the Slider should constraint it to 0, consider change it to nullable Float
 		mutableStateOf(-1f)
 	}
-	val seekRequest = remember { mutableStateOf(0) }
+	val seekRequests = remember { mutableStateOf(0) }
+	val consumeAnimation = remember { mutableStateOf(false) }
 
 	val coroutineScope = rememberCoroutineScope()
 
-	remember(seekRequest.value) {
-		Timber.d("PlaybackBox suppress: ${seekRequest.value}, progress: $position")
-		null
-	}
-
-	val suppressedUpdateValue = draggedState.value ||
+	val suppressValue = draggedState.value ||
 		pressedState.value ||
-		changedValue.value > 0 ||
-		seekRequest.value > 0
+		changedValue.value >= 0
+
+	require((seekRequests.value == 0) or consumeAnimation.value) {
+		"seekRequest should be followed by consumeAnimation"
+	}
 
 	Slider(
 		modifier = Modifier
 			.width(sliderWidth)
 			.height(16.dp),
-		value = if (suppressedUpdateValue) {
+		value = if (suppressValue) {
 			changedValue.value
 		} else {
-			val animated = animateFloatAsState(
-				targetValue = clampedPositionProgress(),
-				animationSpec = TweenSpec(durationMillis = 50)
-			)
-			animated.value
+			if (consumeAnimation.value) {
+				consumeAnimation.value = false
+				clampedPositionProgress()
+			} else {
+				animateFloatAsState(
+					targetValue = clampedPositionProgress(),
+					animationSpec = tween(100)
+				).value
+			}
 		},
 		// unfortunately There's no guarantee these 2 will be called in order
 		onValueChange = { value ->
@@ -799,13 +781,19 @@ private fun PlaybackControlProgressSeekbar(
 		},
 		onValueChangeFinished = {
 			changedValue.value.takeIf { it >= 0 }?.let {
-				seekRequest.value++
-				coroutineScope.launch(Dispatchers.Main) {
+				seekRequests.value++
+				consumeAnimation.value = true
+				coroutineScope.launch {
 					val seekTo = (duration.inWholeMilliseconds * it).toLong()
+					// should this be async ?
 					seek(trackState.value.currentIndex, seekTo)
-					if (--seekRequest.value == 0) changedValue.value = -1f
+					if (--seekRequests.value == 0) {
+						changedValue.value = -1f
+					}
 				}
+				return@Slider
 			}
+			if (seekRequests.value == 0) changedValue.value = -1f
 		},
 		interactionSource = interactionSource,
 		trackHeight = 4.dp,
@@ -846,7 +834,7 @@ private fun PlaybackControlProgressSeekbar(
 				}
 			}
 
-			val displayPositionProgress = if (suppressedUpdateValue) {
+			val displayPositionProgress = if (suppressValue) {
 				changedValue.read()
 			} else {
 				clampedPositionProgress()
@@ -970,3 +958,7 @@ private operator fun <T> ValueWrapper<T>.getValue(receiver: Any?, property: KPro
 private operator fun <T> ValueWrapper<T>.setValue(receiver: Any?, property: KProperty<*>, value: T) {
 	this.value = value
 }
+
+private class SeekRequest(
+	val position: Long,
+)

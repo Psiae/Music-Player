@@ -25,7 +25,6 @@ import timber.log.Timber
 import javax.annotation.concurrent.Immutable
 import javax.inject.Inject
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.seconds
 
 @HiltViewModel
 internal class PlaybackControlViewModel @Inject constructor(
@@ -45,8 +44,6 @@ internal class PlaybackControlViewModel @Inject constructor(
 		}
 	}
 
-	// our View should decide the appropriate interval
-	private val _positionStreamFlow = mediaConnection.playback.observePositionStream(1.seconds)
 	private val _playbackPropertiesFlow = mediaConnection.playback.observePropertiesInfo()
 
 	// Inject as Dependency instead

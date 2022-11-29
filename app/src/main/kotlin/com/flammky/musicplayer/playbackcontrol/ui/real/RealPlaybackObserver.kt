@@ -7,6 +7,7 @@ import com.flammky.musicplayer.media.mediaconnection.playback.PlaybackConnection
 import com.flammky.musicplayer.media.playback.PlaybackConstants
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.*
 import timber.log.Timber
 import kotlin.coroutines.CoroutineContext
@@ -24,6 +25,8 @@ typealias IsPlayingListener = suspend (Boolean) -> Unit
 	private val dispatchers: AndroidCoroutineDispatchers,
 	private val playbackConnection: PlaybackConnection
 ) : PlaybackObserver {
+
+	private val privateProgressCollectors = mutableListOf<suspend (Duration) -> Unit>()
 
 	private val scopeContext: CoroutineContext = scope.coroutineContext
 
@@ -116,18 +119,20 @@ typealias IsPlayingListener = suspend (Boolean) -> Unit
 	}
 
 	override fun collectProgress(
-		initialInterval: Duration?,
+		collectorScope: CoroutineScope,
+		startInterval: Duration?,
 		includeEvent: Boolean,
 		nextInterval: suspend (isEvent: Boolean, progress: Duration, duration: Duration, speed: Float) -> Duration?
 	): StateFlow<Duration> {
-		val state = MutableStateFlow(PlaybackConstants.DURATION_UNSET)
+		val state = MutableStateFlow(PlaybackConstants.PROGRESS_UNSET)
 
-		scope.launch {
-			collectPlaybackProgress(
-				startIn = initialInterval ?: Duration.ZERO,
+		collectorScope.launch {
+			val flow = collectPlaybackProgress(
+				startIn = startInterval ?: Duration.ZERO,
 				includeEvent = includeEvent,
 				delay = nextInterval
-			).collect(state)
+			)
+			flow.collect(state)
 		}
 
 		return state
@@ -135,6 +140,8 @@ typealias IsPlayingListener = suspend (Boolean) -> Unit
 
 	override suspend fun updatePosition() {
 		updateProgress()
+		val progress = playbackConnection.getProgress()
+		privateProgressCollectors.forEach { it(progress) }
 	}
 
 	private suspend fun watchProgression(): Job {
@@ -286,7 +293,7 @@ typealias IsPlayingListener = suspend (Boolean) -> Unit
 			speed: Float,
 		) -> Duration?
 	): Flow<Duration> {
-		return flow<Duration> {
+		return callbackFlow<Duration> {
 			var nextDelay: Duration
 			var job: Job?
 
@@ -303,12 +310,15 @@ typealias IsPlayingListener = suspend (Boolean) -> Unit
 							speed = getPlaybackSpeed()
 						}
 
-						emit(progress)
+						send(progress)
 						nextDelay = delay(false, progress, duration, speed)
 							?: run {
-								val fromNextSecond = (1000 - progress.inWholeMilliseconds % 1000).milliseconds
-								(fromNextSecond.inWholeMilliseconds * speed).toLong().milliseconds
+								val fromNextSecond = (1010 - progress.inWholeMilliseconds % 1000)
+								(fromNextSecond * speed).toLong().milliseconds
 							}
+
+						Timber.d("DEBUG: nextDelay: $nextDelay")
+
 						if (nextDelay.isNegative()) {
 							if (nextDelay == PlaybackConstants.DURATION_UNSET) {
 								break
@@ -331,21 +341,32 @@ typealias IsPlayingListener = suspend (Boolean) -> Unit
 
 			job = doCollect()
 
+			val progressUpdateListener: suspend (Duration) -> Unit = {
+				send(it)
+			}
+
 			if (includeEvent) {
+				privateProgressCollectors.add(progressUpdateListener)
 				internalCollectPlaybackDiscontinuity { discontinuity ->
 					// TODO: Check whether `Discontinuity` callback is more accurate than `getPosition`
-					if (job?.isActive == true) emit(discontinuity.newProgress) else job = doCollect()
+					if (job?.isActive == true) send(discontinuity.newProgress) else job = doCollect()
 				}
 				internalCollectIsPlayingChange { playing ->
 					// TODO: MediaController `IsPlaying` is somewhat not accurate, internally we had `playWhenReady` backing it
 					if (playing) {
-						if (job?.isActive == true) job!!.cancel()
-					} else {
 						if (job?.isActive == false) job = doCollect()
+					} else {
+						if (job?.isActive == true) job!!.cancel()
 					}
 				}
 			}
-		}.flowOn(scopeContext)
+
+			awaitClose {
+				if (includeEvent) {
+					privateProgressCollectors.remove(progressUpdateListener)
+				}
+			}
+		}.flowOn(scopeDispatcher)
 	}
 
 	private suspend fun collectPlaybackDuration() {

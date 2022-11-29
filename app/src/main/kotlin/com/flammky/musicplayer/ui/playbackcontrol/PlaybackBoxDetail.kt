@@ -51,6 +51,7 @@ import com.google.accompanist.pager.rememberPagerState
 import kotlinx.coroutines.*
 import kotlin.reflect.KProperty
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 internal fun PlaybackBoxDetail(
@@ -239,10 +240,27 @@ private fun DetailsContent(
 	viewModel: PlaybackControlViewModel
 ) {
 	BoxWithConstraints {
+		val scope = rememberCoroutineScope()
+
 		val maxHeight = maxHeight
 		val maxWidth = maxWidth
+		val sliderWidth = maxWidth * 0.85f
+
 		val progressObserver = viewModel.progressObserver
-		val progressState = viewModel.progressObserver.progressStateFlow.collectAsState()
+		val progressState = remember {
+			viewModel.progressObserver.collectProgress(
+				collectorScope = scope,
+				startInterval = null,
+				includeEvent = true,
+				nextInterval = { isEvent: Boolean, progress: Duration, duration: Duration, speed: Float, ->
+					if (isEvent) {
+						((duration.inWholeMilliseconds - progress.inWholeMilliseconds) / speed).toLong()
+					} else {
+						(duration.inWholeMilliseconds / sliderWidth.value).toLong()
+					}.coerceIn(100, 1000).milliseconds
+				}
+			)
+		}.collectAsState()
 		val durationState = viewModel.progressObserver.durationStateFlow.collectAsState()
 		val trackState = viewModel.trackStreamStateFlow.collectAsState()
 		Column(

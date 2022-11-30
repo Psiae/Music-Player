@@ -9,11 +9,19 @@ import kotlinx.coroutines.*
 interface PlaybackControlPresenter {
 
 	/**
-	 * create a Playback Observer
+	 * create a Playback Observer.
+	 *
+	 * @param owner the observer owner
+	 * @param scope the observer parent coroutine scope
+	 * ** scope must have `CoroutineDispatcher` with confined parallelism provided, to be removed **
+	 * ** cancelling the provided @param scope will also cancel the PlaybackObserver scope **
+	 * @param key the key, there will be no duplicate observer within the same owner and key
 	 */
 	fun observePlayback(
 		owner: Any,
-		scope: CoroutineScope
+		scope: CoroutineScope,
+		key: String? = null
+		/* should we have key mechanism ?, many problematic things will follow though */
 	): PlaybackObserver = throw NotImplementedError()
 }
 
@@ -23,20 +31,26 @@ class RealPlaybackControlPresenter(
 	private val playbackConnection: PlaybackConnection
 ): PlaybackControlPresenter {
 
+	private val _owners = mutableMapOf<Any, MutableMap<String?, Any>>()
+
 	@OptIn(ExperimentalStdlibApi::class, ExperimentalCoroutinesApi::class)
 	override fun observePlayback(
 		owner: Any,
-		scope: CoroutineScope
+		scope: CoroutineScope,
+		key: String?
 	): PlaybackObserver {
-		val dispatcher = requireNotNull(scope.coroutineContext[CoroutineDispatcher]) {
+		val scopeDispatcher = requireNotNull(scope.coroutineContext[CoroutineDispatcher]) {
 			"CoroutineScope $scope does Not have `CoroutineDispatcher` provided"
 		}
-		val job = requireNotNull(scope.coroutineContext[Job]) {
+		// realistically speaking will there be such case ?
+		val scopeJob = requireNotNull(scope.coroutineContext[Job]) {
 			"CoroutineScope $scope does Not have `Job` provided"
 		}
-		val localScope = CoroutineScope(
-			context = SupervisorJob(job) + dispatcher.limitedParallelism(1)
-		)
+		val localScope = try {
+			CoroutineScope(context = SupervisorJob(scopeJob) + scopeDispatcher.limitedParallelism(1))
+		} catch (uoe: UnsupportedOperationException) {
+			error("Unconfined Dispatcher $scopeDispatcher is not allowed")
+		}
 		return RealPlaybackObserver(
 			scope = localScope,
 			dispatchers = dispatchers,

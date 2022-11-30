@@ -7,7 +7,6 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -42,6 +41,7 @@ import com.flammky.common.kotlin.comparable.clamp
 import com.flammky.common.kotlin.comparable.clampPositive
 import com.flammky.musicplayer.R
 import com.flammky.musicplayer.base.compose.rememberLocalContextHelper
+import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
 import com.flammky.musicplayer.ui.Theme
 import com.flammky.musicplayer.ui.util.compose.NoRipple
 import com.google.accompanist.pager.ExperimentalPagerApi
@@ -52,6 +52,7 @@ import kotlinx.coroutines.*
 import kotlin.reflect.KProperty
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 @Composable
 internal fun PlaybackBoxDetail(
@@ -240,28 +241,9 @@ private fun DetailsContent(
 	viewModel: PlaybackControlViewModel
 ) {
 	BoxWithConstraints {
-		val scope = rememberCoroutineScope()
-
 		val maxHeight = maxHeight
 		val maxWidth = maxWidth
-		val sliderWidth = maxWidth * 0.85f
-
-		val progressObserver = viewModel.progressObserver
-		val progressState = remember {
-			viewModel.progressObserver.collectProgress(
-				collectorScope = scope,
-				startInterval = null,
-				includeEvent = true,
-				nextInterval = { isEvent: Boolean, progress: Duration, duration: Duration, speed: Float, ->
-					if (isEvent) {
-						((duration.inWholeMilliseconds - progress.inWholeMilliseconds) / speed).toLong()
-					} else {
-						(duration.inWholeMilliseconds / sliderWidth.value).toLong()
-					}.coerceIn(100, 1000).milliseconds
-				}
-			)
-		}.collectAsState()
-		val durationState = viewModel.progressObserver.durationStateFlow.collectAsState()
+		val durationState = viewModel.playbackObserver.collectDuration().collectAsState()
 		val trackState = viewModel.trackStreamStateFlow.collectAsState()
 		Column(
 			modifier = Modifier.fillMaxSize(),
@@ -274,11 +256,11 @@ private fun DetailsContent(
 			Spacer(modifier = Modifier.height(15.dp))
 			PlaybackControlProgressSeekbar(
 				maxWidth = maxWidth,
-				progressState = progressState,
+				playbackObserver = viewModel.playbackObserver,
 				durationState = durationState,
 				trackState = trackState,
-				seek = { requestIndex, requestPosition ->
-					viewModel.seek(requestIndex, requestPosition)
+				seek = { i, pos ->
+					viewModel.seek(i, pos)
 				}
 			)
 			Spacer(modifier = Modifier.height(5.dp))
@@ -740,21 +722,49 @@ private fun PlaybackControlButtons(
 @Composable
 private fun PlaybackControlProgressSeekbar(
 	maxWidth: Dp,
-	progressState: State<Duration>,
 	durationState: State<Duration>,
 	trackState: State<PlaybackDetailTracksInfo>,
+	playbackObserver: PlaybackObserver,
 	seek: suspend (Int, Long) -> Boolean
 ) {
+	val coroutineScope = rememberCoroutineScope()
 
 	val sliderWidth = remember(maxWidth) {
 		maxWidth * 0.85f
 	}
 
-	val position by progressState
+	val sliderPositionState = remember {
+		playbackObserver.createProgressionCollector(
+			collectorScope = coroutineScope,
+			startInterval = null,
+			includeEvent = true,
+			nextInterval = { isEvent, progress, duration, speed ->
+				if (duration.isNegative() || sliderWidth < 1.dp) {
+					return@createProgressionCollector null
+				}
+				(duration.inWholeMilliseconds / sliderWidth.value / speed).toLong().milliseconds
+			}
+		)
+	}.collectAsState()
+
+	val sliderTextPositionState = remember {
+		playbackObserver.createProgressionCollector(
+			collectorScope = coroutineScope,
+			startInterval = null,
+			includeEvent = true,
+			nextInterval = { isEvent, progress, duration, speed ->
+				if (duration.isNegative() || progress.isNegative()) {
+					return@createProgressionCollector null
+				}
+				1.seconds
+			}
+		)
+	}.collectAsState()
+
+	val position by sliderPositionState
 	val duration by durationState
 
 	fun clampedPositionProgress(): Float = (position / duration).toFloat().clamp(0f, 1f)
-	fun clampedPosition(): Long = (duration.inWholeMilliseconds * clampedPositionProgress()).toLong()
 
 	val interactionSource = remember { MutableInteractionSource() }
 	val draggedState = interactionSource.collectIsDraggedAsState()
@@ -765,8 +775,6 @@ private fun PlaybackControlProgressSeekbar(
 	}
 	val seekRequests = remember { mutableStateOf(0) }
 	val consumeAnimation = remember { mutableStateOf(false) }
-
-	val coroutineScope = rememberCoroutineScope()
 
 	val suppressValue = draggedState.value ||
 		pressedState.value ||
@@ -832,76 +840,80 @@ private fun PlaybackControlProgressSeekbar(
 			verticalAlignment = Alignment.CenterVertically,
 			horizontalArrangement = Arrangement.SpaceBetween
 		) {
-			val formattedDuration = remember(duration) {
-				val seconds =
-					if (duration.isNegative() || duration.isInfinite()) 0
-					else duration.inWholeSeconds
-				if (seconds > 3600) {
-					String.format(
-						"%02d:%02d:%02d",
-						seconds / 3600,
-						seconds % 3600 / 60,
-						seconds % 60
-					)
-				} else {
-					String.format(
-						"%02d:%02d",
-						seconds / 60,
-						seconds % 60
-					)
-				}
-			}
-
-			val displayPositionProgress = if (suppressValue) {
-				changedValue.read()
-			} else {
-				clampedPositionProgress()
-			}
-
-			val formattedPosition = remember(displayPositionProgress) {
-				val seconds =
-					if (duration.isNegative()) 0
-					else (duration.inWholeSeconds * displayPositionProgress).toLong()
-				if (seconds > 3600) {
-					String.format(
-						"%02d:%02d:%02d",
-						seconds / 3600,
-						seconds % 3600 / 60,
-						seconds % 60
-					)
-				} else {
-					String.format(
-						"%02d:%02d",
-						seconds / 60,
-						seconds % 60
-					)
-				}
-			}
-
-			Text(
-				text = formattedPosition,
-				style = MaterialTheme.typography.bodySmall
-			)
-
-			Text(
-				text = formattedDuration,
-				style = MaterialTheme.typography.bodySmall
+			PlaybackProgressSliderText(
+				progressState = sliderTextPositionState.rememberDerive(
+					calculation = { raw ->
+						if (changedValue.value >= 0) {
+							changedValue.value
+						} else {
+							raw.inWholeMilliseconds / durationState.value.inWholeMilliseconds.toFloat()
+						}
+					}
+				),
+				durationState = durationState
 			)
 		}
 	}
 }
 
 @Composable
-private fun PlaybackControlProgressSlider(
-	value: Float,
-	onValueChange: (Float) -> Unit,
-	onValueChangeFinished: () -> Unit,
-	interactionSource: InteractionSource,
-	sliderColor: Color,
+private fun RowScope.PlaybackProgressSliderText(
+	progressState: State<Float>,
+	durationState: State<Duration>
 ) {
+	val progress = progressState.value
+	val duration = durationState.value
 
+	val formattedProgress: String = remember(progress) {
+		val seconds =
+			if (duration.isNegative()) 0
+			else (duration.inWholeSeconds * progress).toLong()
+		if (seconds > 3600) {
+			String.format(
+				"%02d:%02d:%02d",
+				seconds / 3600,
+				seconds % 3600 / 60,
+				seconds % 60
+			)
+		} else {
+			String.format(
+				"%02d:%02d",
+				seconds / 60,
+				seconds % 60
+			)
+		}
+	}
+
+	val formattedDuration: String = remember(duration) {
+		val seconds =
+			if (duration.isNegative() || duration.isInfinite()) 0
+			else duration.inWholeSeconds
+		if (seconds > 3600) {
+			String.format(
+				"%02d:%02d:%02d",
+				seconds / 3600,
+				seconds % 3600 / 60,
+				seconds % 60
+			)
+		} else {
+			String.format(
+				"%02d:%02d",
+				seconds / 60,
+				seconds % 60
+			)
+		}
+	}
+
+	Text(
+		text = formattedProgress,
+		style = MaterialTheme.typography.bodySmall
+	)
+
+	Text(
+		text = formattedDuration,
+		style = MaterialTheme.typography.bodySmall
+	)
 }
-
 
 
 enum class Visibility {

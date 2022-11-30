@@ -12,12 +12,12 @@ plugins {
 }
 
 android {
-    compileSdk = 32
+    compileSdk = 33
 
     defaultConfig {
         applicationId = "com.flammky.musicplayer"
         minSdk = 24
-        targetSdk = 32
+        targetSdk = 33
         versionCode = 1
         versionName = "1.0"
 
@@ -92,7 +92,6 @@ dependencies {
     implementation(project("media"))
     implementation(project("medialib"))
     implementation(project("library"))
-    implementation("com.google.firebase:firebase-firestore-ktx:24.3.1")
 
     /* Android.material */
     dependencies {
@@ -108,7 +107,7 @@ dependencies {
 
     /* Androidx.compose */
     dependencies {
-        val v = "1.3.0-alpha01"
+        val v = "1.3.1"
 
         // Core UI
         implementation("androidx.compose.ui:ui:$v")
@@ -139,7 +138,7 @@ dependencies {
 
     /* Androidx.core */
     dependencies {
-        val vKTX = "1.9.0-alpha01"
+        val vKTX = "1.9.0"
         val vSplashScreen = "1.0.0"
 
         implementation("androidx.core:core-ktx:$vKTX")
@@ -161,13 +160,13 @@ dependencies {
 
     /* Androidx.lifecycle */
     dependencies {
-        val v = "2.6.0-alpha01"
+        val v = "2.6.0-alpha03"
         implementation("androidx.lifecycle:lifecycle-runtime-ktx:$v")
     }
 
     /* Androidx.media3 */
     dependencies {
-        val v = "1.0.0-beta02"
+        val v = "1.0.0-beta03"
         implementation("androidx.media3:media3-exoplayer:$v")
         implementation("androidx.media3:media3-session:$v")
         implementation("androidx.media3:media3-common:$v")
@@ -178,7 +177,7 @@ dependencies {
     dependencies {
 
         // Compose
-        val vCompose = "2.5.2"
+        val vCompose = "2.5.3"
         implementation("androidx.navigation:navigation-compose:$vCompose")
     }
 
@@ -214,7 +213,7 @@ dependencies {
     @Suppress("SpellCheckingInspection")
     /* Google.accompanist */
     dependencies  {
-        val v = "0.25.1"
+        val v = "0.28.0"
         
         // Drawable
         implementation("com.google.accompanist:accompanist-drawablepainter:$v")

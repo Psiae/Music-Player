@@ -26,7 +26,7 @@ typealias IsPlayingListener = suspend (Boolean) -> Unit
 	private val playbackConnection: PlaybackConnection
 ) : PlaybackObserver {
 
-	private val privateProgressCollectors = mutableListOf<suspend (Duration) -> Unit>()
+	private val publicProgressCollectors = mutableListOf<MutableStateFlow<Duration>>()
 
 	private val scopeContext: CoroutineContext = scope.coroutineContext
 
@@ -43,13 +43,6 @@ typealias IsPlayingListener = suspend (Boolean) -> Unit
 	//
 	// should they be a Separate class ?
 	//
-	private var progressCollector: Job? = null
-		set(value) {
-			require(field?.isActive != true) {
-				"DEBUG: ProgressCollector ($field) was still `Active` when replaced with $value"
-			}
-			field = value
-		}
 	private var durationCollector: Job? = null
 		set(value) {
 			require(field?.isActive != true) {
@@ -81,44 +74,22 @@ typealias IsPlayingListener = suspend (Boolean) -> Unit
 
 	private val isPlayingListeners = mutableListOf<IsPlayingListener>()
 	private val discontinuityListeners = mutableListOf<ProgressDiscontinuityListener>()
-
-	private val _progressMSF = MutableStateFlow(PlaybackConstants.PROGRESS_UNSET)
-	private val _bufferedProgressMSF = MutableStateFlow(PlaybackConstants.PROGRESS_UNSET)
 	private val _durationMSF = MutableStateFlow(PlaybackConstants.DURATION_UNSET)
-
-	override val progressStateFlow: StateFlow<Duration>
-		get() {
-			// Lazy Impl here
-			return _progressMSF.asStateFlow()
-		}
-	override val bufferedProgressStateFlow: StateFlow<Duration>
-		get() {
-			// Lazy Impl here
-			return _bufferedProgressMSF.asStateFlow()
-		}
-	override val durationStateFlow: StateFlow<Duration>
-		get() {
-			// Lazy Impl here
-			return _durationMSF.asStateFlow()
-		}
 
 	init {
 		require(scopeDispatcher.limitedParallelism(1) == scopeDispatcher) {
 			"Default Scope should have `1` parallelism"
 		}
-		scope.launch {
-			// start collection lazily
-			watchProgression()
-			/* watchQueue */
-			/* watchConfiguration */
-			awaitCancellation()
-		}.invokeOnCompletion {
-			// research
-			Timber.d("RealPlaybackObserver, invokeOnCompletion($it)")
-		}
 	}
 
-	override fun collectProgress(
+	override fun collectDuration(): StateFlow<Duration> {
+		scope.launch {
+			startSharedDurationCollector()
+		}
+		return _durationMSF.asStateFlow()
+	}
+
+	override fun createProgressionCollector(
 		collectorScope: CoroutineScope,
 		startInterval: Duration?,
 		includeEvent: Boolean,
@@ -126,7 +97,8 @@ typealias IsPlayingListener = suspend (Boolean) -> Unit
 	): StateFlow<Duration> {
 		val state = MutableStateFlow(PlaybackConstants.PROGRESS_UNSET)
 
-		collectorScope.launch {
+		val collectorJob = collectorScope.launch {
+
 			val flow = collectPlaybackProgress(
 				startIn = startInterval ?: Duration.ZERO,
 				includeEvent = includeEvent,
@@ -135,37 +107,28 @@ typealias IsPlayingListener = suspend (Boolean) -> Unit
 			flow.collect(state)
 		}
 
+		scope.launch {
+			if (includeEvent) {
+				publicProgressCollectors.add(state)
+			}
+
+			collectorJob.join()
+
+			if (includeEvent) {
+				publicProgressCollectors.remove(state)
+			}
+		}
+
 		return state
 	}
 
-	override suspend fun updatePosition() {
-		updateProgress()
-		val progress = playbackConnection.getProgress()
-		privateProgressCollectors.forEach { it(progress) }
+	override suspend fun updateProgress() {
+		val position = playbackConnection.getProgress()
+		publicProgressCollectors.forEach { it.value = position }
 	}
 
-	private suspend fun watchProgression(): Job {
-		return scope.launch {
-			combine(
-				_progressMSF.subscriptionCount,
-				_bufferedProgressMSF.subscriptionCount,
-				_durationMSF.subscriptionCount
-			) { a, b, c ->
-				maxOf(a, b, c)
-			}.first {
-				it > 0
-			}
-			startSharedProgressCollector()
-		}
-	}
-
-	private suspend fun startSharedProgressCollector() {
-		checkInDefaultDispatcher()
-		if (progressCollector?.isActive == true) {
-			return
-		}
-		startSharedDurationCollector()
-		progressCollector = dispatchSharedProgressCollector()
+	override fun dispose() {
+		scope.cancel()
 	}
 
 	private suspend fun startSharedDurationCollector() {
@@ -175,7 +138,6 @@ typealias IsPlayingListener = suspend (Boolean) -> Unit
 		}
 		durationCollector = dispatchSharedDurationCollector()
 	}
-
 
 	private suspend fun startDiscontinuityCollector() {
 		checkInDefaultDispatcher()
@@ -193,48 +155,11 @@ typealias IsPlayingListener = suspend (Boolean) -> Unit
 		isPlayingCollector = dispatchIsPlayingCollector()
 	}
 
-	private fun dispatchSharedProgressCollector(): Job {
-		var collectorJob: Job? = null
-		val isPlayingListener: IsPlayingListener = {
-			if (it) {
-				if (collectorJob?.isActive != true) {
-					collectorJob = collectSharedPlaybackProgress()
-				}
-			} else {
-				collectorJob?.cancel()
-				updateProgress()
-			}
-		}
-		val discontinuityListener: ProgressDiscontinuityListener = {
-			updateProgress()
-		}
-		isPlayingListeners.add(isPlayingListener)
-		discontinuityListeners.add(discontinuityListener)
-		return scope.launch {
-			collectorJob = collectSharedPlaybackProgress()
-			startIsPlayingCollector()
-			startDiscontinuityCollector()
-		}
-	}
-
-	@MainThread
-	private fun resetProgressCollector() {
-		progressCollector?.cancel()
-		_progressMSF.value = PlaybackConstants.PROGRESS_UNSET
-		_bufferedProgressMSF.value = PlaybackConstants.PROGRESS_UNSET
-	}
-
 	@MainThread
 	private fun dispatchSharedDurationCollector(): Job {
 		return scope.launch {
 			collectPlaybackDuration()
 		}
-	}
-
-	@MainThread
-	private fun resetDurationCollector() {
-		durationCollector?.cancel()
-		_durationMSF.value = PlaybackConstants.DURATION_UNSET
 	}
 
 	private fun dispatchDiscontinuityCollector(): Job {
@@ -253,25 +178,6 @@ typealias IsPlayingListener = suspend (Boolean) -> Unit
 			// TODO: IsPlayingChangedReason
 			playbackConnection.observeIsPlaying().distinctUntilChanged().collect { playing ->
 				isPlayingListeners.forEach { listener -> listener(playing) }
-			}
-		}
-	}
-
-	private suspend fun collectSharedPlaybackProgress(): Job {
-		return scope.launch {
-			var nextDelay: Duration
-
-			do {
-				updateProgress()
-				nextDelay = progressCollectionDelay()
-				if (nextDelay.isNegative()) break
-				delay(nextDelay)
-			} while (kotlin.coroutines.coroutineContext.job.isActive)
-
-			check(!kotlin.coroutines.coroutineContext.isActive ||
-				nextDelay == PlaybackConstants.DURATION_UNSET
-			) {
-				"should be DURATION_UNSET, don't forget to change this"
 			}
 		}
 	}
@@ -315,7 +221,7 @@ typealias IsPlayingListener = suspend (Boolean) -> Unit
 							?: run {
 								val fromNextSecond = (1010 - progress.inWholeMilliseconds % 1000)
 								(fromNextSecond * speed).toLong().milliseconds
-							}
+							}.coerceIn(MIN_PROGRESS_COLLECTION_INTERVAL, MAX_PROGRESS_COLLECTION_INTERVAL)
 
 						Timber.d("DEBUG: nextDelay: $nextDelay")
 
@@ -337,42 +243,43 @@ typealias IsPlayingListener = suspend (Boolean) -> Unit
 				}
 			}
 
-			delay(startIn)
-
-			job = doCollect()
-
-			val progressUpdateListener: suspend (Duration) -> Unit = {
-				send(it)
+			if (startIn.isPositive()) {
+				delay(startIn)
 			}
 
+			send(playbackConnection.getProgress())
+
 			if (includeEvent) {
-				privateProgressCollectors.add(progressUpdateListener)
+				job = if (playbackConnection.getIsPlaying()) {
+					doCollect()
+				} else {
+					null
+				}
 				internalCollectPlaybackDiscontinuity { discontinuity ->
 					// TODO: Check whether `Discontinuity` callback is more accurate than `getPosition`
-					if (job?.isActive == true) send(discontinuity.newProgress) else job = doCollect()
+					send(playbackConnection.getProgress())
 				}
 				internalCollectIsPlayingChange { playing ->
 					// TODO: MediaController `IsPlaying` is somewhat not accurate, internally we had `playWhenReady` backing it
 					if (playing) {
-						if (job?.isActive == false) job = doCollect()
+						if (job?.isActive != true) {
+							job = doCollect()
+						}
 					} else {
-						if (job?.isActive == true) job!!.cancel()
+						job?.cancel()
 					}
 				}
+			} else {
+				job = doCollect()
 			}
 
-			awaitClose {
-				if (includeEvent) {
-					privateProgressCollectors.remove(progressUpdateListener)
-				}
-			}
+			awaitClose()
 		}.flowOn(scopeDispatcher)
 	}
 
 	private suspend fun collectPlaybackDuration() {
 		playbackConnection.observeDuration().distinctUntilChanged().collect {
 			updateDuration()
-			updateProgress()
 		}
 	}
 
@@ -394,17 +301,7 @@ typealias IsPlayingListener = suspend (Boolean) -> Unit
 		isPlayingListeners.add(onIsPlayingChanged)
 
 		if (isPlayingCollector?.isActive != true) {
-			startDiscontinuityCollector()
-		}
-	}
-
-	private suspend fun collectIsPlaying() {
-		playbackConnection.observeIsPlaying().collect {
-			if (!it) {
-				progressCollector?.cancel()
-			} else if (progressCollector?.isActive != true) {
-				dispatchSharedProgressCollector()
-			}
+			startIsPlayingCollector()
 		}
 	}
 
@@ -412,17 +309,6 @@ typealias IsPlayingListener = suspend (Boolean) -> Unit
 		playbackConnection.joinContext {
 			_durationMSF.update {
 				getDuration().also { Timber.d("RealPlaybackObserver updateDuration $it") }
-			}
-		}
-	}
-
-	private suspend fun updateProgress() {
-		playbackConnection.joinContext {
-			_progressMSF.update {
-				getProgress().also { Timber.d("RealPlaybackObserver updateProgress $it") }
-			}
-			_bufferedProgressMSF.update {
-				getBufferedProgress()
 			}
 		}
 	}

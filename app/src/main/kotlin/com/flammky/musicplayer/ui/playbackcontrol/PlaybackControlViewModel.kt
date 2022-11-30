@@ -32,7 +32,10 @@ internal class PlaybackControlViewModel @Inject constructor(
 	private val presenter: PlaybackControlPresenter,
 ) : ViewModel() {
 
-	val progressObserver: PlaybackObserver = presenter.observePlayback(this, viewModelScope)
+	val playbackObserver: PlaybackObserver = presenter.observePlayback(
+		this,
+		viewModelScope // should we offload ?
+	)
 
 
 	private val _metadataStateMap = mutableMapOf<String, StateFlow<PlaybackControlTrackMetadata>>()
@@ -73,7 +76,7 @@ internal class PlaybackControlViewModel @Inject constructor(
 			(playback.currentIndex == currentIndex &&
 				playback.seekToPosition(position)).also {
 					if (it) {
-						progressObserver.updatePosition()
+						playbackObserver.updateProgress()
 					}
 				}
 		}

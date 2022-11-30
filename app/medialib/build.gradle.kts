@@ -46,7 +46,7 @@ dependencies {
 
     /* androidx.media3 */
     dependencies {
-        val v = "1.0.0-beta02"
+        val v = "1.0.0-beta03"
         implementation("androidx.media3:media3-exoplayer:$v")
         implementation("androidx.media3:media3-session:$v")
         implementation("androidx.media3:media3-common:$v")

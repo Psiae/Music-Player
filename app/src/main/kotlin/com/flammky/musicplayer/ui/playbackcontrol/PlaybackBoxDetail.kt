@@ -51,8 +51,6 @@ import com.google.accompanist.pager.rememberPagerState
 import kotlinx.coroutines.*
 import kotlin.reflect.KProperty
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
 
 @Composable
 internal fun PlaybackBoxDetail(
@@ -117,6 +115,7 @@ private fun PlaybackBoxDetailTransition(
 ) {
 	val savedTransitioned = rememberSaveable { mutableStateOf(false) }
 	val transitioned = remember { mutableStateOf(false) }
+	val childLoaded = remember { mutableStateOf(false) }
 
 	val yOffset =
 		if (savedTransitioned.value) 0.dp else -(heightState.read() - target)
@@ -131,7 +130,6 @@ private fun PlaybackBoxDetailTransition(
 					.dayNightAbsoluteColor()
 					.copy(alpha = 0.9f)
 			)
-
 	) {
 		when (0.dp) {
 			-yOffset -> {
@@ -142,16 +140,18 @@ private fun PlaybackBoxDetailTransition(
 			}
 		}
 		val animatedAlpha = animateFloatAsState(
-			targetValue = if (transitioned.read()) 1f else 0f,
-			animationSpec = tween(if (transitioned.read()) 250 else 0)
+			targetValue = if (transitioned.value && childLoaded.value) 1f else 0f,
+			animationSpec = tween(if (transitioned.value) 250 else 0)
 		)
 		Box(
 			modifier = Modifier.alpha(animatedAlpha.read())
 		) {
 			if (yOffset != target) {
-				PlaybackBoxDetails(viewModel) {
+				playbackBoxDetails(viewModel) {
 					savedTransitioned.overwrite(false)
 					dismiss()
+				}.also { readyState ->
+					if (readyState.value) childLoaded.value = true
 				}
 			}
 		}
@@ -159,10 +159,16 @@ private fun PlaybackBoxDetailTransition(
 }
 
 @Composable
-private fun PlaybackBoxDetails(
+private fun playbackBoxDetails(
 	viewModel: PlaybackControlViewModel,
 	dismiss: () -> Unit
-) {
+): State<Boolean> {
+	val childrenReadyState = remember {
+		mutableStateListOf<Boolean>()
+	}
+
+	childrenReadyState.clear()
+
 	// Change to Guard until we implement horizontal orientation
 	AssertVerticalOrientation()
 	Box(modifier = Modifier
@@ -180,8 +186,15 @@ private fun PlaybackBoxDetails(
 				Spacer(modifier = Modifier.height(10.dp))
 				DetailToolbar(dismiss)
 				Spacer(modifier = Modifier.height(20.dp))
-				DetailsContent(viewModel)
+				childrenReadyState.add(detailsContent(viewModel).value)
 			}
+		}
+	}
+
+	return remember {
+		derivedStateOf {
+			@Suppress("SimplifyBooleanWithConstants")
+			childrenReadyState.none { it == false }
 		}
 	}
 }
@@ -237,9 +250,13 @@ private fun RowScope.DismissAction(
 
 
 @Composable
-private fun DetailsContent(
+private fun detailsContent(
 	viewModel: PlaybackControlViewModel
-) {
+): State<Boolean> {
+	val childrenReadyState = remember {
+		mutableStateListOf<Boolean>()
+	}
+
 	BoxWithConstraints {
 		val maxHeight = maxHeight
 		val maxWidth = maxWidth
@@ -254,7 +271,7 @@ private fun DetailsContent(
 			Spacer(modifier = Modifier.height(15.dp))
 			CurrentTrackPlaybackDescriptions(viewModel = viewModel)
 			Spacer(modifier = Modifier.height(15.dp))
-			PlaybackControlProgressSeekbar(
+			playbackControlProgressSeekbar(
 				maxWidth = maxWidth,
 				playbackObserver = viewModel.playbackObserver,
 				durationState = durationState,
@@ -262,12 +279,21 @@ private fun DetailsContent(
 				seek = { i, pos ->
 					viewModel.seek(i, pos)
 				}
-			)
+			).also { readyState ->
+				childrenReadyState.add(readyState.value)
+			}
 			Spacer(modifier = Modifier.height(5.dp))
 			PlaybackControls(viewModel)
 			Spacer(modifier = Modifier
 				.fillMaxWidth()
 				.height(2f / 10 * maxHeight))
+		}
+	}
+
+	return remember {
+		derivedStateOf {
+			@Suppress("SimplifyBooleanWithConstants")
+			childrenReadyState.none { it == false }
 		}
 	}
 }
@@ -720,13 +746,20 @@ private fun PlaybackControlButtons(
 }
 
 @Composable
-private fun PlaybackControlProgressSeekbar(
+private fun playbackControlProgressSeekbar(
 	maxWidth: Dp,
 	durationState: State<Duration>,
 	trackState: State<PlaybackDetailTracksInfo>,
 	playbackObserver: PlaybackObserver,
 	seek: suspend (Int, Long) -> Boolean
-) {
+): State<Boolean> {
+	val sliderReady = remember {
+		mutableStateOf(false)
+	}
+	val sliderTextReady = remember {
+		mutableStateOf(false)
+	}
+
 	val coroutineScope = rememberCoroutineScope()
 
 	val sliderWidth = remember(maxWidth) {
@@ -734,31 +767,27 @@ private fun PlaybackControlProgressSeekbar(
 	}
 
 	val sliderPositionState = remember {
-		playbackObserver.createProgressionCollector(
+		val collector = playbackObserver.createProgressionCollector(
 			collectorScope = coroutineScope,
-			startInterval = null,
 			includeEvent = true,
-			nextInterval = { isEvent, progress, duration, speed ->
-				if (duration.isNegative() || sliderWidth < 1.dp) {
-					return@createProgressionCollector null
-				}
-				(duration.inWholeMilliseconds / sliderWidth.value / speed).toLong().milliseconds
-			}
 		)
+		coroutineScope.launch {
+			collector.startCollectProgressAsync().await()
+			sliderReady.value = true
+		}
+		collector.progressStateFlow
 	}.collectAsState()
 
 	val sliderTextPositionState = remember {
-		playbackObserver.createProgressionCollector(
+		val collector = playbackObserver.createProgressionCollector(
 			collectorScope = coroutineScope,
-			startInterval = null,
 			includeEvent = true,
-			nextInterval = { isEvent, progress, duration, speed ->
-				if (duration.isNegative() || progress.isNegative()) {
-					return@createProgressionCollector null
-				}
-				1.seconds
-			}
 		)
+		coroutineScope.launch {
+			collector.startCollectProgressAsync().await()
+			sliderTextReady.value = true
+		}
+		collector.progressStateFlow
 	}.collectAsState()
 
 	val position by sliderPositionState
@@ -774,13 +803,15 @@ private fun PlaybackControlProgressSeekbar(
 		mutableStateOf(-1f)
 	}
 	val seekRequests = remember { mutableStateOf(0) }
-	val consumeAnimation = remember { mutableStateOf(false) }
+
+	// consume the `animate` composable, it will recreate a new state so it will not animate
+	val consumeAnimation = remember { mutableStateOf(0) }
 
 	val suppressValue = draggedState.value ||
 		pressedState.value ||
 		changedValue.value >= 0
 
-	require((seekRequests.value == 0) or consumeAnimation.value) {
+	require((seekRequests.value == 0) or (consumeAnimation.value > 0)) {
 		"seekRequest should be followed by consumeAnimation"
 	}
 
@@ -791,13 +822,16 @@ private fun PlaybackControlProgressSeekbar(
 		value = if (suppressValue) {
 			changedValue.value
 		} else {
-			if (consumeAnimation.value) {
-				consumeAnimation.value = false
+			if (consumeAnimation.value > 0) {
+				consumeAnimation.value = 0
 				clampedPositionProgress()
 			} else {
+				val clampedProgress = clampedPositionProgress()
+				// should snap
+				val tweenDuration = if (clampedProgress == 1f || clampedProgress == 0f) 0 else 100
 				animateFloatAsState(
-					targetValue = clampedPositionProgress(),
-					animationSpec = tween(100)
+					targetValue = clampedProgress,
+					animationSpec = tween(tweenDuration)
 				).value
 			}
 		},
@@ -808,7 +842,7 @@ private fun PlaybackControlProgressSeekbar(
 		onValueChangeFinished = {
 			changedValue.value.takeIf { it >= 0 }?.let {
 				seekRequests.value++
-				consumeAnimation.value = true
+				consumeAnimation.value++
 				coroutineScope.launch {
 					val seekTo = (duration.inWholeMilliseconds * it).toLong()
 					// should this be async ?
@@ -853,6 +887,10 @@ private fun PlaybackControlProgressSeekbar(
 				durationState = durationState
 			)
 		}
+	}
+
+	return remember {
+		derivedStateOf { sliderReady.value && sliderTextReady.value }
 	}
 }
 

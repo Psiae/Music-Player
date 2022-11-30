@@ -11,11 +11,8 @@ interface PlaybackObserver {
 
 	fun createProgressionCollector(
 		collectorScope: CoroutineScope,
-		startInterval: Duration?,
-		// event array instead ?
-		includeEvent: Boolean,
-		nextInterval: suspend (isEvent: Boolean, progress: Duration, duration: Duration, speed: Float) -> Duration?
-	): StateFlow<Duration>
+		includeEvent: Boolean = true
+	): PlaybackProgressionCollector
 
 	suspend fun updateProgress()
 
@@ -36,7 +33,9 @@ interface PlaybackProgressionCollector {
 	 * @return await-able Deferred of initialization value, `StateFlow's` above is guaranteed to be a
 	 * valid known value
 	 */
-	fun startCollectProgress(): Deferred<Unit>
+	fun startCollectProgressAsync(): Deferred<Unit>
+
+	fun stopCollectProgressAsync(): Deferred<Unit>
 
 	/**
 	 * set The IntervalHandler, will cancel current IntervalHandler and [handler] will be called
@@ -64,9 +63,9 @@ interface PlaybackProgressionCollector {
 	/**
 	 * whether to also include `progress` affecting event
 	 */
-	fun setCollectEvent(
+	fun setCollectEventAsync(
 		collectEvent: Boolean /* Array<Event> ? */
-	)
+	): Deferred<Unit>
 
 	/**
 	 * Dispose the collector, supervisor Job will be cancelled

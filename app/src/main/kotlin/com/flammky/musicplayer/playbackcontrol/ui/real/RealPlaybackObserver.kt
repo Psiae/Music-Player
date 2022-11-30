@@ -6,6 +6,7 @@ import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.musicplayer.media.mediaconnection.playback.PlaybackConnection
 import com.flammky.musicplayer.media.playback.PlaybackConstants
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
+import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackProgressionCollector
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.*
@@ -27,6 +28,7 @@ typealias IsPlayingListener = suspend (Boolean) -> Unit
 ) : PlaybackObserver {
 
 	private val publicProgressCollectors = mutableListOf<MutableStateFlow<Duration>>()
+	private val updateProgressRequestListener = mutableListOf<Pair<CoroutineScope, suspend () -> Unit>>()
 
 	private val scopeContext: CoroutineContext = scope.coroutineContext
 
@@ -91,44 +93,33 @@ typealias IsPlayingListener = suspend (Boolean) -> Unit
 
 	override fun createProgressionCollector(
 		collectorScope: CoroutineScope,
-		startInterval: Duration?,
 		includeEvent: Boolean,
-		nextInterval: suspend (isEvent: Boolean, progress: Duration, duration: Duration, speed: Float) -> Duration?
-	): StateFlow<Duration> {
-		val state = MutableStateFlow(PlaybackConstants.PROGRESS_UNSET)
-
-		val collectorJob = collectorScope.launch {
-
-			val flow = collectPlaybackProgress(
-				startIn = startInterval ?: Duration.ZERO,
-				includeEvent = includeEvent,
-				delay = nextInterval
-			)
-			flow.collect(state)
-		}
-
-		scope.launch {
-			if (includeEvent) {
-				publicProgressCollectors.add(state)
-			}
-
-			collectorJob.join()
-
-			if (includeEvent) {
-				publicProgressCollectors.remove(state)
-			}
-		}
-
-		return state
+	): PlaybackProgressionCollector {
+		val job = collectorScope.coroutineContext.job
+		val dispatcher = collectorScope.coroutineContext[CoroutineDispatcher]?.limitedParallelism(1)
+			?: scopeDispatcher
+		val confinedScope = CoroutineScope(context = SupervisorJob(job) + dispatcher)
+		return RealPlaybackProgressionCollector(this, confinedScope, playbackConnection, includeEvent)
 	}
 
 	override suspend fun updateProgress() {
-		val position = playbackConnection.getProgress()
-		publicProgressCollectors.forEach { it.value = position }
+		withContext(scopeContext) {
+			updateProgressRequestListener.filter { it.first.isActive }
+			updateProgressRequestListener.forEach { it.first.launch { it.second() }.join() }
+		}
 	}
 
 	override fun dispose() {
 		scope.cancel()
+	}
+
+	fun observeUpdateRequest(
+		scope: CoroutineScope,
+		onUpdateRequest: suspend () -> Unit
+	) {
+		scope.launch {
+			updateProgressRequestListener.add(scope to onUpdateRequest)
+		}
 	}
 
 	private suspend fun startSharedDurationCollector() {
@@ -257,7 +248,11 @@ typealias IsPlayingListener = suspend (Boolean) -> Unit
 				}
 				internalCollectPlaybackDiscontinuity { discontinuity ->
 					// TODO: Check whether `Discontinuity` callback is more accurate than `getPosition`
-					send(playbackConnection.getProgress())
+					if (job?.isActive != true && playbackConnection.getIsPlaying()) {
+						job = doCollect()
+					} else {
+						send(playbackConnection.getProgress())
+					}
 				}
 				internalCollectIsPlayingChange { playing ->
 					// TODO: MediaController `IsPlaying` is somewhat not accurate, internally we had `playWhenReady` backing it

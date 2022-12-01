@@ -28,7 +28,7 @@ internal interface PlaybackController {
 
 	/**
 	 * @param success whether the request is successful
-	 * @param eventDispatch the event dispatching Job, Job completion denotes that this seek event is
+	 * @param eventDispatch the event dispatching Job, Job completion denotes that this event
 	 * already been dispatched to all observers.
 	 * ** non-null if [success] **
 	 */

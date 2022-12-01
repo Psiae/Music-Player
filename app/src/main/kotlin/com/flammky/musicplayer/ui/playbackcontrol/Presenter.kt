@@ -53,9 +53,8 @@ internal class RealPlaybackControlPresenter(
 	init {
 	}
 
-	private val observers = mutableListOf<RealPlaybackObserver>()
-
-	private val _owners = mutableMapOf<Any, MutableMap<String?, Any>>()
+	private val observersMap = mutableMapOf<Any, MutableList<RealPlaybackObserver>>()
+	private val controllersMap = mutableMapOf<Any, MutableList<RealPlaybackController>>()
 
 	@OptIn(ExperimentalStdlibApi::class, ExperimentalCoroutinesApi::class)
 	override fun createController(
@@ -81,11 +80,19 @@ internal class RealPlaybackControlPresenter(
 		check(scopeDispatcher.limitedParallelism(1) === scopeDispatcher) {
 			"Dispatcher parallelism could not be confined to `1`"
 		}
+		val supervisor = SupervisorJob(scopeJob)
 		return RealPlaybackController(
-			scope = CoroutineScope(context = SupervisorJob(scopeJob) + scopeDispatcher),
+			scope = CoroutineScope(context = supervisor + scopeDispatcher),
 			presenter = this,
 			playbackConnection
-		)
+		).also { controller ->
+			sync {
+				controllersMap.getOrPut(owner) { mutableListOf() }.add(controller)
+				supervisor.invokeOnCompletion {
+					sync { controllersMap[owner]?.remove(controller) }
+				}
+			}
+		}
 	}
 
 	@OptIn(ExperimentalStdlibApi::class, ExperimentalCoroutinesApi::class)
@@ -113,14 +120,18 @@ internal class RealPlaybackControlPresenter(
 		check(scopeDispatcher.limitedParallelism(1) === scopeDispatcher) {
 			"Dispatcher parallelism could not be confined to `1`"
 		}
+		val supervisor = SupervisorJob(scopeJob)
 		return RealPlaybackObserver(
 			owner = owner,
-			scope = CoroutineScope(context = SupervisorJob(scopeJob) + scopeDispatcher),
+			scope = CoroutineScope(context = supervisor + scopeDispatcher),
 			dispatchers = dispatchers,
 			playbackConnection = playbackConnection
-		).also {
+		).also { observer ->
 			sync {
-				observers.add(it)
+				observersMap.getOrPut(owner) { mutableListOf() }.add(observer)
+				supervisor.invokeOnCompletion {
+					sync { observersMap[owner]?.remove(observer) }
+				}
 			}
 		}
 	}
@@ -128,7 +139,9 @@ internal class RealPlaybackControlPresenter(
 	fun notifySeekRequest(): List<Job> {
 		return sync {
 			val jobs = mutableListOf<Job>()
-			observers.forEach { jobs.add(it.notifySeekEvent()) }
+			observersMap.values.forEach { observers ->
+				observers.forEach { jobs.add(it.notifySeekEvent()) }
+			}
 			jobs
 		}
 	}

@@ -21,7 +21,7 @@ class RealPlaybackProgressionCollector(
 
 	private var eventCollectorJob: Job? = null
 
-	private var collectingEvent: Boolean = collectEvent
+bug	private var collectingEvent: Boolean = false
 
 	private var intervalHandler: suspend (
 		isEvent: Boolean, progress: Duration, duration: Duration, speed: Float
@@ -46,6 +46,9 @@ class RealPlaybackProgressionCollector(
 				_progressStateFlow.value = getProgress()
 				_bufferedProgressStateFlow.value = getBufferedProgress()
 			}
+		}
+		if (collectEvent) {
+			startCollectEvent()
 		}
 	}
 
@@ -78,16 +81,20 @@ class RealPlaybackProgressionCollector(
 
 	override fun setCollectEventAsync(collectEvent: Boolean): Deferred<Unit> {
 		return scope.async {
-			if (collectEvent && !collectingEvent) {
-				startCollectEvent()
-			} else if (!collectEvent && collectingEvent) {
-				stopCollectEvent()
-			}
+			setCollectEvent(collectEvent)
 		}
 	}
 
 	override fun dispose() {
 		scope.cancel()
+	}
+
+	private suspend fun setCollectEvent(collectEvent: Boolean) {
+		if (collectEvent && !collectingEvent) {
+			startCollectEvent()
+		} else if (!collectEvent && collectingEvent) {
+			stopCollectEvent()
+		}
 	}
 
 	private suspend fun startCollectProgress(
@@ -144,9 +151,9 @@ class RealPlaybackProgressionCollector(
 			return
 		}
 
-		eventCollectorJob = dispatchCollectEvent()
-
 		this.collectingEvent = true
+
+		eventCollectorJob = dispatchCollectEvent()
 	}
 
 	private fun stopCollectEvent() {
@@ -154,9 +161,9 @@ class RealPlaybackProgressionCollector(
 			return
 		}
 
-		eventCollectorJob?.cancel()
-
 		this.collectingEvent = false
+
+		eventCollectorJob?.cancel()
 	}
 
 	private fun dispatchCollectEvent(): Job {

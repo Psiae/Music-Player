@@ -49,6 +49,7 @@ import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.PagerState
 import com.google.accompanist.pager.rememberPagerState
 import kotlinx.coroutines.*
+import timber.log.Timber
 import kotlin.reflect.KProperty
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -257,6 +258,8 @@ private fun detailsContent(
 	val childrenReadyState = remember {
 		mutableStateListOf<Boolean>()
 	}
+
+	childrenReadyState.clear()
 
 	BoxWithConstraints {
 		val maxHeight = maxHeight
@@ -789,6 +792,13 @@ private fun playbackControlProgressSeekbar(
 			collector.startCollectProgressAsync().await()
 			sliderCollectorReady.value = true
 		}
+		collector.setIntervalHandler { _, progress, duration, speed ->
+			// interval for next visible `tick` of the slider thumb, every 1.dp
+			(duration.inWholeMilliseconds / sliderWidth.value / speed).toLong().milliseconds
+				.also {
+					Timber.d("Playback_Slider_Debug: intervalHandler($it) param: $progress $duration $speed")
+				}
+		}
 		collector.progressStateFlow
 	}.collectAsState()
 
@@ -867,9 +877,11 @@ private fun playbackControlProgressSeekbar(
 		value = sliderValue,
 		// unfortunately There's no guarantee these 2 will be called in order
 		onValueChange = { value ->
+			Timber.d("Slider_DEBUG: onValueChange: $value")
 			changedValue.value = value
 		},
 		onValueChangeFinished = {
+			Timber.d("Slider_DEBUG: onValueChangeFinished: ${changedValue.value}")
 			changedValue.value.takeIf { it >= 0 }?.let {
 				seekRequests.value++
 				consumeAnimation.value++
@@ -886,7 +898,7 @@ private fun playbackControlProgressSeekbar(
 			if (seekRequests.value == 0) changedValue.value = -1f
 		},
 		interactionSource = interactionSource,
-		trackHeight = 4.dp,
+		trackHeight = 6.dp,
 		thumbSize = 12.dp,
 		colors = SliderDefaults.colors(
 			activeTrackColor = Theme.dayNightAbsoluteContentColor(),

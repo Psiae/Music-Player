@@ -26,8 +26,7 @@ object MediaModule {
 	}
 
 	@Provides
-	@Singleton
-	fun providePlaybackControlPresenter(
+	internal fun providePlaybackControlPresenter(
 		dispatchers: AndroidCoroutineDispatchers,
 		playbackConnection: PlaybackConnection
 	): PlaybackControlPresenter {

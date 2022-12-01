@@ -3,6 +3,7 @@ package com.flammky.musicplayer.media.mediaconnection.playback
 import com.flammky.musicplayer.media.playback.ProgressDiscontinuityReason
 import com.flammky.musicplayer.media.playback.RepeatMode
 import com.flammky.musicplayer.media.playback.ShuffleMode
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.flow.Flow
 import kotlin.time.Duration
 
@@ -32,6 +33,10 @@ interface PlaybackConnection {
 	suspend fun getPlaybackSpeed(): Float
 
 	suspend fun <R> joinContext(block: suspend PlaybackConnection.() -> R): R
+
+	suspend fun seekAsync(position: Duration): Deferred<Boolean>
+
+	suspend fun seekAsync(index: Int, startPosition: Duration): Deferred<Boolean>
 
 	data class ProgressDiscontinuity(
 		val oldProgress: Duration,

@@ -2,6 +2,7 @@ package com.flammky.musicplayer.playbackcontrol.ui.presenter
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.StateFlow
 import kotlin.time.Duration
 
@@ -14,7 +15,7 @@ interface PlaybackObserver {
 		includeEvent: Boolean = true
 	): PlaybackProgressionCollector
 
-	suspend fun updateProgress()
+	fun updateProgress(): Job
 
 	/**
 	 * Dispose the observer, any ongoing job will be cancelled, and no more emission is possible
@@ -55,10 +56,7 @@ interface PlaybackProgressionCollector {
 			duration: Duration,
 			speed: Float
 		) -> Duration?
-	) {
-
-
-	}
+	)
 
 	/**
 	 * whether to also include `progress` affecting event

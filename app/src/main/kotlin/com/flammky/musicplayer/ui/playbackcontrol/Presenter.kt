@@ -1,12 +1,31 @@
 package com.flammky.musicplayer.ui.playbackcontrol
 
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
+import com.flammky.kotlin.common.sync.sync
+import com.flammky.musicplayer.base.coroutine.NonBlockingDispatcherPool
 import com.flammky.musicplayer.media.mediaconnection.playback.PlaybackConnection
+import com.flammky.musicplayer.playbackcontrol.ui.controller.PlaybackController
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
+import com.flammky.musicplayer.playbackcontrol.ui.real.RealPlaybackController
 import com.flammky.musicplayer.playbackcontrol.ui.real.RealPlaybackObserver
 import kotlinx.coroutines.*
 
-interface PlaybackControlPresenter {
+internal interface PlaybackControlPresenter {
+
+	/**
+	 * create a Playback Controller.
+	 *
+	 * @param owner the observer owner
+	 * @param scope the observer parent coroutine scope
+	 * ** cancelling this scope will also cancel the controller scope **
+	 * @param key the observer key
+	 */
+	fun createController(
+		owner: Any,
+		scope: CoroutineScope,
+		// ignore
+		key: String? = null
+	): PlaybackController
 
 	/**
 	 * create a Playback Observer.
@@ -20,18 +39,54 @@ interface PlaybackControlPresenter {
 	fun observePlayback(
 		owner: Any,
 		scope: CoroutineScope,
+		// ignore
 		key: String? = null
-		/* should we have key mechanism ?, many problematic things will follow though */
-	): PlaybackObserver = throw NotImplementedError()
+	): PlaybackObserver
 }
 
 
-class RealPlaybackControlPresenter(
+internal class RealPlaybackControlPresenter(
 	private val dispatchers: AndroidCoroutineDispatchers,
 	private val playbackConnection: PlaybackConnection
 ): PlaybackControlPresenter {
 
+	init {
+	}
+
+	private val observers = mutableListOf<RealPlaybackObserver>()
+
 	private val _owners = mutableMapOf<Any, MutableMap<String?, Any>>()
+
+	@OptIn(ExperimentalStdlibApi::class, ExperimentalCoroutinesApi::class)
+	override fun createController(
+		owner: Any,
+		scope: CoroutineScope,
+		key: String?
+	): PlaybackController {
+		// realistically speaking will there be such case ?
+		val scopeJob = requireNotNull(scope.coroutineContext[Job]) {
+			"CoroutineScope $scope does Not have `Job` provided"
+		}
+		val scopeDispatcher = scope.coroutineContext[CoroutineDispatcher]?.let { dispatcher ->
+			try {
+				dispatcher.limitedParallelism(1)
+			} catch (e: Exception) {
+				if (e is IllegalStateException || e is UnsupportedOperationException) {
+					null
+				} else {
+					throw e
+				}
+			}
+		} ?: NonBlockingDispatcherPool.get(1)
+		check(scopeDispatcher.limitedParallelism(1) === scopeDispatcher) {
+			"Dispatcher parallelism could not be confined to `1`"
+		}
+		return RealPlaybackController(
+			scope = CoroutineScope(context = SupervisorJob(scopeJob) + scopeDispatcher),
+			presenter = this,
+			playbackConnection
+		)
+	}
 
 	@OptIn(ExperimentalStdlibApi::class, ExperimentalCoroutinesApi::class)
 	override fun observePlayback(
@@ -39,22 +94,42 @@ class RealPlaybackControlPresenter(
 		scope: CoroutineScope,
 		key: String?
 	): PlaybackObserver {
-		val scopeDispatcher = requireNotNull(scope.coroutineContext[CoroutineDispatcher]) {
-			"CoroutineScope $scope does Not have `CoroutineDispatcher` provided"
-		}
-		// realistically speaking will there be such case ?
 		val scopeJob = requireNotNull(scope.coroutineContext[Job]) {
 			"CoroutineScope $scope does Not have `Job` provided"
 		}
-		val localScope = try {
-			CoroutineScope(context = SupervisorJob(scopeJob) + scopeDispatcher.limitedParallelism(1))
-		} catch (uoe: UnsupportedOperationException) {
-			error("Unconfined Dispatcher $scopeDispatcher is not allowed")
+		val scopeDispatcher = scope.coroutineContext[CoroutineDispatcher]
+			?.let { dispatcher ->
+				try {
+					dispatcher.limitedParallelism(1)
+				} catch (e: Exception) {
+					if (e is IllegalStateException || e is UnsupportedOperationException) {
+						null
+					} else {
+						throw e
+					}
+				}
+			}
+			?: NonBlockingDispatcherPool.get(1)
+		check(scopeDispatcher.limitedParallelism(1) === scopeDispatcher) {
+			"Dispatcher parallelism could not be confined to `1`"
 		}
 		return RealPlaybackObserver(
-			scope = localScope,
+			owner = owner,
+			scope = CoroutineScope(context = SupervisorJob(scopeJob) + scopeDispatcher),
 			dispatchers = dispatchers,
 			playbackConnection = playbackConnection
-		)
+		).also {
+			sync {
+				observers.add(it)
+			}
+		}
+	}
+
+	fun notifySeekRequest(): List<Job> {
+		return sync {
+			val jobs = mutableListOf<Job>()
+			observers.forEach { jobs.add(it.notifySeekEvent()) }
+			jobs
+		}
 	}
 }

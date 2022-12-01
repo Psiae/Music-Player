@@ -151,8 +151,8 @@ class MediaControllerWrapper internal constructor(
 		this.post { wrapped.postSeekToPosition(position) }
 	}
 
-	override fun seekToMediaItem(index: Int, startPosition: Long) {
-		this.post { wrapped.seekToMediaItem(index, startPosition) }
+	override fun seekToMediaItem(index: Int, startPosition: Long): Boolean {
+		return wrapped.seekToMediaItem(index, startPosition)
 	}
 
 	override fun seekToMediaItem(index: Int) {
@@ -528,8 +528,10 @@ class MediaControllerWrapper internal constructor(
 			if (isStateConnected()) mediaController.seekTo(position)
 		}
 
-		override fun seekToMediaItem(index: Int, startPosition: Long) {
-			if (isStateConnected()) mediaController.seekTo(index, startPosition)
+		override fun seekToMediaItem(index: Int, startPosition: Long): Boolean {
+			return (isStateConnected() && mediaController.mediaItemCount > index).also {
+				if (it) mediaController.seekTo(index, startPosition)
+			}
 		}
 
 		override fun seekToMediaItem(index: Int) {

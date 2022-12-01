@@ -7,7 +7,6 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlin.coroutines.coroutineContext
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.ZERO
 import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -51,8 +50,10 @@ class RealPlaybackProgressionCollector(
 	}
 
 	override fun startCollectProgressAsync(): Deferred<Unit> {
-		return scope.async {
+		scope.launch {
 			startCollectProgress(false)
+		}
+		return scope.async(start = CoroutineStart.LAZY) {
 			_progressStateFlow.first { it != null }
 			_bufferedProgressStateFlow.first { it != null }
 		}
@@ -60,12 +61,19 @@ class RealPlaybackProgressionCollector(
 
 	override fun stopCollectProgressAsync(): Deferred<Unit> {
 		return scope.async {
-			startCollectProgress(false)
+			stopCollectProgress()
 		}
 	}
 
-	override fun setIntervalHandler(handler: suspend (isEvent: Boolean, progress: Duration, duration: Duration, speed: Float) -> Duration?) {
-		super.setIntervalHandler(handler)
+	override fun setIntervalHandler(
+		handler: suspend (isEvent: Boolean, progress: Duration, duration: Duration, speed: Float) -> Duration?
+	) {
+		scope.launch {
+			intervalHandler = handler
+			if (progressCollectorJob?.isActive == true) {
+				startCollectProgress(false)
+			}
+		}
 	}
 
 	override fun setCollectEventAsync(collectEvent: Boolean): Deferred<Unit> {
@@ -118,10 +126,10 @@ class RealPlaybackProgressionCollector(
 				nextInterval = intervalHandler(isEvent, progress, duration, speed)
 					?: run {
 						val fromNextSecond = (1010 - playbackConnection.getProgress().inWholeMilliseconds % 1000)
-						(fromNextSecond * speed).toLong()
+						(fromNextSecond / speed).toLong()
 					}.milliseconds
 
-				if (nextInterval.isNegative() || nextInterval == ZERO) {
+				if (nextInterval < Duration.ZERO) {
 					// should be handled by other callback
 					break
 				}
@@ -169,7 +177,7 @@ class RealPlaybackProgressionCollector(
 				}
 			}
 
-			val progressDiscontinuityCollector = launch {
+			val progressDiscontinuityCollector = scope.launch {
 				playbackConnection.observeProgressDiscontinuity().collect {
 
 					check(collectingEvent) {

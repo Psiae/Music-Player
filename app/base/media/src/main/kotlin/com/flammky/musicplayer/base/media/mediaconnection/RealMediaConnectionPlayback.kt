@@ -111,8 +111,8 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 		s.mediaController.prepare()
 	}
 
-	override fun seekToIndex(int: Int, startPosition: Long) {
-		s.mediaController.seekToMediaItem(int, startPosition)
+	override fun seekToIndex(int: Int, startPosition: Long): Boolean {
+		return s.mediaController.seekToMediaItem(int, startPosition)
 	}
 
 	override fun postSeekToPosition(position: Long) {

@@ -22,6 +22,7 @@ typealias IsPlayingListener = suspend (Boolean) -> Unit
 
 @OptIn(ExperimentalStdlibApi::class, ExperimentalCoroutinesApi::class)
 /* internal */ class /* Debug */ RealPlaybackObserver(
+	val owner: Any,
 	private val scope: CoroutineScope,
 	private val dispatchers: AndroidCoroutineDispatchers,
 	private val playbackConnection: PlaybackConnection
@@ -96,22 +97,27 @@ typealias IsPlayingListener = suspend (Boolean) -> Unit
 		includeEvent: Boolean,
 	): PlaybackProgressionCollector {
 		val job = collectorScope.coroutineContext.job
-		val dispatcher = collectorScope.coroutineContext[CoroutineDispatcher]?.limitedParallelism(1)
-			?: scopeDispatcher
+		val dispatcher = scopeDispatcher
 		val confinedScope = CoroutineScope(context = SupervisorJob(job) + dispatcher)
 		return RealPlaybackProgressionCollector(this, confinedScope, playbackConnection, includeEvent)
 	}
 
-	override suspend fun updateProgress() {
-		withContext(scopeContext) {
+	override fun updateProgress(): Job {
+		return scope.launch {
+			val jobs = mutableListOf<Job>()
 			updateProgressRequestListener.filter { it.first.isActive }
-			updateProgressRequestListener.forEach { it.first.launch { it.second() }.join() }
+			updateProgressRequestListener.forEach {
+				it.first.launch { it.second() }.also { job -> jobs.add(job) }
+			}
+			jobs.joinAll()
 		}
 	}
 
 	override fun dispose() {
 		scope.cancel()
 	}
+
+	fun notifySeekEvent(): Job = updateProgress()
 
 	fun observeUpdateRequest(
 		scope: CoroutineScope,

@@ -22,7 +22,7 @@ interface MediaConnectionPlayback {
 
 	val position: Duration
 
-	fun seekToIndex(int: Int, startPosition: Long)
+	fun seekToIndex(int: Int, startPosition: Long): Boolean
 	fun postSeekToPosition(position: Long)
 	fun seekNext()
 	fun seekNextMedia()

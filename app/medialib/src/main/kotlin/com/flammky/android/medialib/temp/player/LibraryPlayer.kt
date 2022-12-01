@@ -55,7 +55,7 @@ interface LibraryPlayer {
 	fun seekToDefaultPosition(index: Int)
 	fun postSeekToPosition(position: Long)
 	@Throws(IndexOutOfBoundsException::class)
-	fun seekToMediaItem(index: Int, startPosition: Long)
+	fun seekToMediaItem(index: Int, startPosition: Long): Boolean
 	fun seekToMediaItem(index: Int)
 	fun seekToPrevious()
 	fun seekToNext()

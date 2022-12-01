@@ -34,6 +34,18 @@ class RealMediaConnection(
 	// Temp Start
 	//
 
+	override suspend fun seekAsync(position: Duration): Deferred<Boolean> {
+		return coroutineScope {
+			async { joinContext { playback.seekToPosition(position.inWholeMilliseconds) } }
+		}
+	}
+
+	override suspend fun seekAsync(index: Int, startPosition: Duration): Deferred<Boolean> {
+		return coroutineScope {
+			async { joinContext { playback.seekIndex(index, startPosition.inWholeMilliseconds) } }
+		}
+	}
+
 	override suspend fun getRepeatMode(): RepeatMode = delegate.playback.joinDispatcher {
 		when (delegate.playback.repeatMode) {
 			Player.RepeatMode.OFF -> RepeatMode.OFF
@@ -215,10 +227,8 @@ class RealMediaConnection(
 		override fun playWhenReady() = delegate.play()
 		override fun pause() = delegate.pause()
 
-		override fun seekIndex(index: Int, startPosition: Long) {
-			if (delegate.playback.index != index) {
-				delegate.playback.seekToIndex(index, startPosition)
-			}
+		override fun seekIndex(index: Int, startPosition: Long): Boolean {
+			return delegate.playback.index != index && delegate.playback.seekToIndex(index, startPosition)
 		}
 
 		override fun postSeekPosition(position: Long) {

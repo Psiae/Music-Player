@@ -48,7 +48,7 @@ interface MediaConnection {
 		fun observePositionStream(interval: Duration): Flow<PositionStream>
 		fun observePlaylistStream(): Flow<TracksInfo>
 		fun observePropertiesInfo(): Flow<PropertiesInfo>
-		fun seekIndex(index: Int, startPosition: Long)
+		fun seekIndex(index: Int, startPosition: Long): Boolean
 
 		fun postSeekPosition(position: Long)
 

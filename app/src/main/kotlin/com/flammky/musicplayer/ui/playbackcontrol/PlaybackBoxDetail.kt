@@ -51,6 +51,7 @@ import com.google.accompanist.pager.rememberPagerState
 import kotlinx.coroutines.*
 import kotlin.reflect.KProperty
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 internal fun PlaybackBoxDetail(
@@ -276,8 +277,11 @@ private fun detailsContent(
 				playbackObserver = viewModel.playbackObserver,
 				durationState = durationState,
 				trackState = trackState,
-				seek = { i, pos ->
-					viewModel.seek(i, pos)
+				seek = { _, pos ->
+					viewModel.playbackController.requestSeekAsync(pos.milliseconds).await().let { result ->
+						result.eventDispatch?.join()
+						result.success
+					}
 				}
 			).also { readyState ->
 				childrenReadyState.add(readyState.value)
@@ -309,7 +313,11 @@ private fun TracksPagerDisplay(
 			metadataStateForId = { id ->
 				viewModel.observeMetadata(id).collectAsState()
 			},
-			seekIndex = { viewModel.seek(it) }
+			seekIndex = { index ->
+				val result = viewModel.playbackController.requestSeekAsync(index, Duration.ZERO).await()
+				result.eventDispatch?.join()
+				result.success
+			}
 		)
 	}
 }
@@ -753,6 +761,12 @@ private fun playbackControlProgressSeekbar(
 	playbackObserver: PlaybackObserver,
 	seek: suspend (Int, Long) -> Boolean
 ): State<Boolean> {
+	val sliderCollectorReady = remember {
+		mutableStateOf(false)
+	}
+	val sliderTextCollectorReady = remember {
+		mutableStateOf(false)
+	}
 	val sliderReady = remember {
 		mutableStateOf(false)
 	}
@@ -773,7 +787,7 @@ private fun playbackControlProgressSeekbar(
 		)
 		coroutineScope.launch {
 			collector.startCollectProgressAsync().await()
-			sliderReady.value = true
+			sliderCollectorReady.value = true
 		}
 		collector.progressStateFlow
 	}.collectAsState()
@@ -785,10 +799,20 @@ private fun playbackControlProgressSeekbar(
 		)
 		coroutineScope.launch {
 			collector.startCollectProgressAsync().await()
-			sliderTextReady.value = true
+			sliderTextCollectorReady.value = true
 		}
 		collector.progressStateFlow
 	}.collectAsState()
+
+	val ready = remember {
+		derivedStateOf { sliderReady.value && sliderTextReady.value }
+	}
+
+	if (!sliderCollectorReady.value or !sliderTextCollectorReady.value) {
+		return ready
+	} else {
+		sliderReady.value = true ; sliderTextReady.value = true
+	}
 
 	val position by sliderPositionState
 	val duration by durationState
@@ -802,7 +826,9 @@ private fun playbackControlProgressSeekbar(
 		// the Slider should constraint it to 0, consider change it to nullable Float
 		mutableStateOf(-1f)
 	}
-	val seekRequests = remember { mutableStateOf(0) }
+	val seekRequests = remember {
+		mutableStateOf(0)
+	}
 
 	// consume the `animate` composable, it will recreate a new state so it will not animate
 	val consumeAnimation = remember { mutableStateOf(0) }
@@ -815,26 +841,30 @@ private fun playbackControlProgressSeekbar(
 		"seekRequest should be followed by consumeAnimation"
 	}
 
+	val sliderValue = when {
+		suppressValue -> {
+			changedValue.value
+		}
+		consumeAnimation.value > 0 -> {
+			consumeAnimation.value = 0
+			clampedPositionProgress()
+		}
+		else -> {
+			val clampedProgress = clampedPositionProgress()
+			// should snap
+			val tweenDuration = if (clampedProgress == 1f || clampedProgress == 0f) 0 else 100
+			animateFloatAsState(
+				targetValue = clampedProgress,
+				animationSpec = tween(tweenDuration)
+			).value
+		}
+	}
+
 	Slider(
 		modifier = Modifier
 			.width(sliderWidth)
 			.height(16.dp),
-		value = if (suppressValue) {
-			changedValue.value
-		} else {
-			if (consumeAnimation.value > 0) {
-				consumeAnimation.value = 0
-				clampedPositionProgress()
-			} else {
-				val clampedProgress = clampedPositionProgress()
-				// should snap
-				val tweenDuration = if (clampedProgress == 1f || clampedProgress == 0f) 0 else 100
-				animateFloatAsState(
-					targetValue = clampedProgress,
-					animationSpec = tween(tweenDuration)
-				).value
-			}
-		},
+		value = sliderValue,
 		// unfortunately There's no guarantee these 2 will be called in order
 		onValueChange = { value ->
 			changedValue.value = value
@@ -889,9 +919,7 @@ private fun playbackControlProgressSeekbar(
 		}
 	}
 
-	return remember {
-		derivedStateOf { sliderReady.value && sliderTextReady.value }
-	}
+	return ready
 }
 
 @Composable

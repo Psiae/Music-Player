@@ -28,8 +28,8 @@ object MediaModule {
 	@Provides
 	internal fun providePlaybackControlPresenter(
 		dispatchers: AndroidCoroutineDispatchers,
-		playbackConnection: PlaybackConnection
+		playbackConnectionContext: PlaybackConnection
 	): PlaybackControlPresenter {
-		return RealPlaybackControlPresenter(dispatchers, playbackConnection)
+		return RealPlaybackControlPresenter(dispatchers, playbackConnectionContext)
 	}
 }

@@ -21,7 +21,7 @@ class RealPlaybackProgressionCollector(
 
 	private var eventCollectorJob: Job? = null
 
-bug	private var collectingEvent: Boolean = false
+	private var collectingEvent: Boolean = false
 
 	private var intervalHandler: suspend (
 		isEvent: Boolean, progress: Duration, duration: Duration, speed: Float
@@ -42,7 +42,7 @@ bug	private var collectingEvent: Boolean = false
 
 	init {
 		observer.observeUpdateRequest(scope) {
-			if (collectingEvent) playbackConnection.joinContext {
+			if (collectingEvent) playbackConnection.withControllerContext {
 				_progressStateFlow.value = getProgress()
 				_bufferedProgressStateFlow.value = getBufferedProgress()
 			}
@@ -52,20 +52,18 @@ bug	private var collectingEvent: Boolean = false
 		}
 	}
 
-	override fun startCollectProgressAsync(): Deferred<Unit> {
+	override fun startCollectProgress(): Job {
 		scope.launch {
 			startCollectProgress(false)
 		}
-		return scope.async(start = CoroutineStart.LAZY) {
+		return scope.launch(start = CoroutineStart.LAZY) {
 			_progressStateFlow.first { it != null }
 			_bufferedProgressStateFlow.first { it != null }
 		}
 	}
 
-	override fun stopCollectProgressAsync(): Deferred<Unit> {
-		return scope.async {
-			stopCollectProgress()
-		}
+	override fun stopCollectProgress(): Job {
+		return scope.launch { stopCollectProgressInternal() }
 	}
 
 	override fun setIntervalHandler(
@@ -100,11 +98,11 @@ bug	private var collectingEvent: Boolean = false
 	private suspend fun startCollectProgress(
 		isEvent: Boolean
 	) {
-		stopCollectProgress()
+		stopCollectProgressInternal()
 		progressCollectorJob = dispatchCollectProgress(isEvent)
 	}
 
-	private suspend fun stopCollectProgress() {
+	private suspend fun stopCollectProgressInternal() {
 		coroutineContext.ensureActive()
 		progressCollectorJob?.cancel()
 	}
@@ -120,7 +118,7 @@ bug	private var collectingEvent: Boolean = false
 				var duration: Duration = PlaybackConstants.DURATION_UNSET
 				var speed: Float = 1f
 
-				playbackConnection.joinContext {
+				playbackConnection.withControllerContext {
 					progress = getProgress()
 					buffered = getBufferedProgress()
 					speed = getPlaybackSpeed()
@@ -132,7 +130,7 @@ bug	private var collectingEvent: Boolean = false
 
 				nextInterval = intervalHandler(isEvent, progress, duration, speed)
 					?: run {
-						val fromNextSecond = (1010 - playbackConnection.getProgress().inWholeMilliseconds % 1000)
+						val fromNextSecond = (1010 - playbackConnection.withControllerContext { getProgress() }.inWholeMilliseconds % 1000)
 						(fromNextSecond / speed).toLong()
 					}.milliseconds
 
@@ -170,7 +168,7 @@ bug	private var collectingEvent: Boolean = false
 		return scope.launch {
 
 			val isPlayingCollector = scope.launch {
-				playbackConnection.observeIsPlaying().collect {
+				playbackConnection.withControllerContext { observeIsPlaying() }.collect {
 
 					check(collectingEvent) {
 						"CollectEventJob was still active when `collectingEvent` is false"
@@ -179,25 +177,25 @@ bug	private var collectingEvent: Boolean = false
 					if (it && progressCollectorJob?.isActive != true) {
 						startCollectProgress(true)
 					} else if (!it && progressCollectorJob?.isActive == true) {
-						stopCollectProgress()
+						stopCollectProgressInternal()
 					}
 				}
 			}
 
 			val progressDiscontinuityCollector = scope.launch {
-				playbackConnection.observeProgressDiscontinuity().collect {
+				playbackConnection.withControllerContext { observeProgressDiscontinuity() }.collect {
 
 					check(collectingEvent) {
 						"CollectEventJob was still active when `collectingEvent` is false"
 					}
 
-					if (playbackConnection.getIsPlaying()) {
+					if (playbackConnection.withControllerContext { getIsPlaying() }) {
 						startCollectProgress(true)
 					} else {
 						var buffered: Duration = PlaybackConstants.PROGRESS_UNSET
 						var progress: Duration = PlaybackConstants.PROGRESS_UNSET
 
-						playbackConnection.joinContext {
+						playbackConnection.withControllerContext {
 							buffered = getBufferedProgress()
 							progress = getProgress()
 						}

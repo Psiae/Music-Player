@@ -7,11 +7,11 @@ plugins {
 
 android {
     namespace = "com.flammky.musicplayer.base"
-    compileSdk = 32
+    compileSdk = 33
 
     defaultConfig {
         minSdk = 24
-        targetSdk = 32
+        targetSdk = 33
     }
 }
 
@@ -37,6 +37,10 @@ dependencies {
         // Collections.Immutable
         val vCollectionImmutable = "0.3.5"
         api("org.jetbrains.kotlinx:kotlinx-collections-immutable:$vCollectionImmutable")
+
+        // coroutines-guava
+        val coroutines_guava = "kotlinx-coroutines-guava:1.6.4"
+        api("org.jetbrains.kotlinx:$coroutines_guava")
     }
     
     /* google.dagger */
@@ -46,6 +50,14 @@ dependencies {
         val vHiltAndroid = "2.44"
         implementation("com.google.dagger:hilt-android:$vHiltAndroid")
         kapt("com.google.dagger:hilt-android-compiler:$vHiltAndroid")
+    }
+
+    /* google.guava */
+    dependencies {
+
+        // android
+        val vAndroid = "31.1-android"
+        api("com.google.guava:guava:$vAndroid")
     }
 
     @Suppress("SpellCheckingInspection")

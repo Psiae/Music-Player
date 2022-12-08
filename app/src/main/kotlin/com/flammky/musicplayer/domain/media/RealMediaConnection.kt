@@ -6,10 +6,10 @@ import com.flammky.android.medialib.player.Player
 import com.flammky.common.kotlin.coroutines.safeCollect
 import com.flammky.musicplayer.base.media.mediaconnection.MediaConnectionDelegate
 import com.flammky.musicplayer.base.media.mediaconnection.MediaConnectionPlayback
+import com.flammky.musicplayer.media.R
 import com.flammky.musicplayer.media.mediaconnection.playback.PlaybackConnection
-import com.flammky.musicplayer.media.playback.ProgressDiscontinuityReason
-import com.flammky.musicplayer.media.playback.RepeatMode
-import com.flammky.musicplayer.media.playback.ShuffleMode
+import com.flammky.musicplayer.media.playback.*
+import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.*
@@ -23,7 +23,7 @@ import kotlin.time.Duration
 
 class RealMediaConnection(
 	private val delegate: MediaConnectionDelegate
-) : MediaConnection, /* Temp */ PlaybackConnection {
+) : MediaConnection, /* Temp */ PlaybackConnection, PlaybackConnection.Controller {
 
 	private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -34,16 +34,60 @@ class RealMediaConnection(
 	// Temp Start
 	//
 
-	override suspend fun seekAsync(position: Duration): Deferred<Boolean> {
-		return coroutineScope {
-			async { joinContext { playback.seekToPosition(position.inWholeMilliseconds) } }
-		}
+	override suspend fun <R> withControllerContext(block: suspend PlaybackConnection.Controller.() -> R): R {
+		return delegate.playback.joinDispatcher { block() }
 	}
 
-	override suspend fun seekAsync(index: Int, startPosition: Duration): Deferred<Boolean> {
-		return coroutineScope {
-			async { joinContext { playback.seekIndex(index, startPosition.inWholeMilliseconds) } }
-		}
+	override suspend fun <R> withControllerImmediateContext(block: suspend PlaybackConnection.Controller.() -> R): R {
+		return delegate.playback.joinDispatcher { block() }
+	}
+
+	override fun postController(block: suspend PlaybackConnection.Controller.() -> Unit) {
+		TODO("Not yet implemented")
+	}
+
+	override fun immediatePostController(block: suspend PlaybackConnection.Controller.() -> Unit) {
+		TODO("Not yet implemented")
+	}
+
+	override fun <R> postControllerCallback(block: suspend PlaybackConnection.Controller.() -> R): ListenableFuture<R> {
+		TODO("Not yet implemented")
+	}
+
+	override fun <R> immediatePostControllerCallback(block: suspend PlaybackConnection.Controller.() -> R): ListenableFuture<R> {
+		TODO("Not yet implemented")
+	}
+
+	override suspend fun observeQueueChange(): Flow<PlaybackEvent.QueueChange> {
+		TODO("Not yet implemented")
+	}
+
+	override suspend fun setRepeatMode(mode: RepeatMode): Boolean {
+		TODO("Not yet implemented")
+	}
+
+	override suspend fun setShuffleMode(mode: ShuffleMode): Boolean {
+		TODO("Not yet implemented")
+	}
+
+	override suspend fun observeQueue(): Flow<PlaybackQueue> {
+		TODO("Not yet implemented")
+	}
+
+	override suspend fun seekProgress(progress: Duration): Boolean {
+		return withControllerContext { playback.seekToPosition(progress.inWholeMilliseconds)}
+	}
+
+	override suspend fun seekIndex(index: Int, startPosition: Duration): Boolean {
+		return withControllerContext { playback.seekIndex(index, startPosition.inWholeMilliseconds) }
+	}
+
+	override suspend fun getQueue(): PlaybackQueue {
+		TODO("Not yet implemented")
+	}
+
+	override suspend fun setQueue(queue: PlaybackQueue): Boolean {
+		TODO("Not yet implemented")
 	}
 
 	override suspend fun getRepeatMode(): RepeatMode = delegate.playback.joinDispatcher {
@@ -90,17 +134,19 @@ class RealMediaConnection(
 		}
 	}
 
+
+
 	override suspend fun getProgress(): Duration = delegate.playback.joinDispatcher {
 		position
 	}
 
-	override suspend fun observeProgressDiscontinuity(): Flow<PlaybackConnection.ProgressDiscontinuity> {
+	override suspend fun observeProgressDiscontinuity(): Flow<PlaybackEvent.ProgressDiscontinuity> {
 		return callbackFlow {
 
 			delegate.playback.joinDispatcher {
 
 				delegate.playback.observeDiscontinuityEvent().collect {
-					send(PlaybackConnection.ProgressDiscontinuity(
+					send(PlaybackEvent.ProgressDiscontinuity(
 						oldProgress = it.oldPosition,
 						newProgress = it.newPosition,
 						reason = when (it.reason) {
@@ -159,8 +205,8 @@ class RealMediaConnection(
 		playbackSpeed()
 	}
 
-	override suspend fun <R> joinContext(block: suspend PlaybackConnection.() -> R): R {
-		return delegate.playback.joinDispatcher { block() }
+	override suspend fun observePlaybackSpeed(): Flow<Float> {
+		TODO("Not yet implemented")
 	}
 
 	//

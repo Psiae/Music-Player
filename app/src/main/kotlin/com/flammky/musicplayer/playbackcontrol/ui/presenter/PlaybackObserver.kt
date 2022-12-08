@@ -1,5 +1,6 @@
 package com.flammky.musicplayer.playbackcontrol.ui.presenter
 
+import com.flammky.musicplayer.media.playback.PlaybackQueue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
@@ -15,6 +16,10 @@ interface PlaybackObserver {
 		includeEvent: Boolean = true
 	): PlaybackProgressionCollector
 
+	fun createQueueCollector(
+		collectorScope: CoroutineScope,
+	): PlaybackQueueCollector
+
 	fun updateProgress(): Job
 
 	/**
@@ -23,6 +28,19 @@ interface PlaybackObserver {
 	fun dispose()
 }
 
+interface PlaybackQueueCollector {
+	/**
+	 * The current PlaybackQueue,
+	 * [PlaybackQueue.UNSET] if invalid
+	 */
+	val queueStateFlow: StateFlow<PlaybackQueue>
+
+	/**
+	 * start observing
+	 * @return the launching Job, normal completion denoting that the request has been completed
+	 */
+	fun startObserve(): Job
+}
 
 interface PlaybackProgressionCollector {
 	val progressStateFlow: StateFlow<Duration>
@@ -34,9 +52,9 @@ interface PlaybackProgressionCollector {
 	 * @return await-able Deferred of initialization value, `StateFlow's` above is guaranteed to be a
 	 * valid known value
 	 */
-	fun startCollectProgressAsync(): Deferred<Unit>
+	fun startCollectProgress(): Job
 
-	fun stopCollectProgressAsync(): Deferred<Unit>
+	fun stopCollectProgress(): Job
 
 	/**
 	 * set The IntervalHandler, will cancel current IntervalHandler and [handler] will be called

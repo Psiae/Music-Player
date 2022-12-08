@@ -789,7 +789,7 @@ private fun playbackControlProgressSeekbar(
 			includeEvent = true,
 		)
 		coroutineScope.launch {
-			collector.startCollectProgressAsync().await()
+			collector.startCollectProgress().join()
 			sliderCollectorReady.value = true
 		}
 		collector.setIntervalHandler { _, progress, duration, speed ->
@@ -808,7 +808,7 @@ private fun playbackControlProgressSeekbar(
 			includeEvent = true,
 		)
 		coroutineScope.launch {
-			collector.startCollectProgressAsync().await()
+			collector.startCollectProgress().join()
 			sliderTextCollectorReady.value = true
 		}
 		collector.progressStateFlow

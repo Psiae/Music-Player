@@ -15,7 +15,7 @@ internal class RealPlaybackController(
 
 	override fun requestSeekAsync(position: Duration): Deferred<PlaybackController.RequestResult> {
 		return scope.async {
-			val success = playbackConnection.seekAsync(position).await()
+			val success = playbackConnection.withControllerContext { seekProgress(position) }
 			PlaybackController.RequestResult(
 				success = success,
 				eventDispatch = if (success) {
@@ -29,8 +29,8 @@ internal class RealPlaybackController(
 
 	override fun requestSeekAsync(progress: Float): Deferred<PlaybackController.RequestResult> {
 		return scope.async {
-			val success = playbackConnection.joinContext {
-				seekAsync((getDuration().inWholeMilliseconds * progress).toLong().milliseconds).await()
+			val success = playbackConnection.withControllerContext {
+				seekProgress((getDuration().inWholeMilliseconds * progress).toLong().milliseconds)
 			}
 			PlaybackController.RequestResult(
 				success = success,
@@ -45,8 +45,8 @@ internal class RealPlaybackController(
 
 	override fun requestSeekAsync(index: Int, startPosition: Duration): Deferred<PlaybackController.RequestResult> {
 		return scope.async {
-			val success = playbackConnection.joinContext {
-				seekAsync(index, startPosition).await()
+			val success = playbackConnection.withControllerContext {
+				seekIndex(index, startPosition)
 			}
 			PlaybackController.RequestResult(
 				success = success,

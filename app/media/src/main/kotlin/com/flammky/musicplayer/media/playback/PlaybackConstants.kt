@@ -8,4 +8,6 @@ object PlaybackConstants {
 	val PROGRESS_UNSET: Duration = (-1).milliseconds
 	val DURATION_UNSET: Duration = (-1).seconds
 	val INDEX_UNSET: Int = -1
+
+	val QUEUE_UNSET: PlaybackQueue = PlaybackQueue.UNSET
 }

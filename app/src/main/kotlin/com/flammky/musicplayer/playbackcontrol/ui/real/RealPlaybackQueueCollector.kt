@@ -1,20 +1,19 @@
 package com.flammky.musicplayer.playbackcontrol.ui.real
 
 import com.flammky.musicplayer.media.mediaconnection.playback.PlaybackConnection
+import com.flammky.musicplayer.media.playback.PlaybackController
 import com.flammky.musicplayer.media.playback.PlaybackQueue
-import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackQueueCollector
+import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.*
 
 @OptIn(ExperimentalStdlibApi::class, ExperimentalCoroutinesApi::class)
 class RealPlaybackQueueCollector(
 	private val observer: RealPlaybackObserver,
 	private val scope: CoroutineScope,
 	private val playbackConnection: PlaybackConnection
-) : PlaybackQueueCollector {
+) : PlaybackObserver.QueueCollector {
 
 	private val localUNSET = PlaybackQueue.UNSET.copy()
 
@@ -43,8 +42,31 @@ class RealPlaybackQueueCollector(
 	private suspend fun startObserveInternal() {
 		if (queueCollectorJob?.isActive != true) {
 			queueCollectorJob = scope.launch {
-				playbackConnection.withControllerContext { observeQueue() }.collect(_queueStateFlow)
+
+				callbackFlow {
+					val owner = Any()
+					var controller: PlaybackController? = null
+					playbackConnection.observeCurrentSession().distinctUntilChanged().collect {
+						controller?.releaseObserver(owner)
+						controller = it?.controller
+						controller?.withContext {
+							acquireObserver(owner).getAndObserveQueueChange {
+								scope.launch { send(it.new) }
+							}
+						}?.let { send(it) }
+					}
+
+					awaitClose { controller?.releaseObserver(owner) }
+				}.collect(_queueStateFlow)
 			}
 		}
+	}
+
+	override fun stopObserve(): Job {
+		TODO("Not yet implemented")
+	}
+
+	override fun dispose() {
+		observer.notifyCollectorDisposed(this)
 	}
 }

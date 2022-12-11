@@ -1,7 +1,10 @@
 package com.flammky.musicplayer.media.playback.real
 
 import android.os.Looper
-import com.flammky.musicplayer.media.playback.*
+import com.flammky.musicplayer.media.playback.PlaybackController
+import com.flammky.musicplayer.media.playback.PlaybackQueue
+import com.flammky.musicplayer.media.playback.RepeatMode
+import com.flammky.musicplayer.media.playback.ShuffleMode
 import kotlin.time.Duration
 
 class RealPlaybackController(
@@ -48,6 +51,17 @@ class RealPlaybackController(
 	override val playbackSpeed: Float
 		get() = TODO("Not yet implemented")
 
+	override val looper: Looper
+		get() = TODO("Not yet implemented")
+
+	override fun acquireObserver(owner: Any): PlaybackController.Observer {
+		TODO("Not yet implemented")
+	}
+
+	override fun releaseObserver(owner: Any) {
+		TODO("Not yet implemented")
+	}
+
 	override fun setPlayWhenReady(playWhenReady: Boolean): Boolean {
 		TODO("Not yet implemented")
 	}
@@ -72,23 +86,11 @@ class RealPlaybackController(
 		TODO("Not yet implemented")
 	}
 
-	override fun observeRepeatModeChange(onChange: (RepeatMode) -> Unit) {
-		TODO("Not yet implemented")
-	}
-
-	override fun observeShuffleModeChange(onChange: (ShuffleMode) -> Unit) {
-		TODO("Not yet implemented")
-	}
-
-	override fun observePlayWhenReadyChange(onChange: (Boolean) -> Unit) {
-		TODO("Not yet implemented")
-	}
-
-	override fun observeQueueChange(onChange: (PlaybackEvent.QueueChange) -> Unit) {
-		TODO("Not yet implemented")
-	}
-
 	override fun inLooper(): Boolean {
+		TODO("Not yet implemented")
+	}
+
+	override suspend fun <R> withContext(block: PlaybackController.() -> R): R {
 		TODO("Not yet implemented")
 	}
 

@@ -1,8 +1,10 @@
 package com.flammky.musicplayer.media.playback
 
+import android.os.Looper
 import kotlin.time.Duration
 
 interface PlaybackController {
+	val looper: Looper
 	val playing: Boolean
 	val playWhenReady: Boolean
 	val queue: PlaybackQueue
@@ -20,22 +22,43 @@ interface PlaybackController {
 	fun seekProgress(progress: Duration): Boolean
 	fun seekIndex(index: Int, progress: Duration): Boolean
 
+	/**
+	 * Acquire Observer for the specified owner, Get Or Create
+	 */
+	fun acquireObserver(owner: Any): Observer
 
-	fun observeRepeatModeChange(
-		onChange: (RepeatMode, /* reason */) -> Unit
-	)
-
-	fun observeShuffleModeChange(
-		onChange: (ShuffleMode, /* reason */) -> Unit
-	)
-
-	fun observePlayWhenReadyChange(
-		onChange: (Boolean, /* reason */) -> Unit
-	)
-
-	fun observeQueueChange(
-		onChange: (PlaybackEvent.QueueChange) -> Unit
-	)
+	fun releaseObserver(owner: Any)
 
 	fun inLooper(): Boolean
+
+	suspend fun <R> withContext(block: PlaybackController.() -> R): R
+
+	/**
+	 * Observer interface for this controller, callbacks will be called from the controller Looper
+	 */
+	interface Observer {
+		fun getAndObserveRepeatModeChange(
+			onRepeatModeChange: (PlaybackEvent.RepeatModeChange) -> Unit
+		): RepeatMode
+		fun getAndObserveShuffleModeChange(
+			onShuffleModeChange: (PlaybackEvent.ShuffleModeChange) -> Unit
+		): ShuffleMode
+		fun getAndObserveQueueChange(
+			onQueueChange: (PlaybackEvent.QueueChange) -> Unit
+		): PlaybackQueue
+		fun getAndObserveIsPlayingChange(
+			onIsPlayingChange: (PlaybackEvent.IsPlayingChange) -> Unit
+		): Boolean
+		fun getAndObservePlaybackSpeed(
+			onPlaybackSpeedChange: (PlaybackEvent.PlaybackSpeedChange) -> Unit
+		): Float
+		fun observeDiscontinuity(
+			onDiscontinuity: (PlaybackEvent.ProgressDiscontinuity) -> Unit
+		)
+		fun getAndObserveDurationChange(
+			onDurationChange: (Duration) -> Unit
+		): Duration
+
+		fun release()
+	}
 }

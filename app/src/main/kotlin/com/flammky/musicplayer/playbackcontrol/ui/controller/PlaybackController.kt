@@ -1,11 +1,21 @@
 package com.flammky.musicplayer.playbackcontrol.ui.controller
 
 import androidx.annotation.FloatRange
+import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlin.time.Duration
 
 internal interface PlaybackController {
+
+	/**
+	 * create a Playback Observer.
+	 */
+	fun createObserver(): PlaybackObserver
+
+	fun observePlayCommand(): Flow<Boolean>
+	fun observePauseCommand(): Flow<Boolean>
 
 
 	/**
@@ -25,6 +35,8 @@ internal interface PlaybackController {
 	fun requestSeekAsync(@FloatRange(from = 0.0, to = 1.0) progress: Float): Deferred<RequestResult>
 
 	fun requestSeekAsync(index: Int, startPosition: Duration): Deferred<RequestResult>
+
+	fun dispose()
 
 	/**
 	 * @param success whether the request is successful

@@ -58,7 +58,7 @@ import com.flammky.musicplayer.ui.main.compose.navigation.MainNavigator
 import com.flammky.musicplayer.ui.main.compose.navigation.MainNavigator.ProvideNavHostController
 import com.flammky.musicplayer.ui.main.compose.screens.root.PlaybackControl
 import com.flammky.musicplayer.ui.main.compose.theme.color.ColorHelper
-import com.flammky.musicplayer.ui.playbackcontrol.PlaybackBoxDetail
+import com.flammky.musicplayer.ui.playbackcontrol.DetailedPlaybackControl
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import timber.log.Timber
 import kotlin.math.roundToInt
@@ -85,6 +85,7 @@ fun MainActivityRoot(
 				Column {
 					StatusBarSpacer()
 					AnimatedMainAppNavigator(controller = MainNavigator.controller)
+					Timber.d("DEBUG: AppNavigator called")
 					navCalled.value = true
 				}
 				PlaybackControl(
@@ -94,12 +95,17 @@ fun MainActivityRoot(
 				)
 			}
 		}
-		PlaybackBoxDetail(
-			showSelf = showDetails,
-			attachBackHandler = remember { derivedStateOf { showDetails.value && navCalled.value } },
-			viewModel = activityViewModel(),
-			dismiss = { showDetails.value = false }
-		)
+
+		if (navCalled.value) {
+			DetailedPlaybackControl(
+				showSelfState = showDetails,
+				attachBackHandlerState = showDetails,
+				viewModel = activityViewModel(),
+				dismiss = { showDetails.value = false }
+			)
+		}
+
+		Timber.d("DEBUG: DetailedPlaybackControl called")
 	}
 }
 

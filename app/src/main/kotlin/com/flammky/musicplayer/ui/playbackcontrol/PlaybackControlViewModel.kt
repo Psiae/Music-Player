@@ -35,24 +35,19 @@ internal class PlaybackControlViewModel @Inject constructor(
 	private val presenter: PlaybackControlPresenter,
 ) : ViewModel() {
 
-	val playbackObserver: PlaybackObserver = presenter.observePlayback(
-		this,
-		CoroutineScope(viewModelScope.coroutineContext.job)
-	)
-
 	val playbackController: PlaybackController = presenter.createController(
 		this,
 		CoroutineScope(viewModelScope.coroutineContext.job)
 	)
 
+	val playbackObserver: PlaybackObserver = playbackController.createObserver()
+
+	override fun onCleared() {
+		presenter.dispose()
+	}
+
 	private val _metadataStateMap = mutableMapOf<String, StateFlow<PlaybackControlTrackMetadata>>()
 	private val _trackStreamFlow = MutableStateFlow(MediaConnection.Playback.TracksInfo())
-
-	init {
-		viewModelScope.launch {
-			mediaConnection.playback.observePlaylistStream().safeCollect { _trackStreamFlow.value = it }
-		}
-	}
 
 	private val _playbackPropertiesFlow = mediaConnection.playback.observePropertiesInfo()
 
@@ -76,6 +71,14 @@ internal class PlaybackControlViewModel @Inject constructor(
 	}.distinctUntilChanged()
 		.flatMapLatest { id -> observeMetadata(id) }
 		.stateIn(viewModelScope, SharingStarted.Lazily, PlaybackControlTrackMetadata())
+
+	init {
+		viewModelScope.launch {
+			mediaConnection.playback.observePlaylistStream().safeCollect { _trackStreamFlow.value = it }
+		}
+	}
+
+
 
 	// Inject as Dependency
 	fun observeMetadata(id: String): StateFlow<PlaybackControlTrackMetadata> {
@@ -135,10 +138,6 @@ internal class PlaybackControlViewModel @Inject constructor(
 	}
 	fun disableRepeatMode() {
 		mediaConnection.playback.setRepeatMode(Player.RepeatMode.OFF)
-	}
-
-	private suspend fun updatePagerDataForIndex(index: Int) {
-
 	}
 }
 

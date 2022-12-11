@@ -18,33 +18,57 @@ sealed interface PlaybackQueueChangeReason {
 	object MODIFY_QUEUE : PlaybackQueueChangeReason
 }
 
+sealed interface RepeatModeChangeReason {
+	object UNKNOWN : RepeatModeChangeReason
+}
+
+sealed interface ShuffleModeChangeReason {
+	object UNKNOWN : ShuffleModeChangeReason
+}
+
+sealed interface PlaybackSpeedChangeReason {
+	object UNKNOWN : PlaybackSpeedChangeReason
+}
+
+sealed interface IsPlayingChangeReason {
+	object UNKNOWN : IsPlayingChangeReason
+}
+
 sealed interface PlaybackEvent {
+
+	data class RepeatModeChange(
+		val old: RepeatMode,
+		val new: RepeatMode,
+		val reason: RepeatModeChangeReason
+	) : PlaybackEvent
+
+	data class ShuffleModeChange(
+		val old: ShuffleMode,
+		val new: ShuffleMode,
+		val reason: ShuffleModeChangeReason
+	) : PlaybackEvent
 
 	data class ProgressDiscontinuity(
 		val oldProgress: Duration,
 		val newProgress: Duration,
 		val reason: ProgressDiscontinuityReason
-	) : PlaybackEvent {
-		companion object {
-			val UNSET = ProgressDiscontinuity(
-				oldProgress = PlaybackConstants.PROGRESS_UNSET,
-				newProgress = PlaybackConstants.PROGRESS_UNSET,
-				reason = ProgressDiscontinuityReason.UNKNOWN
-			)
-		}
-	}
+	) : PlaybackEvent
 
 	data class QueueChange(
 		val old: PlaybackQueue,
 		val new: PlaybackQueue,
 		val reason: PlaybackQueueChangeReason
-	) : PlaybackEvent {
-		companion object {
-			val UNSET = QueueChange(
-				old = PlaybackQueue.UNSET,
-				new = PlaybackQueue.UNSET,
-				reason = PlaybackQueueChangeReason.UNKNOWN
-			)
-		}
-	}
+	) : PlaybackEvent
+
+	data class PlaybackSpeedChange(
+		val old: Float,
+		val new: Float,
+		val reason: PlaybackQueueChangeReason
+	) : PlaybackEvent
+
+	data class IsPlayingChange(
+		val old: Boolean,
+		val new: Boolean,
+		val reason: IsPlayingChangeReason
+	) : PlaybackEvent
 }

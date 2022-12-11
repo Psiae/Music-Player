@@ -215,13 +215,12 @@ interface LibraryPlayerEventListener {
 
 
 				override fun onTimelineChanged(timeline: Timeline, reason: Int) {
-					if (timeline != rememberTimeline) {
-						delegated.onTimelineChanged(rememberTimeline, timeline, reason)
-						rememberTimeline = timeline
-						val libTimeline = com.flammky.android.medialib.temp.media3.Timeline(player.durationMs.milliseconds)
-						delegated.onTimelineChanged(rememberLibTimeline, libTimeline, reason)
-						rememberLibTimeline = libTimeline
-					}
+					Timber.d("DEBUG_PlayerListener: onTimelineChanged: $timeline, $reason")
+					delegated.onTimelineChanged(rememberTimeline, timeline, reason)
+					rememberTimeline = timeline
+					val libTimeline = com.flammky.android.medialib.temp.media3.Timeline(player.durationMs.milliseconds)
+					delegated.onTimelineChanged(rememberLibTimeline, libTimeline, reason)
+					rememberLibTimeline = libTimeline
 				}
 
 				override fun onPositionDiscontinuity(

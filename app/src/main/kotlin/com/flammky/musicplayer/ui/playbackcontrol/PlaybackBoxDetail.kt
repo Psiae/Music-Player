@@ -1,7 +1,10 @@
 package com.flammky.musicplayer.ui.playbackcontrol
 
+import android.annotation.SuppressLint
 import android.content.pm.ActivityInfo
 import android.graphics.Bitmap
+import android.os.Parcel
+import android.os.Parcelable
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
@@ -54,21 +57,38 @@ import kotlin.reflect.KProperty
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
+/**
+ * @param showSelfState whether to show this composable
+ * @param attachBackHandlerState whether to attach the BackHandler, useful to ensure that the
+ */
 @Composable
-internal fun PlaybackBoxDetail(
-	showSelf: State<Boolean>,
-	attachBackHandler: State<Boolean>,
+internal fun DetailedPlaybackControl(
+	showSelfState: State<Boolean>,
+	attachBackHandlerState: State<Boolean>,
 	viewModel: PlaybackControlViewModel,
 	dismiss: () -> Unit
 ) {
 
-	// observe whether we should show ourselves
-	val visibility = if (showSelf.read()) Visibility.VISIBLE else Visibility.GONE
+	val visible = showSelfState.value
+	val attachBackHandler = attachBackHandlerState.value
 
-	if (visibility.isVisible) {
-		if (attachBackHandler.read()) BackHandler(onBack = dismiss)
-		// Consider Implementing landscape view
+	val savedTransitioned = rememberSaveable { mutableStateOf(false) }
+	// remember the first value we got from the saver
+	val rememberSavedTransitioned = remember { mutableStateOf(savedTransitioned.value) }
+
+	val localDismiss = remember(dismiss) {
+		{
+			savedTransitioned.value = false
+			dismiss()
+		}
+	}
+
+	if (visible) {
 		LockScreenOrientation(landscape = false)
+	}
+
+	if (attachBackHandler) {
+		BackHandler(onBack = localDismiss)
 	}
 
 	BoxWithConstraints(
@@ -80,105 +100,109 @@ internal fun PlaybackBoxDetail(
 		NoRipple {
 			Box(
 				modifier = Modifier
-					.fillMaxSize(fraction = if (visibility.isVisible) 1f else 0f)
+					.fillMaxSize(fraction = if (visible) 1f else 0f)
 					.clickable { }
 			)
 		}
 
 		// TODO: Something meaningful while transitioning
-		val animatedHeight = updateTransition(targetState = visibility, label = "")
+		val animatedHeight = updateTransition(targetState = visible, label = "")
 			.animateDp(
 				label = "",
 				transitionSpec = {
-					tween(
-						durationMillis = if (targetState.isVisible) 250 else 150,
-						easing = if (visibility.isVisible) FastOutSlowInEasing else LinearOutSlowInEasing
-					)
+					remember(targetState) {
+						tween(
+							durationMillis = when {
+								rememberSavedTransitioned.value -> 0
+								targetState -> 250
+								else -> 150
+							},
+							easing = if (targetState) FastOutSlowInEasing else LinearOutSlowInEasing
+						)
+					}
 				}
-			) { visibility ->
-				if (visibility.isVisible) maxHeight else 0.dp
+			) { visible ->
+				if (visible) maxHeight else 0.dp
+			}.also { state ->
+				if (state.value == maxHeight) { savedTransitioned.value = true }
 			}
 
 		PlaybackBoxDetailTransition(
-			target = maxHeight,
-			heightState = animatedHeight,
-			viewModel,
-			dismiss
+			heightTargetDp = maxHeight,
+			heightDpState = animatedHeight,
+			viewModel = viewModel,
+			dismiss = localDismiss
 		)
+
+		rememberSavedTransitioned.value = false
 	}
 }
 
 @Composable
 private fun PlaybackBoxDetailTransition(
-	target: Dp,
-	heightState: State<Dp>,
+	heightTargetDp: Dp,
+	heightDpState: State<Dp>,
 	viewModel: PlaybackControlViewModel,
 	dismiss: () -> Unit
 ) {
-	val savedTransitioned = rememberSaveable { mutableStateOf(false) }
-	val transitioned = remember { mutableStateOf(false) }
-	val childLoaded = remember { mutableStateOf(false) }
+	val transitionedState = remember { mutableStateOf(false) }
+	val yOffset = heightTargetDp - heightDpState.value
 
-	val yOffset =
-		if (savedTransitioned.value) 0.dp else -(heightState.read() - target)
+	when (yOffset) {
+		// no offset, fully visible
+		0.dp -> transitionedState.value = true
+		// target offset, fully hidden
+		heightTargetDp -> transitionedState.value = false
+	}
+
+	Timber.d("DEBUG_DetailTransition: yOffset($yOffset) transitioned(${transitionedState.value})")
 
 	Box(
 		modifier = Modifier
 			.offset(0.dp, yOffset)
-			.height(target)
+			.height(heightTargetDp)
 			.fillMaxWidth()
 			.background(
 				Theme
 					.dayNightAbsoluteColor()
-					.copy(alpha = 0.9f)
+					.copy(alpha = 0.94f)
 			)
 	) {
-		when (0.dp) {
-			-yOffset -> {
-				transitioned.overwrite(true)
-			}
-			heightState.read() -> {
-				transitioned.overwrite(false)
-			}
-		}
-		val animatedAlpha = animateFloatAsState(
-			targetValue = if (transitioned.value && childLoaded.value) 1f else 0f,
-			animationSpec = tween(if (transitioned.value) 250 else 0)
-		)
-		Box(
-			modifier = Modifier.alpha(animatedAlpha.read())
-		) {
-			if (yOffset != target) {
-				playbackBoxDetails(viewModel) {
-					savedTransitioned.overwrite(false)
-					dismiss()
-				}.also { readyState ->
-					if (readyState.value) childLoaded.value = true
-				}
+
+
+		Box {
+			// on a xOffset a positive value is right, negative value is left
+			// on a yOffset a positive value is down, negative value is up
+			// offset == 0 means there is no offset applied which is the full visibility
+			// offset > 0 && offset < target means the offset partially hide the layout
+			// offset >= target means the offset fully hide the layout
+			if (yOffset != heightTargetDp) {
+				// load the composable when it should be visible, forget it otherwise
+				PlaybackBoxDetails(
+					viewModel = viewModel,
+					transitionedState = transitionedState,
+					dismiss = dismiss
+				)
 			}
 		}
 	}
 }
 
 @Composable
-private fun playbackBoxDetails(
+private fun PlaybackBoxDetails(
 	viewModel: PlaybackControlViewModel,
+	transitionedState: State<Boolean>,
 	dismiss: () -> Unit
-): State<Boolean> {
-	val childrenReadyState = remember {
-		mutableStateListOf<Boolean>()
-	}
-
-	childrenReadyState.clear()
-
-	// Change to Guard until we implement horizontal orientation
-	AssertVerticalOrientation()
-	Box(modifier = Modifier
-		.fillMaxSize()
-		.background(Theme.backgroundColor())
-	) {
+) {
+	Box(modifier = Modifier.fillMaxSize()) {
 		// we should find alternatives for light mode
-		RadialPlaybackBackground(viewModel = viewModel)
+		val animatedAlpha = animateFloatAsState(
+			targetValue = if (transitionedState.value) 1f else 0f,
+			animationSpec = tween(if (transitionedState.value) 250 else 0)
+		).value
+		Box(modifier = Modifier.alpha(animatedAlpha)) {
+			RadialPlaybackBackground(viewModel = viewModel)
+		}
 		Column(
 			modifier = Modifier
 				.fillMaxSize()
@@ -188,15 +212,10 @@ private fun playbackBoxDetails(
 				Spacer(modifier = Modifier.height(10.dp))
 				DetailToolbar(dismiss)
 				Spacer(modifier = Modifier.height(20.dp))
-				childrenReadyState.add(detailsContent(viewModel).value)
+				Box(modifier = Modifier.alpha(animatedAlpha)) {
+					DetailsContent(viewModel)
+				}
 			}
-		}
-	}
-
-	return remember {
-		derivedStateOf {
-			@Suppress("SimplifyBooleanWithConstants")
-			childrenReadyState.none { it == false }
 		}
 	}
 }
@@ -252,19 +271,13 @@ private fun RowScope.DismissAction(
 
 
 @Composable
-private fun detailsContent(
+private fun DetailsContent(
 	viewModel: PlaybackControlViewModel
-): State<Boolean> {
-	val childrenReadyState = remember {
-		mutableStateListOf<Boolean>()
-	}
-
-	childrenReadyState.clear()
-
-	BoxWithConstraints {
+) {
+	BoxWithConstraints() {
 		val maxHeight = maxHeight
 		val maxWidth = maxWidth
-		val durationState = viewModel.playbackObserver.collectDuration().collectAsState()
+
 		val trackState = viewModel.trackStreamStateFlow.collectAsState()
 		Column(
 			modifier = Modifier.fillMaxSize(),
@@ -275,10 +288,9 @@ private fun detailsContent(
 			Spacer(modifier = Modifier.height(15.dp))
 			CurrentTrackPlaybackDescriptions(viewModel = viewModel)
 			Spacer(modifier = Modifier.height(15.dp))
-			playbackControlProgressSeekbar(
+			PlaybackControlProgressSeekbar(
 				maxWidth = maxWidth,
 				playbackObserver = viewModel.playbackObserver,
-				durationState = durationState,
 				trackState = trackState,
 				seek = { _, pos ->
 					viewModel.playbackController.requestSeekAsync(pos.milliseconds).await().let { result ->
@@ -286,21 +298,12 @@ private fun detailsContent(
 						result.success
 					}
 				}
-			).also { readyState ->
-				childrenReadyState.add(readyState.value)
-			}
+			)
 			Spacer(modifier = Modifier.height(5.dp))
 			PlaybackControls(viewModel)
 			Spacer(modifier = Modifier
 				.fillMaxWidth()
 				.height(2f / 10 * maxHeight))
-		}
-	}
-
-	return remember {
-		derivedStateOf {
-			@Suppress("SimplifyBooleanWithConstants")
-			childrenReadyState.none { it == false }
 		}
 	}
 }
@@ -757,17 +760,19 @@ private fun PlaybackControlButtons(
 }
 
 @Composable
-private fun playbackControlProgressSeekbar(
+private fun PlaybackControlProgressSeekbar(
 	maxWidth: Dp,
-	durationState: State<Duration>,
 	trackState: State<PlaybackDetailTracksInfo>,
 	playbackObserver: PlaybackObserver,
 	seek: suspend (Int, Long) -> Boolean
-): State<Boolean> {
-	val sliderCollectorReady = remember {
+) {
+	val sliderPositionCollectorReady = remember {
 		mutableStateOf(false)
 	}
-	val sliderTextCollectorReady = remember {
+	val sliderTextPositionCollectorReady = remember {
+		mutableStateOf(false)
+	}
+	val sliderDurationCollectorReady = remember {
 		mutableStateOf(false)
 	}
 	val sliderReady = remember {
@@ -783,45 +788,70 @@ private fun playbackControlProgressSeekbar(
 		maxWidth * 0.85f
 	}
 
-	val sliderPositionState = remember {
-		val collector = playbackObserver.createProgressionCollector(
-			collectorScope = coroutineScope,
+	val sliderPositionCollector = remember {
+		playbackObserver.createProgressionCollector(
+			collectorContext = coroutineScope.coroutineContext,
 			includeEvent = true,
-		)
-		coroutineScope.launch {
-			collector.startCollectProgress().join()
-			sliderCollectorReady.value = true
+		).apply {
+			coroutineScope.launch {
+				startCollectProgress().join()
+				sliderPositionCollectorReady.value = true
+			}
+			setIntervalHandler { _, progress, duration, speed ->
+				// interval for next visible `tick` of the slider thumb, every 1.dp
+				(duration.inWholeMilliseconds / sliderWidth.value / speed).toLong().milliseconds
+					.also {
+						Timber.d("Playback_Slider_Debug: intervalHandler($it) param: $progress $duration $speed")
+					}
+			}
 		}
-		collector.setIntervalHandler { _, progress, duration, speed ->
-			// interval for next visible `tick` of the slider thumb, every 1.dp
-			(duration.inWholeMilliseconds / sliderWidth.value / speed).toLong().milliseconds
-				.also {
-					Timber.d("Playback_Slider_Debug: intervalHandler($it) param: $progress $duration $speed")
-				}
-		}
-		collector.progressStateFlow
-	}.collectAsState()
+	}
 
-	val sliderTextPositionState = remember {
-		val collector = playbackObserver.createProgressionCollector(
-			collectorScope = coroutineScope,
+	val sliderPositionState = sliderPositionCollector.progressStateFlow.collectAsState()
+
+	val sliderTextPositionCollector = remember {
+		playbackObserver.createProgressionCollector(
+			collectorContext = coroutineScope.coroutineContext,
 			includeEvent = true,
-		)
-		coroutineScope.launch {
-			collector.startCollectProgress().join()
-			sliderTextCollectorReady.value = true
+		).apply {
+			coroutineScope.launch {
+				startCollectProgress().join()
+				sliderTextPositionCollectorReady.value = true
+			}
 		}
-		collector.progressStateFlow
-	}.collectAsState()
+	}
+
+	val sliderTextPositionState = sliderTextPositionCollector.progressStateFlow.collectAsState()
+
+	val durationCollector = remember {
+		playbackObserver.createDurationCollector(
+			collectorContext = coroutineScope.coroutineContext
+		).apply {
+			coroutineScope.launch {
+				startCollect().join()
+				sliderDurationCollectorReady.value = true
+			}
+		}
+	}
+
+	val durationState = durationCollector.durationStateFlow.collectAsState()
 
 	val ready = remember {
 		derivedStateOf { sliderReady.value && sliderTextReady.value }
 	}
 
-	if (!sliderCollectorReady.value or !sliderTextCollectorReady.value) {
-		return ready
-	} else {
-		sliderReady.value = true ; sliderTextReady.value = true
+	val alpha = if (ready.value) 1f else 0f
+
+	if (sliderPositionCollectorReady.value && sliderDurationCollectorReady.value) {
+		sliderReady.value = true
+	}
+
+	if (sliderTextPositionCollectorReady.value && sliderDurationCollectorReady.value) {
+		sliderTextReady.value = true
+	}
+
+	if (!sliderReady.value || !sliderTextReady.value) {
+		return
 	}
 
 	val position by sliderPositionState
@@ -841,11 +871,10 @@ private fun playbackControlProgressSeekbar(
 	}
 
 	// consume the `animate` composable, it will recreate a new state so it will not animate
-	val consumeAnimation = remember { mutableStateOf(0) }
+	// should the first visible progress be animated ?
+	val consumeAnimation = remember { mutableStateOf(1) }
 
-	val suppressValue = draggedState.value ||
-		pressedState.value ||
-		changedValue.value >= 0
+	val suppressValue = draggedState.value or pressedState.value or (changedValue.value >= 0)
 
 	require((seekRequests.value == 0) or (consumeAnimation.value > 0)) {
 		"seekRequest should be followed by consumeAnimation"
@@ -870,68 +899,73 @@ private fun playbackControlProgressSeekbar(
 		}
 	}
 
-	Slider(
+	Column(
 		modifier = Modifier
-			.width(sliderWidth)
-			.height(16.dp),
-		value = sliderValue,
-		// unfortunately There's no guarantee these 2 will be called in order
-		onValueChange = { value ->
-			Timber.d("Slider_DEBUG: onValueChange: $value")
-			changedValue.value = value
-		},
-		onValueChangeFinished = {
-			Timber.d("Slider_DEBUG: onValueChangeFinished: ${changedValue.value}")
-			changedValue.value.takeIf { it >= 0 }?.let {
-				seekRequests.value++
-				consumeAnimation.value++
-				coroutineScope.launch {
-					val seekTo = (duration.inWholeMilliseconds * it).toLong()
-					// should this be async ?
-					seek(trackState.value.currentIndex, seekTo)
-					if (--seekRequests.value == 0) {
-						changedValue.value = -1f
-					}
-				}
-				return@Slider
-			}
-			if (seekRequests.value == 0) changedValue.value = -1f
-		},
-		interactionSource = interactionSource,
-		trackHeight = 6.dp,
-		thumbSize = 12.dp,
-		colors = SliderDefaults.colors(
-			activeTrackColor = Theme.dayNightAbsoluteContentColor(),
-			thumbColor = Theme.dayNightAbsoluteContentColor()
-		)
-	)
-
-	Spacer(modifier = Modifier.height(3.dp))
-
-	BoxWithConstraints {
-		// Width of the Slider track, which is maxWidth minus Thumb Radius on both side
-		val width = maxWidth * 0.85f - 14.dp
-		Row(
-			modifier = Modifier.width(width),
-			verticalAlignment = Alignment.CenterVertically,
-			horizontalArrangement = Arrangement.SpaceBetween
-		) {
-			PlaybackProgressSliderText(
-				progressState = sliderTextPositionState.rememberDerive(
-					calculation = { raw ->
-						if (changedValue.value >= 0) {
-							changedValue.value
-						} else {
-							raw.inWholeMilliseconds / durationState.value.inWholeMilliseconds.toFloat()
+			.fillMaxWidth()
+			.alpha(alpha),
+		horizontalAlignment = Alignment.CenterHorizontally
+	) {
+		Slider(
+			modifier = Modifier
+				.width(sliderWidth)
+				.height(16.dp),
+			value = sliderValue,
+			// unfortunately There's no guarantee these 2 will be called in order
+			onValueChange = { value ->
+				Timber.d("Slider_DEBUG: onValueChange: $value")
+				changedValue.value = value
+			},
+			onValueChangeFinished = {
+				Timber.d("Slider_DEBUG: onValueChangeFinished: ${changedValue.value}")
+				changedValue.value.takeIf { it >= 0 }?.let {
+					seekRequests.value++
+					consumeAnimation.value++
+					coroutineScope.launch {
+						val seekTo = (duration.inWholeMilliseconds * it).toLong()
+						// should this be async ?
+						seek(trackState.value.currentIndex, seekTo)
+						if (--seekRequests.value == 0) {
+							changedValue.value = -1f
 						}
 					}
-				),
-				durationState = durationState
+					return@Slider
+				}
+				if (seekRequests.value == 0) changedValue.value = -1f
+			},
+			interactionSource = interactionSource,
+			trackHeight = 6.dp,
+			thumbSize = 12.dp,
+			colors = SliderDefaults.colors(
+				activeTrackColor = Theme.dayNightAbsoluteContentColor(),
+				thumbColor = Theme.dayNightAbsoluteContentColor()
 			)
+		)
+
+		Spacer(modifier = Modifier.height(3.dp))
+
+		BoxWithConstraints {
+			// Width of the Slider track, which is maxWidth minus Thumb Radius on both side
+			val width = maxWidth * 0.85f - 14.dp
+			Row(
+				modifier = Modifier.width(width),
+				verticalAlignment = Alignment.CenterVertically,
+				horizontalArrangement = Arrangement.SpaceBetween
+			) {
+				PlaybackProgressSliderText(
+					progressState = sliderTextPositionState.rememberDerive(
+						calculation = { raw ->
+							if (changedValue.value >= 0) {
+								changedValue.value
+							} else {
+								raw.inWholeMilliseconds / durationState.value.inWholeMilliseconds.toFloat()
+							}
+						}
+					),
+					durationState = durationState
+				)
+			}
 		}
 	}
-
-	return ready
 }
 
 @Composable
@@ -1004,7 +1038,8 @@ private inline val Visibility.isVisible
 
 @Composable
 private fun LockScreenOrientation(landscape: Boolean) {
-	val activity = LocalContext.current.findActivity() ?: return
+	val activity = LocalContext.current.findActivity()
+		?: error("cannot Lock Screen Orientation, LocalContext is not an Activity")
 	DisposableEffect(key1 = Unit) {
 		val original = activity.requestedOrientation
 		activity.requestedOrientation =
@@ -1032,6 +1067,9 @@ private fun AssertVerticalOrientation(lazyMessage: (Int) -> Any = {}) {
 		val int = contextHelper.configurations.orientationInt
 		"AssertVerticalLayout detected non-portrait orientation: ${int}\n" +
 			"msg: ${lazyMessage(int)}"
+	}
+	BoxWithConstraints {
+		check(maxHeight >= maxWidth)
 	}
 }
 
@@ -1061,7 +1099,19 @@ private inline fun <T> MutableState<T>.rewrite(value: (T) -> T) {
 	this.value = value(this.value)
 }
 
-private class ValueWrapper <T> (var value: T)
+@SuppressLint("BanParcelableUsage", "ParcelCreator")
+private class ValueWrapper <T> (
+	@get:Synchronized
+	@set:Synchronized
+	var value: T
+) : Parcelable {
+	override fun describeContents(): Int = 0
+
+	override fun writeToParcel(p0: Parcel, p1: Int) {
+		p0.writeValue(value)
+	}
+}
+
 private operator fun <T> ValueWrapper<T>.getValue(receiver: Any?, property: KProperty<*>): T = value
 private operator fun <T> ValueWrapper<T>.setValue(receiver: Any?, property: KProperty<*>, value: T) {
 	this.value = value

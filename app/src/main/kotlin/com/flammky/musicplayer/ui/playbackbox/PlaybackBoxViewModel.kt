@@ -63,7 +63,9 @@ class PlaybackBoxViewModel @Inject constructor(
 	fun play() = mediaConnectionDelegate.play()
 	fun pause() = mediaConnectionDelegate.pause()
 
-	fun seekIndex(index: Int) = mediaConnection.playback.seekIndex(index, 0)
+	fun seekIndex(index: Int) {
+		viewModelScope.launch { mediaConnection.playback.joinSuspend { seekIndex(index, 0) } }
+	}
 
 	suspend fun observeMetadata(id: String): Flow<MediaMetadata?> {
 		return mediaConnectionDelegate.repository.observeMetadata(id)

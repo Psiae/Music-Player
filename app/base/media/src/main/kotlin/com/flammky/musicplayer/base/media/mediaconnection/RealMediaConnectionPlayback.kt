@@ -14,11 +14,13 @@ import com.flammky.android.medialib.temp.player.event.LibraryPlayerEventListener
 import com.flammky.android.medialib.temp.player.event.PlayWhenReadyChangedReason
 import com.flammky.android.medialib.temp.player.playback.RepeatMode.Companion.toRepeatModeInt
 import com.flammky.common.kotlin.coroutines.safeCollect
+import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.*
 import kotlinx.coroutines.android.asCoroutineDispatcher
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.guava.future
 import timber.log.Timber
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -39,6 +41,9 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 		set(value) {
 			if (value) s.mediaController.play() else s.mediaController.pause()
 		}
+
+	override val publicLooper: Looper
+		get() = s.mediaController.publicLooper
 
 	override val playing: Boolean
 		get() = s.mediaController.isPlaying
@@ -78,6 +83,14 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 			// ERROR
 			else -> error("Unknown Player State $state")
 		}
+
+	override fun post(block: MediaConnectionPlayback.() -> Unit): Unit {
+		playerScope.launch { block() }
+	}
+
+	override fun <R> future(block: MediaConnectionPlayback.() -> R): ListenableFuture<R> {
+		return playerScope.future { block() }
+	}
 
 	override fun getPlaylist(): List<MediaItem> {
 		return s.mediaController.getAllMediaItem()
@@ -224,15 +237,18 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 				observeMediaItemTransition().safeCollect {
 					// our first `UNSET` duration callback is given by MediaItemTransition
 					send(Contract.POSITION_UNSET)
+					Timber.d("DEBUG_observeDurationChange emitted: ${Contract.POSITION_UNSET}")
 				}
 			}
 			val job2 = coroutineScope.launch {
 				observeTimelineChange().safeCollect {
 					// our first `SET` duration callback is given by TimeLineChanged
 					send(it.duration)
+					Timber.d("DEBUG_observeDurationChange emitted: ${it.duration}")
 				}
 			}
 			awaitClose {
+				Timber.d("DEBUG_observeDurationChange closed")
 				job1.cancel()
 				job2.cancel()
 			}
@@ -286,8 +302,10 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 				}
 			}
 			s.mediaController.addListener(timelineObserver)
+			Timber.d("MediaConnectionPlayback observeTimelineChange attached")
 			awaitClose {
 				s.mediaController.removeListener(timelineObserver)
+				Timber.d("MediaConnectionPlayback observeTimelineChange closed")
 			}
 		}
 	}

@@ -3,6 +3,7 @@ package com.flammky.musicplayer.domain.media
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.musicplayer.base.media.mediaconnection.MediaConnectionDelegate
 import com.flammky.musicplayer.media.mediaconnection.playback.PlaybackConnection
+import com.flammky.musicplayer.media.mediaconnection.playback.real.RealPlaybackConnection
 import com.flammky.musicplayer.ui.playbackcontrol.PlaybackControlPresenter
 import com.flammky.musicplayer.ui.playbackcontrol.RealPlaybackControlPresenter
 import dagger.Provides
@@ -21,15 +22,21 @@ object MediaModule {
 
 	@Provides
 	@Singleton
-	fun providePlaybackConnection(mediaConnection: MediaConnection): PlaybackConnection {
-		return mediaConnection as PlaybackConnection
+	fun providePlaybackConnection(
+		delegate: MediaConnectionDelegate,
+		media: MediaConnection
+	): PlaybackConnection {
+		val looper = delegate.playback.publicLooper
+		return RealPlaybackConnection(looper).also {
+			it.setCurrentSession((media as RealMediaConnection).playbackSession)
+		}
 	}
 
 	@Provides
 	internal fun providePlaybackControlPresenter(
 		dispatchers: AndroidCoroutineDispatchers,
-		playbackConnectionContext: PlaybackConnection
+		playbackConnection: PlaybackConnection
 	): PlaybackControlPresenter {
-		return RealPlaybackControlPresenter(dispatchers, playbackConnectionContext)
+		return RealPlaybackControlPresenter(dispatchers, playbackConnection)
 	}
 }

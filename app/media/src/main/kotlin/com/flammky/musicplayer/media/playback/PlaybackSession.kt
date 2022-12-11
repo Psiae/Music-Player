@@ -1,10 +1,10 @@
 package com.flammky.musicplayer.media.playback
 
-class PlaybackSession private constructor(
+/**
+ * a class that represents a playback session
+ */
+class PlaybackSession constructor(
 	val id: String,
 	val controller: PlaybackController,
 ) {
-
-
-
 }

@@ -1,13 +1,17 @@
 package com.flammky.musicplayer.base.media.mediaconnection
 
 import android.net.Uri
+import android.os.Looper
 import com.flammky.android.medialib.common.mediaitem.MediaItem
 import com.flammky.android.medialib.player.Player
 import com.flammky.android.medialib.temp.media3.Timeline
+import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.flow.Flow
 import kotlin.time.Duration
 
 interface MediaConnectionPlayback {
+	val publicLooper: Looper
+
 	var playWhenReady: Boolean
 	val playing: Boolean
 	val index: Int
@@ -63,6 +67,8 @@ interface MediaConnectionPlayback {
 
 	fun seekToPosition(position: Long): Boolean
 	suspend fun <R> joinDispatcher(block: suspend MediaConnectionPlayback.() -> R): R
+	fun post(block: MediaConnectionPlayback.() -> Unit)
+	fun <R> future(block: MediaConnectionPlayback.() -> R): ListenableFuture<R>
 
 	fun notifyUnplayableMedia(id: String)
 	fun notifyUnplayableMedia(uri: Uri)

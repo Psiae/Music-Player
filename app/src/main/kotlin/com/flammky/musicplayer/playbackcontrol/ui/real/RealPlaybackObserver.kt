@@ -12,7 +12,8 @@ typealias ProgressDiscontinuityListener = suspend (PlaybackEvent.ProgressDiscont
 typealias IsPlayingListener = suspend (Boolean) -> Unit
 
 @OptIn(ExperimentalStdlibApi::class, ExperimentalCoroutinesApi::class)
-/* internal */ class /* Debug */ RealPlaybackObserver(
+internal class /* Debug */ RealPlaybackObserver(
+	private val controller: RealPlaybackController,
 	private val parentScope: CoroutineScope,
 	private val playbackConnection: PlaybackConnection
 ) : PlaybackObserver {
@@ -67,7 +68,7 @@ typealias IsPlayingListener = suspend (Boolean) -> Unit
 		val supervisor = SupervisorJob(collectorJob)
 		val confinedScope = CoroutineScope(context = supervisor + dispatcher)
 		return RealPlaybackDurationCollector(
-			observer = this,
+			parentObserver = this,
 			scope = confinedScope,
 			playbackConnection = playbackConnection,
 		).also {
@@ -133,12 +134,13 @@ typealias IsPlayingListener = suspend (Boolean) -> Unit
 	override fun dispose() {
 		sync {
 			if (_disposed) {
-				return
+				return /* checkDisposedState() */
 			}
 			parentScope.cancel()
 			disposeCollectors()
 			_disposed = true
 		}
+		controller.notifyObserverDisposed(this)
 	}
 
 	private fun disposeCollectors() {
@@ -161,7 +163,7 @@ typealias IsPlayingListener = suspend (Boolean) -> Unit
 			val actual = this
 			val copy = ArrayList(this)
 			var count = copy.size
-			for (collector in this) {
+			for (collector in copy) {
 				collector.dispose()
 				check(actual.size == --count) {
 					"PlaybackCollector($collector) did not notify " +

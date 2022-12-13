@@ -19,7 +19,6 @@ import com.flammky.musicplayer.ui.playbackcontrol.PlaybackDetailTracksInfo.Compa
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.job
@@ -37,7 +36,7 @@ internal class PlaybackControlViewModel @Inject constructor(
 
 	val playbackController: PlaybackController = presenter.createController(
 		this,
-		CoroutineScope(viewModelScope.coroutineContext.job)
+		viewModelScope.coroutineContext.job
 	)
 
 	val playbackObserver: PlaybackObserver = playbackController.createObserver()

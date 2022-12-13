@@ -20,7 +20,7 @@ interface PlaybackController {
 	fun setRepeatMode(mode: RepeatMode): Boolean
 	fun setShuffleMode(mode: ShuffleMode): Boolean
 	fun seekProgress(progress: Duration): Boolean
-	fun seekIndex(index: Int, progress: Duration): Boolean
+	fun seekIndex(index: Int, startPosition: Duration): Boolean
 
 	/**
 	 * Acquire Observer for the specified owner, Get Or Create
@@ -28,10 +28,11 @@ interface PlaybackController {
 	fun acquireObserver(owner: Any): Observer
 
 	fun releaseObserver(owner: Any)
+	fun hasObserver(owner: Any): Boolean
 
 	fun inLooper(): Boolean
 
-	suspend fun <R> withContext(block: PlaybackController.() -> R): R
+	suspend fun <R> withContext(block: suspend PlaybackController.() -> R): R
 
 	/**
 	 * Observer interface for this controller, callbacks will be called from the controller Looper

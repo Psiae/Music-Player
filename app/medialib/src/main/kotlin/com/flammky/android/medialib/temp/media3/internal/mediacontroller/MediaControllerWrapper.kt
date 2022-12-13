@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.Looper
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
@@ -479,7 +480,9 @@ class MediaControllerWrapper internal constructor(
 			get() = maybeControllerValue(fallbackInfo.noDurationMs) { it.totalBufferedDuration }
 
 		override val durationMs: Long
-			get() = maybeControllerValue(fallbackInfo.noDurationMs) { it.duration }
+			get() = maybeControllerValue(fallbackInfo.noDurationMs) {
+				it.duration.takeIf { duration -> duration != C.TIME_UNSET } ?: fallbackInfo.noDurationMs
+			}
 
 		override val speed: Float
 			get() = maybeControllerValue(1f) { it.playbackParameters.speed }

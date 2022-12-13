@@ -4,16 +4,16 @@ import com.flammky.musicplayer.media.mediaconnection.playback.PlaybackConnection
 import com.flammky.musicplayer.media.playback.PlaybackConstants
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
-import timber.log.Timber
 import kotlin.time.Duration
 
-class RealPlaybackDurationCollector(
-	private val observer: RealPlaybackObserver,
+internal class RealPlaybackDurationCollector(
+	private val parentObserver: RealPlaybackObserver,
 	private val scope: CoroutineScope,
 	private val playbackConnection: PlaybackConnection
 ) : PlaybackObserver.DurationCollector {
-
+	// unfortunately identity check is not allowed
 	private val _durationStateFlow = MutableStateFlow<Duration?>(null)
 
 	private var _job: Job? = null
@@ -38,47 +38,53 @@ class RealPlaybackDurationCollector(
 	}
 
 	override fun stopObserve(): Job {
-		val launch = scope.launch {
+		return scope.launch() {
 			if (_job?.isActive != true) {
 				return@launch
 			}
 			_job?.cancel()
 				?: error("Concurrency Error")
 		}
-		return scope.launch(start = CoroutineStart.LAZY) {
-			launch.join()
-		}
 	}
 
 	override fun dispose() {
 		// as the session is observed within the scope, this is enough
 		scope.cancel()
-		observer.notifyCollectorDisposed(this)
+		parentObserver.notifyCollectorDisposed(this)
 	}
 
-	@OptIn(ExperimentalStdlibApi::class)
 	private fun collectDuration(): Job {
 		return scope.launch {
 			val owner = Any()
-			var job: Job? = null
-			playbackConnection.observeCurrentSession().distinctUntilChanged().collect { session ->
-				job?.cancel()
-				if (session == null) {
-					return@collect
-				}
-				job = launch {
-					val observer = session.controller.acquireObserver(owner)
-					_durationStateFlow.value = observer.getAndObserveDurationChange { new ->
-						_durationStateFlow.value = new
+			var listenerJob: Job? = null
+			playbackConnection.observeCurrentSession().distinctUntilChanged()
+				.transform { session ->
+					listenerJob?.cancel()
+					if (session == null) {
+						emit(PlaybackConstants.DURATION_UNSET)
+						return@transform
 					}
-					try {
-						awaitCancellation()
-					} finally {
-						Timber.d("DEBUG_DurationCollector: release observer")
-						session.controller.releaseObserver(owner)
+					val channel = Channel<Duration>(1)
+					listenerJob = launch {
+						try {
+							session.controller.acquireObserver(owner).let { observer ->
+								val get = observer.getAndObserveDurationChange { new ->
+									channel.trySend(new)
+								}
+								channel.send(get)
+							}
+							awaitCancellation()
+						} finally {
+							channel.close()
+							session.controller.releaseObserver(owner)
+						}
 					}
+					emitAll(channel.consumeAsFlow())
 				}
-			}
+				.onCompletion {
+					listenerJob?.cancel()
+				}
+				.collect(_durationStateFlow)
 		}
 	}
 }

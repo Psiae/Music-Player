@@ -107,8 +107,8 @@ class RealMediaConnection(
 		return delegate.playback.seekToPosition(progress.inWholeMilliseconds)
 	}
 
-	override fun seekIndex(index: Int, progress: Duration): Boolean {
-		return delegate.playback.index != index && delegate.playback.seekToIndex(index, progress.inWholeMilliseconds)
+	override fun seekIndex(index: Int, startPosition: Duration): Boolean {
+		return delegate.playback.index != index && delegate.playback.seekToIndex(index, startPosition.inWholeMilliseconds)
 	}
 
 	override fun setPlayWhenReady(playWhenReady: Boolean): Boolean {
@@ -194,14 +194,6 @@ class RealMediaConnection(
 				}
 			}
 
-			scope.launch {
-
-				delegate.playback.joinDispatcher {
-					observeIsPlayingChange().collect {
-						onDurationChange(duration)
-					}
-				}
-			}
 			return duration
 		}
 
@@ -220,11 +212,15 @@ class RealMediaConnection(
 		return owners.sync { remove(owner)?.release() }
 	}
 
+	override fun hasObserver(owner: Any): Boolean {
+		return owners.sync { contains(owner) }
+	}
+
 	override fun inLooper(): Boolean {
 		return Looper.myLooper() == delegate.playback.publicLooper
 	}
 
-	override suspend fun <R> withContext(block: PlaybackController.() -> R): R {
+	override suspend fun <R> withContext(block: suspend PlaybackController.() -> R): R {
 		return delegate.playback.joinDispatcher { block() }
 	}
 

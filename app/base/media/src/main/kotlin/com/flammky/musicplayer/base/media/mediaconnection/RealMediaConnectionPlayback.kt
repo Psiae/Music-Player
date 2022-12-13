@@ -236,14 +236,16 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 			val job1 = coroutineScope.launch {
 				observeMediaItemTransition().safeCollect {
 					// our first `UNSET` duration callback is given by MediaItemTransition
-					send(Contract.POSITION_UNSET)
+					// if duration() is already set, onTimelineChange will actually not be called
+					send(duration())
 					Timber.d("DEBUG_observeDurationChange emitted: ${Contract.POSITION_UNSET}")
 				}
 			}
 			val job2 = coroutineScope.launch {
 				observeTimelineChange().safeCollect {
 					// our first `SET` duration callback is given by TimeLineChanged
-					send(it.duration)
+					// or onMediaItemTransition if already cached
+					send(duration())
 					Timber.d("DEBUG_observeDurationChange emitted: ${it.duration}")
 				}
 			}

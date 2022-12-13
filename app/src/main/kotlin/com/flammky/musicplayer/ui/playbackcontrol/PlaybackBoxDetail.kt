@@ -966,6 +966,14 @@ private fun PlaybackControlProgressSeekbar(
 			}
 		}
 	}
+
+	DisposableEffect(key1 = null) {
+		onDispose {
+			sliderPositionCollector.dispose()
+			sliderTextPositionCollector.dispose()
+			durationCollector.dispose()
+		}
+	}
 }
 
 @Composable

@@ -62,6 +62,10 @@ class RealPlaybackController(
 		TODO("Not yet implemented")
 	}
 
+	override fun hasObserver(owner: Any): Boolean {
+		TODO("Not yet implemented")
+	}
+
 	override fun setPlayWhenReady(playWhenReady: Boolean): Boolean {
 		TODO("Not yet implemented")
 	}
@@ -82,7 +86,7 @@ class RealPlaybackController(
 		TODO("Not yet implemented")
 	}
 
-	override fun seekIndex(index: Int, progress: Duration): Boolean {
+	override fun seekIndex(index: Int, startPosition: Duration): Boolean {
 		TODO("Not yet implemented")
 	}
 
@@ -90,7 +94,7 @@ class RealPlaybackController(
 		TODO("Not yet implemented")
 	}
 
-	override suspend fun <R> withContext(block: PlaybackController.() -> R): R {
+	override suspend fun <R> withContext(block: suspend PlaybackController.() -> R): R {
 		TODO("Not yet implemented")
 	}
 

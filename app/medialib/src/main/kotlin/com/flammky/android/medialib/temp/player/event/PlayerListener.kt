@@ -215,7 +215,6 @@ interface LibraryPlayerEventListener {
 
 
 				override fun onTimelineChanged(timeline: Timeline, reason: Int) {
-					Timber.d("DEBUG_PlayerListener: onTimelineChanged: $timeline, $reason")
 					delegated.onTimelineChanged(rememberTimeline, timeline, reason)
 					rememberTimeline = timeline
 					val libTimeline = com.flammky.android.medialib.temp.media3.Timeline(player.durationMs.milliseconds)

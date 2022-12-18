@@ -25,16 +25,18 @@ class RealPlaybackConnection(
 
 	private val _sessionLock = ReentrantLock(true)
 	private val _sessionMap = mutableMapOf<String, PlaybackSession>()
-	private val _sessionListeners = mutableListOf<(PlaybackSession?) -> Unit>()
+	private val _sessionListenersMap = mutableMapOf<String, MutableList<(PlaybackSession?) -> Unit>>()
 	private var _session: PlaybackSession? = null
 
 	override fun getSession(id: String?): PlaybackSession? {
 		return _sessionLock.withLock {
-			if (id == null) _session else _sessionMap[id].also { check(it?.id == id) }
+			if (id == null) _session else _sessionMap[id]?.also { check(it.id == id) }
 		}
 	}
 
-	override fun observeCurrentSession(): Flow<PlaybackSession?> {
+	override fun observeCurrentSession(): Flow<PlaybackSession?> = observeSession("")
+
+	override fun observeSession(id: String): Flow<PlaybackSession?> {
 		return callbackFlow {
 
 			val listener: (PlaybackSession?) -> Unit = {
@@ -42,14 +44,14 @@ class RealPlaybackConnection(
 			}
 
 			val session = _sessionLock.withLock {
-				_sessionListeners.add(listener)
-				_session
+				_sessionListenersMap.getOrPut(id) { mutableListOf() }.add(listener)
+				if (id == "") _session else _sessionMap[id]
 			}
 
 			send(session)
 
 			awaitClose {
-				_sessionLock.withLock { _sessionListeners.remove(listener) }
+				_sessionLock.withLock { _sessionListenersMap[id]?.remove(listener) }
 			}
 		}
 	}
@@ -57,10 +59,8 @@ class RealPlaybackConnection(
 	fun setCurrentSession(session: PlaybackSession?) {
 		_sessionLock.withLock {
 			_session = session
-		}
-		supervisorScope.launch(supervisorDispatcher) {
-			val listeners = _sessionLock.withLock { ArrayList(_sessionListeners) }
-			listeners.forEach { it(session) }
+			session?.let { _sessionMap[session.id] = session  }
+			_sessionListenersMap[""] }?.forEach { it(session)
 		}
 	}
 }

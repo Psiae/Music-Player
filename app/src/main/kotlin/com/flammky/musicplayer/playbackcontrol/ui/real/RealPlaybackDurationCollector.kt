@@ -1,11 +1,14 @@
 package com.flammky.musicplayer.playbackcontrol.ui.real
 
+import androidx.annotation.GuardedBy
+import com.flammky.kotlin.common.sync.sync
 import com.flammky.musicplayer.media.mediaconnection.playback.PlaybackConnection
 import com.flammky.musicplayer.media.playback.PlaybackConstants
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
+import timber.log.Timber
 import kotlin.time.Duration
 
 internal class RealPlaybackDurationCollector(
@@ -15,13 +18,27 @@ internal class RealPlaybackDurationCollector(
 ) : PlaybackObserver.DurationCollector {
 	// unfortunately identity check is not allowed
 	private val _durationStateFlow = MutableStateFlow<Duration?>(null)
+	private val _lock = Any()
 
+	@Volatile
 	private var _job: Job? = null
+
+	@GuardedBy("lock")
+	override var disposed: Boolean = false
+		get() = sync(_lock) { field }
+		private set(value) {
+			check(Thread.holdsLock(_lock))
+			field = value
+		}
 
 	@OptIn(ExperimentalCoroutinesApi::class)
 	override val durationStateFlow: StateFlow<Duration> = _durationStateFlow
 		.mapLatest { it ?: PlaybackConstants.DURATION_UNSET }
 		.stateIn(scope, SharingStarted.Lazily, PlaybackConstants.DURATION_UNSET)
+
+	init {
+		Timber.d("DurationCollector init")
+	}
 
 	override fun startCollect(): Job {
 		val launch = scope.launch {
@@ -48,17 +65,23 @@ internal class RealPlaybackDurationCollector(
 	}
 
 	override fun dispose() {
-		// as the session is observed within the scope, this is enough
-		scope.cancel()
+		Timber.d("DurationCollector $this dispose")
+		sync(_lock) {
+			if (disposed) return
+			scope.cancel()
+			disposed = true
+		}
 		parentObserver.notifyCollectorDisposed(this)
 	}
 
 	private fun collectDuration(): Job {
 		return scope.launch {
+			Timber.d("DurationCollector collectDuration launched")
 			val owner = Any()
 			var listenerJob: Job? = null
 			playbackConnection.observeCurrentSession().distinctUntilChanged()
 				.transform { session ->
+					Timber.d("DurationCollector got session $session")
 					listenerJob?.cancel()
 					if (session == null) {
 						emit(PlaybackConstants.DURATION_UNSET)
@@ -81,8 +104,8 @@ internal class RealPlaybackDurationCollector(
 					}
 					emitAll(channel.consumeAsFlow())
 				}
-				.onCompletion {
-					listenerJob?.cancel()
+				.onEach {
+					Timber.d("DurationCollector collected $it")
 				}
 				.collect(_durationStateFlow)
 		}

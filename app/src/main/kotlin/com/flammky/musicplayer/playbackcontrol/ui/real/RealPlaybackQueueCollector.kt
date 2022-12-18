@@ -1,5 +1,7 @@
 package com.flammky.musicplayer.playbackcontrol.ui.real
 
+import androidx.annotation.GuardedBy
+import com.flammky.kotlin.common.sync.sync
 import com.flammky.musicplayer.media.mediaconnection.playback.PlaybackConnection
 import com.flammky.musicplayer.media.playback.PlaybackQueue
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
@@ -14,13 +16,20 @@ internal class RealPlaybackQueueCollector(
 	private val playbackConnection: PlaybackConnection
 ) : PlaybackObserver.QueueCollector {
 
+	private val _lock = Any()
+
 	private val localUNSET = PlaybackQueue.UNSET.copy()
 
 	private val _queueStateFlow = MutableStateFlow(localUNSET)
 
+	override val queueStateFlow: StateFlow<PlaybackQueue> = _queueStateFlow.asStateFlow()
+
 	private var queueCollectorJob: Job? = null
 
-	override val queueStateFlow: StateFlow<PlaybackQueue> = _queueStateFlow.asStateFlow()
+	@GuardedBy("lock")
+	override var disposed: Boolean = false
+		get() = sync(_lock) { field }
+		private set(value) = sync(_lock) { field = value }
 
 	init {
 		val scopeDispatcher = scope.coroutineContext[CoroutineDispatcher]
@@ -29,7 +38,7 @@ internal class RealPlaybackQueueCollector(
 		}
 	}
 
-	override fun startObserve(): Job {
+	override fun startCollect(): Job {
 		val launch = scope.launch {
 			startObserveInternal()
 		}
@@ -39,13 +48,18 @@ internal class RealPlaybackQueueCollector(
 		}
 	}
 
-	override fun stopObserve(): Job {
+	override fun stopCollect(): Job {
 		return scope.launch {
 			queueCollectorJob?.cancel()
 		}
 	}
 
 	override fun dispose() {
+		sync(_lock) {
+			if (disposed) return
+			scope.cancel()
+			disposed = true
+		}
 		observer.notifyCollectorDisposed(this)
 	}
 
@@ -65,23 +79,22 @@ internal class RealPlaybackQueueCollector(
 						emit(PlaybackQueue.UNSET)
 						return@transform
 					}
-					try {
-						listenerJob = launch {
-							val channel = Channel<PlaybackQueue>()
+					val channel = Channel<PlaybackQueue>()
+					listenerJob = launch {
+						try {
 							session.controller.acquireObserver(owner).let { observer ->
 								val get = observer.getAndObserveQueueChange { event ->
 									channel.trySend(event.new)
 								}
 								channel.send(get)
 							}
-							emitAll(channel.consumeAsFlow())
-						}.apply { join() }
-					} finally {
-						session.controller.releaseObserver(owner)
+							awaitCancellation()
+						} finally {
+							channel.close()
+							session.controller.releaseObserver(owner)
+						}
 					}
-				}
-				.onCompletion {
-					listenerJob?.cancel()
+					emitAll(channel.consumeAsFlow())
 				}
 				.collect(_queueStateFlow)
 		}

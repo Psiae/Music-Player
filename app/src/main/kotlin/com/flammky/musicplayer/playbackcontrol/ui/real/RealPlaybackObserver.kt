@@ -15,10 +15,12 @@ typealias IsPlayingListener = suspend (Boolean) -> Unit
 internal class /* Debug */ RealPlaybackObserver(
 	private val controller: RealPlaybackController,
 	private val parentScope: CoroutineScope,
-	private val playbackConnection: PlaybackConnection
+	private val connection: PlaybackConnection,
 ) : PlaybackObserver {
 
-	@GuardedBy("this")
+	private val _stateLock = Any()
+
+	@GuardedBy("_stateLock")
 	private var _disposed = false
 
 	private val updateProgressRequestListener = mutableListOf<Pair<CoroutineScope, suspend () -> Unit>>()
@@ -39,6 +41,9 @@ internal class /* Debug */ RealPlaybackObserver(
 	private val _progressionCollectors = mutableListOf<PlaybackObserver.ProgressionCollector>()
 	private val _queueCollectors = mutableListOf<PlaybackObserver.QueueCollector>()
 
+	override val disposed: Boolean
+		get() = sync(_stateLock) { _disposed }
+
 	init {
 		require(parentScopeDispatcher.limitedParallelism(1) == parentScopeDispatcher) {
 			"Parent Scope should have `1` parallelism"
@@ -48,6 +53,9 @@ internal class /* Debug */ RealPlaybackObserver(
 	fun notifyCollectorDisposed(
 		collector: PlaybackObserver.Collector
 	) {
+		check(collector.disposed) {
+			"Collector $collector was Not disposed"
+		}
 		when (collector) {
 			is PlaybackObserver.DurationCollector -> _durationCollectors.sync { remove(collector) }
 			is PlaybackObserver.ProgressionCollector -> _progressionCollectors.sync { remove(collector) }
@@ -70,9 +78,12 @@ internal class /* Debug */ RealPlaybackObserver(
 		return RealPlaybackDurationCollector(
 			parentObserver = this,
 			scope = confinedScope,
-			playbackConnection = playbackConnection,
+			playbackConnection = connection
 		).also {
-			sync { if (_disposed) it.dispose() else _durationCollectors.sync { add(it) } }
+			sync(_stateLock) {
+				// seems to be better solution than having to throw an exception
+				if (_disposed) it.dispose() else _durationCollectors.sync { add(it) }
+			}
 		}
 	}
 
@@ -92,10 +103,10 @@ internal class /* Debug */ RealPlaybackObserver(
 		return RealPlaybackProgressionCollector(
 			observer = this,
 			scope = confinedScope,
-			playbackConnection = playbackConnection,
+			playbackConnection = connection,
 			collectEvent = includeEvent
 		).also {
-			sync { if (_disposed) it.dispose() else _progressionCollectors.sync { add(it) } }
+			sync(_stateLock) { if (_disposed) it.dispose() else _progressionCollectors.sync { add(it) } }
 		}
 	}
 
@@ -114,9 +125,9 @@ internal class /* Debug */ RealPlaybackObserver(
 		return RealPlaybackQueueCollector(
 			observer = this,
 			scope = confinedScope,
-			playbackConnection = playbackConnection
+			playbackConnection = connection
 		).also {
-			sync { if (_disposed) it.dispose() else _queueCollectors.sync { add(it) } }
+			sync(_stateLock) { if (_disposed) it.dispose() else _queueCollectors.sync { add(it) } }
 		}
 	}
 
@@ -132,11 +143,10 @@ internal class /* Debug */ RealPlaybackObserver(
 	}
 
 	override fun dispose() {
-		sync {
+		sync(_stateLock) {
 			if (_disposed) {
 				return /* checkDisposedState() */
 			}
-			parentScope.cancel()
 			disposeCollectors()
 			_disposed = true
 		}

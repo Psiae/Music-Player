@@ -50,7 +50,7 @@ class RealMediaConnection(
 	override val queue: PlaybackQueue
 		get() = PlaybackQueue(
 			list = delegate.playback.getPlaylist().map { it.mediaId }.toPersistentList(),
-			current = delegate.playback.index
+			currentIndex = delegate.playback.index
 		)
 
 	override val repeatMode: RepeatMode

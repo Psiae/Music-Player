@@ -5,12 +5,12 @@ import kotlinx.collections.immutable.persistentListOf
 
 data class PlaybackQueue(
 	val list: ImmutableList<String>,
-	val current: Int
+	val currentIndex: Int
 ) {
 	companion object {
 		val UNSET = PlaybackQueue(
 			list = persistentListOf(),
-			current = PlaybackConstants.INDEX_UNSET
+			currentIndex = PlaybackConstants.INDEX_UNSET
 		)
 	}
 }

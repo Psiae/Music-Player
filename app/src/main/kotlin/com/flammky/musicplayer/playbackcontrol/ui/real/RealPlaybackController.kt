@@ -3,60 +3,63 @@ package com.flammky.musicplayer.playbackcontrol.ui.real
 import androidx.annotation.GuardedBy
 import com.flammky.kotlin.common.sync.sync
 import com.flammky.musicplayer.media.mediaconnection.playback.PlaybackConnection
+import com.flammky.musicplayer.media.playback.PlaybackSession
 import com.flammky.musicplayer.playbackcontrol.ui.controller.PlaybackController
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
 import com.flammky.musicplayer.ui.playbackcontrol.RealPlaybackControlPresenter
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.Flow
+import kotlin.coroutines.CoroutineContext
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
 internal class RealPlaybackController(
-	val owner: Any,
+	sessionID: String,
 	private val scope: CoroutineScope,
 	private val presenter: RealPlaybackControlPresenter,
 	private val playbackConnection: PlaybackConnection
-) : PlaybackController {
+) : PlaybackController(sessionID) {
 
-	@GuardedBy("this")
+	private val _stateLock = Any()
+
+	@GuardedBy("_stateLock")
 	private var _disposed = false
 
 	private val _observers = mutableListOf<RealPlaybackObserver>()
+	private val _sessionObserversMap = mutableMapOf<String, MutableList<(PlaybackSession?) -> Unit>>()
+
+	override val disposed: Boolean
+		get() = sync(_stateLock) { _disposed }
 
 	override fun dispose() {
-		sync {
+		sync(_stateLock) {
 			if (_disposed) {
 				return checkDisposedState()
 			}
 			scope.cancel()
+			_disposed = true
 			disposeObservers()
+			checkDisposedState()
 		}
 		presenter.notifyControllerDisposed(this)
 	}
 
-	override fun createObserver(): PlaybackObserver {
+	override fun createPlaybackObserver(
+		coroutineContext: CoroutineContext
+	): PlaybackObserver {
 		return RealPlaybackObserver(
 			controller = this,
 			parentScope = scope,
-			playbackConnection = playbackConnection
+			connection = playbackConnection
 		).also {
-			sync { if (_disposed) it.dispose() else _observers.sync { add(it) } }
+			sync(_stateLock) { if (_disposed) it.dispose() else _observers.sync { add(it) } }
 		}
 	}
 
-	override fun observePlayCommand(): Flow<Boolean> {
-		TODO("Not yet implemented")
-	}
-
-	override fun observePauseCommand(): Flow<Boolean> {
-		TODO("Not yet implemented")
-	}
-
-	override fun requestSeekAsync(position: Duration): Deferred<PlaybackController.RequestResult> {
+	override fun requestSeekAsync(position: Duration): Deferred<RequestResult> {
 		return scope.async {
-			val success = playbackConnection.getSession()?.controller?.withContext { seekProgress(position) }
+			val success = playbackConnection.getSession(sessionID)?.controller?.withContext { seekProgress(position) }
 				?: false
-			PlaybackController.RequestResult(
+			RequestResult(
 				success = success,
 				eventDispatch = if (success) {
 					launch {
@@ -71,12 +74,12 @@ internal class RealPlaybackController(
 		}
 	}
 
-	override fun requestSeekAsync(progress: Float): Deferred<PlaybackController.RequestResult> {
+	override fun requestSeekAsync(progress: Float): Deferred<RequestResult> {
 		return scope.async {
 			val success = playbackConnection.getSession()?.controller?.withContext {
 				seekProgress((duration.inWholeMilliseconds * progress).toLong().milliseconds)
 			} ?: false
-			PlaybackController.RequestResult(
+			RequestResult(
 				success = success,
 				eventDispatch = if (success) {
 					launch {
@@ -91,12 +94,12 @@ internal class RealPlaybackController(
 		}
 	}
 
-	override fun requestSeekAsync(index: Int, startPosition: Duration): Deferred<PlaybackController.RequestResult> {
+	override fun requestSeekAsync(index: Int, startPosition: Duration): Deferred<RequestResult> {
 		return scope.async {
 			val success = playbackConnection.getSession()?.controller?.withContext {
 				seekIndex(index, startPosition)
 			} ?: false
-			PlaybackController.RequestResult(
+			RequestResult(
 				success = success,
 				eventDispatch = if (success) {
 					launch {
@@ -118,7 +121,7 @@ internal class RealPlaybackController(
 	}
 
 	private fun checkDisposedState() {
-		check(Thread.holdsLock(this))
+		check(Thread.holdsLock(_stateLock))
 		check(!scope.isActive && _observers.sync { isEmpty() }) {
 			"Controller was not disposed properly"
 		}

@@ -11,4 +11,5 @@ interface PlaybackConnection {
 
 	fun getSession(id: String? = null): PlaybackSession?
 	fun observeCurrentSession(): Flow<PlaybackSession?>
+	fun observeSession(id: String): Flow<PlaybackSession?>
 }

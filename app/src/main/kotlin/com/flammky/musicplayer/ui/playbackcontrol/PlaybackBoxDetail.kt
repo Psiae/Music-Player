@@ -34,7 +34,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.times
 import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -44,6 +43,9 @@ import com.flammky.common.kotlin.comparable.clamp
 import com.flammky.common.kotlin.comparable.clampPositive
 import com.flammky.musicplayer.R
 import com.flammky.musicplayer.base.compose.rememberLocalContextHelper
+import com.flammky.musicplayer.media.playback.PlaybackConstants
+import com.flammky.musicplayer.media.playback.PlaybackQueue
+import com.flammky.musicplayer.playbackcontrol.ui.controller.PlaybackController
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
 import com.flammky.musicplayer.ui.Theme
 import com.flammky.musicplayer.ui.util.compose.NoRipple
@@ -53,8 +55,10 @@ import com.google.accompanist.pager.PagerState
 import com.google.accompanist.pager.rememberPagerState
 import kotlinx.coroutines.*
 import timber.log.Timber
+import kotlin.coroutines.coroutineContext
 import kotlin.reflect.KProperty
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.ZERO
 import kotlin.time.Duration.Companion.milliseconds
 
 /**
@@ -113,7 +117,10 @@ internal fun DetailedPlaybackControl(
 					remember(targetState) {
 						tween(
 							durationMillis = when {
-								rememberSavedTransitioned.value -> 0
+								rememberSavedTransitioned.value -> {
+									rememberSavedTransitioned.value = false
+									0
+								}
 								targetState -> 250
 								else -> 150
 							},
@@ -133,8 +140,6 @@ internal fun DetailedPlaybackControl(
 			viewModel = viewModel,
 			dismiss = localDismiss
 		)
-
-		rememberSavedTransitioned.value = false
 	}
 }
 
@@ -146,42 +151,118 @@ private fun PlaybackBoxDetailTransition(
 	dismiss: () -> Unit
 ) {
 	val transitionedState = remember { mutableStateOf(false) }
-	val yOffset = heightTargetDp - heightDpState.value
 
-	when (yOffset) {
-		// no offset, fully visible
-		0.dp -> transitionedState.value = true
-		// target offset, fully hidden
-		heightTargetDp -> transitionedState.value = false
+	val yOffsetState = heightDpState.derive { heightDp ->
+		heightTargetDp - heightDp
 	}
 
-	Timber.d("DEBUG_DetailTransition: yOffset($yOffset) transitioned(${transitionedState.value})")
+	val yOffset = heightDpState.derive { heightDp ->
+		heightTargetDp - heightDp
+	}.value.also { y ->
+		// switch the state
+		when (y) {
+			// no offset, fully visible, transitioned
+			0.dp -> transitionedState.value = true
+			// target offset, fully hidden, not transitioned
+			heightTargetDp -> transitionedState.value = false
+			// else keep whatever it was
+		}
+	}
+	// on a xOffset a positive value is right, negative value is left
+	// on a yOffset a positive value is down, negative value is up (0,0 == top-left)
+	// offset == 0 means there is no offset applied which is the full visibility
+	// offset > 0 && offset < target means the offset partially hide the layout
+	// offset >= target means the offset fully hide the layout
+	if (yOffset != heightTargetDp) {
+		// load the composable when it's visible
+		PlaybackBoxDetails(
+			modifier = Modifier
+				.offset(0.dp, yOffsetState.value)
+				// set the height directly,
+				// so composables will not recalculate dynamic size unnecessarily during transition (if any)
+				.height(heightTargetDp)
+				.fillMaxWidth()
+				.background(
+					Theme
+						.dayNightAbsoluteColor()
+						.copy(alpha = 0.94f)
+				),
+			viewModel = viewModel,
+			transitionedState = transitionedState,
+			dismiss = dismiss
+		)
+	}
+}
 
-	Box(
-		modifier = Modifier
-			.offset(0.dp, yOffset)
-			.height(heightTargetDp)
-			.fillMaxWidth()
-			.background(
-				Theme
-					.dayNightAbsoluteColor()
-					.copy(alpha = 0.94f)
-			)
-	) {
+@Composable
+private fun PlaybackBoxDetails(
+	modifier: Modifier,
+	viewModel: PlaybackControlViewModel,
+	transitionedState: State<Boolean>,
+	dismiss: () -> Unit
+) {
+	val sessionIdState = remember {
+		mutableStateOf<String?>(null)
+	}
 
+	val sessionControllerState = remember {
+		mutableStateOf<PlaybackController?>(null)
+	}
 
-		Box {
-			// on a xOffset a positive value is right, negative value is left
-			// on a yOffset a positive value is down, negative value is up
-			// offset == 0 means there is no offset applied which is the full visibility
-			// offset > 0 && offset < target means the offset partially hide the layout
-			// offset >= target means the offset fully hide the layout
-			if (yOffset != heightTargetDp) {
-				// load the composable when it should be visible, forget it otherwise
-				PlaybackBoxDetails(
-					viewModel = viewModel,
-					transitionedState = transitionedState,
+	val sessionId = sessionIdState.value
+	val sessionController = sessionControllerState.value
+
+	LaunchedEffect(key1 = null) {
+		viewModel.observeCurrentSessionId().collect { id ->
+			sessionIdState.value = id
+			// set to null directly here so composables will be forgotten
+			// and let the DisposableEffect cleanup
+			sessionControllerState.value = null
+		}
+	}
+
+	DisposableEffect(key1 = sessionId) {
+		if (sessionId == null) {
+			sessionControllerState.value = null
+			return@DisposableEffect onDispose {  }
+		}
+		val controller = viewModel.createController(sessionId)
+		sessionControllerState.value = controller
+		onDispose { controller.dispose() }
+	}
+
+	BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+
+		// we should find alternatives for light mode
+		val animatedAlpha = animateFloatAsState(
+			targetValue = if (transitionedState.value) 1f else 0f,
+			animationSpec = tween(if (transitionedState.value) 100 else 0)
+		).value
+
+		RadialPlaybackBackground(
+			modifier = Modifier.alpha(animatedAlpha),
+			controller = sessionController,
+			viewModel = viewModel
+		)
+		Column(
+			modifier = Modifier
+				.fillMaxSize()
+				.statusBarsPadding()
+		) {
+			NoRipple {
+				DetailToolbar(
+					modifier = Modifier.padding(top = 10.dp),
 					dismiss = dismiss
+				)
+				if (sessionController == null) {
+					return@NoRipple
+				}
+				DetailsContent(
+					modifier = Modifier
+						.padding(top = 20.dp)
+						.alpha(animatedAlpha),
+					viewModel,
+					sessionController
 				)
 			}
 		}
@@ -189,58 +270,30 @@ private fun PlaybackBoxDetailTransition(
 }
 
 @Composable
-private fun PlaybackBoxDetails(
-	viewModel: PlaybackControlViewModel,
-	transitionedState: State<Boolean>,
-	dismiss: () -> Unit
-) {
-	Box(modifier = Modifier.fillMaxSize()) {
-		// we should find alternatives for light mode
-		val animatedAlpha = animateFloatAsState(
-			targetValue = if (transitionedState.value) 1f else 0f,
-			animationSpec = tween(if (transitionedState.value) 250 else 0)
-		).value
-		Box(modifier = Modifier.alpha(animatedAlpha)) {
-			RadialPlaybackBackground(viewModel = viewModel)
-		}
-		Column(
-			modifier = Modifier
-				.fillMaxSize()
-				.statusBarsPadding()
-		) {
-			NoRipple {
-				Spacer(modifier = Modifier.height(10.dp))
-				DetailToolbar(dismiss)
-				Spacer(modifier = Modifier.height(20.dp))
-				Box(modifier = Modifier.alpha(animatedAlpha)) {
-					DetailsContent(viewModel)
-				}
-			}
-		}
-	}
-}
-
-@Composable
 private fun DetailToolbar(
+	modifier: Modifier,
 	dismiss: () -> Unit
 ) {
-	Column(modifier = Modifier
-		.height(50.dp)
-		.padding(vertical = 5.dp)) {
-		Row(modifier = Modifier
-			.height(40.dp)
-			.fillMaxWidth()
-			.padding(horizontal = 15.dp, vertical = 5.dp),
-			verticalAlignment = Alignment.CenterVertically,
+	Box(modifier = modifier) {
+		Column(modifier = Modifier
+			.height(50.dp)
+			.padding(vertical = 5.dp)
 		) {
-			DismissAction(dismiss)
-			Spacer(modifier = Modifier.weight(2f))
-			Icon(
-				modifier = Modifier.size(26.dp),
-				painter = painterResource(id = R.drawable.more_vert_48px),
-				contentDescription = "more",
-				tint = Theme.dayNightAbsoluteContentColor()
-			)
+			Row(modifier = Modifier
+				.height(40.dp)
+				.fillMaxWidth()
+				.padding(horizontal = 15.dp, vertical = 5.dp),
+				verticalAlignment = Alignment.CenterVertically,
+			) {
+				DismissAction(dismiss)
+				Spacer(modifier = Modifier.weight(2f))
+				Icon(
+					modifier = Modifier.size(26.dp),
+					painter = painterResource(id = R.drawable.more_vert_48px),
+					contentDescription = "more",
+					tint = Theme.dayNightAbsoluteContentColor()
+				)
+			}
 		}
 	}
 }
@@ -272,64 +325,117 @@ private fun RowScope.DismissAction(
 
 @Composable
 private fun DetailsContent(
-	viewModel: PlaybackControlViewModel
+	modifier: Modifier,
+	viewModel: PlaybackControlViewModel,
+	playbackController: PlaybackController,
 ) {
-	BoxWithConstraints() {
+
+	val playbackObserverState = remember {
+		mutableStateOf<PlaybackObserver?>(null)
+	}
+
+	DisposableEffect(key1 = playbackController) {
+		val observer = playbackController.createPlaybackObserver()
+		playbackObserverState.value = observer
+		onDispose(observer::dispose)
+	}
+
+	BoxWithConstraints(modifier = modifier) {
+
+		val playbackObserver = playbackObserverState.value
+
+		val id = playbackController.sessionID
+
 		val maxHeight = maxHeight
 		val maxWidth = maxWidth
-
-		val trackState = viewModel.trackStreamStateFlow.collectAsState()
 		Column(
 			modifier = Modifier.fillMaxSize(),
 			verticalArrangement = Arrangement.Top,
 			horizontalAlignment = Alignment.CenterHorizontally
 		) {
-			TracksPagerDisplay(viewModel = viewModel)
-			Spacer(modifier = Modifier.height(15.dp))
-			CurrentTrackPlaybackDescriptions(viewModel = viewModel)
-			Spacer(modifier = Modifier.height(15.dp))
-			PlaybackControlProgressSeekbar(
-				maxWidth = maxWidth,
-				playbackObserver = viewModel.playbackObserver,
-				trackState = trackState,
-				seek = { _, pos ->
-					viewModel.playbackController.requestSeekAsync(pos.milliseconds).await().let { result ->
-						result.eventDispatch?.join()
-						result.success
-					}
-				}
+			TracksPagerDisplay(
+				viewModel = viewModel,
+				controller = playbackController
 			)
-			Spacer(modifier = Modifier.height(5.dp))
-			PlaybackControls(viewModel)
-			Spacer(modifier = Modifier
-				.fillMaxWidth()
-				.height(2f / 10 * maxHeight))
+			CurrentTrackPlaybackDescriptions(
+				modifier = Modifier.padding(top = 15.dp),
+				viewModel = viewModel
+			)
+			// TODO: let it use controller
+			if (playbackObserver != null) {
+				PlaybackControlProgressSeekbar(
+					modifier = Modifier.padding(top = 15.dp),
+					id = id,
+					maxWidth = maxWidth,
+					playbackObserver = playbackObserver,
+					seek = { seekId, pos ->
+						coroutineContext.ensureActive()
+						check(seekId == playbackController.sessionID)
+						playbackController.requestSeekAsync(pos.milliseconds).await().let { result ->
+							result.eventDispatch?.join()
+							result.success
+						}
+					}
+				)
+				PlaybackControls(
+					modifier = Modifier.padding(top = 5.dp),
+					viewModel
+				)
+			}
 		}
 	}
 }
 
 @Composable
 private fun TracksPagerDisplay(
-	viewModel: PlaybackControlViewModel
+	viewModel: PlaybackControlViewModel,
+	controller: PlaybackController
 ) {
-	val trackState = viewModel.trackStreamStateFlow.collectAsState()
-	BoxWithConstraints() {
-		TracksPager(
-			trackState = trackState,
-			metadataStateForId = { id ->
-				viewModel.observeMetadata(id).collectAsState()
-			},
-			seekIndex = { index ->
-				val result = viewModel.playbackController.requestSeekAsync(index, Duration.ZERO).await()
-				result.eventDispatch?.join()
-				result.success
-			}
-		)
+	val observerState = remember { mutableStateOf<PlaybackObserver?>(null) }
+	val queueState = remember { mutableStateOf(PlaybackQueue.UNSET) }
+
+	DisposableEffect(key1 = controller) {
+		val observer = controller.createPlaybackObserver()
+		observerState.value = observer
+		queueState.value = PlaybackQueue.UNSET
+		onDispose { observer.dispose() }
 	}
+
+	val observer = observerState.value
+		?: return Box(modifier = Modifier
+			.fillMaxWidth()
+			.height(300.dp))
+
+	val coroutineScope = rememberCoroutineScope()
+
+	DisposableEffect(key1 = observer) {
+		observer.createQueueCollector(coroutineScope.coroutineContext)
+			.apply {
+				coroutineScope.launch {
+					startCollect().join()
+					queueStateFlow.collect { queueState.value = it }
+				}
+			}
+		onDispose { observer.dispose() }
+	}
+
+	TracksPager(
+		queueState = queueState,
+		metadataStateForId = { id ->
+			viewModel.observeMetadata(id).collectAsState()
+		},
+		seekIndex = { index ->
+			coroutineContext.ensureActive()
+			val result = controller.requestSeekAsync(index, Duration.ZERO).await()
+			result.eventDispatch?.join()
+			result.success
+		}
+	)
 }
 
 @Composable
 private fun RadialPlaybackBackground(
+	modifier: Modifier = Modifier,
 	art: Any?
 ) {
 	val absoluteBackgroundColor = Theme.dayNightAbsoluteColor()
@@ -343,7 +449,9 @@ private fun RadialPlaybackBackground(
 			absoluteBackgroundColor
 		}
 
-	BoxWithConstraints {
+	BoxWithConstraints(
+		modifier = modifier,
+	) {
 		val color = animateColorAsState(
 			targetValue = radialPaletteColor.read(),
 			animationSpec = tween(500)
@@ -399,48 +507,89 @@ private fun RadialPlaybackBackground(
 
 @Composable
 private fun RadialPlaybackBackground(
-	viewModel: PlaybackControlViewModel
-) = RadialPlaybackBackground(viewModel.currentMetadataStateFlow.collectAsState().read().artwork)
+	modifier: Modifier = Modifier,
+	controller: PlaybackController?,
+	viewModel: PlaybackControlViewModel,
+) {
+	val coroutineScope = rememberCoroutineScope()
+
+	val observerState = remember(controller) {
+		mutableStateOf<PlaybackObserver?>(controller?.createPlaybackObserver())
+	}
+
+	val observer = observerState.value
+
+	val idState = remember(observer) { mutableStateOf("") }
+	val id = idState.value
+	val metadataStateFlow = remember(id) {
+		viewModel.observeMetadata(id)
+	}
+	RadialPlaybackBackground(
+		modifier,
+		metadataStateFlow.collectAsState().value.artwork
+	)
+	DisposableEffect(key1 = observer) {
+		if (observer == null) {
+			return@DisposableEffect onDispose {  }
+		}
+		val queueCollector = observer.createQueueCollector(coroutineScope.coroutineContext)
+			.apply {
+				coroutineScope.launch {
+					startCollect().join()
+					queueStateFlow.collect { queue ->
+						idState.value = queue.list.getOrNull(queue.currentIndex) ?: ""
+					}
+				}
+			}
+		onDispose { queueCollector.dispose() }
+	}
+}
 
 @OptIn(ExperimentalPagerApi::class)
 @Composable
 private fun TracksPager(
-	trackState: State<PlaybackDetailTracksInfo>,
+	queueState: State<PlaybackQueue>,
 	metadataStateForId: @Composable (String) -> State<PlaybackControlTrackMetadata>,
 	seekIndex: suspend (Int) -> Boolean,
 ) {
-	val tracks by trackState.rememberDerive { it.tracks }
-	val pagerState = rememberPagerState(trackState.value.currentIndex.clampPositive())
+	BoxWithConstraints(
+		modifier = Modifier
+			.fillMaxWidth()
+			.height(300.dp),
+	) {
+		val tracks = queueState.rememberDerive { it.list }.value
+		val pagerState = rememberPagerState(queueState.value.currentIndex.clampPositive())
 
-	Column {
+		if (tracks.isEmpty()) {
+			return@BoxWithConstraints
+		}
+
 		HorizontalPager(
-			modifier = Modifier
-				.fillMaxWidth()
-				.height(300.dp),
+			modifier = Modifier.fillMaxSize(),
 			state = pagerState,
 			count = tracks.size
 		) {
 			TracksPagerItem(metadataStateForId(tracks[it]))
 		}
+
+		val touched = remember { mutableStateOf(false) }
+
+		PagerListenMediaIndexChange(
+			indexState = queueState.rememberDerive { it.currentIndex },
+			pagerState = pagerState,
+			onScroll = { touched.overwrite(false) }
+		)
+
+		PagerListenUserDrag(pagerState = pagerState) {
+			touched.overwrite(true)
+		}
+
+		PagerListenPageChange(
+			pagerState = pagerState,
+			touchedState = touched,
+			seekIndex = seekIndex
+		)
 	}
-
-	val touched = remember { mutableStateOf(false) }
-
-	PagerListenMediaIndexChange(
-		indexState = trackState.rememberDerive { it.currentIndex },
-		pagerState = pagerState,
-		onScroll = { touched.overwrite(false) }
-	)
-
-	PagerListenUserDrag(pagerState = pagerState) {
-		touched.overwrite(true)
-	}
-
-	PagerListenPageChange(
-		pagerState = pagerState,
-		touchedState = touched,
-		seekIndex = seekIndex
-	)
 }
 
 @OptIn(ExperimentalPagerApi::class)
@@ -535,16 +684,23 @@ private fun TracksPagerItem(
 
 @Composable
 private fun CurrentTrackPlaybackDescriptions(
+	modifier: Modifier = Modifier,
 	viewModel: PlaybackControlViewModel
 ) {
-	PlaybackDescription(metadataState = viewModel.currentMetadataStateFlow.collectAsState(
-		PlaybackControlTrackMetadata()
-	))
+	PlaybackDescription(
+		modifier = modifier,
+		metadataState = viewModel.currentMetadataStateFlow.collectAsState()
+	)
 }
 
 @Composable
-private fun PlaybackDescription(metadataState: State<PlaybackControlTrackMetadata>) {
-	Box(modifier = Modifier.fillMaxWidth()) {
+private fun PlaybackDescription(
+	modifier: Modifier,
+	metadataState: State<PlaybackControlTrackMetadata>
+) {
+	val metadata = metadataState.value
+	Timber.d("PlaybackDescription metadataState: $metadata")
+	Box(modifier = modifier.fillMaxWidth()) {
 		Column(
 			modifier = Modifier
 				.fillMaxWidth(0.8f)
@@ -581,19 +737,24 @@ private fun PlaybackDescriptionSubtitle(textState: State<String>) {
 }
 
 @Composable
-private fun PlaybackControls(viewModel: PlaybackControlViewModel) {
-	PlaybackControlButtons(
-		viewModel.playbackPropertiesStateFlow.collectAsState(),
-		play = viewModel::playWhenReady,
-		pause = viewModel::pause,
-		next = viewModel::seekNext,
-		previous = viewModel::seekPrevious,
-		enableRepeat = viewModel::enableRepeatMode,
-		enableRepeatAll = viewModel::enableRepeatAllMode,
-		disableRepeat = viewModel::disableRepeatMode,
-		enableShuffle = viewModel::enableShuffleMode,
-		disableShuffle = viewModel::disableShuffleMode
-	)
+private fun PlaybackControls(
+	modifier: Modifier = Modifier,
+	viewModel: PlaybackControlViewModel
+) {
+	Box(modifier = modifier) {
+		PlaybackControlButtons(
+			viewModel.playbackPropertiesStateFlow.collectAsState(),
+			play = viewModel::playWhenReady,
+			pause = viewModel::pause,
+			next = viewModel::seekNext,
+			previous = viewModel::seekPrevious,
+			enableRepeat = viewModel::enableRepeatMode,
+			enableRepeatAll = viewModel::enableRepeatAllMode,
+			disableRepeat = viewModel::disableRepeatMode,
+			enableShuffle = viewModel::enableShuffleMode,
+			disableShuffle = viewModel::disableShuffleMode
+		)
+	}
 }
 
 @Composable
@@ -761,10 +922,11 @@ private fun PlaybackControlButtons(
 
 @Composable
 private fun PlaybackControlProgressSeekbar(
+	modifier: Modifier = Modifier,
+	id: String,
 	maxWidth: Dp,
-	trackState: State<PlaybackDetailTracksInfo>,
 	playbackObserver: PlaybackObserver,
-	seek: suspend (Int, Long) -> Boolean
+	seek: suspend (String, Long) -> Boolean
 ) {
 	val sliderPositionCollectorReady = remember {
 		mutableStateOf(false)
@@ -794,20 +956,22 @@ private fun PlaybackControlProgressSeekbar(
 			includeEvent = true,
 		).apply {
 			coroutineScope.launch {
-				startCollectProgress().join()
+				startCollectPosition().join()
 				sliderPositionCollectorReady.value = true
 			}
 			setIntervalHandler { _, progress, duration, speed ->
-				// interval for next visible `tick` of the slider thumb, every 1.dp
-				(duration.inWholeMilliseconds / sliderWidth.value / speed).toLong().milliseconds
-					.also {
-						Timber.d("Playback_Slider_Debug: intervalHandler($it) param: $progress $duration $speed")
-					}
+				if (progress == ZERO || duration == ZERO || speed == 0f) {
+					null
+				} else {
+					(duration.inWholeMilliseconds / sliderWidth.value / speed).toLong()
+						.takeIf { it > 100 }?.milliseconds
+						?: PlaybackConstants.DURATION_UNSET
+				}.also {
+					Timber.d("Playback_Slider_Debug: intervalHandler($it) param: $progress $duration $speed")
+				}
 			}
 		}
 	}
-
-	val sliderPositionState = sliderPositionCollector.progressStateFlow.collectAsState()
 
 	val sliderTextPositionCollector = remember {
 		playbackObserver.createProgressionCollector(
@@ -815,13 +979,11 @@ private fun PlaybackControlProgressSeekbar(
 			includeEvent = true,
 		).apply {
 			coroutineScope.launch {
-				startCollectProgress().join()
+				startCollectPosition().join()
 				sliderTextPositionCollectorReady.value = true
 			}
 		}
 	}
-
-	val sliderTextPositionState = sliderTextPositionCollector.progressStateFlow.collectAsState()
 
 	val durationCollector = remember {
 		playbackObserver.createDurationCollector(
@@ -853,6 +1015,9 @@ private fun PlaybackControlProgressSeekbar(
 	if (!sliderReady.value || !sliderTextReady.value) {
 		return
 	}
+
+	val sliderTextPositionState = sliderTextPositionCollector.positionStateFlow.collectAsState()
+	val sliderPositionState = sliderPositionCollector.positionStateFlow.collectAsState()
 
 	val position by sliderPositionState
 	val duration by durationState
@@ -899,73 +1064,77 @@ private fun PlaybackControlProgressSeekbar(
 		}
 	}
 
-	Column(
-		modifier = Modifier
-			.fillMaxWidth()
-			.alpha(alpha),
-		horizontalAlignment = Alignment.CenterHorizontally
-	) {
-		Slider(
+	Box(modifier = modifier.fillMaxWidth()) {
+		Column(
 			modifier = Modifier
-				.width(sliderWidth)
-				.height(16.dp),
-			value = sliderValue,
-			// unfortunately There's no guarantee these 2 will be called in order
-			onValueChange = { value ->
-				Timber.d("Slider_DEBUG: onValueChange: $value")
-				changedValue.value = value
-			},
-			onValueChangeFinished = {
-				Timber.d("Slider_DEBUG: onValueChangeFinished: ${changedValue.value}")
-				changedValue.value.takeIf { it >= 0 }?.let {
-					seekRequests.value++
-					consumeAnimation.value++
-					coroutineScope.launch {
-						val seekTo = (duration.inWholeMilliseconds * it).toLong()
-						// should this be async ?
-						seek(trackState.value.currentIndex, seekTo)
-						if (--seekRequests.value == 0) {
-							changedValue.value = -1f
-						}
-					}
-					return@Slider
-				}
-				if (seekRequests.value == 0) changedValue.value = -1f
-			},
-			interactionSource = interactionSource,
-			trackHeight = 6.dp,
-			thumbSize = 12.dp,
-			colors = SliderDefaults.colors(
-				activeTrackColor = Theme.dayNightAbsoluteContentColor(),
-				thumbColor = Theme.dayNightAbsoluteContentColor()
-			)
-		)
-
-		Spacer(modifier = Modifier.height(3.dp))
-
-		BoxWithConstraints {
-			// Width of the Slider track, which is maxWidth minus Thumb Radius on both side
-			val width = maxWidth * 0.85f - 14.dp
-			Row(
-				modifier = Modifier.width(width),
-				verticalAlignment = Alignment.CenterVertically,
-				horizontalArrangement = Arrangement.SpaceBetween
-			) {
-				PlaybackProgressSliderText(
-					progressState = sliderTextPositionState.rememberDerive(
-						calculation = { raw ->
-							if (changedValue.value >= 0) {
-								changedValue.value
-							} else {
-								raw.inWholeMilliseconds / durationState.value.inWholeMilliseconds.toFloat()
+				.align(Alignment.Center)
+				.alpha(alpha),
+			horizontalAlignment = Alignment.CenterHorizontally
+		) {
+			Slider(
+				modifier = Modifier
+					.width(sliderWidth)
+					.height(16.dp),
+				value = sliderValue,
+				// unfortunately There's no guarantee these 2 will be called in order
+				onValueChange = { value ->
+					Timber.d("Slider_DEBUG: onValueChange: $value")
+					changedValue.value = value
+				},
+				onValueChangeFinished = {
+					Timber.d("Slider_DEBUG: onValueChangeFinished: ${changedValue.value}")
+					changedValue.value.takeIf { it >= 0 }?.let {
+						seekRequests.value++
+						consumeAnimation.value++
+						coroutineScope.launch {
+							val seekTo = (duration.inWholeMilliseconds * it).toLong()
+							// should this be async ?
+							seek(id, seekTo)
+							if (--seekRequests.value == 0) {
+								changedValue.value = -1f
 							}
 						}
-					),
-					durationState = durationState
+						return@Slider
+					}
+					if (seekRequests.value == 0) changedValue.value = -1f
+				},
+				interactionSource = interactionSource,
+				trackHeight = 6.dp,
+				thumbSize = 12.dp,
+				colors = SliderDefaults.colors(
+					activeTrackColor = Theme.dayNightAbsoluteContentColor(),
+					thumbColor = Theme.dayNightAbsoluteContentColor()
 				)
+			)
+
+			Spacer(modifier = Modifier.height(3.dp))
+
+			BoxWithConstraints {
+				// Width of the Slider track, which is maxWidth minus Thumb Radius on both side
+				val width = maxWidth * 0.85f - 14.dp
+				Row(
+					modifier = Modifier.width(width),
+					verticalAlignment = Alignment.CenterVertically,
+					horizontalArrangement = Arrangement.SpaceBetween
+				) {
+					PlaybackProgressSliderText(
+						progressState = sliderTextPositionState.rememberDerive(
+							calculation = { raw ->
+								if (changedValue.value >= 0) {
+									changedValue.value
+								} else {
+									raw.inWholeMilliseconds / durationState.value.inWholeMilliseconds.toFloat()
+								}
+							}
+						),
+						durationState = durationState
+					)
+				}
 			}
 		}
 	}
+
+
 
 	DisposableEffect(key1 = null) {
 		onDispose {

@@ -37,11 +37,11 @@ internal class PlaybackControlViewModel(
 
 	val progressStateFlow: StateFlow<Duration> =
 		presenter.observePlaybackProgress()
-			.stateIn(viewModelScope, SharingStarted.Lazily, PlaybackConstants.PROGRESS_UNSET)
+			.stateIn(viewModelScope, SharingStarted.Lazily, PlaybackConstants.POSITION_UNSET)
 
 	val bufferedProgressStateFlow: StateFlow<Duration> =
 		presenter.observePlaybackBufferedProgress()
-			.stateIn(viewModelScope, SharingStarted.Lazily, PlaybackConstants.PROGRESS_UNSET)
+			.stateIn(viewModelScope, SharingStarted.Lazily, PlaybackConstants.POSITION_UNSET)
 
 	val durationStateFlow: StateFlow<Duration> =
 		presenter.observePlaybackDuration()

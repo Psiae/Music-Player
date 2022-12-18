@@ -157,7 +157,7 @@ object PlaybackProperties {
 	value class Progress(val value: kotlin.time.Duration) {
 
 		companion object {
-			val UNSET = Progress(PlaybackConstants.PROGRESS_UNSET)
+			val UNSET = Progress(PlaybackConstants.POSITION_UNSET)
 		}
 	}
 
@@ -165,7 +165,7 @@ object PlaybackProperties {
 	value class BufferedProgress(val value: kotlin.time.Duration) {
 
 		companion object {
-			val UNSET = BufferedProgress(PlaybackConstants.PROGRESS_UNSET)
+			val UNSET = BufferedProgress(PlaybackConstants.POSITION_UNSET)
 		}
 	}
 

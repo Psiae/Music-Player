@@ -11,8 +11,8 @@ data class PositionInfo(
 ) {
 	companion object {
 		val UNSET = PositionInfo(
-			progress = PlaybackConstants.PROGRESS_UNSET,
-			bufferedProgress = PlaybackConstants.PROGRESS_UNSET,
+			progress = PlaybackConstants.POSITION_UNSET,
+			bufferedProgress = PlaybackConstants.POSITION_UNSET,
 			duration = PlaybackConstants.DURATION_UNSET,
 			changeReason = ChangeReason.UNKNOWN
 		)

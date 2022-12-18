@@ -1,6 +1,5 @@
 package com.flammky.musicplayer.domain.media
 
-import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.musicplayer.base.media.mediaconnection.MediaConnectionDelegate
 import com.flammky.musicplayer.media.mediaconnection.playback.PlaybackConnection
 import com.flammky.musicplayer.media.mediaconnection.playback.real.RealPlaybackConnection
@@ -34,9 +33,8 @@ object MediaModule {
 
 	@Provides
 	internal fun providePlaybackControlPresenter(
-		dispatchers: AndroidCoroutineDispatchers,
 		playbackConnection: PlaybackConnection
 	): PlaybackControlPresenter {
-		return RealPlaybackControlPresenter(dispatchers, playbackConnection)
+		return RealPlaybackControlPresenter(playbackConnection)
 	}
 }

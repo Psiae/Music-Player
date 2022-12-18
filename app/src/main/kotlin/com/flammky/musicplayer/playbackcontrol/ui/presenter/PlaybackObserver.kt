@@ -4,21 +4,24 @@ import com.flammky.musicplayer.media.playback.PlaybackQueue
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.StateFlow
 import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.time.Duration
 
 interface PlaybackObserver {
 
+	val disposed: Boolean
+
 	fun createDurationCollector(
-		collectorContext: CoroutineContext,
+		collectorContext: CoroutineContext = EmptyCoroutineContext,
 	): DurationCollector
 
 	fun createProgressionCollector(
-		collectorContext: CoroutineContext,
+		collectorContext: CoroutineContext = EmptyCoroutineContext,
 		includeEvent: Boolean = true
 	): ProgressionCollector
 
 	fun createQueueCollector(
-		collectorContext: CoroutineContext,
+		collectorContext: CoroutineContext = EmptyCoroutineContext,
 	): QueueCollector
 
 	fun updateProgress(): Job
@@ -29,12 +32,13 @@ interface PlaybackObserver {
 	fun dispose()
 
 	sealed interface Collector {
+		val disposed: Boolean
 		fun dispose()
 	}
 
 	interface ProgressionCollector : Collector {
-		val progressStateFlow: StateFlow<Duration>
-		val bufferedProgressStateFlow: StateFlow<Duration>
+		val positionStateFlow: StateFlow<Duration>
+		val bufferedPositionStateFlow: StateFlow<Duration>
 
 		/**
 		 * Start the progress collector
@@ -42,7 +46,7 @@ interface PlaybackObserver {
 		 * @return await-able Deferred of initialization value, `StateFlow's` above is guaranteed to be a
 		 * valid known value
 		 */
-		fun startCollectProgress(): Job
+		fun startCollectPosition(): Job
 
 		fun stopCollectProgress(): Job
 
@@ -97,8 +101,8 @@ interface PlaybackObserver {
 		 * start observing
 		 * @return the launching Job, normal completion denoting that the request has been completed
 		 */
-		fun startObserve(): Job
-		fun stopObserve(): Job
+		fun startCollect(): Job
+		fun stopCollect(): Job
 		override fun dispose()
 	}
 }

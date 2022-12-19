@@ -258,7 +258,10 @@ internal class RealPlaybackControlPresenter(
 			return Observer
 		}
 
-		override fun requestSeekAsync(position: Duration): Deferred<RequestResult> {
+		override fun requestSeekAsync(
+			position: Duration,
+			coroutineContext: CoroutineContext
+		): Deferred<RequestResult> {
 			return CompletableDeferred<RequestResult>().apply { cancel() }
 		}
 

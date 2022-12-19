@@ -55,8 +55,11 @@ internal class RealPlaybackController(
 		}
 	}
 
-	override fun requestSeekAsync(position: Duration): Deferred<RequestResult> {
-		return scope.async {
+	override fun requestSeekAsync(
+		position: Duration,
+		coroutineContext: CoroutineContext
+	): Deferred<RequestResult> {
+		return scope.async(coroutineContext) {
 			val success = playbackConnection.getSession(sessionID)?.controller?.withContext { seekProgress(position) }
 				?: false
 			RequestResult(

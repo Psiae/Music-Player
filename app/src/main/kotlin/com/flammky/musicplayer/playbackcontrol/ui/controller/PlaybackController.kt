@@ -38,7 +38,10 @@ internal abstract class PlaybackController(
 	 * @param position the seek position
 	 * @return [RequestResult]
 	 */
-	abstract fun requestSeekAsync(position: Duration): Deferred<RequestResult>
+	abstract fun requestSeekAsync(
+		position: Duration,
+		coroutineContext: CoroutineContext = EmptyCoroutineContext
+	): Deferred<RequestResult>
 
 	/**
 	 * seek to [progress] percentage in current playback

@@ -231,7 +231,7 @@ private fun PlaybackBoxDetails(
 		onDispose { controller.dispose() }
 	}
 
-	BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+	NoInlineBox(modifier = modifier.fillMaxSize()) {
 
 		// we should find alternatives for light mode
 		val animatedAlpha = animateFloatAsState(
@@ -244,19 +244,23 @@ private fun PlaybackBoxDetails(
 			controller = sessionController,
 			viewModel = viewModel
 		)
+
 		Column(
 			modifier = Modifier
 				.fillMaxSize()
 				.statusBarsPadding()
 		) {
 			NoRipple {
+
 				DetailToolbar(
 					modifier = Modifier.padding(top = 10.dp),
 					dismiss = dismiss
 				)
+
 				if (sessionController == null) {
 					return@NoRipple
 				}
+
 				DetailsContent(
 					modifier = Modifier
 						.padding(top = 20.dp)
@@ -329,23 +333,7 @@ private fun DetailsContent(
 	viewModel: PlaybackControlViewModel,
 	playbackController: PlaybackController,
 ) {
-
-	val playbackObserverState = remember {
-		mutableStateOf<PlaybackObserver?>(null)
-	}
-
-	DisposableEffect(key1 = playbackController) {
-		val observer = playbackController.createPlaybackObserver()
-		playbackObserverState.value = observer
-		onDispose(observer::dispose)
-	}
-
 	BoxWithConstraints(modifier = modifier) {
-
-		val playbackObserver = playbackObserverState.value
-
-		val id = playbackController.sessionID
-
 		val maxHeight = maxHeight
 		val maxWidth = maxWidth
 		Column(
@@ -361,27 +349,15 @@ private fun DetailsContent(
 				modifier = Modifier.padding(top = 15.dp),
 				viewModel = viewModel
 			)
-			// TODO: let it use controller
-			if (playbackObserver != null) {
-				PlaybackControlProgressSeekbar(
-					modifier = Modifier.padding(top = 15.dp),
-					id = id,
-					maxWidth = maxWidth,
-					playbackObserver = playbackObserver,
-					seek = { seekId, pos ->
-						coroutineContext.ensureActive()
-						check(seekId == playbackController.sessionID)
-						playbackController.requestSeekAsync(pos.milliseconds).await().let { result ->
-							result.eventDispatch?.join()
-							result.success
-						}
-					}
-				)
-				PlaybackControls(
-					modifier = Modifier.padding(top = 5.dp),
-					viewModel
-				)
-			}
+			PlaybackControlProgressSeekbar(
+				modifier = Modifier.padding(top = 15.dp),
+				maxWidth = maxWidth,
+				controller = playbackController,
+			)
+			PlaybackControls(
+				modifier = Modifier.padding(top = 5.dp),
+				viewModel
+			)
 		}
 	}
 }
@@ -401,42 +377,45 @@ private fun TracksPagerDisplay(
 		onDispose { observer.dispose() }
 	}
 
-	val observer = observerState.value
-		?: return Box(modifier = Modifier
+	NoInlineBox(
+		modifier = Modifier
 			.fillMaxWidth()
-			.height(300.dp))
+			.height(300.dp)
+	) {
+		val observer = observerState.value ?: return@NoInlineBox
 
-	val coroutineScope = rememberCoroutineScope()
+		val coroutineScope = rememberCoroutineScope()
 
-	DisposableEffect(key1 = observer) {
-		observer.createQueueCollector(coroutineScope.coroutineContext)
-			.apply {
-				coroutineScope.launch {
-					startCollect().join()
-					queueStateFlow.collect { queueState.value = it }
+		DisposableEffect(key1 = observer) {
+			observer.createQueueCollector(coroutineScope.coroutineContext)
+				.apply {
+					coroutineScope.launch {
+						startCollect().join()
+						queueStateFlow.collect { queueState.value = it }
+					}
 				}
-			}
-		onDispose { observer.dispose() }
-	}
-
-	TracksPager(
-		queueState = queueState,
-		metadataStateForId = { id ->
-			viewModel.observeMetadata(id).collectAsState()
-		},
-		seekIndex = { index ->
-			coroutineContext.ensureActive()
-			val result = controller.requestSeekAsync(index, Duration.ZERO).await()
-			result.eventDispatch?.join()
-			result.success
+			onDispose { observer.dispose() }
 		}
-	)
+
+		TracksPager(
+			queueState = queueState,
+			metadataStateForId = { id ->
+				viewModel.observeMetadata(id).collectAsState()
+			},
+			seekIndex = { index ->
+				coroutineContext.ensureActive()
+				val result = controller.requestSeekAsync(index, Duration.ZERO).await()
+				result.eventDispatch?.join()
+				result.success
+			}
+		)
+	}
 }
 
 @Composable
 private fun RadialPlaybackBackground(
 	modifier: Modifier = Modifier,
-	art: Any?
+	artState: State<Any?>
 ) {
 	val absoluteBackgroundColor = Theme.dayNightAbsoluteColor()
 	val backgroundColor = Theme.backgroundColor()
@@ -479,7 +458,7 @@ private fun RadialPlaybackBackground(
 		)
 	}
 	val darkTheme = isSystemInDarkTheme()
-	val artwork = art
+	val artwork = artState.value
 	LaunchedEffect(artwork) {
 		val color = if (artwork is Bitmap) {
 			withContext(Dispatchers.IO) {
@@ -514,11 +493,10 @@ private fun RadialPlaybackBackground(
 	val coroutineScope = rememberCoroutineScope()
 
 	val observerState = remember(controller) {
-		mutableStateOf<PlaybackObserver?>(controller?.createPlaybackObserver())
+		mutableStateOf<PlaybackObserver?>(null)
 	}
 
 	val observer = observerState.value
-
 	val idState = remember(observer) { mutableStateOf("") }
 	val id = idState.value
 	val metadataStateFlow = remember(id) {
@@ -526,9 +504,9 @@ private fun RadialPlaybackBackground(
 	}
 	RadialPlaybackBackground(
 		modifier,
-		metadataStateFlow.collectAsState().value.artwork
+		metadataStateFlow.collectAsState()
 	)
-	DisposableEffect(key1 = observer) {
+	DisposableEffect(key1 = controller) {
 		if (observer == null) {
 			return@DisposableEffect onDispose {  }
 		}
@@ -552,24 +530,36 @@ private fun TracksPager(
 	metadataStateForId: @Composable (String) -> State<PlaybackControlTrackMetadata>,
 	seekIndex: suspend (Int) -> Boolean,
 ) {
-	BoxWithConstraints(
+	val queue = queueState.value
+	val queueIndex = queue.currentIndex
+	val queueList = queue.list
+
+	remember(queueList.size, queueIndex) {
+		if (queueList.isEmpty()) {
+			require( queueIndex == PlaybackConstants.INDEX_UNSET) {
+				"empty QueueList must be followed by an invalid Index"
+			}
+			null
+		} else {
+			requireNotNull(queueList.getOrNull(queueIndex)) {
+				"non-empty QueueList must be followed by a valid index"
+			}
+		}
+	} ?: return
+
+	Box(
 		modifier = Modifier
 			.fillMaxWidth()
 			.height(300.dp),
 	) {
-		val tracks = queueState.rememberDerive { it.list }.value
 		val pagerState = rememberPagerState(queueState.value.currentIndex.clampPositive())
-
-		if (tracks.isEmpty()) {
-			return@BoxWithConstraints
-		}
 
 		HorizontalPager(
 			modifier = Modifier.fillMaxSize(),
 			state = pagerState,
-			count = tracks.size
+			count = queueList.size
 		) {
-			TracksPagerItem(metadataStateForId(tracks[it]))
+			TracksPagerItem(metadataStateForId(queueList[it]))
 		}
 
 		val touched = remember { mutableStateOf(false) }
@@ -580,7 +570,9 @@ private fun TracksPager(
 			onScroll = { touched.overwrite(false) }
 		)
 
-		PagerListenUserDrag(pagerState = pagerState) {
+		PagerListenUserDrag(
+			pagerState = pagerState
+		) {
 			touched.overwrite(true)
 		}
 
@@ -770,7 +762,6 @@ private fun PlaybackControlButtons(
 	enableShuffle: () -> Unit,
 	disableShuffle: () -> Unit,
 ) {
-	val propertiesInfo = propertiesInfoState.read()
 	Row(
 		modifier = Modifier
 			.fillMaxWidth(0.9f)
@@ -779,13 +770,14 @@ private fun PlaybackControlButtons(
 		verticalAlignment = Alignment.CenterVertically
 	) {
 		// Shuffle
-		Box(
+		NoInlineBox(
 			modifier = Modifier.size(40.dp)
 		) {
 			val interactionSource = remember { MutableInteractionSource() }
 			val size by animateDpAsState(
 				targetValue = if (interactionSource.collectIsPressedAsState().read()) 27.dp else 30.dp
 			)
+			val shuffleOn = propertiesInfoState.rememberDerive(calculation = { it.shuffleOn }).value
 			Icon(
 				modifier = Modifier
 					.size(size)
@@ -793,12 +785,12 @@ private fun PlaybackControlButtons(
 					.clickable(
 						interactionSource = interactionSource,
 						indication = null,
-						onClick = { if (propertiesInfo.shuffleOn) disableShuffle() else enableShuffle() }
+						onClick = { if (shuffleOn) disableShuffle() else enableShuffle() }
 					)
 				,
 				painter = painterResource(id = R.drawable.ios_glyph_shuffle_100),
 				contentDescription = "shuffle",
-				tint = if (propertiesInfo.shuffleOn)
+				tint = if (shuffleOn)
 					Theme.dayNightAbsoluteContentColor()
 				else
 					Color(0xFF787878)
@@ -806,7 +798,7 @@ private fun PlaybackControlButtons(
 		}
 
 		// Previous
-		Box(modifier = Modifier.size(40.dp)) {
+		NoInlineBox(modifier = Modifier.size(40.dp)) {
 			// later check for command availability
 			val interactionSource = remember { MutableInteractionSource() }
 			val size by animateDpAsState(
@@ -829,7 +821,7 @@ private fun PlaybackControlButtons(
 		}
 
 		// Play / Pause
-		Box(modifier = Modifier.size(40.dp)) {
+		NoInlineBox(modifier = Modifier.size(40.dp)) {
 			// later check for command availability
 			val rememberPlayPainter = painterResource(id = R.drawable.ios_glyph_play_100)
 			val rememberPausePainter = painterResource(id = R.drawable.ios_glyph_pause_100)
@@ -837,6 +829,7 @@ private fun PlaybackControlButtons(
 			val size by animateDpAsState(
 				targetValue = if (interactionSource.collectIsPressedAsState().read()) 37.dp else 40.dp
 			)
+			val playWhenReady = propertiesInfoState.rememberDerive(calculation = { it.playWhenReady }).value
 			Icon(
 				modifier = Modifier
 					.size(size)
@@ -844,10 +837,10 @@ private fun PlaybackControlButtons(
 					.clickable(
 						interactionSource = interactionSource,
 						indication = null,
-						onClick = { if (propertiesInfo.playWhenReady) pause() else play() }
+						onClick = { if (playWhenReady) pause() else play() }
 					)
 				,
-				painter = if (propertiesInfo.playWhenReady)
+				painter = if (playWhenReady)
 					rememberPausePainter
 				else
 					rememberPlayPainter
@@ -858,13 +851,14 @@ private fun PlaybackControlButtons(
 		}
 
 		// Next
-		Box(modifier = Modifier.size(40.dp)) {
+		NoInlineBox(modifier = Modifier.size(40.dp)) {
 			// later check for command availability
 
 			val interactionSource = remember { MutableInteractionSource() }
 			val size by animateDpAsState(
 				targetValue = if (interactionSource.collectIsPressedAsState().read()) 32.dp else 35.dp
 			)
+			val hasNext = propertiesInfoState.rememberDerive(calculation = { it.hasNextMediaItem }).value
 			Icon(
 				modifier = Modifier
 					.size(size)
@@ -872,12 +866,12 @@ private fun PlaybackControlButtons(
 					.clickable(
 						interactionSource = interactionSource,
 						indication = null,
-						onClick = { if (propertiesInfo.hasNextMediaItem) next() }
+						onClick = { if (hasNext) next() }
 					)
 				,
 				painter = painterResource(id = R.drawable.ios_glyph_seek_next_100),
 				contentDescription = "next",
-				tint = if (propertiesInfo.hasNextMediaItem)
+				tint = if (hasNext)
 					Theme.dayNightAbsoluteContentColor()
 				else
 					Color(0xFF787878)
@@ -885,11 +879,12 @@ private fun PlaybackControlButtons(
 		}
 
 		// Repeat
-		Box(modifier = Modifier.size(40.dp)) {
+		NoInlineBox(modifier = Modifier.size(40.dp)) {
 			val interactionSource = remember { MutableInteractionSource() }
 			val size by animateDpAsState(
 				targetValue = if (interactionSource.collectIsPressedAsState().read()) 27.dp else 30.dp
 			)
+			val repeatMode = propertiesInfoState.rememberDerive(calculation = { it.repeatMode }).value
 			Icon(
 				modifier = Modifier
 					.size(size)
@@ -898,20 +893,20 @@ private fun PlaybackControlButtons(
 						interactionSource = interactionSource,
 						indication = null,
 						onClick = {
-							when (propertiesInfo.repeatMode) {
+							when (repeatMode) {
 								Player.RepeatMode.OFF -> enableRepeat()
 								Player.RepeatMode.ONE -> enableRepeatAll()
 								Player.RepeatMode.ALL -> disableRepeat()
 							}
 						}
 					),
-				painter = when (propertiesInfo.repeatMode) {
+				painter = when (repeatMode) {
 					Player.RepeatMode.OFF -> painterResource(id = R.drawable.ios_glyph_repeat_100)
 					Player.RepeatMode.ONE -> painterResource(id = R.drawable.ios_glyph_repeat_one_100)
 					Player.RepeatMode.ALL -> painterResource(id = R.drawable.ios_glyph_repeat_100)
 				},
 				contentDescription = "repeat",
-				tint = if (propertiesInfo.repeatMode == Player.RepeatMode.OFF)
+				tint = if (repeatMode == Player.RepeatMode.OFF)
 					Color(0xFF787878)
 				else
 					Theme.dayNightAbsoluteContentColor()
@@ -923,11 +918,26 @@ private fun PlaybackControlButtons(
 @Composable
 private fun PlaybackControlProgressSeekbar(
 	modifier: Modifier = Modifier,
-	id: String,
 	maxWidth: Dp,
-	playbackObserver: PlaybackObserver,
-	seek: suspend (String, Long) -> Boolean
+	controller: PlaybackController
 ) {
+	val playbackObserverState = remember(controller) {
+		mutableStateOf<PlaybackObserver?>(null)
+	}
+
+	val coroutineScope = rememberCoroutineScope()
+
+	DisposableEffect(key1 = controller) {
+		val observer = controller.createPlaybackObserver(coroutineScope.coroutineContext)
+		playbackObserverState.value = observer
+		onDispose { observer.dispose() }
+	}
+
+	val playbackObserver = playbackObserverState.value
+		?: return Box(modifier = Modifier
+			.height(35.dp)
+			.then(modifier.fillMaxWidth()))
+
 	val sliderPositionCollectorReady = remember {
 		mutableStateOf(false)
 	}
@@ -943,9 +953,6 @@ private fun PlaybackControlProgressSeekbar(
 	val sliderTextReady = remember {
 		mutableStateOf(false)
 	}
-
-	val coroutineScope = rememberCoroutineScope()
-
 	val sliderWidth = remember(maxWidth) {
 		maxWidth * 0.85f
 	}
@@ -996,8 +1003,6 @@ private fun PlaybackControlProgressSeekbar(
 		}
 	}
 
-	val durationState = durationCollector.durationStateFlow.collectAsState()
-
 	val ready = remember {
 		derivedStateOf { sliderReady.value && sliderTextReady.value }
 	}
@@ -1018,59 +1023,61 @@ private fun PlaybackControlProgressSeekbar(
 
 	val sliderTextPositionState = sliderTextPositionCollector.positionStateFlow.collectAsState()
 	val sliderPositionState = sliderPositionCollector.positionStateFlow.collectAsState()
-
-	val position by sliderPositionState
-	val duration by durationState
-
-	fun clampedPositionProgress(): Float = (position / duration).toFloat().clamp(0f, 1f)
-
+	val durationState = durationCollector.durationStateFlow.collectAsState()
 	val interactionSource = remember { MutableInteractionSource() }
 	val draggedState = interactionSource.collectIsDraggedAsState()
 	val pressedState = interactionSource.collectIsPressedAsState()
-	val changedValue = remember {
+
+	val changedValueState = remember {
 		// the Slider should constraint it to 0, consider change it to nullable Float
 		mutableStateOf(-1f)
 	}
-	val seekRequests = remember {
+	val seekRequestCountState = remember {
 		mutableStateOf(0)
 	}
 
 	// consume the `animate` composable, it will recreate a new state so it will not animate
 	// should the first visible progress be animated ?
-	val consumeAnimation = remember { mutableStateOf(1) }
+	val consumeAnimationState = remember { mutableStateOf(1) }
 
-	val suppressValue = draggedState.value or pressedState.value or (changedValue.value >= 0)
+	NoInlineBox(modifier = modifier.fillMaxWidth()) {
 
-	require((seekRequests.value == 0) or (consumeAnimation.value > 0)) {
-		"seekRequest should be followed by consumeAnimation"
-	}
-
-	val sliderValue = when {
-		suppressValue -> {
-			changedValue.value
-		}
-		consumeAnimation.value > 0 -> {
-			consumeAnimation.value = 0
-			clampedPositionProgress()
-		}
-		else -> {
-			val clampedProgress = clampedPositionProgress()
-			// should snap
-			val tweenDuration = if (clampedProgress == 1f || clampedProgress == 0f) 0 else 100
-			animateFloatAsState(
-				targetValue = clampedProgress,
-				animationSpec = tween(tweenDuration)
-			).value
-		}
-	}
-
-	Box(modifier = modifier.fillMaxWidth()) {
 		Column(
 			modifier = Modifier
 				.align(Alignment.Center)
 				.alpha(alpha),
 			horizontalAlignment = Alignment.CenterHorizontally
 		) {
+
+			val seekRequestCount = seekRequestCountState.value
+			val consumeAnimationCount = consumeAnimationState.value
+
+			require(seekRequestCount == 0 || consumeAnimationCount > 0) {
+				"seekRequest should be followed by consumeAnimation"
+			}
+
+			val position by sliderPositionState
+			val duration by durationState
+
+			val sliderValue = when {
+				draggedState.value or pressedState.value or (changedValueState.value >= 0) -> {
+					changedValueState.value
+				}
+				consumeAnimationState.value > 0 -> {
+					consumeAnimationState.value = 0
+					(position / duration).toFloat().clamp(0f, 1f)
+				}
+				else -> {
+					val clampedProgress = (position / duration).toFloat().clamp(0f, 1f)
+					// should snap
+					val tweenDuration = if (clampedProgress == 1f || clampedProgress == 0f) 0 else 100
+					animateFloatAsState(
+						targetValue = clampedProgress,
+						animationSpec = tween(tweenDuration)
+					).value
+				}
+			}
+
 			Slider(
 				modifier = Modifier
 					.width(sliderWidth)
@@ -1079,24 +1086,23 @@ private fun PlaybackControlProgressSeekbar(
 				// unfortunately There's no guarantee these 2 will be called in order
 				onValueChange = { value ->
 					Timber.d("Slider_DEBUG: onValueChange: $value")
-					changedValue.value = value
+					changedValueState.value = value
 				},
 				onValueChangeFinished = {
-					Timber.d("Slider_DEBUG: onValueChangeFinished: ${changedValue.value}")
-					changedValue.value.takeIf { it >= 0 }?.let {
-						seekRequests.value++
-						consumeAnimation.value++
+					Timber.d("Slider_DEBUG: onValueChangeFinished: ${changedValueState.value}")
+					changedValueState.value.takeIf { it >= 0 }?.let {
+						seekRequestCountState.value++
+						consumeAnimationState.value++
 						coroutineScope.launch {
-							val seekTo = (duration.inWholeMilliseconds * it).toLong()
-							// should this be async ?
-							seek(id, seekTo)
-							if (--seekRequests.value == 0) {
-								changedValue.value = -1f
+							val seekTo = (duration.inWholeMilliseconds * it).toLong().milliseconds
+							controller.requestSeekAsync(seekTo, coroutineContext).await().eventDispatch?.join()
+							if (--seekRequestCountState.value == 0) {
+								changedValueState.value = -1f
 							}
 						}
 						return@Slider
 					}
-					if (seekRequests.value == 0) changedValue.value = -1f
+					if (seekRequestCountState.value == 0) changedValueState.value = -1f
 				},
 				interactionSource = interactionSource,
 				trackHeight = 6.dp,
@@ -1106,102 +1112,130 @@ private fun PlaybackControlProgressSeekbar(
 					thumbColor = Theme.dayNightAbsoluteContentColor()
 				)
 			)
-
-			Spacer(modifier = Modifier.height(3.dp))
-
-			BoxWithConstraints {
-				// Width of the Slider track, which is maxWidth minus Thumb Radius on both side
-				val width = maxWidth * 0.85f - 14.dp
-				Row(
-					modifier = Modifier.width(width),
-					verticalAlignment = Alignment.CenterVertically,
-					horizontalArrangement = Arrangement.SpaceBetween
-				) {
-					PlaybackProgressSliderText(
-						progressState = sliderTextPositionState.rememberDerive(
-							calculation = { raw ->
-								if (changedValue.value >= 0) {
-									changedValue.value
-								} else {
-									raw.inWholeMilliseconds / durationState.value.inWholeMilliseconds.toFloat()
-								}
+			Row(
+				modifier = Modifier
+					.width(maxWidth * 0.85f - 14.dp)
+					.padding(top = 3.dp),
+				verticalAlignment = Alignment.CenterVertically,
+				horizontalArrangement = Arrangement.SpaceBetween
+			) {
+				PlaybackProgressSliderText(
+					progressState = sliderTextPositionState.rememberDerive(
+						calculation = { raw ->
+							if (changedValueState.value >= 0) {
+								changedValueState.value
+							} else {
+								raw.inWholeMilliseconds / durationState.value.inWholeMilliseconds.toFloat()
 							}
-						),
-						durationState = durationState
-					)
-				}
+						}
+					),
+					durationState = durationState
+				)
 			}
 		}
 	}
-
-
-
-	DisposableEffect(key1 = null) {
-		onDispose {
-			sliderPositionCollector.dispose()
-			sliderTextPositionCollector.dispose()
-			durationCollector.dispose()
-		}
-	}
 }
+
+@Composable
+private fun <C> C.NoInline(content: @Composable C.() -> Unit) = content()
+
+/**
+ * non-Inlined box for easier recomposition control without introducing a function
+ * and reducing possibility of Imbalance error
+ */
+@Composable
+private fun NoInlineBox(
+	modifier: Modifier = Modifier,
+	contentAlignment: Alignment = Alignment.TopStart,
+	propagateMinConstraints: Boolean = false,
+	content: @Composable BoxScope.() -> Unit
+) = Box(modifier, contentAlignment, propagateMinConstraints, content)
+
+/**
+ * non-Inlined column for easier recomposition control without introducing additional composable function
+ * and reducing possibility of Imbalance error
+ */
+@Composable
+private fun NoInlineColumn(
+	modifier: Modifier = Modifier,
+	verticalArrangement: Arrangement.Vertical = Arrangement.Top,
+	horizontalAlignment: Alignment.Horizontal = Alignment.Start,
+	content: @Composable ColumnScope.() -> Unit
+) = Column(modifier, verticalArrangement, horizontalAlignment, content)
+
+/**
+ * non-Inlined row for easier recomposition control without introducing additional composable function
+ * and reducing possibility of Imbalance error
+ */
+@Composable
+private fun NoInlineRow(
+	modifier: Modifier = Modifier,
+	horizontalArrangement: Arrangement.Horizontal = Arrangement.Start,
+	verticalAlignment: Alignment.Vertical = Alignment.Top,
+	content: @Composable RowScope.() -> Unit
+) = Row(modifier, horizontalArrangement, verticalAlignment, content)
 
 @Composable
 private fun RowScope.PlaybackProgressSliderText(
 	progressState: State<Float>,
 	durationState: State<Duration>
 ) {
-	val progress = progressState.value
-	val duration = durationState.value
 
-	val formattedProgress: String = remember(progress) {
-		val seconds =
-			if (duration.isNegative()) 0
-			else (duration.inWholeSeconds * progress).toLong()
-		if (seconds > 3600) {
-			String.format(
-				"%02d:%02d:%02d",
-				seconds / 3600,
-				seconds % 3600 / 60,
-				seconds % 60
-			)
-		} else {
-			String.format(
-				"%02d:%02d",
-				seconds / 60,
-				seconds % 60
-			)
+	NoInline {
+		val duration = durationState.value
+		val progress = progressState.value
+		val formattedProgress: String = remember(progress, duration) {
+			val seconds =
+				if (duration.isNegative()) 0
+				else (duration.inWholeSeconds * progress).toLong()
+			if (seconds > 3600) {
+				String.format(
+					"%02d:%02d:%02d",
+					seconds / 3600,
+					seconds % 3600 / 60,
+					seconds % 60
+				)
+			} else {
+				String.format(
+					"%02d:%02d",
+					seconds / 60,
+					seconds % 60
+				)
+			}
 		}
+
+		Text(
+			text = formattedProgress,
+			style = MaterialTheme.typography.bodySmall
+		)
 	}
 
-	val formattedDuration: String = remember(duration) {
-		val seconds =
-			if (duration.isNegative() || duration.isInfinite()) 0
-			else duration.inWholeSeconds
-		if (seconds > 3600) {
-			String.format(
-				"%02d:%02d:%02d",
-				seconds / 3600,
-				seconds % 3600 / 60,
-				seconds % 60
-			)
-		} else {
-			String.format(
-				"%02d:%02d",
-				seconds / 60,
-				seconds % 60
-			)
+	NoInline {
+		val duration = durationState.value
+		val formattedDuration: String = remember(duration) {
+			val seconds =
+				if (duration.isNegative() || duration.isInfinite()) 0
+				else duration.inWholeSeconds
+			if (seconds > 3600) {
+				String.format(
+					"%02d:%02d:%02d",
+					seconds / 3600,
+					seconds % 3600 / 60,
+					seconds % 60
+				)
+			} else {
+				String.format(
+					"%02d:%02d",
+					seconds / 60,
+					seconds % 60
+				)
+			}
 		}
+		Text(
+			text = formattedDuration,
+			style = MaterialTheme.typography.bodySmall
+		)
 	}
-
-	Text(
-		text = formattedProgress,
-		style = MaterialTheme.typography.bodySmall
-	)
-
-	Text(
-		text = formattedDuration,
-		style = MaterialTheme.typography.bodySmall
-	)
 }
 
 

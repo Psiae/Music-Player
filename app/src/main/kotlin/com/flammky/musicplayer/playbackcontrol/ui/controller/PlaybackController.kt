@@ -51,7 +51,11 @@ internal abstract class PlaybackController(
 	 */
 	abstract fun requestSeekAsync(@FloatRange(from = 0.0, to = 1.0) progress: Float): Deferred<RequestResult>
 
-	abstract fun requestSeekAsync(index: Int, startPosition: Duration): Deferred<RequestResult>
+	abstract fun requestSeekAsync(
+		index: Int,
+		startPosition: Duration,
+		coroutineContext: CoroutineContext = EmptyCoroutineContext
+	): Deferred<RequestResult>
 
 	abstract fun dispose()
 

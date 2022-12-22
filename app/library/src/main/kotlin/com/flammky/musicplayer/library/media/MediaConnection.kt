@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.Flow
 internal interface MediaConnection {
 	fun play(id: String, uri: Uri)
 
+	fun play(queue: List<Pair<String, Uri>>, index: Int)
+
 	val repository: Repository
 
 	interface Repository {

@@ -16,6 +16,13 @@ class RealMediaConnectionDelegate(
 		s.mediaController.play(item)
 	}
 
+	override fun play(items: List<MediaItem>, index: Int) {
+		if (index in items.indices) {
+			s.mediaController.setMediaItems(items, index)
+			s.mediaController.play()
+		}
+	}
+
 	override fun play() {
 		s.mediaController.play()
 	}

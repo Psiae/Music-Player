@@ -12,6 +12,7 @@ import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.android.medialib.core.MediaLibrary
 import com.flammky.android.medialib.providers.metadata.VirtualFileMetadata
 import com.flammky.android.medialib.temp.image.ArtworkProvider
+import com.flammky.musicplayer.base.coroutine.NonBlockingDispatcherPool
 import com.flammky.musicplayer.base.media.mediaconnection.MediaConnectionDelegate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -28,11 +29,26 @@ internal class RealMediaConnection(
 	private val mediaLibrary: MediaLibrary
 ) : MediaConnection {
 	private val coroutineScope = CoroutineScope(SupervisorJob())
+	private val sDispatcher = NonBlockingDispatcherPool.get(1)
 
 	override fun play(id: String, uri: Uri) {
 		delegate.play(createMediaItem(id, uri))
-		provideMetadata(id, uri)
-		provideArtwork(id)
+		maybeProvideMetadata(id, uri)
+		maybeProvideArtwork(id)
+	}
+
+	override fun play(queue: List<Pair<String, Uri>>, index: Int) {
+		if (index !in queue.indices) return
+		coroutineScope.launch(sDispatcher) {
+			val mappedQueue = queue.map { createMediaItem(it.first, it.second) }
+			delegate.play(mappedQueue, index)
+			mappedQueue.forEach {
+				val id = it.mediaId
+				val uri = it.mediaUri
+				maybeProvideMetadata(id, uri)
+				maybeProvideArtwork(id)
+			}
+		}
 	}
 
 	override val repository: MediaConnection.Repository = object : MediaConnection.Repository {
@@ -84,14 +100,16 @@ internal class RealMediaConnection(
 		}
 	}
 
-	private fun provideMetadata(id: String, uri: Uri) {
+	private fun maybeProvideMetadata(id: String, uri: Uri) {
 		coroutineScope.launch(dispatcher.io) {
-			val metadata = fillMetadata(uri)
-			delegate.repository.provideMetadata(id, metadata)
+			if (delegate.repository.getMetadata(id) == null) {
+				val metadata = fillMetadata(uri)
+				delegate.repository.provideMetadata(id, metadata)
+			}
 		}
 	}
 
-	private fun provideArtwork(id: String) {
+	private fun maybeProvideArtwork(id: String) {
 		coroutineScope.launch(dispatcher.io) {
 			if (delegate.repository.getArtwork(id) == null) {
 				val req = ArtworkProvider.Request.Builder(id, Bitmap::class.java)

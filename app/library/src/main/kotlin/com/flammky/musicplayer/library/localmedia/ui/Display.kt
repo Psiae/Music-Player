@@ -32,7 +32,6 @@ import coil.request.CachePolicy
 import coil.request.ImageRequest
 import com.flammky.androidx.viewmodel.compose.activityViewModel
 import com.flammky.common.kotlin.coroutines.safeCollect
-import com.flammky.musicplayer.base.compose.rememberLocalContextHelper
 import com.flammky.musicplayer.library.localmedia.data.LocalSongModel
 import com.flammky.musicplayer.library.ui.theme.Theme
 import com.google.accompanist.placeholder.PlaceholderHighlight
@@ -115,7 +114,8 @@ private fun DisplayColumn(
 		DisplayHeader()
 		DisplayContent(
 			list = viewModel.listState.read(),
-			onItemClicked = { viewModel.play(it) },
+			// child should report their index
+			onItemClicked = { list, item -> viewModel.play(list, list.indexOf(item)) },
 			navigate = navigate
 		)
 	}
@@ -136,7 +136,7 @@ private fun DisplayHeader(
 private fun DisplayContent(
 	modifier: Modifier = Modifier,
 	list: List<LocalSongModel>,
-	onItemClicked: (item: LocalSongModel) -> Unit,
+	onItemClicked: (list: List<LocalSongModel>, item: LocalSongModel) -> Unit,
 	navigate: (String) -> Unit
 ) {
 	BoxWithConstraints(modifier = modifier) {
@@ -174,7 +174,7 @@ private fun DynamicDisplayContent(
 	contentSpacer: Dp = 0.dp,
 	rowSpacer: Dp = 0.dp,
 	maximumRow: Int,
-	onItemClicked: (item: LocalSongModel) -> Unit,
+	onItemClicked: (list: List<LocalSongModel>, item: LocalSongModel) -> Unit,
 	navigate: (String) -> Unit
 ) {
 	require(minWidth.value >= 0) {
@@ -233,15 +233,13 @@ private fun DynamicDisplayContent(
 	maxRow: Int,
 	rowSpacer: Int,
 	minChild: Int,
-	onItemClicked: (item: LocalSongModel) -> Unit,
+	onItemClicked: (list: List<LocalSongModel>, item: LocalSongModel) -> Unit,
 	navigate: (String) -> Unit
 ) {
 	when(list.size) {
 		0 -> return // show no local song available
 		1, 2, 3 -> Unit // maybe something else
 	}
-
-	val contextHelper = rememberLocalContextHelper()
 
 	fun calculateHorizontalSpacer(amount: Int): Float {
 		return contentSpacer.toFloat() * if (amount <= 0) 0 else amount - 1
@@ -300,47 +298,66 @@ private fun DynamicDisplayContent(
 		}
 	}
 
-	var childSize = minOf(constraint.maxWidth, constraint.maxHeight).toFloat().let { constraints ->
-		increaseChildAmount(
+	val childSize = remember(constraint, minChild) {
+		val constraints = minOf(constraint.maxWidth, constraint.maxHeight).toFloat()
+		var result = 0f
+
+		result = increaseChildAmount(
 			childWidth = constraints,
 			amount = minChild - calculateHorizontalPlaceableChild(constraints)
 		)
+
+		if (calculateHorizontalContentLeftover(result) > 0) {
+			result = increaseChildAmount(result, 1)
+		}
+
+		if (calculateVerticalContentLeftover(result) < 0) {
+			result = increaseChildAmount(result, 1)
+		}
+
+		result
 	}
 
-	if (calculateHorizontalContentLeftover(childSize) > 0) {
-		childSize = increaseChildAmount(childSize, 1)
-	}
 
-	if (calculateVerticalContentLeftover(childSize) < 0) {
-		childSize = increaseChildAmount(childSize, 1)
-	}
 
 	// TODO: consider child constraints
 
-	val placeable = (constraint.maxWidth / childSize).let { raw ->
-		val spaceConstrained = constraint.maxWidth - calculateHorizontalSpacer(raw.toInt())
-		spaceConstrained / childSize
-	}.toInt()
+	val placeable = remember(constraint, childSize) {
+		(constraint.maxWidth / childSize).let { raw ->
+			val spaceConstrained = constraint.maxWidth - calculateHorizontalSpacer(raw.toInt())
+			spaceConstrained / childSize
+		}.toInt()
+	}
 
-	val placeableRow = (constraint.maxHeight / childSize).let { raw ->
-		val spaceConstrained = constraint.maxHeight - calculateRowSpacer(raw.toInt())
-	  spaceConstrained / childSize
-	}.toInt()
+	val placeableRow = remember(constraint, childSize) {
+		(constraint.maxHeight / childSize).let { raw ->
+			val spaceConstrained = constraint.maxHeight - calculateRowSpacer(raw.toInt())
+			spaceConstrained / childSize
+		}.toInt()
+	}
 
 	Column(
 		modifier = Modifier.clip(RoundedCornerShape(5.dp)),
 		horizontalAlignment = Alignment.CenterHorizontally,
 		verticalArrangement = Arrangement.spacedBy(rowSpacer.toDp())
 	) {
-		var taken = 0
-		repeat(placeableRow) { index ->
-			val lastRow = index == placeableRow - 1
-			val items =
-				if (lastRow) {
-					list.drop(taken)
-				} else {
-					list.drop(taken).take(min(list.size, placeable)).also { taken += it.size }
-				}
+		val rowItems = remember(placeableRow, placeable, list) {
+			val result = mutableListOf<List<LocalSongModel>>()
+			var taken = 0
+			repeat(placeableRow) { index ->
+				val lastRow = index == placeableRow - 1
+				val items =
+					if (lastRow) {
+						list.drop(taken)
+					} else {
+						list.drop(taken).take(min(list.size, placeable)).also { taken += it.size }
+					}
+				result.add(items)
+			}
+			result.toList()
+		}
+		repeat(rowItems.size) { index ->
+			val items = rowItems[index]
 			DisplayContentRow(
 				modifier = Modifier
 					.width(constraint.maxWidth.toDp())
@@ -353,10 +370,12 @@ private fun DynamicDisplayContent(
 				)*/,
 				horizontalArrangement = Arrangement.spacedBy(contentSpacer.toDp()),
 				verticalAlignment = Alignment.CenterVertically,
-				isLastRow = lastRow,
+				isLastRow = index == rowItems.lastIndex,
 				lastIndex = min(items.lastIndex, placeable - 1),
 				items = items,
-				onItemClicked = onItemClicked,
+				onItemClicked = {
+					onItemClicked(list, it)
+				},
 				navigateSongList = { navigate(LocalSongNavigator.localSongListRoute) }
 			)
 		}

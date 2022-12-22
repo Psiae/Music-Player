@@ -11,6 +11,9 @@ interface MediaConnectionDelegate {
 
 	fun play()
 	fun play(item: MediaItem)
+
+	fun play(items: List<MediaItem>, index: Int)
+
 	fun pause()
 
 	val playback: MediaConnectionPlayback

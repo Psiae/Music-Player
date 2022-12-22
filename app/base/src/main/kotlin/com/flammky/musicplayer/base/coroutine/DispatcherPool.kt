@@ -10,7 +10,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 @OptIn(ExperimentalCoroutinesApi::class)
 object NonBlockingDispatcherPool {
 
-	fun get(parallelism: Int): CoroutineDispatcher {
+	fun get(parallelism: Int = Int.MAX_VALUE): CoroutineDispatcher {
 		return Dispatchers.Default.limitedParallelism(parallelism)
 	}
 

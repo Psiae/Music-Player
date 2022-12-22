@@ -48,10 +48,19 @@ class RealMediaConnection(
 		get() = delegate.playback.playWhenReady
 
 	override val queue: PlaybackQueue
-		get() = PlaybackQueue(
-			list = delegate.playback.getPlaylist().map { it.mediaId }.toPersistentList(),
-			currentIndex = delegate.playback.index
-		)
+		get() {
+			// I think we should just remove MediaController usage
+			val list = delegate.playback.getPlaylist().map { it.mediaId }.toPersistentList()
+			val index = if (list.isEmpty()) {
+				PlaybackConstants.INDEX_UNSET
+			} else {
+				delegate.playback.index
+			}
+			return PlaybackQueue(
+				list = list,
+				currentIndex = index
+			)
+		}
 
 	override val repeatMode: RepeatMode
 		get() = when (delegate.playback.repeatMode) {

@@ -8,6 +8,7 @@ import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
+import timber.log.Timber
 
 @OptIn(ExperimentalStdlibApi::class, ExperimentalCoroutinesApi::class)
 internal class RealPlaybackQueueCollector(
@@ -35,6 +36,23 @@ internal class RealPlaybackQueueCollector(
 		val scopeDispatcher = scope.coroutineContext[CoroutineDispatcher]
 		require(scopeDispatcher?.limitedParallelism(1) === scopeDispatcher) {
 			"CoroutineScope dispatcher was not confined"
+		}
+	}
+
+	fun updateQueue(): Job {
+		return scope.launch {
+			_queueStateFlow.update {
+				(playbackConnection.getSession(observer.sessionID)?.controller?.queue
+					.takeIf { it != PlaybackQueue.UNSET } ?: localUNSET).also { new ->
+					Timber.d(
+						"""
+						QueueCollector updateQueue
+							from $it
+							to $new
+						"""
+					)
+				}
+			}
 		}
 	}
 
@@ -79,7 +97,7 @@ internal class RealPlaybackQueueCollector(
 						emit(PlaybackQueue.UNSET)
 						return@transform
 					}
-					val channel = Channel<PlaybackQueue>()
+					val channel = Channel<PlaybackQueue>(Channel.CONFLATED)
 					listenerJob = launch {
 						try {
 							session.controller.acquireObserver(owner).let { observer ->

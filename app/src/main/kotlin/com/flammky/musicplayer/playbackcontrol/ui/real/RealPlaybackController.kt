@@ -97,17 +97,23 @@ internal class RealPlaybackController(
 		}
 	}
 
-	override fun requestSeekAsync(index: Int, startPosition: Duration): Deferred<RequestResult> {
-		return scope.async {
-			val success = playbackConnection.getSession()?.controller?.withContext {
+	override fun requestSeekAsync(
+		index: Int,
+		startPosition: Duration,
+		coroutineContext: CoroutineContext
+	): Deferred<RequestResult> {
+		return scope.async(coroutineContext) {
+			val success = playbackConnection.getSession(sessionID)?.controller?.withContext {
 				seekIndex(index, startPosition)
 			} ?: false
 			RequestResult(
 				success = success,
 				eventDispatch = if (success) {
-					launch {
+					scope.launch {
 						val jobs = mutableListOf<Job>()
-						_observers.forEach { jobs.add(it.updateProgress()) }
+						_observers.forEach {
+							jobs.add(it.updateQueue())
+						}
 						jobs.joinAll()
 					}
 				} else {

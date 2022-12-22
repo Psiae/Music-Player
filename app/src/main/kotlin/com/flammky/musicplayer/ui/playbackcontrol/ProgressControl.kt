@@ -2,6 +2,7 @@ package com.flammky.musicplayer.ui.playbackcontrol
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
+import com.flammky.musicplayer.playbackcontrol.ui.PlaybackControlViewModel
 
 @Composable
 internal fun PlaybackProgressControl(

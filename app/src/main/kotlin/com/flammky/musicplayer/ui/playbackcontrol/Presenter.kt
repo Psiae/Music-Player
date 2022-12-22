@@ -19,12 +19,15 @@ internal interface PlaybackControlPresenter {
 
 	/**
 	 * Initialize the presenter
+	 * ** This function must be called before any other **
 	 */
 	fun initialize(
 		coroutineContext: CoroutineContext,
 		// State Saver
 		viewModel: ViewModel
 	)
+
+	fun currentSessionID(): String?
 
 	/**
 	 * Observe the Id of the currently active Session, null will be emitted if there's none
@@ -54,7 +57,7 @@ internal interface PlaybackControlPresenter {
 	fun dispose()
 
 	interface ViewModel {
-
+		// TODO: Saver DATA
 	}
 }
 
@@ -75,6 +78,8 @@ internal class RealPlaybackControlPresenter(
 			field = value
 		}
 
+	// Consider wrapping these into initialized instance
+
 	private var _coroutineScope: CoroutineScope? = null
 		get() {
 			check(Thread.holdsLock(_stateLock))
@@ -86,13 +91,13 @@ internal class RealPlaybackControlPresenter(
 				}
 			)
 		}
-	set(value) {
-		check(Thread.holdsLock(_stateLock))
-		check(field == null) {
-			"Coroutine Scope cannot be re-set"
+		set(value) {
+			check(Thread.holdsLock(_stateLock))
+			check(field == null) {
+				"Coroutine Scope cannot be re-set"
+			}
+			field = value
 		}
-		field = value
-	}
 
 	private var _initialized = false
 		get() {
@@ -154,6 +159,13 @@ internal class RealPlaybackControlPresenter(
 		}
 	}
 
+	override fun currentSessionID(): String? {
+		return sync(_stateLock) {
+			if (_disposed || !_initialized) return null
+			playbackConnection.getSession()?.id
+		}
+	}
+
 	// should we return listenable for the actual disposal ?
 	override fun dispose() {
 		sync(_stateLock) {
@@ -182,8 +194,8 @@ internal class RealPlaybackControlPresenter(
 			}
 			_coroutineScope!!
 		}
-		// realistically speaking will there be such case ?
 		val scopeJob = coroutineContext[Job]
+			?: scope.coroutineContext.job
 		val scopeDispatcher = coroutineContext[CoroutineDispatcher]?.let { dispatcher ->
 			try {
 				dispatcher.limitedParallelism(1)
@@ -230,6 +242,8 @@ internal class RealPlaybackControlPresenter(
 			}
 			runCatching {
 				emitAll(channel.consumeAsFlow())
+			}.onFailure { t ->
+				if (t !is CancellationException) throw t
 			}
 			job.cancel()
 		}
@@ -269,7 +283,7 @@ internal class RealPlaybackControlPresenter(
 			return CompletableDeferred<RequestResult>().apply { cancel() }
 		}
 
-		override fun requestSeekAsync(index: Int, startPosition: Duration): Deferred<RequestResult> {
+		override fun requestSeekAsync(index: Int, startPosition: Duration, coroutineContext: CoroutineContext): Deferred<RequestResult> {
 			return CompletableDeferred<RequestResult>().apply { cancel() }
 		}
 
@@ -294,7 +308,6 @@ internal class RealPlaybackControlPresenter(
 				return QueueCollector
 			}
 
-			override fun updateProgress(): Job = Job().apply { cancel() }
 			override fun dispose() = Unit
 
 			object DurationCollector : PlaybackObserver.DurationCollector {

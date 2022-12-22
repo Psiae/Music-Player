@@ -60,7 +60,7 @@ class RealPlaybackConnection(
 		_sessionLock.withLock {
 			_session = session
 			session?.let { _sessionMap[session.id] = session  }
-			_sessionListenersMap[""] }?.forEach { it(session)
-		}
+			_sessionListenersMap[""]
+		}?.forEach { it(session) }
 	}
 }

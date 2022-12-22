@@ -6,7 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -78,12 +78,11 @@ private fun LocalSongListsColumn(
 		) {
 			val localSongs = vm.listState.read()
 
-
-			items(
+			itemsIndexed(
 				items = localSongs,
-				key = { item -> item.id }
-			) { model ->
-				LocalSongListsItem(vm, model)
+				key = { index: Int, model: LocalSongModel -> model.id }
+			) { index: Int, model: LocalSongModel ->
+				LocalSongListsItem(vm, model) { vm.play(localSongs, index) }
 			}
 			item() {
 				val height = activityViewModel<VisibilityViewModel>().bottomVisibilityOffset.read()
@@ -98,12 +97,13 @@ private fun LocalSongListsColumn(
 @Composable
 private fun LocalSongListsItem(
 	vm: LocalSongViewModel,
-	model: LocalSongModel
+	model: LocalSongModel,
+	play: () -> Unit
 ) {
 	Box(
 		modifier = Modifier
 			.height(60.dp)
-			.clickable { vm.play(model) }
+			.clickable { play() }
 			.background(MaterialTheme.colorScheme.surface),
 		contentAlignment = Alignment.Center
 	) {

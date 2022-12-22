@@ -34,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -45,10 +46,12 @@ import com.flammky.musicplayer.R
 import com.flammky.musicplayer.base.compose.rememberLocalContextHelper
 import com.flammky.musicplayer.media.playback.PlaybackConstants
 import com.flammky.musicplayer.media.playback.PlaybackQueue
+import com.flammky.musicplayer.playbackcontrol.ui.PlaybackControlTrackMetadata
+import com.flammky.musicplayer.playbackcontrol.ui.PlaybackControlViewModel
+import com.flammky.musicplayer.playbackcontrol.ui.PlaybackDetailPropertiesInfo
 import com.flammky.musicplayer.playbackcontrol.ui.controller.PlaybackController
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
 import com.flammky.musicplayer.ui.Theme
-import com.flammky.musicplayer.ui.util.compose.NoRipple
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.PagerState
@@ -63,62 +66,58 @@ import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * @param showSelfState whether to show this composable
- * @param attachBackHandlerState whether to attach the BackHandler, useful to ensure that the
  */
 @Composable
-internal fun DetailedPlaybackControl(
+internal fun TransitioningPlaybackControl(
+	modifier: Modifier = Modifier,
 	showSelfState: State<Boolean>,
-	attachBackHandlerState: State<Boolean>,
-	viewModel: PlaybackControlViewModel,
 	dismiss: () -> Unit
 ) {
-
-	val visible = showSelfState.value
-	val attachBackHandler = attachBackHandlerState.value
-
-	val savedTransitioned = rememberSaveable { mutableStateOf(false) }
+	val showSelf = showSelfState.value
+	val savedTransitionedState = rememberSaveable { mutableStateOf(false) }
 	// remember the first value we got from the saver
-	val rememberSavedTransitioned = remember { mutableStateOf(savedTransitioned.value) }
+	val savedWasTransitionedState = remember { mutableStateOf(savedTransitionedState.value) }
 
 	val localDismiss = remember(dismiss) {
 		{
-			savedTransitioned.value = false
+			savedTransitionedState.value = false
 			dismiss()
 		}
 	}
 
-	if (visible) {
+	if (showSelf) {
+		BackHandler(onBack = localDismiss)
 		LockScreenOrientation(landscape = false)
 	}
 
-	if (attachBackHandler) {
-		BackHandler(onBack = localDismiss)
-	}
+	val viewModel: PlaybackControlViewModel = viewModel()
 
-	BoxWithConstraints(
-		modifier = Modifier,
-		contentAlignment = Alignment.BottomCenter,
-	) {
+	BoxWithConstraints(modifier = modifier) {
 
-		// Ensure that background contents are not clickable during transition
-		NoRipple {
-			Box(
-				modifier = Modifier
-					.fillMaxSize(fraction = if (visible) 1f else 0f)
-					.clickable { }
-			)
-		}
+		Box(
+			modifier = Modifier
+				.fillMaxSize(fraction = if (showSelf) 1f else 0f)
+				// Ensure that background contents are not clickable during transition
+				.clickable(
+					interactionSource = remember { MutableInteractionSource() },
+					indication = null,
+					onClick = {}
+				),
+		)
 
-		// TODO: Something meaningful while transitioning
-		val animatedHeight = updateTransition(targetState = visible, label = "")
+		// Think if there is somewhat better way to do this
+		val transitionHeightState = updateTransition(targetState = showSelf, label = "")
 			.animateDp(
-				label = "",
+				label = "Playback Control Transition",
+				targetValueByState = { targetShowSelf ->
+					if (targetShowSelf) maxHeight else 0.dp
+				},
 				transitionSpec = {
 					remember(targetState) {
 						tween(
 							durationMillis = when {
-								rememberSavedTransitioned.value -> {
-									rememberSavedTransitioned.value = false
+								savedWasTransitionedState.value -> {
+									savedWasTransitionedState.value = false
 									0
 								}
 								targetState -> 250
@@ -128,23 +127,29 @@ internal fun DetailedPlaybackControl(
 						)
 					}
 				}
-			) { visible ->
-				if (visible) maxHeight else 0.dp
-			}.also { state ->
-				if (state.value == maxHeight) { savedTransitioned.value = true }
+			)
+
+		NoInline {
+
+			if (transitionHeightState.value == maxHeight) {
+				savedTransitionedState.value = true
 			}
 
-		PlaybackBoxDetailTransition(
-			heightTargetDp = maxHeight,
-			heightDpState = animatedHeight,
-			viewModel = viewModel,
-			dismiss = localDismiss
-		)
+			ContentTransition(
+				heightTargetDp = maxHeight,
+				heightDpState = transitionHeightState,
+				viewModel = viewModel,
+				dismiss = localDismiss
+			)
+		}
 	}
+
+
 }
 
 @Composable
-private fun PlaybackBoxDetailTransition(
+private fun ContentTransition(
+	modifier: Modifier = Modifier,
 	heightTargetDp: Dp,
 	heightDpState: State<Dp>,
 	viewModel: PlaybackControlViewModel,
@@ -156,32 +161,29 @@ private fun PlaybackBoxDetailTransition(
 		heightTargetDp - heightDp
 	}
 
-	val yOffset = heightDpState.derive { heightDp ->
-		heightTargetDp - heightDp
-	}.value.also { y ->
+	// allows early return
+	NoInlineBox(modifier) {
+
 		// switch the state
-		when (y) {
-			// no offset, fully visible, transitioned
-			0.dp -> transitionedState.value = true
-			// target offset, fully hidden, not transitioned
-			heightTargetDp -> transitionedState.value = false
+		when (yOffsetState.value) {
+			0.dp -> {
+				// no offset, fully visible, transitioned
+				transitionedState.value = true
+			}
+			heightTargetDp -> {
+				// yOffset == heightTargetDp means that the layout is fully hidden,
+				transitionedState.value = false
+				// in that case remove content from the composition tree
+				return@NoInlineBox
+			}
 			// else keep whatever it was
 		}
-	}
-	// on a xOffset a positive value is right, negative value is left
-	// on a yOffset a positive value is down, negative value is up (0,0 == top-left)
-	// offset == 0 means there is no offset applied which is the full visibility
-	// offset > 0 && offset < target means the offset partially hide the layout
-	// offset >= target means the offset fully hide the layout
-	if (yOffset != heightTargetDp) {
-		// load the composable when it's visible
-		PlaybackBoxDetails(
-			modifier = Modifier
-				.offset(0.dp, yOffsetState.value)
-				// set the height directly,
-				// so composables will not recalculate dynamic size unnecessarily during transition (if any)
-				.height(heightTargetDp)
+
+		Content(
+			modifier = modifier
 				.fillMaxWidth()
+				.height(heightTargetDp)
+				.offset(0.dp, yOffsetState.value)
 				.background(
 					Theme
 						.dayNightAbsoluteColor()
@@ -195,76 +197,46 @@ private fun PlaybackBoxDetailTransition(
 }
 
 @Composable
-private fun PlaybackBoxDetails(
+private fun Content(
 	modifier: Modifier,
 	viewModel: PlaybackControlViewModel,
 	transitionedState: State<Boolean>,
 	dismiss: () -> Unit
 ) {
-	val sessionIdState = remember {
-		mutableStateOf<String?>(null)
-	}
+	val sessionController = playbackControllerAsState(viewModel = viewModel).value
 
-	val sessionControllerState = remember {
-		mutableStateOf<PlaybackController?>(null)
-	}
+	Box(modifier = modifier.fillMaxSize()) {
 
-	val sessionId = sessionIdState.value
-	val sessionController = sessionControllerState.value
+		val darkTheme = Theme.isDarkAsState().value
 
-	LaunchedEffect(key1 = null) {
-		viewModel.observeCurrentSessionId().collect { id ->
-			sessionIdState.value = id
-			// set to null directly here so composables will be forgotten
-			// and let the DisposableEffect cleanup
-			sessionControllerState.value = null
-		}
-	}
-
-	DisposableEffect(key1 = sessionId) {
-		if (sessionId == null) {
-			sessionControllerState.value = null
-			return@DisposableEffect onDispose {  }
-		}
-		val controller = viewModel.createController(sessionId)
-		sessionControllerState.value = controller
-		onDispose { controller.dispose() }
-	}
-
-	NoInlineBox(modifier = modifier.fillMaxSize()) {
-
-		// we should find alternatives for light mode
-		val animatedAlpha = animateFloatAsState(
+		val animatedAlphaState = animateFloatAsState(
 			targetValue = if (transitionedState.value) 1f else 0f,
-			animationSpec = tween(if (transitionedState.value) 100 else 0)
-		).value
-
-		RadialPlaybackBackground(
-			modifier = Modifier.alpha(animatedAlpha),
-			controller = sessionController,
-			viewModel = viewModel
+			animationSpec = tween(if (transitionedState.value && darkTheme) 150 else 0)
 		)
 
-		Column(
+		if (sessionController != null) {
+			RadialPlaybackPaletteBackground(
+				modifier = Modifier.alpha(animatedAlphaState.value),
+				controller = sessionController,
+				viewModel = viewModel
+			)
+		}
+
+		NoInlineColumn(
 			modifier = Modifier
 				.fillMaxSize()
 				.statusBarsPadding()
 		) {
-			NoRipple {
-
-				DetailToolbar(
-					modifier = Modifier.padding(top = 10.dp),
-					dismiss = dismiss
-				)
-
-				if (sessionController == null) {
-					return@NoRipple
-				}
-
+			DetailToolbar(
+				modifier = Modifier.padding(top = 10.dp),
+				controller = sessionController,
+				dismiss = dismiss
+			)
+			if (sessionController != null) {
 				DetailsContent(
 					modifier = Modifier
 						.padding(top = 20.dp)
-						.alpha(animatedAlpha),
+						.alpha(animatedAlphaState.value),
 					viewModel,
 					sessionController
 				)
@@ -274,14 +246,50 @@ private fun PlaybackBoxDetails(
 }
 
 @Composable
+private fun playbackControllerAsState(
+	viewModel: PlaybackControlViewModel
+): State<PlaybackController?> {
+	val coroutineScope = rememberCoroutineScope()
+	val idState = remember {
+		mutableStateOf<String?>(viewModel.currentSessionID())
+	}
+	val controllerState = remember {
+		mutableStateOf<PlaybackController?>(idState.value?.let { id ->
+			viewModel.createController(id, coroutineScope.coroutineContext)
+		})
+	}
+	val id = idState.value
+	val controller = controllerState.value
+	LaunchedEffect(key1 = null) {
+		viewModel.observeCurrentSessionId().collect { idState.value = it }
+	}
+	DisposableEffect(key1 = id) {
+		if (id == null) {
+			return@DisposableEffect onDispose {  }
+		}
+		if (id == controller?.sessionID) {
+			return@DisposableEffect onDispose { controller.dispose() }
+		}
+		val newController = viewModel.createController(id, coroutineScope.coroutineContext)
+		controllerState.value = newController
+		onDispose {
+			newController.dispose()
+		}
+	}
+	return controllerState
+}
+
+@Composable
 private fun DetailToolbar(
 	modifier: Modifier,
+	controller: PlaybackController?,
 	dismiss: () -> Unit
 ) {
 	Box(modifier = modifier) {
-		Column(modifier = Modifier
-			.height(50.dp)
-			.padding(vertical = 5.dp)
+		Column(
+			modifier = Modifier
+				.height(50.dp)
+				.padding(vertical = 5.dp)
 		) {
 			Row(modifier = Modifier
 				.height(40.dp)
@@ -291,12 +299,14 @@ private fun DetailToolbar(
 			) {
 				DismissAction(dismiss)
 				Spacer(modifier = Modifier.weight(2f))
-				Icon(
-					modifier = Modifier.size(26.dp),
-					painter = painterResource(id = R.drawable.more_vert_48px),
-					contentDescription = "more",
-					tint = Theme.dayNightAbsoluteContentColor()
-				)
+				if (controller != null) {
+					Icon(
+						modifier = Modifier.size(26.dp),
+						painter = painterResource(id = R.drawable.more_vert_48px),
+						contentDescription = "more",
+						tint = Theme.dayNightAbsoluteContentColor()
+					)
+				}
 			}
 		}
 	}
@@ -404,7 +414,7 @@ private fun TracksPagerDisplay(
 			},
 			seekIndex = { index ->
 				coroutineContext.ensureActive()
-				val result = controller.requestSeekAsync(index, Duration.ZERO).await()
+				val result = controller.requestSeekAsync(index, Duration.ZERO, coroutineContext).await()
 				result.eventDispatch?.join()
 				result.success
 			}
@@ -413,7 +423,7 @@ private fun TracksPagerDisplay(
 }
 
 @Composable
-private fun RadialPlaybackBackground(
+private fun RadialPlaybackPaletteBackground(
 	modifier: Modifier = Modifier,
 	artState: State<Any?>
 ) {
@@ -485,9 +495,9 @@ private fun RadialPlaybackBackground(
 }
 
 @Composable
-private fun RadialPlaybackBackground(
+private fun RadialPlaybackPaletteBackground(
 	modifier: Modifier = Modifier,
-	controller: PlaybackController?,
+	controller: PlaybackController,
 	viewModel: PlaybackControlViewModel,
 ) {
 	val coroutineScope = rememberCoroutineScope()
@@ -502,15 +512,18 @@ private fun RadialPlaybackBackground(
 	val metadataStateFlow = remember(id) {
 		viewModel.observeMetadata(id)
 	}
-	RadialPlaybackBackground(
+	RadialPlaybackPaletteBackground(
 		modifier,
-		metadataStateFlow.collectAsState()
+		metadataStateFlow.collectAsState().rememberDerive(calculation = { it.artwork })
 	)
 	DisposableEffect(key1 = controller) {
-		if (observer == null) {
-			return@DisposableEffect onDispose {  }
-		}
-		val queueCollector = observer.createQueueCollector(coroutineScope.coroutineContext)
+		val newObserver = controller.createPlaybackObserver(coroutineScope.coroutineContext)
+		observerState.value = newObserver
+		onDispose { newObserver.dispose() }
+	}
+	DisposableEffect(key1 = observer) {
+		if (observer == null) return@DisposableEffect onDispose {  }
+		val queueCollector = observer.createQueueCollector()
 			.apply {
 				coroutineScope.launch {
 					startCollect().join()
@@ -530,14 +543,22 @@ private fun TracksPager(
 	metadataStateForId: @Composable (String) -> State<PlaybackControlTrackMetadata>,
 	seekIndex: suspend (Int) -> Boolean,
 ) {
-	val queue = queueState.value
+	val queueOverrideAmountState = remember { mutableStateOf(0) }
+	val queueOverrideState = remember { mutableStateOf<PlaybackQueue?>(null) }
+	val actualQueueState = queueState.rememberDerive(calculation = { queueOverrideState.value ?: it })
+	val queue = actualQueueState.value
 	val queueIndex = queue.currentIndex
 	val queueList = queue.list
+
+	remember(queueIndex) {
+		Timber.d("PagerListenPageChange recomposed with new index: $queueIndex")
+		null
+	}
 
 	remember(queueList.size, queueIndex) {
 		if (queueList.isEmpty()) {
 			require( queueIndex == PlaybackConstants.INDEX_UNSET) {
-				"empty QueueList must be followed by an invalid Index"
+				"empty QueueList must be followed by an invalid Index, queue=$queueList index=$queueIndex"
 			}
 			null
 		} else {
@@ -552,7 +573,7 @@ private fun TracksPager(
 			.fillMaxWidth()
 			.height(300.dp),
 	) {
-		val pagerState = rememberPagerState(queueState.value.currentIndex.clampPositive())
+		val pagerState = rememberPagerState(actualQueueState.value.currentIndex.clampPositive())
 
 		HorizontalPager(
 			modifier = Modifier.fillMaxSize(),
@@ -567,6 +588,7 @@ private fun TracksPager(
 		PagerListenMediaIndexChange(
 			indexState = queueState.rememberDerive { it.currentIndex },
 			pagerState = pagerState,
+			overrideState = queueOverrideState.rememberDerive(calculation = { it != null }),
 			onScroll = { touched.overwrite(false) }
 		)
 
@@ -579,7 +601,20 @@ private fun TracksPager(
 		PagerListenPageChange(
 			pagerState = pagerState,
 			touchedState = touched,
-			seekIndex = seekIndex
+			shouldSeekIndex = { index ->
+				queueOverrideState.value = queue.copy(currentIndex = index)
+				true
+			},
+			seekIndex = { index ->
+				Timber.d("PagerListenPageChange seek to $index")
+				queueOverrideAmountState.value++
+				runCatching {
+					seekIndex(index)
+				}.isSuccess.also {
+					if (--queueOverrideAmountState.value == 0) queueOverrideState.value = null
+					Timber.d("PagerListenPageChange seek to $index done, ${queueOverrideAmountState.value}, ${queueOverrideState.value}")
+				}
+			}
 		)
 	}
 }
@@ -589,12 +624,16 @@ private fun TracksPager(
 private fun PagerListenMediaIndexChange(
 	indexState: State<Int>,
 	pagerState: PagerState,
+	overrideState: State<Boolean>,
 	onScroll: suspend () -> Unit
 ) {
-	val currentIndex by indexState
+	val currentIndex = indexState.value
+	val currentOverride = overrideState.value
 	LaunchedEffect(
-		key1 = currentIndex
+		key1 = currentIndex,
+		key2 = currentOverride
 	) {
+		if (currentOverride) return@LaunchedEffect
 		// TODO: Velocity check, if the user is dragging the pager but aren't moving
 		// or if the user drag velocity will ends in another page
 		if (currentIndex >= 0 &&
@@ -602,11 +641,7 @@ private fun PagerListenMediaIndexChange(
 			!pagerState.isScrollInProgress
 		) {
 			onScroll()
-			if (currentIndex.inRangeSpread(pagerState.currentPage, 2)) {
-				pagerState.animateScrollToPage(currentIndex)
-			} else {
-				pagerState.scrollToPage(currentIndex)
-			}
+			pagerState.animateScrollToPage(currentIndex)
 		}
 	}
 }
@@ -630,18 +665,24 @@ private fun PagerListenUserDrag(
 private fun PagerListenPageChange(
 	pagerState: PagerState,
 	touchedState: State<Boolean>,
+	shouldSeekIndex: (Int) -> Boolean,
 	seekIndex: suspend (Int) -> Boolean
 ) {
 	val dragging by pagerState.interactionSource.collectIsDraggedAsState()
 	val touched by touchedState
-	LaunchedEffect(
-		pagerState.currentPage,
-		dragging,
-		touched
-	) {
-		if (touched && !dragging) {
-			seekIndex(pagerState.currentPage)
+	val coroutineScope = rememberCoroutineScope()
+	val page = pagerState.currentPage
+	val rememberedPageState = remember {
+		mutableStateOf(page)
+	}
+	remember(page, dragging, touched) {
+		if (touched && !dragging && page != rememberedPageState.value) {
+			if (shouldSeekIndex(page)) {
+				rememberedPageState.value = page
+				coroutineScope.launch { seekIndex(page) }
+			}
 		}
+		null
 	}
 }
 
@@ -659,7 +700,6 @@ private fun TracksPagerItem(
 		val req = remember(art) {
 			ImageRequest.Builder(context)
 				.data(art)
-				.crossfade(200)
 				.build()
 		}
 		AsyncImage(
@@ -1137,7 +1177,19 @@ private fun PlaybackControlProgressSeekbar(
 }
 
 @Composable
+private fun NoInline(content: @Composable () -> Unit) = content()
+
+@Composable
 private fun <C> C.NoInline(content: @Composable C.() -> Unit) = content()
+
+/**
+ * non-Inlined box for easier recomposition control without introducing a function
+ * and reducing possibility of Imbalance error
+ */
+@Composable
+private fun NoInlineBox(
+	modifier: Modifier = Modifier
+) = Box(modifier)
 
 /**
  * non-Inlined box for easier recomposition control without introducing a function

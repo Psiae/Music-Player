@@ -24,8 +24,6 @@ interface PlaybackObserver {
 		collectorContext: CoroutineContext = EmptyCoroutineContext,
 	): QueueCollector
 
-	fun updateProgress(): Job
-
 	/**
 	 * Dispose the observer, any ongoing job will be cancelled, and no more emission is possible
 	 */

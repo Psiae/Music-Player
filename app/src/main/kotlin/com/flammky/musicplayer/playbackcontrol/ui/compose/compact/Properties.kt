@@ -16,46 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import com.airbnb.lottie.compose.*
 import com.flammky.musicplayer.R
-import com.flammky.musicplayer.playbackcontrol.ui.PlaybackControlViewModel
 import com.flammky.musicplayer.playbackcontrol.ui.model.PlayPauseCommand
-
-@Composable
-internal fun PropertiesControl(
-	viewModel: PlaybackControlViewModel,
-	dark: Boolean,
-) {
-	BoxWithConstraints {
-		val baseIconSize = min(maxHeight, maxWidth / 3 - 10.dp)
-
-		Row(
-			modifier = Modifier.fillMaxSize(),
-			verticalAlignment = Alignment.CenterVertically,
-			horizontalArrangement = Arrangement.SpaceAround,
-		) {
-			PlayPauseButton(
-				size = baseIconSize,
-				contentSize = baseIconSize - 3.dp,
-				dark = dark,
-				commandState = viewModel.playPauseCommandStateFlow.collectAsState(),
-				play = {  },
-				pause = {  }
-			)
-			FavoriteButton(
-				size = baseIconSize,
-				contentSize = baseIconSize - 3.dp,
-				dark = dark,
-				trackId = "",
-				changeFavorite = { info, favorite -> /* Impl */ }
-			)
-			QueueButton(
-				size = baseIconSize,
-				contentSize = baseIconSize - 3.dp,
-				dark = dark,
-				onClick = { /* Impl */ }
-			)
-		}
-	}
-}
 
 @Composable
 private fun PlayPauseButton(

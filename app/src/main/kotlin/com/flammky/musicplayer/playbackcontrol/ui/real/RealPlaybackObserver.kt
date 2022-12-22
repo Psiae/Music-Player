@@ -18,13 +18,14 @@ internal class /* Debug */ RealPlaybackObserver(
 	private val connection: PlaybackConnection,
 ) : PlaybackObserver {
 
+	val sessionID = controller.sessionID
+
 	private val _stateLock = Any()
 
 	@GuardedBy("_stateLock")
 	private var _disposed = false
 
 	private val updateProgressRequestListener = mutableListOf<Pair<CoroutineScope, suspend () -> Unit>>()
-
 	private val parentScopeContext: CoroutineContext = parentScope.coroutineContext
 
 	private val parentScopeDispatcher: /* MainCoroutineDispatcher */ CoroutineDispatcher =
@@ -39,7 +40,7 @@ internal class /* Debug */ RealPlaybackObserver(
 
 	private val _durationCollectors = mutableListOf<PlaybackObserver.DurationCollector>()
 	private val _progressionCollectors = mutableListOf<PlaybackObserver.ProgressionCollector>()
-	private val _queueCollectors = mutableListOf<PlaybackObserver.QueueCollector>()
+	private val _queueCollectors = mutableListOf<RealPlaybackQueueCollector>()
 
 	override val disposed: Boolean
 		get() = sync(_stateLock) { _disposed }
@@ -131,13 +132,23 @@ internal class /* Debug */ RealPlaybackObserver(
 		}
 	}
 
-	override fun updateProgress(): Job {
+	fun updateProgress(): Job {
 		return parentScope.launch {
 			val jobs = mutableListOf<Job>()
 			updateProgressRequestListener.removeAll { !it.first.isActive }
 			updateProgressRequestListener.forEach {
 				it.first.launch { it.second() }.also { job -> jobs.add(job) }
 			}
+			jobs.joinAll()
+		}
+	}
+
+	fun updateQueue(): Job {
+		return parentScope.launch {
+			val jobs = mutableListOf<Job>()
+			val queueCollectors = sync(_stateLock) { _queueCollectors.sync { ArrayList(this) } }
+			queueCollectors.forEach { jobs.add(it.updateQueue()) }
+			updateProgress().join()
 			jobs.joinAll()
 		}
 	}

@@ -51,14 +51,9 @@ private fun LibraryRootNavigation(
 private fun LibraryRootContent(
 	navController: NavController
 ) {
-	val contextHelper = rememberContextHelper()
-	val maxScreenHeight = contextHelper.device.screenHeightDp
-	val maxScreenWidth = contextHelper.device.screenHeightDp
 	val vvm: VisibilityViewModel = activityViewModel()
 	val bottomVisibilityOffset = vvm.bottomVisibilityOffset.read()
 	BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-		val maxWidth = constraints.maxWidth
-		val maxHeight = constraints.maxHeight
 		Column(
 			modifier = Modifier
 				.fillMaxSize()

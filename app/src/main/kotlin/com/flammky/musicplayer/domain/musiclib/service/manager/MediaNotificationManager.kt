@@ -26,6 +26,7 @@ import com.flammky.common.kotlin.comparable.clamp
 import com.flammky.common.kotlin.coroutines.AutoCancelJob
 import com.flammky.mediaplayer.helper.Preconditions.checkState
 import com.flammky.mediaplayer.helper.image.CoilHelper
+import com.flammky.musicplayer.activity.ActivityWatcher
 import com.flammky.musicplayer.core.sdk.VersionHelper
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory.orEmpty
@@ -40,7 +41,7 @@ import com.flammky.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.
 import com.flammky.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isStateIdle
 import com.flammky.musicplayer.domain.musiclib.service.MusicLibraryService
 import com.flammky.musicplayer.domain.musiclib.service.provider.MediaNotificationProvider
-import com.flammky.musicplayer.ui.main.MainActivity
+import com.flammky.musicplayer.main.MainActivity
 import com.google.common.collect.ImmutableList
 import kotlinx.coroutines.*
 import timber.log.Timber
@@ -697,7 +698,7 @@ class MediaNotificationManager(
 						stateInteractor.stopForegroundService(true)
 						stateInteractor.stopService()
 
-						if (!MainActivity.Companion.Info.state.isAlive()) stateInteractor.releaseService()
+						if (ActivityWatcher.get().count() == 0) stateInteractor.releaseService()
 					}
 					?: throw IllegalStateException("Received Intent: $intent on Released State")
 			}

@@ -27,7 +27,7 @@ internal class RealPlaybackQueueCollector(
 
 	private var queueCollectorJob: Job? = null
 
-	@GuardedBy("lock")
+	@GuardedBy("_lock")
 	override var disposed: Boolean = false
 		get() = sync(_lock) { field }
 		private set(value) = sync(_lock) { field = value }

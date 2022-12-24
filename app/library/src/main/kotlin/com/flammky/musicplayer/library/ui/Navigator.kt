@@ -24,7 +24,7 @@ object LibraryNavigator {
 			"${this@LibraryNavigator::class.simpleName} Could not find destination: $rootRoute within " +
 				"$this navigation graph:\n" +
 				"$graph\n" +
-				"did you forgot to call addRoot() ?"
+				"did you forgot to call LibraryNavigator.addRoot() ?"
 		}
 		navigate(rootRoute) {
 			popUpTo(rootRoute) {

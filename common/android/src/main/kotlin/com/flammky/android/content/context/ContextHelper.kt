@@ -2,12 +2,13 @@ package com.flammky.android.content.context
 
 import android.content.Context
 import android.content.ContextWrapper
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.Settings
 import com.flammky.android.manifest.permission.AndroidPermission
 
-class ContextHelper(context: Context) {
-
-	val context = context.findBase()
+class ContextHelper(private val context: Context) {
 
 	val configurations = object : Configurations {
 		override val orientationInt: Int get() = context.orientationInt
@@ -54,6 +55,19 @@ class ContextHelper(context: Context) {
 			get() = screenHeightPx / context.resources.displayMetrics.density
 	}
 
+	val intents = object : Intents {
+
+		override val common: Intents.Common = object : Intents.Common {
+
+			override fun appDetailSettings(): Intent {
+				return Intent().apply {
+					action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+					data = Uri.parse("package:${context.packageName}")
+				}
+			}
+		}
+	}
+
 	interface Permissions {
 
 		val common: Common
@@ -79,6 +93,15 @@ class ContextHelper(context: Context) {
 		val screenHeightPx: Int
 		val screenWidthDp: Float
 		val screenHeightDp: Float
+	}
+
+	interface Intents {
+
+		val common: Common
+
+		interface Common {
+			fun appDetailSettings(): Intent
+		}
 	}
 
 	companion object {

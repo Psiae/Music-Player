@@ -1,22 +1,17 @@
-package com.flammky.mediaplayer.ui.activity.mainactivity.compose.theme
+package com.flammky.musicplayer.main.ui.compose
 
-import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalContext
-import com.flammky.mediaplayer.ui.activity.mainactivity.compose.theme.helper.ColorHelper
+import androidx.compose.ui.unit.dp
 import com.flammky.musicplayer.core.sdk.VersionHelper
+import com.flammky.musicplayer.ui.main.compose.theme.*
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
-import com.google.android.material.color.ColorRoles
 import com.google.android.material.color.DynamicColors
-import com.google.android.material.color.MaterialColors
-import timber.log.Timber
+import kotlin.math.ln
 
 private val LightThemeColors = lightColorScheme(
 
@@ -84,11 +79,6 @@ fun MaterialDesign3Theme(
 	useDarkTheme: Boolean = isSystemInDarkTheme(),
 	content: @Composable () -> Unit
 ) {
-
-	val systemUiController = rememberSystemUiController()
-
-	Timber.d("hasSnowCone? ${VersionHelper.hasSnowCone()}")
-
 	val colors = if (dynamic && DynamicColors.isDynamicColorAvailable()) {
 		if (useDarkTheme) {
 			dynamicDarkColorScheme(LocalContext.current)
@@ -102,15 +92,12 @@ fun MaterialDesign3Theme(
 			LightThemeColors
 		}
 	}
-
-
-
 	MaterialTheme(
 		colorScheme = colors,
 		typography = AppTypography,
 	) {
-		with(systemUiController) {
-			setStatusBarColor(ColorHelper.getTonedSurface().copy(alpha = 0.5f))
+		with(rememberSystemUiController()) {
+			setStatusBarColor(getTonedSurface().copy(alpha = 0.5f))
 			setNavigationBarColor(Color.Transparent)
 			isNavigationBarContrastEnforced = true
 			statusBarDarkContentEnabled = !useDarkTheme
@@ -120,83 +107,10 @@ fun MaterialDesign3Theme(
 	}
 }
 
-data class CustomColor(val name:String, val color: Color, val harmonized: Boolean, var roles: ColorRoles)
-data class ExtendedColors(val colors: Array<CustomColor>) {
-	override fun equals(other: Any?): Boolean {
-		if (this === other) return true
-		if (javaClass != other?.javaClass) return false
-		other as ExtendedColors
-		if (!colors.contentEquals(other.colors)) return false
-		return true
-	}
-
-	override fun hashCode(): Int {
-		return colors.contentHashCode()
-	}
-}
-
-
-fun setupErrorColors(colorScheme: ColorScheme, isLight: Boolean): ColorScheme {
-	val harmonizedError =
-		MaterialColors.harmonize(error.toArgb(), colorScheme.primary.toArgb())
-	val roles = MaterialColors.getColorRoles(harmonizedError, isLight)
-	//returns a colorScheme with newly harmonized error colors
-	return colorScheme.copy(
-		error = Color(roles.accent),
-		onError = Color(roles.onAccent),
-		errorContainer = Color(roles.accentContainer),
-		onErrorContainer = Color(roles.onAccentContainer)
-	)
-}
-val initializeExtended = ExtendedColors(arrayOf())
-
-fun setupCustomColors(
-	colorScheme: ColorScheme,
-	isLight: Boolean
-): ExtendedColors {
-	initializeExtended.colors.forEach {customColor ->
-		// Retrieve record
-		val shouldHarmonize = customColor.harmonized
-		// Blend or not
-		if (shouldHarmonize) {
-			val blendedColor =
-				MaterialColors.harmonize(customColor.color.toArgb(), colorScheme.primary.toArgb())
-			customColor.roles = MaterialColors.getColorRoles(blendedColor, isLight)
-		} else {
-			customColor.roles = MaterialColors.getColorRoles(customColor.color.toArgb(), isLight)
-		}
-	}
-	return initializeExtended
-}
-
-val LocalExtendedColors = staticCompositionLocalOf {
-	initializeExtended
-}
-
-
-@RequiresApi(Build.VERSION_CODES.S)
 @Composable
-fun HarmonizedTheme(
-	isDynamic: Boolean = true,
-	useDarkTheme: Boolean = isSystemInDarkTheme(),
-	content: @Composable() () -> Unit
-) {
-
-	val colors = if (isDynamic) {
-		val context = LocalContext.current
-		if (useDarkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-	} else {
-		if (useDarkTheme) DarkThemeColors else LightThemeColors
-	}
-	val colorsWithHarmonizedError = if (isDynamic) setupErrorColors(colors, !useDarkTheme) else colors
-	val extendedColors = setupCustomColors(colors, !useDarkTheme)
-	CompositionLocalProvider(LocalExtendedColors provides extendedColors) {
-		MaterialTheme(
-			colorScheme = colorsWithHarmonizedError,
-			typography = AppTypography,
-			content = content
-		)
-	}
+private fun getTonedSurface(elevation: Int = 2): Color {
+	val alpha = ((4.5f * ln(x = (elevation).dp.value + 1) ) + 2f) / 100f
+	val surface = MaterialTheme.colorScheme.surface
+	val primary = MaterialTheme.colorScheme.primary
+	return alpha.let { primary.copy(it).compositeOver(surface) }
 }
-
-object Extended {}

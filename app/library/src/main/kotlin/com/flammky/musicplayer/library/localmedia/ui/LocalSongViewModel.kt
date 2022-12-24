@@ -12,7 +12,6 @@ import androidx.lifecycle.viewModelScope
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.common.kotlin.coroutines.safeCollect
-import com.flammky.kotlin.common.subListAroundIndex
 import com.flammky.musicplayer.library.BuildConfig
 import com.flammky.musicplayer.library.localmedia.data.LocalSongModel
 import com.flammky.musicplayer.library.localmedia.data.LocalSongRepository
@@ -94,7 +93,7 @@ internal class LocalSongViewModel @Inject constructor(
 	// queue should be recognized instead
 	fun play(queue: List<LocalSongModel>, index: Int) {
 		if (index !in queue.indices) return
-		val cut = queue.subListAroundIndex(index, 50, true)
+		val cut = queue
 		mediaConnection.play(cut.map { it.id to it.mediaItem.mediaUri }, index)
 	}
 

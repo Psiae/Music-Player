@@ -40,7 +40,7 @@ class LazyConstructor<T> @JvmOverloads constructor(lock: Any = Any()) {
 		get() = try {
 			localValue as T
 		} catch (cce: ClassCastException) {
-			error("localValue($localValue) was UNSET")
+			error("localValue=$localValue was UNSET")
 		}
 
 	/**

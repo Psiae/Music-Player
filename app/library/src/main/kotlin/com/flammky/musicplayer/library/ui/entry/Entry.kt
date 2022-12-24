@@ -5,12 +5,11 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import com.flammky.musicplayer.library.ui.root.LibraryRoot
-import com.flammky.musicplayer.library.util.read
 
 /** Library Composable internal entry point */
 @Composable
 internal fun LibraryEntry() {
-	if (libraryGuard().read()) {
+	if (libraryGuard().value) {
 		LibraryRoot()
 	}
 }

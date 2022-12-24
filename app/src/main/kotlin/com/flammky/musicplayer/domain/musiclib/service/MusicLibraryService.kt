@@ -21,6 +21,7 @@ import com.flammky.common.kotlin.coroutines.safeCollect
 import com.flammky.mediaplayer.helper.Preconditions.checkMainThread
 import com.flammky.mediaplayer.helper.Preconditions.checkState
 import com.flammky.musicplayer.BuildConfig
+import com.flammky.musicplayer.activity.ActivityWatcher
 import com.flammky.musicplayer.base.media.mediaconnection.MediaConnectionDelegate
 import com.flammky.musicplayer.core.sdk.VersionHelper
 import com.flammky.musicplayer.domain.musiclib.service.manager.MediaNotificationManager
@@ -28,7 +29,6 @@ import com.flammky.musicplayer.domain.musiclib.service.manager.PlaybackManager
 import com.flammky.musicplayer.domain.musiclib.service.manager.SessionManager
 import com.flammky.musicplayer.domain.musiclib.service.manager.StateManager
 import com.flammky.musicplayer.domain.musiclib.service.provider.SessionProvider
-import com.flammky.musicplayer.ui.main.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -119,8 +119,6 @@ class MusicLibraryService : MediaLibraryService() {
 		stateRegistry.onEvent(ServiceEvent.Start, true)
 	}
 
-
-
 	override fun onBind(intent: Intent?): IBinder? {
 		if (!isServiceStarted) onStart()
 		return super.onBind(intent)
@@ -201,7 +199,7 @@ class MusicLibraryService : MediaLibraryService() {
 		// probably would be nice to introduce something similar in musiclib package
 
 		// we should have something else instead
-		if (!MainActivity.Companion.Info.state.isAlive()) {
+		if (ActivityWatcher.get().count() == 0) {
 			// could Leak
 			// TODO: CleanUp
 			notificationManagerService.cancelAll()

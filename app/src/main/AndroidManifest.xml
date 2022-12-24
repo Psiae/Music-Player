@@ -42,7 +42,7 @@
 
         <!-- Other orientation will be supported in the future -->
         <activity
-            android:name="com.flammky.musicplayer.ui.main.MainActivity"
+            android:name="com.flammky.musicplayer.main.MainActivity"
             android:exported="true"
             android:theme="@style/Theme.App.SplashScreen"
             android:launchMode="singleTask">

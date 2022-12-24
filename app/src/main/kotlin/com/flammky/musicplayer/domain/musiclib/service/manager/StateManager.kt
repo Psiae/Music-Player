@@ -3,10 +3,9 @@ package com.flammky.musicplayer.domain.musiclib.service.manager
 import android.app.Notification
 import androidx.media3.common.Player
 import androidx.media3.session.MediaSession
+import com.flammky.musicplayer.activity.ActivityWatcher
 import com.flammky.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isOngoing
 import com.flammky.musicplayer.domain.musiclib.service.MusicLibraryService
-import com.flammky.musicplayer.ui.main.MainActivity
-import com.flammky.musicplayer.ui.main.MainActivity.MainState.Created.isAlive
 import timber.log.Timber
 
 class StateManager(
@@ -16,7 +15,7 @@ class StateManager(
 
 	private val foregroundServiceCondition: (MediaSession) -> Boolean = {
 		val extra = when {
-			!MainActivity.Companion.Info.state.isAlive() -> it.player.playWhenReady
+			ActivityWatcher.get().count() == 0 -> it.player.playWhenReady
 			else -> true
 		}
 		it.player.playbackState.isOngoing() && extra

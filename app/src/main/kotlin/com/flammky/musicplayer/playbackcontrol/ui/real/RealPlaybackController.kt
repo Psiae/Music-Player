@@ -3,7 +3,6 @@ package com.flammky.musicplayer.playbackcontrol.ui.real
 import androidx.annotation.GuardedBy
 import com.flammky.kotlin.common.sync.sync
 import com.flammky.musicplayer.media.mediaconnection.playback.PlaybackConnection
-import com.flammky.musicplayer.media.playback.PlaybackSession
 import com.flammky.musicplayer.playbackcontrol.ui.controller.PlaybackController
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
 import com.flammky.musicplayer.ui.playbackcontrol.RealPlaybackControlPresenter
@@ -25,7 +24,6 @@ internal class RealPlaybackController(
 	private var _disposed = false
 
 	private val _observers = mutableListOf<RealPlaybackObserver>()
-	private val _sessionObserversMap = mutableMapOf<String, MutableList<(PlaybackSession?) -> Unit>>()
 
 	override val disposed: Boolean
 		get() = sync(_stateLock) { _disposed }

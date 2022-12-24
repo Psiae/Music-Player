@@ -1,31 +1,41 @@
 package com.flammky.musicplayer.external.receiver
 
 import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
-import android.util.Log
-import com.flammky.android.medialib.temp.common.intent.isActionView
+import com.flammky.android.content.intent.isActionView
 import com.flammky.musicplayer.R
-import com.flammky.musicplayer.ui.main.MainActivity
-import timber.log.Timber
+import com.flammky.musicplayer.activity.ActivityWatcher
+import com.flammky.musicplayer.main.MainActivity
 
+/**
+ * For now use this activity to delegate all incoming intent (except launcher)
+ */
 class ReceiverActivity : Activity() {
 
 	override fun onCreate(savedInstanceState: Bundle?) {
-		Log.d("", "")
-		Timber.d("")
-
 		super.onCreate(savedInstanceState)
 		when {
-			intent.isActionView() -> launchMainActivity()
-			else -> TODO("Unsupported Intent Action: ${intent.action}")
+			intent.isActionView() -> resolveActionView(intent)
+			else -> TODO("Unsupported Intent: $intent")
 		}
 		finishAfterTransition()
 	}
 
+	private fun resolveActionView(intent: Intent) {
+		require(intent.isActionView())
+		// TODO: use Resolver before launching MainActivity
+		launchMainActivity()
+	}
+
 	private fun launchMainActivity() {
-		MainActivity.launch(this, intent)
-		if (!MainActivity.Companion.Info.state.wasLaunched()) {
-			overridePendingTransition(R.anim.anim_stay_still, R.anim.anim_stay_still)
+		MainActivity.launchWithIntent(
+			launcherContext = this,
+			intent = requireNotNull(intent)
+		).also {
+			if (it && ActivityWatcher.get().hasActivity(MainActivity::class.java)) {
+				overridePendingTransition(R.anim.anim_stay_still, R.anim.anim_stay_still)
+			}
 		}
 	}
 }

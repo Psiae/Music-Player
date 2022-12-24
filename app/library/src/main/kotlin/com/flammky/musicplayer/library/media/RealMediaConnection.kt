@@ -18,6 +18,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
@@ -38,6 +39,13 @@ internal class RealMediaConnection(
 	}
 
 	override fun play(queue: List<Pair<String, Uri>>, index: Int) {
+		Timber.d(
+			"""
+				RMC play:
+				queue=$queue
+				index=$index
+			"""
+		)
 		if (index !in queue.indices) return
 		coroutineScope.launch(sDispatcher) {
 			val mappedQueue = queue.map { createMediaItem(it.first, it.second) }

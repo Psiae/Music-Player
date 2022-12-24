@@ -22,10 +22,10 @@ import androidx.core.content.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.flammky.android.app.permission.AndroidPermission
-import com.flammky.android.content.context.ContextInfo
-import com.flammky.android.content.context.rememberContextInfo
+import com.flammky.android.content.context.ContextHelper
 import com.flammky.androidx.content.context.findActivity
 import com.flammky.musicplayer.R
+import com.flammky.musicplayer.base.compose.rememberLocalContextHelper
 import com.flammky.musicplayer.ui.main.compose.theme.MainMaterial3Theme
 import com.flammky.musicplayer.ui.main.compose.theme.color.ColorHelper
 import com.google.accompanist.pager.ExperimentalPagerApi
@@ -35,6 +35,13 @@ import com.google.accompanist.pager.rememberPagerState
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
+
+@Composable
+fun MainEntry(content: @Composable () -> Unit) {
+	if (entryPermissionAsState().value) {
+		content()
+	}
+}
 
 class EntryViewModel() : ViewModel() {
 	var shouldPersistPager: Boolean? = null
@@ -58,29 +65,24 @@ private val pageItems = listOf(
 	),
 )
 
-@Composable
-fun MainEntry(content: @Composable () -> Unit) {
-	if (entryPermissionAsState().value) {
-		content()
-	}
-}
+
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 private fun entryPermissionAsState(): State<Boolean> {
 
-	val contextInfo = rememberContextInfo()
+	val contextHelper = rememberLocalContextHelper()
 
 	val entryVM = entryViewModel
 
-	val readStorageGranted = contextInfo.permissionInfo.readExternalStorageAllowed
+	val readStorageGranted = contextHelper.permissions.common.hasReadExternalStorage
 
 	val entryAllowed = remember {
 		mutableStateOf(entryVM.shouldPersistPager != true && readStorageGranted)
 	}
 
 	if (!entryAllowed.value) {
-		EntryPermissionPager(contextInfo) { entryAllowed.value = true }
+		EntryPermissionPager(contextHelper) { entryAllowed.value = true }
 	}
 
 	return entryAllowed
@@ -89,7 +91,7 @@ private fun entryPermissionAsState(): State<Boolean> {
 @OptIn(ExperimentalPagerApi::class)
 @ExperimentalPermissionsApi
 @Composable
-private fun EntryPermissionPager(contextInfo: ContextInfo, onGranted: () -> Unit) {
+private fun EntryPermissionPager(contextHelper: ContextHelper, onGranted: () -> Unit) {
 
 	val granted = remember {
 		mutableStateOf(false)
@@ -149,22 +151,23 @@ private fun EntryPermissionPager(contextInfo: ContextInfo, onGranted: () -> Unit
 			PermissionPage(
 				resId = resId,
 				description = title + if (optional) " (Optional)" else " (Required)",
-				isGranted = state.status.isGranted
-			) {
-				if (state.status.isGranted) {
-					return@PermissionPage
+				isGranted = state.status.isGranted,
+				launchPermissionRequest = {
+					if (state.status.isGranted) {
+						return@PermissionPage
+					}
+					if (isPermissionRequestBlocked(activity, perm.manifestPath)) {
+						rememberLauncher.launch(contextHelper.intents.common.appDetailSettings())
+						return@PermissionPage
+					}
+					state.launchPermissionRequest()
+					savePermissionRequested(activity, perm.manifestPath)
 				}
-				if (isPermissionRequestBlocked(activity, perm.manifestPath)) {
-					rememberLauncher.launch(contextInfo.commonIntent.appDetailSetting)
-					return@PermissionPage
-				}
-				state.launchPermissionRequest()
-				savePermissionRequested(activity, perm.manifestPath)
-			}
+			)
 
 			allPermissionGranted.value = pageItems
 				.filter { !it.optional }
-				.all { contextInfo.isPermissionGranted(it.permission) }
+				.all { contextHelper.permissions.hasPermission(it.permission.manifestPath) }
 		}
 
 		Column(

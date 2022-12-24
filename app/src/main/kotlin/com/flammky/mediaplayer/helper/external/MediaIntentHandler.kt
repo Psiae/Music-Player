@@ -81,6 +81,7 @@ class MediaIntentHandlerImpl(
 
   private inner class ActionViewHandler() {
 
+		@Volatile
     private var actionViewJob = Job().job
 
     suspend fun handleIntentActionView(intent: IntentWrapper): Unit = withContext(coroutineContext) {

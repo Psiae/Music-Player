@@ -33,7 +33,7 @@ class ReceiverActivity : Activity() {
 			launcherContext = this,
 			intent = requireNotNull(intent)
 		).also {
-			if (it && ActivityWatcher.get().hasActivity(MainActivity::class.java)) {
+			if (it && !ActivityWatcher.get().hasActivity(MainActivity::class.java)) {
 				overridePendingTransition(R.anim.anim_stay_still, R.anim.anim_stay_still)
 			}
 		}

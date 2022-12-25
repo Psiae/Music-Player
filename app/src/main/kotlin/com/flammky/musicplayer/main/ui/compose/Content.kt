@@ -9,7 +9,7 @@ fun MainActivity.setContent() = setContent { ThemedContent() }
 
 @Composable
 private fun ThemedContent() {
-	MaterialDesign3Theme() {
+	MaterialDesign3Theme {
 		ComposeContent()
 	}
 }

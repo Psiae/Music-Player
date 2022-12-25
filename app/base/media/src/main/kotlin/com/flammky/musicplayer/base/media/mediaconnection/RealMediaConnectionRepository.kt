@@ -3,6 +3,8 @@ package com.flammky.musicplayer.base.media.mediaconnection
 import android.content.Context
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
+import com.flammky.kotlin.common.lazy.LazyConstructor
+import com.flammky.kotlin.common.lazy.LazyConstructor.Companion.valueOrNull
 import com.flammky.musicplayer.base.media.mediaconnection.RealMediaConnectionRepository.MapObserver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -174,5 +176,14 @@ class RealMediaConnectionRepository(
 
 	private fun interface MapObserver<K: Any, V> {
 		suspend fun onChanged(key: K, value: V?)
+	}
+
+	companion object {
+		private val SINGLETON = LazyConstructor<RealMediaConnectionRepository>()
+		fun provide(ctx: Context, dispatchers: AndroidCoroutineDispatchers) = SINGLETON.construct {
+			RealMediaConnectionRepository(ctx, dispatchers)
+		}
+
+		fun get() = SINGLETON.valueOrNull() ?: error("RealMediaConnectionRepository was not provided")
 	}
 }

@@ -1,4 +1,4 @@
-package com.flammky.musicplayer.ui.playbackcontrol
+package com.flammky.musicplayer.playbackcontrol.ui.compose
 
 import android.annotation.SuppressLint
 import android.content.pm.ActivityInfo
@@ -52,6 +52,8 @@ import com.flammky.musicplayer.playbackcontrol.ui.PlaybackDetailPropertiesInfo
 import com.flammky.musicplayer.playbackcontrol.ui.controller.PlaybackController
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
 import com.flammky.musicplayer.ui.Theme
+import com.flammky.musicplayer.ui.playbackcontrol.Slider
+import com.flammky.musicplayer.ui.playbackcontrol.SliderDefaults
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.PagerState
@@ -414,7 +416,7 @@ private fun TracksPagerDisplay(
 			},
 			seekIndex = { index ->
 				coroutineContext.ensureActive()
-				val result = controller.requestSeekAsync(index, Duration.ZERO, coroutineContext).await()
+				val result = controller.requestSeekAsync(index, ZERO, coroutineContext).await()
 				result.eventDispatch?.join()
 				result.success
 			}

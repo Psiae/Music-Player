@@ -54,11 +54,11 @@ import com.flammky.mediaplayer.domain.viewmodels.MediaViewModel
 import com.flammky.mediaplayer.ui.activity.mainactivity.compose.theme.AppTypography
 import com.flammky.musicplayer.R
 import com.flammky.musicplayer.base.compose.VisibilityViewModel
+import com.flammky.musicplayer.playbackcontrol.ui.compose.TransitioningPlaybackControl
 import com.flammky.musicplayer.ui.main.compose.navigation.MainNavigator
 import com.flammky.musicplayer.ui.main.compose.navigation.MainNavigator.ProvideNavHostController
 import com.flammky.musicplayer.ui.main.compose.screens.root.PlaybackControl
 import com.flammky.musicplayer.ui.main.compose.theme.color.ColorHelper
-import com.flammky.musicplayer.ui.playbackcontrol.TransitioningPlaybackControl
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import timber.log.Timber
 import kotlin.math.roundToInt

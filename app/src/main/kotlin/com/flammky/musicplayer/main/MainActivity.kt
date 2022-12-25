@@ -10,10 +10,9 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.flammky.android.activity.disableWindowFitSystemInsets
 import com.flammky.android.content.context.ContextHelper
 import com.flammky.android.content.intent.isActionMain
-import com.flammky.mediaplayer.domain.viewmodels.MediaViewModel
-import com.flammky.mediaplayer.helper.external.IntentWrapper
 import com.flammky.musicplayer.activity.ActivityCompanion
 import com.flammky.musicplayer.activity.RequireLauncher
+import com.flammky.musicplayer.main.ui.MainViewModel
 import com.flammky.musicplayer.main.ui.compose.setContent
 import dagger.hilt.android.AndroidEntryPoint
 import kotlin.random.Random
@@ -23,9 +22,7 @@ class MainActivity : ComponentActivity() {
 
 	private val contextHelper = ContextHelper(this)
 	private val innerIntentHandler = InnerIntentHandler()
-
-
-	private val mediaVM: MediaViewModel by viewModels()
+	private val mainVM: MainViewModel by viewModels()
 
 	private val readStoragePermission
 		get() = contextHelper.permissions.common.hasReadExternalStorage
@@ -76,19 +73,7 @@ class MainActivity : ComponentActivity() {
 
 	private inner class InnerIntentHandler {
 		fun handleIntent(intent: Intent) {
-			val wrapped = IntentWrapper.fromIntent(intent)
-			if (!wrapped.shouldHandleIntent) return
-			if (!readStoragePermission) {
-				mediaVM.pendingStorageIntent.add(wrapped)
-				return
-			}
-			if (mediaVM.pendingStorageIntent.isNotEmpty()) {
-				// RequireStoragePermission Composable is recomposed OnResume,
-				// always after onNewIntent() that might call this function
-				mediaVM.pendingStorageIntent.add(wrapped)
-				return
-			}
-			mediaVM.handleMediaIntent(wrapped)
+			mainVM.entryCheckWaiter.add { mainVM.intentHandler.handleIntent(intent) }
 		}
 	}
 

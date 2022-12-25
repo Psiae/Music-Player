@@ -14,10 +14,6 @@ import com.flammky.musicplayer.ui.main.compose.theme.MainMaterial3Theme
 
 @Composable
 fun ComposeContent() = ApplyTheme {
-
-
-
-
 	MainEntry {
 		val mainViewModel: MainViewModel = viewModel()
 		val mediaViewModel: MediaViewModel = viewModel()

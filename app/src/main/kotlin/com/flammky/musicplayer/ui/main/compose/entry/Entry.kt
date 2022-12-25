@@ -26,6 +26,7 @@ import com.flammky.android.content.context.ContextHelper
 import com.flammky.androidx.content.context.findActivity
 import com.flammky.musicplayer.R
 import com.flammky.musicplayer.base.compose.rememberLocalContextHelper
+import com.flammky.musicplayer.main.ui.MainViewModel
 import com.flammky.musicplayer.ui.main.compose.theme.MainMaterial3Theme
 import com.flammky.musicplayer.ui.main.compose.theme.color.ColorHelper
 import com.google.accompanist.pager.ExperimentalPagerApi
@@ -41,6 +42,7 @@ fun MainEntry(content: @Composable () -> Unit) {
 	if (entryPermissionAsState().value) {
 		content()
 	}
+
 }
 
 class EntryViewModel() : ViewModel() {
@@ -74,19 +76,54 @@ private fun entryPermissionAsState(): State<Boolean> {
 	val contextHelper = rememberLocalContextHelper()
 
 	val entryVM = entryViewModel
+	val vm: MainViewModel = viewModel()
 
 	val readStorageGranted = contextHelper.permissions.common.hasReadExternalStorage
 
-	val entryAllowed = remember {
+	val state = remember {
 		mutableStateOf(entryVM.shouldPersistPager != true && readStorageGranted)
 	}
 
-	if (!entryAllowed.value) {
-		EntryPermissionPager(contextHelper) { entryAllowed.value = true }
+	if (!state.value) {
+		val interceptor = remember {
+			val intentHandler = vm.intentHandler
+			intentHandler.createInterceptor()
+				.apply {
+					setFilter {
+						val clone = it.cloneActual()
+						intentHandler.intentRequireAndroidPermission(clone, com.flammky.android.manifest.permission.AndroidPermission.Read_External_Storage)
+					}
+					start()
+				}
+		}
+		DisposableEffect(
+			// wait to be removed from composition tree by either `state.value` become true
+			// or parent branch
+			key1 = null
+		) {
+			onDispose {
+				if (!state.value) {
+					// should we tho ?
+					interceptor.dropAllInterceptedIntent()
+				}
+				interceptor.dispose()
+			}
+		}
+
+		EntryPermissionPager(contextHelper) { state.value = true }
 	}
 
-	return entryAllowed
+	NoInline {
+		if (vm.entryCheckWaiter.isNotEmpty()) {
+			vm.entryCheckWaiter.forEach { it() }
+			vm.entryCheckWaiter.clear()
+		}
+	}
+	return state
 }
+
+@Composable
+fun NoInline(block: @Composable () -> Unit) = block()
 
 @OptIn(ExperimentalPagerApi::class)
 @ExperimentalPermissionsApi

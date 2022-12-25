@@ -25,7 +25,7 @@ object MediaModule {
 		dispatchers: AndroidCoroutineDispatchers
 	): MediaConnectionDelegate = RealMediaConnectionDelegate(
 		mediaStore = MediaLib.singleton(context).mediaProviders.mediaStore,
-		repository = RealMediaConnectionRepository(context, dispatchers),
+		repository = RealMediaConnectionRepository.provide(context, dispatchers),
 		playback = RealMediaConnectionPlayback(),
 	)
 }

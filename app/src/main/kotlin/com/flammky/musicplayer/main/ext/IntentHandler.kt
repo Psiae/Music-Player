@@ -1,5 +1,8 @@
 package com.flammky.musicplayer.main.ext
 
+import android.content.Intent
+import com.flammky.android.manifest.permission.AndroidPermission
+
 /**
  * Intent Handler interface for the `Main` Module
  */
@@ -15,12 +18,33 @@ interface IntentHandler {
 	 */
 	fun createInterceptor(): Interceptor
 
+	fun handleIntent(intent: Intent)
+
+	fun intentRequireAndroidPermission(
+		intent: Intent,
+		permission: AndroidPermission
+	): Boolean
+
+	fun dispose()
 
 	interface Interceptor {
+		fun collectInterceptedIntent(): List<InterceptedIntent>
+		fun dispatchAllInterceptedIntent()
+		fun dropAllInterceptedIntent()
 		fun start()
+		fun setFilter(filter: (TargetIntent) -> Boolean)
+
+		/**
+		 * Dispose the interceptor, if there's an intercepted intent then it will be dispatched
+		 */
+		fun dispose()
+	}
+
+	interface TargetIntent {
+		fun cloneActual(): Intent
 	}
 
 	interface InterceptedIntent {
-
+		fun cloneActual(): Intent
 	}
 }

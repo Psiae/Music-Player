@@ -10,7 +10,7 @@ interface MainPresenter {
 
 	val intentHandler: IntentHandler
 		/**
-		 * get the IntentHandler of this presenter, must be called after `initialize` return
+		 * get the IntentHandler of this presenter, must be called after `initialize` returns.
 		 * @throws IllegalStateException if attempted to get the value before initialized
 		 */
 		@kotlin.jvm.Throws(IllegalStateException::class)

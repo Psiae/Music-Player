@@ -20,8 +20,8 @@ class RealMainPresenter : MainPresenter {
 		get() {
 			return _actual?.intentHandler
 				?: uninitializedError {
-					"The Class is not for late initialization, " +
-						"it should be made visible after `initialize` returns, you should reconsider your design"
+					"The Class is `Not` for late initialization, but for convenience of dependency injection." +
+						"It should be made visible after `initialize` returns, you should reconsider your design"
 				}
 		}
 
@@ -65,6 +65,8 @@ class RealMainPresenter : MainPresenter {
 				}.getOrNull()
 					?: NonBlockingDispatcherPool.get(1)
 			_coroutineScope = CoroutineScope(context = sJob + sDispatcher)
+
+			// load saver from [viewModel] here
 		}
 
 		override val intentHandler: IntentHandler = RealIntentHandler()
@@ -79,6 +81,7 @@ class RealMainPresenter : MainPresenter {
 			// backed by outer _lock
 			if (_disposed) return
 			_disposed = true
+			intentHandler.dispose()
 		}
 	}
 }

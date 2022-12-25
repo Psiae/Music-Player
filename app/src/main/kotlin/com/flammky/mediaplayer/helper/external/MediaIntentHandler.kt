@@ -45,6 +45,7 @@ import kotlin.time.Duration.Companion.seconds
  */
 
 interface MediaIntentHandler {
+	fun handleMediaIntentI(intent: IntentWrapper)
   suspend fun handleMediaIntent(intent: IntentWrapper)
 }
 
@@ -67,7 +68,13 @@ class MediaIntentHandlerImpl(
 
   private val actionViewHandler = ActionViewHandler()
 
-  override suspend fun handleMediaIntent(intent: IntentWrapper) {
+	override fun handleMediaIntentI(intent: IntentWrapper) {
+		if (intent.shouldHandleIntent) {
+			actionViewHandler.handleIntentActionViewI(intent)
+		}
+	}
+
+	override suspend fun handleMediaIntent(intent: IntentWrapper) {
     require(intent.shouldHandleIntent)
     Timber.d("MediaIntentHandler, handleMediaIntent $intent")
     when {
@@ -83,6 +90,23 @@ class MediaIntentHandlerImpl(
 
 		@Volatile
     private var actionViewJob = Job().job
+
+		fun handleIntentActionViewI(intent: IntentWrapper): Unit {
+			checkArgument(intent.isActionView())
+
+			val job: suspend () -> Unit = when {
+				intent.isSchemeContent() -> { { intentSchemeContent(intent) } }
+				else -> { { Unit } }
+			}
+
+			actionViewJob.cancel()
+
+			if (intent.isCancellable) {
+				actionViewJob = CoroutineScope(dispatcher.io).launch { job() }
+			} else {
+				CoroutineScope(dispatcher.io).launch { job() }
+			}
+		}
 
     suspend fun handleIntentActionView(intent: IntentWrapper): Unit = withContext(coroutineContext) {
 			checkArgument(intent.isActionView())

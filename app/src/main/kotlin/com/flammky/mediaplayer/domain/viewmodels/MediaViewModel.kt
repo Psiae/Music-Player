@@ -68,7 +68,7 @@ class MediaViewModel @Inject constructor(
 
   fun handleMediaIntent(intent: IntentWrapper) {
     viewModelScope.launch(dispatchers.io) {
-			if (intent.shouldHandleIntent) intentHandler.handleMediaIntent(intent)
+			if (intent.shouldHandleIntent) intentHandler.handleMediaIntentI(intent)
 		}
   }
 

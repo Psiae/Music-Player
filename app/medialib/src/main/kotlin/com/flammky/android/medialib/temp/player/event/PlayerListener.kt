@@ -242,7 +242,7 @@ interface LibraryPlayerEventListener {
 						setMediaId(item.mediaId)
 						setExtra(item.requestMetadata.extras?.toMediaItemExtra() ?: com.flammky.android.medialib.common.mediaitem.MediaItem.Extra.UNSET)
 
-						val hint = item.requestMetadata.extras!!.getString("mediaMetadataType")!!
+						val hint = item.requestMetadata.extras?.getString("mediaMetadataType") ?: return@buildMediaItem
 						val mediaMetadata = item.mediaMetadata
 
 						val metadata = when {

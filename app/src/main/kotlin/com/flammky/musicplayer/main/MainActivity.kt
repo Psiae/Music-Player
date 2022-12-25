@@ -24,9 +24,6 @@ class MainActivity : ComponentActivity() {
 	private val innerIntentHandler = InnerIntentHandler()
 	private val mainVM: MainViewModel by viewModels()
 
-	private val readStoragePermission
-		get() = contextHelper.permissions.common.hasReadExternalStorage
-
 	init {
 	}
 

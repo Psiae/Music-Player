@@ -2,47 +2,15 @@ package com.flammky.musicplayer.main.ui.r
 
 import android.content.Intent
 import com.flammky.android.content.intent.isActionView
-import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.manifest.permission.AndroidPermission
-import com.flammky.android.medialib.MediaLib
-import com.flammky.android.medialib.temp.image.internal.TestArtworkProvider
 import com.flammky.kotlin.common.sync.sync
-import com.flammky.mediaplayer.helper.external.IntentWrapper
-import com.flammky.mediaplayer.helper.external.MediaIntentHandler
-import com.flammky.mediaplayer.helper.external.MediaIntentHandlerImpl
-import com.flammky.musicplayer.app.ApplicationDelegate
-import com.flammky.musicplayer.base.media.mediaconnection.RealMediaConnectionDelegate
-import com.flammky.musicplayer.base.media.mediaconnection.RealMediaConnectionPlayback
-import com.flammky.musicplayer.base.media.mediaconnection.RealMediaConnectionRepository
-import com.flammky.musicplayer.domain.media.RealMediaConnection
-import com.flammky.musicplayer.domain.musiclib.service.MusicLibraryService
 import com.flammky.musicplayer.main.ext.IntentHandler
+import com.flammky.musicplayer.main.ext.MediaIntentHandler
 import timber.log.Timber
 
 class RealIntentHandler(
 	// Temp
-	private val mediaIntentHandler: MediaIntentHandler = run {
-		// TODO: remove this mess
-		val ctx = ApplicationDelegate.get()
-		val deprecatedMusicLib = com.flammky.android.medialib.temp.MediaLibrary.construct(ctx, MusicLibraryService::class.java)
-		MediaIntentHandlerImpl(
-			artworkProvider = TestArtworkProvider(
-				context = ctx,
-				lru = deprecatedMusicLib.imageRepository.sharedBitmapLru
-			),
-			context = ctx,
-			dispatcher = AndroidCoroutineDispatchers.DEFAULT,
-			mediaSource = deprecatedMusicLib.providers.mediaStore,
-			mediaConnection = RealMediaConnection(
-				delegate = RealMediaConnectionDelegate(
-					MediaLib.singleton(ctx).mediaProviders.mediaStore,
-					RealMediaConnectionPlayback(),
-					RealMediaConnectionRepository.provide(ctx, AndroidCoroutineDispatchers.DEFAULT)
-				)
-			),
-			MediaLib.singleton(ctx)
-		)
-	}
+	private val mediaIntentHandler: MediaIntentHandler
 ) : IntentHandler {
 
 	private val _stateLock = Any()
@@ -62,9 +30,11 @@ class RealIntentHandler(
 		val clone = intent.clone() as Intent
 
 		for (interceptor in _interceptors.sync { toList() }) {
-			val intercepted = interceptor.intercept(clone) {
-				resumedHandleIntent(clone, interceptor)
-			}
+			val intercepted = interceptor.intercept(
+				intent = clone,
+				resume = { resumedHandleIntent(clone, interceptor) },
+				cancel = { _interceptedIntents.sync { remove(clone) } }
+			)
 			if (intercepted) {
 				_interceptedIntents.sync { add(clone) }
 				return
@@ -85,9 +55,11 @@ class RealIntentHandler(
 		val clone = intent.clone() as Intent
 
 		for (interceptor in _interceptors.sync { filter { it != resumingInterceptor } }) {
-			val intercepted = interceptor.intercept(clone) {
-				resumedHandleIntent(clone, interceptor)
-			}
+			val intercepted = interceptor.intercept(
+				intent = clone,
+				resume = { resumedHandleIntent(clone, interceptor) },
+				cancel = { _interceptedIntents.sync { remove(clone) } }
+			)
 			if (intercepted) {
 				_interceptedIntents.sync { add(clone) }
 				return
@@ -98,8 +70,10 @@ class RealIntentHandler(
 	}
 
 	private fun privateHandleIntent(intent: Intent) {
-		val wrap = IntentWrapper(intent)
-		mediaIntentHandler.handleMediaIntentI(wrap)
+		if (mediaIntentHandler.isMediaIntent(intent)) {
+			mediaIntentHandler.handleMediaIntent(intent)
+			return
+		}
 	}
 
 	override fun intentRequireAndroidPermission(
@@ -127,6 +101,14 @@ class RealIntentHandler(
 		_interceptors.sync { remove(interceptor) }
 	}
 
+	private fun notifyStartedInterceptor(interceptor: Interceptor) {
+		_interceptors.sync { if (!contains(interceptor)) add(interceptor) }
+	}
+
+	private fun notifyStoppedInterceptor(interceptor: IntentHandler.Interceptor) {
+		_interceptors.sync { remove(interceptor) }
+	}
+
 	private class Interceptor(
 		private val parent: RealIntentHandler
 	) : IntentHandler.Interceptor {
@@ -145,11 +127,15 @@ class RealIntentHandler(
 		}
 
 		override fun dropAllInterceptedIntent() {
-			return _interceptedIntents.sync { toList() }
+			return _interceptedIntents.sync {
+				val collect = toList()
+				clear()
+				collect.forEach { it.cancel() }
+			}
 		}
 
 		override fun start() {
-			//
+			parent.notifyStartedInterceptor(this)
 		}
 
 		override fun setFilter(filter: (IntentHandler.TargetIntent) -> Boolean) {
@@ -163,12 +149,13 @@ class RealIntentHandler(
 
 		fun intercept(
 			intent: Intent,
-			resume: () -> Unit
+			resume: () -> Unit,
+			cancel: () -> Unit
 		): Boolean {
 			val intercepted = _filter(TargetIntent(intent))
 
 			if (intercepted) {
-				_interceptedIntents.sync { add(InterceptedIntent(intent, resume)) }
+				_interceptedIntents.sync { add(InterceptedIntent(intent, resume, cancel)) }
 			}
 
 			return intercepted
@@ -176,7 +163,8 @@ class RealIntentHandler(
 
 		private class InterceptedIntent(
 			private val struct: Intent,
-			val resume: () -> Unit
+			val resume: () -> Unit,
+			val cancel: () -> Unit
 		): IntentHandler.InterceptedIntent {
 			override fun cloneActual(): Intent = struct.clone() as Intent
 		}

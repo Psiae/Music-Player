@@ -594,15 +594,12 @@ class MediaControllerWrapper internal constructor(
 		override fun play(item: MediaItem) {
 			if (isStateConnected()) {
 				val mc = mediaController
-				if (mc.currentMediaItem?.mediaId != item.mediaId) {
-					mc.stop()
-					mc.clearMediaItems()
-					mc.setMediaItem(item, true)
-				} else if (mc.playbackState == Player.STATE_ENDED) {
-					mc.seekToDefaultPosition()
-				}
+				mc.stop()
+				mc.clearMediaItems()
+				mc.setMediaItem(item, true)
 				mc.prepare()
 				mc.play()
+				Timber.d("MediaControllerWrapper play: $item ${item.mediaId} ${item.localConfiguration?.uri}")
 			}
 		}
 
@@ -729,7 +726,11 @@ class MediaControllerWrapper internal constructor(
 				setMediaId(item.mediaId)
 				setExtra(item.requestMetadata.extras?.toMediaItemExtra() ?: com.flammky.android.medialib.common.mediaitem.MediaItem.Extra.UNSET)
 
-				val hint = item.requestMetadata.extras!!.getString("mediaMetadataType")!!
+				return@buildMediaItem
+
+				val hint = item.requestMetadata.extras!!.getString("mediaMetadataType")
+					?: return@buildMediaItem
+
 				val mediaMetadata = item.mediaMetadata
 
 				val metadata = when {

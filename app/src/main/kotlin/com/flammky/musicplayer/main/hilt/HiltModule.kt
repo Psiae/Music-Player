@@ -12,7 +12,9 @@ import dagger.hilt.components.SingletonComponent
 object HiltModule {
 
 	@Provides
-	fun provideMainPresenter(): MainPresenter {
-		return RealMainPresenter()
+	fun provideMainPresenter(
+		r: RealMainPresenter
+	): MainPresenter {
+		return r
 	}
 }

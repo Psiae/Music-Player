@@ -2,11 +2,8 @@ package com.flammky.musicplayer.base.media.hilt
 
 import android.content.Context
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
-import com.flammky.android.medialib.MediaLib
-import com.flammky.musicplayer.base.media.mediaconnection.MediaConnectionDelegate
-import com.flammky.musicplayer.base.media.mediaconnection.RealMediaConnectionDelegate
-import com.flammky.musicplayer.base.media.mediaconnection.RealMediaConnectionPlayback
-import com.flammky.musicplayer.base.media.mediaconnection.RealMediaConnectionRepository
+import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider
+import com.flammky.musicplayer.base.media.mediaconnection.*
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -20,12 +17,21 @@ object MediaModule {
 
 	@Provides
 	@Singleton
-	fun provideMediaConnectionDelegate(
+	fun provideMediaConnectionRepository(
 		@ApplicationContext context: Context,
 		dispatchers: AndroidCoroutineDispatchers
+	): MediaConnectionRepository {
+		return RealMediaConnectionRepository.provide(context, dispatchers)
+	}
+
+	@Provides
+	@Singleton
+	fun provideMediaConnectionDelegate(
+		mediaStoreProvider: MediaStoreProvider,
+		repository: MediaConnectionRepository,
 	): MediaConnectionDelegate = RealMediaConnectionDelegate(
-		mediaStore = MediaLib.singleton(context).mediaProviders.mediaStore,
-		repository = RealMediaConnectionRepository.provide(context, dispatchers),
+		mediaStore = mediaStoreProvider,
+		repository = repository,
 		playback = RealMediaConnectionPlayback(),
 	)
 }

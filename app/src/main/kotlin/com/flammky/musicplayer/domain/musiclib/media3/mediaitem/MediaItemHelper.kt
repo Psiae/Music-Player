@@ -6,8 +6,8 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
-import com.flammky.mediaplayer.helper.Preconditions
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemPropertyHelper.mediaUri
+import com.flammky.musicplayer.dump.mediaplayer.helper.Preconditions
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.sync.Mutex
 import javax.inject.Inject

@@ -18,8 +18,6 @@ import com.flammky.android.common.broadcast.ContextBroadcastManager
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.common.kotlin.collection.mutable.forEachClear
 import com.flammky.common.kotlin.coroutines.safeCollect
-import com.flammky.mediaplayer.helper.Preconditions.checkMainThread
-import com.flammky.mediaplayer.helper.Preconditions.checkState
 import com.flammky.musicplayer.BuildConfig
 import com.flammky.musicplayer.activity.ActivityWatcher
 import com.flammky.musicplayer.base.media.mediaconnection.MediaConnectionDelegate
@@ -29,6 +27,8 @@ import com.flammky.musicplayer.domain.musiclib.service.manager.PlaybackManager
 import com.flammky.musicplayer.domain.musiclib.service.manager.SessionManager
 import com.flammky.musicplayer.domain.musiclib.service.manager.StateManager
 import com.flammky.musicplayer.domain.musiclib.service.provider.SessionProvider
+import com.flammky.musicplayer.dump.mediaplayer.helper.Preconditions.checkMainThread
+import com.flammky.musicplayer.dump.mediaplayer.helper.Preconditions.checkState
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob

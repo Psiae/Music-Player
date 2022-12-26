@@ -6,9 +6,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.flammky.mediaplayer.domain.viewmodels.MainViewModel
-import com.flammky.mediaplayer.domain.viewmodels.MediaViewModel
-import com.flammky.mediaplayer.ui.activity.mainactivity.compose.MainActivityRoot
+import com.flammky.musicplayer.dump.mediaplayer.domain.viewmodels.MainViewModel
+import com.flammky.musicplayer.dump.mediaplayer.ui.activity.mainactivity.compose.MainActivityRoot
 import com.flammky.musicplayer.ui.main.compose.entry.MainEntry
 import com.flammky.musicplayer.ui.main.compose.theme.MainMaterial3Theme
 
@@ -16,9 +15,7 @@ import com.flammky.musicplayer.ui.main.compose.theme.MainMaterial3Theme
 fun ComposeContent() = ApplyTheme {
 	MainEntry {
 		val mainViewModel: MainViewModel = viewModel()
-		val mediaViewModel: MediaViewModel = viewModel()
 		mainViewModel.readPermissionGranted()
-		mediaViewModel.readPermissionGranted()
 		MainActivityRoot(mainViewModel.appSettings.collectAsState().value)
 	}
 }

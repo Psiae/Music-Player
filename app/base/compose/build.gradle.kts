@@ -30,7 +30,7 @@ dependencies {
     api(project(":app:base"))
     api(project(":common:androidx:viewmodel:compose"))
 
-    /* Androidx.compose */
+    /* androidx.compose */
     dependencies {
         val v = "1.3.0-alpha01"
 
@@ -43,13 +43,21 @@ dependencies {
         api("androidx.compose.foundation:foundation:$v")
     }
 
-    /* Coil-kt */
+    /* androidx.navigation */
+    dependencies {
+
+        // Compose
+        val vCompose = "2.5.2"
+        api("androidx.navigation:navigation-compose:$vCompose")
+    }
+
+    /* coil-kt */
     dependencies {
         val v = "2.2.2"
         api("io.coil-kt:coil-compose:$v")
     }
 
-    /* Lottie */
+    /* lottie */
     dependencies {
         val v = "5.2.0"
         api("com.airbnb.android:lottie:$v")

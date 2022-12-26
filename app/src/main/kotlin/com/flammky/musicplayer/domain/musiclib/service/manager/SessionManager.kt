@@ -10,11 +10,11 @@ import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.medialib.MediaLib
 import com.flammky.android.medialib.core.MediaLibrary
 import com.flammky.common.kotlin.generic.ChangedNotNull
-import com.flammky.mediaplayer.helper.Preconditions.checkArgument
-import com.flammky.mediaplayer.helper.Preconditions.checkState
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemPropertyHelper
 import com.flammky.musicplayer.domain.musiclib.service.MusicLibraryService
 import com.flammky.musicplayer.domain.musiclib.service.provider.SessionProvider
+import com.flammky.musicplayer.dump.mediaplayer.helper.Preconditions.checkArgument
+import com.flammky.musicplayer.dump.mediaplayer.helper.Preconditions.checkState
 import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job

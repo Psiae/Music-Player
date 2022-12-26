@@ -34,11 +34,11 @@ import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.android.x.lifecycle.viewmodel.compose.activityViewModel
 import com.flammky.common.kotlin.comparable.clamp
-import com.flammky.mediaplayer.domain.viewmodels.MainViewModel
 import com.flammky.musicplayer.R
 import com.flammky.musicplayer.domain.musiclib.entity.PlaybackState
 import com.flammky.musicplayer.domain.musiclib.entity.PlaybackState.Companion.isEmpty
 import com.flammky.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isStateBuffering
+import com.flammky.musicplayer.dump.mediaplayer.domain.viewmodels.MainViewModel
 import com.flammky.musicplayer.ui.common.compose.LinearIndeterminateProgressIndicator
 import com.flammky.musicplayer.ui.main.compose.screens.root.playbackcontrol.TrackDescriptionPager
 import com.flammky.musicplayer.ui.playbackbox.PlaybackBoxViewModel

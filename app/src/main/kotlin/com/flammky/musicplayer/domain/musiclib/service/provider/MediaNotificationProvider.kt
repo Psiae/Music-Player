@@ -12,12 +12,12 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaStyleNotificationHelper
-import com.flammky.mediaplayer.helper.Preconditions.checkState
 import com.flammky.musicplayer.R
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory.orEmpty
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemInfo
 import com.flammky.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isOngoing
 import com.flammky.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isStateBuffering
+import com.flammky.musicplayer.dump.mediaplayer.helper.Preconditions.checkState
 import timber.log.Timber
 
 class MediaNotificationProvider(

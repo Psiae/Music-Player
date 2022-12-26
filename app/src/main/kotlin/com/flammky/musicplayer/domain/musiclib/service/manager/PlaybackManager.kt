@@ -7,14 +7,14 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
-import com.flammky.mediaplayer.helper.Preconditions
-import com.flammky.mediaplayer.helper.external.providers.ContentProvidersHelper
-import com.flammky.mediaplayer.helper.external.providers.DocumentProviderHelper
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemPropertyHelper.getDebugDescription
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemPropertyHelper.mediaUri
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaMetadataHelper.getStoragePath
 import com.flammky.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isStateEnded
 import com.flammky.musicplayer.domain.musiclib.service.MusicLibraryService
+import com.flammky.musicplayer.dump.mediaplayer.helper.Preconditions
+import com.flammky.musicplayer.dump.mediaplayer.helper.external.providers.ContentProvidersHelper
+import com.flammky.musicplayer.dump.mediaplayer.helper.external.providers.DocumentProviderHelper
 import kotlinx.coroutines.*
 import timber.log.Timber
 import java.io.File

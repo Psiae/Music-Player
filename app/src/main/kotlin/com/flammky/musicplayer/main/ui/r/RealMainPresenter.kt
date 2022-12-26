@@ -122,7 +122,7 @@ class RealMainPresenter @Inject constructor(
 			get() = _coroutineScope
 
 		override fun showIntentRequestErrorMessage(message: String) {
-			// TODO
+			viewModel.showIntentRequestErrorMessage(message)
 		}
 	}
 }

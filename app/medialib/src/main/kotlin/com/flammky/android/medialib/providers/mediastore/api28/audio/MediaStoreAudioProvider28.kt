@@ -7,6 +7,8 @@ import android.media.MediaScannerConnection
 import android.net.Uri
 import androidx.core.text.isDigitsOnly
 import com.flammky.android.content.context.ContextHelper
+import com.flammky.android.content.kt.ObserveContentEvent
+import com.flammky.android.content.kt.observeUri
 import com.flammky.android.io.exception.ReadExternalStoragePermissionException
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.medialib.providers.mediastore.MediaStoreContext
@@ -18,6 +20,8 @@ import com.flammky.android.medialib.providers.mediastore.api28.MediaStore28
 import com.flammky.android.medialib.providers.mediastore.api28.MediaStoreProvider28
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -28,6 +32,7 @@ import kotlin.reflect.KProperty
 class MediaStoreAudioProvider28(private val context: MediaStoreContext)
 	: MediaStoreProvider28.Audio {
 
+	private val audioUriEventFlow: Flow<ObserveContentEvent>
 
 	private val contextHelper = ContextHelper(context.android)
 	private val contentResolver = context.android.contentResolver
@@ -35,7 +40,9 @@ class MediaStoreAudioProvider28(private val context: MediaStoreContext)
 
 	private val observers = mutableListOf<MediaStoreProvider.ContentObserver>()
 
-	// we can instead just remember it with our entity
+	// We should remove these mess as there are too much side-effect
+	// We should ask user to do invalidation instead of guessing as there will too much overhead
+
 	private val rememberMutex = Mutex()
 	private var _rememberUrisKey by OverflowSafeLong(0) { 0 }
 	private val rememberUrisKey: Long get() = _rememberUrisKey.also { _rememberUrisKey++ }
@@ -48,7 +55,25 @@ class MediaStoreAudioProvider28(private val context: MediaStoreContext)
 	private val contentObserver = InternalContentObserver()
 
 	init {
-		contentResolver.registerContentObserver(uri_audio_external, true, contentObserver)
+		audioUriEventFlow = contentResolver.observeUri(
+			uri = uri_audio_external,
+			includeChild = true,
+			channelBuffer = Channel.UNLIMITED
+		)
+		internalIoScope.launch(mainDispatcher.immediate) {
+			audioUriEventFlow.collect { event ->
+				val uris = event.uris
+				val uri = event.uri
+				when {
+					uris?.isNotEmpty() == true -> {
+						contentObserver.onChange(event.selfChange, uris, event.flags ?: 0)
+					}
+					uri != null -> {
+						contentObserver.onChange(event.selfChange, uri, event.flags ?: 0)
+					}
+				}
+			}
+		}
 	}
 
 	@kotlin.jvm.Throws(ReadExternalStoragePermissionException::class)

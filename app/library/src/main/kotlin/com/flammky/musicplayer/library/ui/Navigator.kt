@@ -9,7 +9,7 @@ object LibraryNavigator {
 	private const val rootRoute = "Library"
 
 	fun NavGraphBuilder.addRoot() {
-		composable("Library") {
+		composable(rootRoute) {
 			Library()
 		}
 	}

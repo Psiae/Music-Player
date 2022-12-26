@@ -24,6 +24,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import java.io.FileNotFoundException
 import kotlin.coroutines.coroutineContext
 import kotlin.time.Duration.Companion.milliseconds
@@ -108,6 +109,8 @@ class MediaIntentHandler constructor(
 					message = "Requested File could not be read (inaccessible provider)"
 				)
 				else -> presenter.showIntentRequestErrorMessage(message = "Unexpected Error Occurred")
+			}.also {
+				Timber.d("Exception on validateAudioURI($uri), ex: $ex")
 			}
 			return false
 		}

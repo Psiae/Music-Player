@@ -37,6 +37,8 @@ interface MainPresenter {
 	 * general that is platform SDK dependent
 	 */
 	interface ViewModel {
+		fun showIntentRequestErrorMessage(message: String)
+		fun showPlaybackErrorMessage(message: String)
 		fun loadSaver(): Bundle?
 	}
 }

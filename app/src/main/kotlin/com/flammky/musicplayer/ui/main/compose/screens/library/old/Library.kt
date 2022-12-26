@@ -34,8 +34,8 @@ import com.flammky.android.environment.DeviceInfo.Companion.screenWidthDp
 import com.flammky.android.x.lifecycle.viewmodel.compose.activityViewModel
 import com.flammky.common.kotlin.comparable.clamp
 import com.flammky.common.kotlin.coroutines.safeCollect
-import com.flammky.mediaplayer.domain.viewmodels.MainViewModel
 import com.flammky.musicplayer.R
+import com.flammky.musicplayer.dump.mediaplayer.domain.viewmodels.MainViewModel
 import com.flammky.musicplayer.ui.main.compose.screens.library.old.local.LocalSongItem
 import com.flammky.musicplayer.ui.main.compose.theme.color.ColorHelper
 import com.google.accompanist.flowlayout.FlowCrossAxisAlignment

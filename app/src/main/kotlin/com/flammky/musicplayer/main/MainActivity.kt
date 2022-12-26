@@ -4,9 +4,11 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.viewModels
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.lifecycleScope
 import com.flammky.android.activity.disableWindowFitSystemInsets
 import com.flammky.android.content.context.ContextHelper
 import com.flammky.android.content.intent.isActionMain
@@ -15,6 +17,7 @@ import com.flammky.musicplayer.activity.RequireLauncher
 import com.flammky.musicplayer.main.ui.MainViewModel
 import com.flammky.musicplayer.main.ui.compose.setContent
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 import kotlin.random.Random
 
 @AndroidEntryPoint
@@ -33,6 +36,20 @@ class MainActivity : ComponentActivity() {
 		setupWindow()
 		setupSplashScreen()
 		setContent()
+
+		lifecycleScope.launch {
+			// consume
+			for (message in mainVM.intentRequestErrorMessageChannel) {
+				Toast.makeText(applicationContext, message, Toast.LENGTH_SHORT).show()
+			}
+		}
+
+		lifecycleScope.launch {
+			// consume
+			for (message in mainVM.playbackErrorMessageChannel) {
+				Toast.makeText(applicationContext, message, Toast.LENGTH_SHORT).show()
+			}
+		}
 	}
 
 	override fun onNewIntent(intent: Intent?) {
@@ -70,6 +87,7 @@ class MainActivity : ComponentActivity() {
 
 	private inner class InnerIntentHandler {
 		fun handleIntent(intent: Intent) {
+			// wait for intent interceptor
 			mainVM.entryCheckWaiter.add { mainVM.intentHandler.handleIntent(intent) }
 		}
 	}

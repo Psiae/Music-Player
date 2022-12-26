@@ -7,8 +7,8 @@ import androidx.annotation.MainThread
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
-import com.flammky.mediaplayer.ui.activity.CollectionExtension.forEachClear
 import com.flammky.musicplayer.common.android.concurrent.ConcurrencyHelper.checkMainThread
+import com.flammky.musicplayer.dump.mediaplayer.ui.activity.CollectionExtension.forEachClear
 
 @MainThread
 class ContextBroadcastManager(context: Context) {

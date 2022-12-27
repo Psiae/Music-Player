@@ -48,6 +48,9 @@ interface MainPresenter {
 	}
 
 	interface Auth {
+		fun rememberAuthAsync(coroutineContext: CoroutineContext): Deferred<User?>
+
+
 		val currentUser: User?
 		val currentUserFlow: Flow<User?>
 		fun loginRememberedAsync(coroutineContext: CoroutineContext): Deferred<User?>

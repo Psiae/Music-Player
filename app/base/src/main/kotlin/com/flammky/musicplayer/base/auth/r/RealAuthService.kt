@@ -50,6 +50,9 @@ internal class RealAuthService(
 			field = value
 		}
 
+	@GuardedBy("stateLock")
+	private var _currentState: AuthService.AuthState = AuthService.AuthState.Uninitialized
+
 	@GuardedBy("_stateLock")
 	private val _providers = mutableMapOf<String, AuthProvider>()
 
@@ -62,8 +65,33 @@ internal class RealAuthService(
 			field = value
 		}
 
+	private val initializeJob: Job = _supervisorScope.launch(
+		context = ioDispatcher,
+		start = CoroutineStart.LAZY
+	) {
+		val (deferred: Deferred<User?>, mod: Int) = _stateLock.write {
+			if (_loginJob.isActive) {
+				error("LoginJob was active")
+			}
+			if (_currentUser != null) {
+				error("CurrentUser was not null")
+			}
+			val mod = _userModification.incrementAndGet()
+			loginRememberedAsync() to mod
+		}
+		val user = deferred.await()
+		withContext(eventDispatcher) {
+			if (_userModification.get() == mod) currentUserChannel.emit(user)
+		}
+	}
+
 	override val currentUser: User?
 		get() = _stateLock.read { _currentUser }
+
+	override val state: AuthService.AuthState
+		get() = _stateLock.read { _currentState }
+
+	override fun initialize(): Job = initializeJob.apply { start() }
 
 	override suspend fun loginAsync(
 		provider: String,
@@ -83,8 +111,10 @@ internal class RealAuthService(
 	override fun logout() {
 		val (user: AuthUser, mod: Int) = _stateLock.write {
 			_loginJob.cancel()
-			val currentUser = _currentUser ?: return
+			val currentUser = _currentUser
+				?: return
 			_currentUser = null
+			_currentState = AuthService.AuthState.LoggedOut
 			currentUser as AuthUser to _userModification.incrementAndGet()
 		}
 		sendUserChangeEvent(null, mod)
@@ -93,27 +123,9 @@ internal class RealAuthService(
 		}
 	}
 
-	@OptIn(ExperimentalCoroutinesApi::class)
 	override fun observeCurrentUser(): Flow<User?> {
 		return flow {
-			if (currentUserChannel.replayCache.isEmpty()) {
-				_supervisorScope.launch(ioDispatcher) {
-					val (deferred: Deferred<User?>, mod: Int) = _stateLock.write {
-						if (_loginJob.isActive) {
-							return@launch _loginJob.join()
-						}
-						if (_currentUser != null || currentUserChannel.replayCache.isNotEmpty()) {
-							return@launch
-						}
-						val mod = _userModification.incrementAndGet()
-						loginRememberedAsync() to mod
-					}
-					val user = deferred.await()
-					withContext(eventDispatcher) {
-						if (_userModification.get() == mod) currentUserChannel.emit(user)
-					}
-				}.join()
-			}
+			initialize().join()
 			emitAll(currentUserChannel)
 		}
 	}
@@ -136,6 +148,8 @@ internal class RealAuthService(
 				}.also {
 					Timber.d("LoginRememberedAsync completed: $it")
 				}
+			}.also {
+				_loginJob = it
 			}
 		}
 	}
@@ -157,6 +171,7 @@ internal class RealAuthService(
 		val mod = _stateLock.write {
 			if (coroutineContext.isActive) {
 				_currentUser = user
+				_currentState = AuthService.AuthState.LoggedIn(user)
 				_userModification.incrementAndGet()
 			} else {
 				_supervisorScope.launch(ioDispatcher) {

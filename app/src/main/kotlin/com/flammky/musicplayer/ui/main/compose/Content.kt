@@ -8,22 +8,15 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.flammky.musicplayer.dump.mediaplayer.domain.viewmodels.MainViewModel
 import com.flammky.musicplayer.dump.mediaplayer.ui.activity.mainactivity.compose.MainActivityRoot
-import com.flammky.musicplayer.ui.main.compose.entry.MainEntry
-import com.flammky.musicplayer.ui.main.compose.theme.MainMaterial3Theme
+import com.flammky.musicplayer.main.ui.compose.entry.EntryGuard
 
 @Composable
-fun ComposeContent() = ApplyTheme {
-	MainEntry {
+internal fun ComposeContent() = MainSurface {
+	EntryGuard {
 		val mainViewModel: MainViewModel = viewModel()
-		mainViewModel.readPermissionGranted()
 		MainActivityRoot(mainViewModel.appSettings.collectAsState().value)
 	}
 }
-
-@Composable
-private fun ApplyTheme(
-	content: @Composable () -> Unit
-) = MainMaterial3Theme { MainSurface(content = content) }
 
 @Composable
 private fun MainSurface(content: @Composable () -> Unit) {

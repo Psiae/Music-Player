@@ -7,10 +7,12 @@ import androidx.compose.runtime.remember
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.flammky.musicplayer.base.compose.rememberLocalContextHelper
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
 
 // should we do scoping ?
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
-internal fun androidPermissionEntryState(): State<Boolean> {
+internal fun androidPermissionEntryState(): State<Boolean?> {
 	val contextHelper = rememberLocalContextHelper()
 	val vm: AndroidPermissionViewModel = viewModel()
 
@@ -28,15 +30,17 @@ internal fun androidPermissionEntryState(): State<Boolean> {
 		mutableStateOf(!allow.value)
 	}
 
-	EntryPermissionPager(
-		showState = showPagerState,
-		onEntryAllowed = { allow.value = true ; showPagerState.value = false }
-	)
+	if (!allow.value) {
+		com.flammky.musicplayer.ui.main.compose.entry.EntryPermissionPager(
+			contextHelper = contextHelper,
+			onGranted = { allow.value = true ; showPagerState.value = false }
+		)
+	}
 
 	return allow
 }
 
-private class AndroidPermissionViewModel() : ViewModel() {
+internal class AndroidPermissionViewModel() : ViewModel() {
 	var persistPager = false
 }
 

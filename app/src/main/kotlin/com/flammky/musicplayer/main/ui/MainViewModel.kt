@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.main.ext.IntentHandler
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.flow.Flow
@@ -36,6 +37,12 @@ class MainViewModel @Inject constructor(
 	init {
 		presenter.initialize(this)
 	}
+
+	fun rememberAuthAsync(): Deferred<User?> {
+		return presenter.auth.rememberAuthAsync(viewModelScope.coroutineContext)
+	}
+
+
 
 	val currentUserFlow: Flow<User?> = presenter.auth.currentUserFlow
 

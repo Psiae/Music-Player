@@ -127,6 +127,13 @@ class RealMainPresenter @Inject constructor(
 			override val currentUser: User?
 				get() = authService.currentUser
 
+			override fun rememberAuthAsync(coroutineContext: CoroutineContext): Deferred<User?> {
+				return _coroutineScope.async(coroutineContext) {
+					authService.initialize().join()
+					(authService.state as? AuthService.AuthState.LoggedIn)?.user
+				}
+			}
+
 			override fun loginRememberedAsync(coroutineContext: CoroutineContext): Deferred<User?> {
 				return TODO()
 			}

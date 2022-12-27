@@ -4,6 +4,7 @@ import com.flammky.kotlin.common.lazy.LazyConstructor
 import com.flammky.kotlin.common.lazy.LazyConstructor.Companion.valueOrNull
 import com.flammky.musicplayer.base.user.User
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
@@ -13,12 +14,22 @@ import kotlin.coroutines.EmptyCoroutineContext
  */
 interface AuthService {
 
+	val state: AuthState
+
+	/**
+	 * Retrieve the currently active User
+	 */
 	val currentUser: User?
 
 	/**
-	 * Attempt to Log-in asynchronously
+	 * Initialize the service
 	 *
-	 * ** Must call [logout] before logging in **
+	 * @return The task
+	 */
+	fun initialize(): Job
+
+	/**
+	 * Attempt to Log-in asynchronously
 	 *
 	 * **
 	 * If multiple `login` attempt is made, then it will cancel any ongoing login task including the
@@ -56,5 +67,11 @@ interface AuthService {
 
 		fun get(): AuthService = SINGLETON.valueOrNull()
 			?: error("AuthService was not provided")
+	}
+
+	sealed interface AuthState {
+		object Uninitialized : AuthState
+		object LoggedOut : AuthState
+		data class LoggedIn(val user: User) : AuthState
 	}
 }

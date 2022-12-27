@@ -36,7 +36,6 @@ import com.google.accompanist.pager.rememberPagerState
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
-import kotlinx.coroutines.flow.first
 
 @Composable
 fun MainEntry(content: @Composable () -> Unit) {
@@ -121,7 +120,7 @@ private fun entryPermissionAsState(): State<Boolean> {
 	LaunchedEffect(
 		key1 = null,
 		block = {
-			if (vm.currentUserFlow.first() == null) {
+			if (vm.rememberAuthAsync().await() == null) {
 				vm.loginLocalAsync().await()
 			}
 			vm.currentUserFlow.collect {
@@ -147,7 +146,7 @@ fun NoInline(block: @Composable () -> Unit) = block()
 @OptIn(ExperimentalPagerApi::class)
 @ExperimentalPermissionsApi
 @Composable
-private fun EntryPermissionPager(contextHelper: ContextHelper, onGranted: () -> Unit) {
+fun EntryPermissionPager(contextHelper: ContextHelper, onGranted: () -> Unit) {
 
 	val granted = remember {
 		mutableStateOf(false)

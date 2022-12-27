@@ -1,7 +1,12 @@
 package com.flammky.musicplayer.base.auth.r
 
+import android.app.Application
+import android.content.Context
 import androidx.annotation.GuardedBy
+import androidx.datastore.dataStore
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
+import com.flammky.kotlin.common.lazy.LazyConstructor
+import com.flammky.kotlin.common.lazy.LazyConstructor.Companion.valueOrNull
 import com.flammky.kotlin.common.sync.atomic
 import com.flammky.musicplayer.base.auth.AuthData
 import com.flammky.musicplayer.base.auth.AuthService
@@ -10,9 +15,8 @@ import com.flammky.musicplayer.base.auth.r.user.AuthUser
 import com.flammky.musicplayer.base.coroutine.NonBlockingDispatcherPool
 import com.flammky.musicplayer.base.user.User
 import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.*
+import timber.log.Timber
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
@@ -20,13 +24,19 @@ import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.coroutineContext
 
 internal class RealAuthService(
-	val coroutineDispatchers: AndroidCoroutineDispatchers = AndroidCoroutineDispatchers.DEFAULT
+	private val androidContext: Context,
+	private val coroutineDispatchers: AndroidCoroutineDispatchers = AndroidCoroutineDispatchers.DEFAULT
 ) : AuthService {
 	private val _userModification = atomic(0)
 
 	private val eventDispatcher = NonBlockingDispatcherPool.get(1)
 	private val ioDispatcher = coroutineDispatchers.io
-	private val currentUserChannel = Channel<User?>(Channel.CONFLATED)
+	private val currentUserChannel = MutableSharedFlow<User?>(1)
+
+	private val Context.authDataStore by dataStore(
+		fileName = "auth.r.AuthService",
+		serializer = AuthEntity.DataStoreSerializer
+	)
 
 	private val _supervisorScope = CoroutineScope(SupervisorJob())
 	private val _stateLock = ReentrantReadWriteLock()
@@ -45,6 +55,12 @@ internal class RealAuthService(
 
 	@GuardedBy("_stateLock")
 	private var _loginJob: Job = Job().apply { cancel() }
+		set(value) {
+			require(_stateLock.isWriteLockedByCurrentThread) {
+				"RealAuthService_Guard: _loginJob was modified without holding `_stateLock`"
+			}
+			field = value
+		}
 
 	override val currentUser: User?
 		get() = _stateLock.read { _currentUser }
@@ -55,7 +71,7 @@ internal class RealAuthService(
 		coroutineContext: CoroutineContext
 	): Deferred<AuthService.LoginResult> {
 		return _stateLock.write {
-			_loginJob.cancel()
+			logout()
 			_supervisorScope.async(coroutineDispatchers.io + coroutineContext) {
 				doLogin(provider, data)
 			}.also {
@@ -66,6 +82,7 @@ internal class RealAuthService(
 
 	override fun logout() {
 		val (user: AuthUser, mod: Int) = _stateLock.write {
+			_loginJob.cancel()
 			val currentUser = _currentUser ?: return
 			_currentUser = null
 			currentUser as AuthUser to _userModification.incrementAndGet()
@@ -76,8 +93,51 @@ internal class RealAuthService(
 		}
 	}
 
+	@OptIn(ExperimentalCoroutinesApi::class)
 	override fun observeCurrentUser(): Flow<User?> {
-		return currentUserChannel.receiveAsFlow()
+		return flow {
+			if (currentUserChannel.replayCache.isEmpty()) {
+				_supervisorScope.launch(ioDispatcher) {
+					val (deferred: Deferred<User?>, mod: Int) = _stateLock.write {
+						if (_loginJob.isActive) {
+							return@launch _loginJob.join()
+						}
+						if (_currentUser != null || currentUserChannel.replayCache.isNotEmpty()) {
+							return@launch
+						}
+						val mod = _userModification.incrementAndGet()
+						loginRememberedAsync() to mod
+					}
+					val user = deferred.await()
+					withContext(eventDispatcher) {
+						if (_userModification.get() == mod) currentUserChannel.emit(user)
+					}
+				}.join()
+			}
+			emitAll(currentUserChannel)
+		}
+	}
+
+	private suspend fun loginRememberedAsync(): Deferred<User?> {
+		return _stateLock.write {
+			if (_loginJob.isActive) {
+				error("Tried to login remembered during logging-in")
+			}
+			if (_loginJob.isActive || _currentUser != null) {
+				error("Tried to login remembered when already logged-in")
+			}
+			_supervisorScope.async(ioDispatcher) {
+				val dts = androidContext.authDataStore
+				val entity = dts.data.first()
+				val data = entity.authData
+				when (val result = loginAsync(entity.authProviderID, data).await()) {
+					is AuthService.LoginResult.Success -> result.user
+					else -> null
+				}.also {
+					Timber.d("LoginRememberedAsync completed: $it")
+				}
+			}
+		}
 	}
 
 	private suspend fun doLogin(providerId: String, data: AuthData): AuthService.LoginResult {
@@ -87,7 +147,7 @@ internal class RealAuthService(
 				ex = ProviderNotFoundException("providerId=$providerId was not found")
 			)
 		val user = runCatching {
-			provider.login(data).also { coroutineContext.ensureActive() }
+			provider.login(data)
 		}.getOrElse { throwable ->
 			return AuthService.LoginResult.Error(
 				msg = (throwable as Exception).message ?: "",
@@ -95,8 +155,20 @@ internal class RealAuthService(
 			)
 		}
 		val mod = _stateLock.write {
-			_currentUser = user
-			_userModification.incrementAndGet()
+			if (coroutineContext.isActive) {
+				_currentUser = user
+				_userModification.incrementAndGet()
+			} else {
+				_supervisorScope.launch(ioDispatcher) {
+					_stateLock.read {
+						_providers[user.provider]?.logout(user)
+					}
+				}
+				return AuthService.LoginResult.Error(
+					msg = "Login cancelled",
+					ex = CancellationException("Login cancelled")
+				)
+			}
 		}
 		sendUserChangeEvent(user, mod)
 		return AuthService.LoginResult.Success(user = user)
@@ -107,7 +179,7 @@ internal class RealAuthService(
 		user: User?, mod: Int
 	): Job {
 		return _supervisorScope.launch(eventDispatcher) {
-			if (_userModification.get() == mod) currentUserChannel.send(user)
+			if (_userModification.get() == mod) currentUserChannel.emit(user)
 		}
 	}
 
@@ -118,7 +190,13 @@ internal class RealAuthService(
 	}
 
 	companion object {
-		private val INSTANCE = RealAuthService()
-		fun registerProvider(provider: AuthProvider) = INSTANCE.registerProvider(provider)
+		private val INSTANCE = LazyConstructor<RealAuthService>()
+		infix fun provides(app: Application) = INSTANCE.constructOrThrow(
+			lazyValue = { RealAuthService(app) },
+			lazyThrow = { error("RealAuthService was already provided") }
+		)
+		fun registerProvider(provider: AuthProvider) = INSTANCE.valueOrNull()
+			?.registerProvider(provider)
+			?: error("RealAuthService was not provided")
 	}
 }

@@ -4,6 +4,7 @@ plugins {
     id("dagger.hilt.android.plugin")
     id("kotlin-kapt")
     id("com.google.devtools.ksp")
+    id("org.jetbrains.kotlin.plugin.serialization")
 }
 
 android {
@@ -44,12 +45,16 @@ dependencies {
     /* jetbrains.kotlinx */
     dependencies {
         // Collections.Immutable
-        val vCollectionImmutable = "0.3.5"
-        api("org.jetbrains.kotlinx:kotlinx-collections-immutable:$vCollectionImmutable")
+        val vCollection_Immutable = "0.3.5"
+        api("org.jetbrains.kotlinx:kotlinx-collections-immutable:$vCollection_Immutable")
 
         // coroutines-guava
-        val coroutines_guava = "kotlinx-coroutines-guava:1.6.4"
-        api("org.jetbrains.kotlinx:$coroutines_guava")
+        val vCoroutines_Guava = "kotlinx-coroutines-guava:1.6.4"
+        api("org.jetbrains.kotlinx:$vCoroutines_Guava")
+
+        // Serialization-Json
+        val vSerialization_Json = "1.4.0"
+        api("org.jetbrains.kotlinx:kotlinx-serialization-json:$vSerialization_Json")
     }
 
     //

@@ -3,10 +3,13 @@ package com.flammky.musicplayer.main.ui
 import android.os.Bundle
 import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.main.ext.IntentHandler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ReceiveChannel
+import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 
 @HiltViewModel
@@ -34,8 +37,14 @@ class MainViewModel @Inject constructor(
 		presenter.initialize(this)
 	}
 
+	val currentUserFlow: Flow<User?> = presenter.auth.currentUserFlow
+
+	val currentUser: User?
+		get() = presenter.auth.currentUser
+
 	val intentHandler: IntentHandler = presenter.intentHandler
 
+	fun loginLocalAsync() = presenter.auth.loginLocalAsync(viewModelScope.coroutineContext)
 
 	override fun loadSaver(): Bundle? = /* TODO: SavedStateHandle */ null
 

@@ -1,5 +1,6 @@
 package com.flammky.musicplayer.base.user
 
+@kotlinx.serialization.Serializable
 abstract class User(
 	val uid: String
 ) {

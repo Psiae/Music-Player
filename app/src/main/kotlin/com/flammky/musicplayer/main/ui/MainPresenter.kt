@@ -2,11 +2,16 @@ package com.flammky.musicplayer.main.ui
 
 import android.os.Bundle
 import androidx.lifecycle.SavedStateHandle
+import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.main.ext.IntentHandler
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.flow.Flow
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
 interface MainPresenter {
+
+	val auth: Auth
 
 	val intentHandler: IntentHandler
 		/**
@@ -40,5 +45,12 @@ interface MainPresenter {
 		fun showIntentRequestErrorMessage(message: String)
 		fun showPlaybackErrorMessage(message: String)
 		fun loadSaver(): Bundle?
+	}
+
+	interface Auth {
+		val currentUser: User?
+		val currentUserFlow: Flow<User?>
+		fun loginRememberedAsync(coroutineContext: CoroutineContext): Deferred<User?>
+		fun loginLocalAsync(coroutineContext: CoroutineContext): Deferred<User>
 	}
 }

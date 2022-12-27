@@ -36,6 +36,7 @@ import com.google.accompanist.pager.rememberPagerState
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
+import kotlinx.coroutines.flow.first
 
 @Composable
 fun MainEntry(content: @Composable () -> Unit) {
@@ -80,11 +81,15 @@ private fun entryPermissionAsState(): State<Boolean> {
 
 	val readStorageGranted = contextHelper.permissions.common.hasReadExternalStorage
 
-	val state = remember {
+	val authPermissionState = remember {
+		mutableStateOf(false)
+	}
+
+	val androidPermissionState = remember {
 		mutableStateOf(entryVM.shouldPersistPager != true && readStorageGranted)
 	}
 
-	if (!state.value) {
+	if (!androidPermissionState.value) {
 		val interceptor = remember {
 			val intentHandler = vm.intentHandler
 			intentHandler.createInterceptor()
@@ -102,7 +107,7 @@ private fun entryPermissionAsState(): State<Boolean> {
 			key1 = null
 		) {
 			onDispose {
-				if (!state.value) {
+				if (!androidPermissionState.value) {
 					// should we tho ?
 					interceptor.dropAllInterceptedIntent()
 				}
@@ -110,8 +115,20 @@ private fun entryPermissionAsState(): State<Boolean> {
 			}
 		}
 
-		EntryPermissionPager(contextHelper) { state.value = true }
+		EntryPermissionPager(contextHelper) { androidPermissionState.value = true }
 	}
+
+	LaunchedEffect(
+		key1 = null,
+		block = {
+			if (vm.currentUserFlow.first() == null) {
+				vm.loginLocalAsync().await()
+			}
+			vm.currentUserFlow.collect {
+				authPermissionState.value = it != null
+			}
+		}
+	)
 
 	NoInline {
 		if (vm.entryCheckWaiter.isNotEmpty()) {
@@ -119,7 +136,9 @@ private fun entryPermissionAsState(): State<Boolean> {
 			vm.entryCheckWaiter.clear()
 		}
 	}
-	return state
+	return remember {
+		derivedStateOf { authPermissionState.value && androidPermissionState.value }
+	}
 }
 
 @Composable

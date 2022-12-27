@@ -7,4 +7,5 @@ internal abstract class AuthUser(
 	val provider: String
 ) : User(uid) {
 
+	object UNSET : AuthUser("UNSET_UNSET", "UNSET")
 }

@@ -6,18 +6,24 @@ import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider
 import com.flammky.android.medialib.temp.image.ArtworkProvider
 import com.flammky.kotlin.common.sync.sync
+import com.flammky.musicplayer.base.auth.AuthService
+import com.flammky.musicplayer.base.auth.LocalAuth
 import com.flammky.musicplayer.base.coroutine.NonBlockingDispatcherPool
 import com.flammky.musicplayer.base.media.mediaconnection.MediaConnectionRepository
+import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.main.ext.IntentHandler
 import com.flammky.musicplayer.main.ext.MediaIntentHandler
 import com.flammky.musicplayer.main.ui.MainPresenter
 import com.flammky.musicplayer.media.mediaconnection.playback.PlaybackConnection
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.Flow
+import timber.log.Timber
 import javax.inject.Inject
 import kotlin.coroutines.CoroutineContext
 
 class RealMainPresenter @Inject constructor(
+	private val authService: AuthService,
 	@ApplicationContext private val androidContext: Context,
 	private val androidCoroutineDispatchers: AndroidCoroutineDispatchers,
 	private val playbackConnection: PlaybackConnection,
@@ -41,6 +47,15 @@ class RealMainPresenter @Inject constructor(
 				}
 		}
 
+	override val auth: MainPresenter.Auth
+		get() {
+			return _actual?.auth
+				?: uninitializedError {
+					"The Class is `Not` for late initialization, but for convenience of dependency injection." +
+						"It should be made visible after `initialize` returns, you should reconsider your design"
+				}
+		}
+
 	override fun initialize(
 		viewModel: MainPresenter.ViewModel,
 		coroutineContext: CoroutineContext
@@ -52,6 +67,7 @@ class RealMainPresenter @Inject constructor(
 			_actual = Actual(
 				viewModel = viewModel,
 				coroutineContext = coroutineContext,
+				authService = authService,
 				coroutineDispatchers = androidCoroutineDispatchers,
 				androidContext = androidContext,
 				playbackConnection = playbackConnection,
@@ -77,6 +93,7 @@ class RealMainPresenter @Inject constructor(
 	private class Actual(
 		private val viewModel: MainPresenter.ViewModel,
 		private val coroutineContext: CoroutineContext,
+		private val authService: AuthService,
 		override val coroutineDispatchers: AndroidCoroutineDispatchers,
 		override val androidContext: Context,
 		override val playbackConnection: PlaybackConnection,
@@ -104,6 +121,28 @@ class RealMainPresenter @Inject constructor(
 		}
 
 		override val intentHandler: IntentHandler = RealIntentHandler(_mediaIntentHandler)
+		override val auth: MainPresenter.Auth = object : MainPresenter.Auth {
+			override val currentUserFlow: Flow<User?>
+				get() = authService.observeCurrentUser()
+			override val currentUser: User?
+				get() = authService.currentUser
+
+			override fun loginRememberedAsync(coroutineContext: CoroutineContext): Deferred<User?> {
+				return TODO()
+			}
+
+			override fun loginLocalAsync(coroutineContext: CoroutineContext): Deferred<User> {
+				return _coroutineScope.async(coroutineContext) {
+					val data = LocalAuth.buildAuthData()
+					when (val result = authService.loginAsync(LocalAuth.ProviderID, data).await()) {
+						is AuthService.LoginResult.Success -> result.user
+						is AuthService.LoginResult.Error -> error("LoginLocal was failed, ex=${result.ex}")
+					}.also {
+						Timber.d("LoginLocalAsync completed: $it")
+					}
+				}
+			}
+		}
 
 		override fun initialize(
 			viewModel: MainPresenter.ViewModel,

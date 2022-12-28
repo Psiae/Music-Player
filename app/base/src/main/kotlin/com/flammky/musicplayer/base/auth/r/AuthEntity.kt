@@ -2,6 +2,7 @@ package com.flammky.musicplayer.base.auth.r
 
 import androidx.datastore.core.Serializer
 import com.flammky.musicplayer.base.auth.AuthData
+import com.flammky.musicplayer.base.auth.AuthSerializable
 import kotlinx.serialization.json.Json
 import java.io.InputStream
 import java.io.OutputStream
@@ -21,16 +22,21 @@ internal class AuthEntity(
 
 	object DataStoreSerializer : Serializer<AuthEntity> {
 
+		private val structuredJson = Json {
+			allowStructuredMapKeys = true
+			serializersModule = AuthSerializable.module
+		}
+
 		override val defaultValue: AuthEntity = UNSET
 
 		override suspend fun readFrom(input: InputStream): AuthEntity {
 			// TODO: Decrypt
-			return Json.decodeFromString(AuthEntity.serializer(), input.readBytes().decodeToString())
+			return structuredJson.decodeFromString(AuthEntity.serializer(), input.readBytes().decodeToString())
 		}
 
 		override suspend fun writeTo(t: AuthEntity, output: OutputStream) {
 			// TODO: Encrypt
-			output.write(Json.encodeToString(AuthEntity.serializer(), t).encodeToByteArray())
+			output.write(structuredJson.encodeToString(AuthEntity.serializer(), t).encodeToByteArray())
 		}
 	}
 }

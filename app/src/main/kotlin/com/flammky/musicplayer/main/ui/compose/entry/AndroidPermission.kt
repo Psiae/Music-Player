@@ -1,19 +1,24 @@
 package com.flammky.musicplayer.main.ui.compose.entry
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.State
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.flammky.android.manifest.permission.AndroidPermission
 import com.flammky.musicplayer.base.compose.rememberLocalContextHelper
+import com.flammky.musicplayer.main.ui.MainViewModel
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 
 // should we do scoping ?
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
-internal fun androidPermissionEntryState(): State<Boolean?> {
+internal fun permGuard(
+	allowShowContentState: State<Boolean>
+): State<Boolean?> {
 	val contextHelper = rememberLocalContextHelper()
+	val mainVM: MainViewModel = viewModel()
 	val vm: AndroidPermissionViewModel = viewModel()
 
 	val permissionGrantedState = remember {
@@ -31,10 +36,40 @@ internal fun androidPermissionEntryState(): State<Boolean?> {
 	}
 
 	if (!allow.value) {
-		com.flammky.musicplayer.ui.main.compose.entry.EntryPermissionPager(
-			contextHelper = contextHelper,
-			onGranted = { allow.value = true ; showPagerState.value = false }
-		)
+		val interceptor = remember {
+			val intentHandler = mainVM.intentHandler
+			intentHandler.createInterceptor()
+				.apply {
+					setFilter { target ->
+						intentHandler.intentRequireAndroidPermission(
+							intent = target.cloneActual(),
+							permission = AndroidPermission.Read_External_Storage
+						)
+					}
+					start()
+				}
+		}
+		DisposableEffect(
+			// wait to be removed from composition tree
+			key1 = null
+		) {
+			onDispose {
+				if (!allow.value) {
+					// should we tho ?
+					interceptor.dropAllInterceptedIntent()
+				}
+				interceptor.dispose()
+			}
+		}
+	}
+
+	if (!allow.value && allowShowContentState.value) {
+		Box(modifier = Modifier.fillMaxSize()) {
+			com.flammky.musicplayer.ui.main.compose.entry.EntryPermissionPager(
+				contextHelper = contextHelper,
+				onGranted = { allow.value = true ; showPagerState.value = false }
+			)
+		}
 	}
 
 	return allow

@@ -10,6 +10,4 @@ import com.flammky.musicplayer.ui.main.compose.ComposeContent
 fun MainActivity.setContent() = setContent { ThemedContent() }
 
 @Composable
-private inline fun ThemedContent() = MaterialDesign3Theme {
-	ComposeContent()
-}
+private inline fun ThemedContent() = MaterialDesign3Theme { ComposeContent() }

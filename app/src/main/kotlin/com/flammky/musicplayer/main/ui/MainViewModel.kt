@@ -24,7 +24,22 @@ class MainViewModel @Inject constructor(
 	val intentRequestErrorMessageChannel: ReceiveChannel<String> = _intentRequestErrorMessageChannel
 	val playbackErrorMessageChannel: ReceiveChannel<String> = _playbackErrorMessageChannel
 
-	val entryCheckWaiter = mutableStateListOf<() -> Unit>()
+	val splashHolders = mutableListOf<Any>()
+
+	/**
+	 * Wait for the authGuard to be initialized
+	 */
+	val authGuardWaiter = mutableStateListOf<() -> Unit>()
+
+	/**
+	 * Wait for the permGuard to be initialized
+	 */
+	val permGuardWaiter = mutableStateListOf<() -> Unit>()
+
+	/**
+	 * Wait for all entryGuard to be initialized
+	 */
+	val entryGuardWaiter = mutableStateListOf<() -> Unit>()
 
 	override fun showIntentRequestErrorMessage(message: String) {
 		_intentRequestErrorMessageChannel.trySend(message)
@@ -41,8 +56,6 @@ class MainViewModel @Inject constructor(
 	fun rememberAuthAsync(): Deferred<User?> {
 		return presenter.auth.rememberAuthAsync(viewModelScope.coroutineContext)
 	}
-
-
 
 	val currentUserFlow: Flow<User?> = presenter.auth.currentUserFlow
 

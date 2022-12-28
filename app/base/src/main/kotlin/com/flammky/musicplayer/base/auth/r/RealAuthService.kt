@@ -162,6 +162,9 @@ internal class RealAuthService(
 			)
 		val user = runCatching {
 			provider.login(data)
+				.apply {
+					androidContext.authDataStore.updateData { writeEntity() }
+				}
 		}.getOrElse { throwable ->
 			return AuthService.LoginResult.Error(
 				msg = (throwable as Exception).message ?: "",

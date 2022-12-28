@@ -16,6 +16,7 @@ fun Activity.disableWindowFitSystemInsets(): Activity = apply {
 	requireNotNull(window) {
 		"Activity.window was null, " +
 			"try calling this function when of after onCreate(Bundle?) is called"
+	}.apply {
+		disableFitSystemInsets()
 	}
-	window.disableFitSystemInsets()
 }

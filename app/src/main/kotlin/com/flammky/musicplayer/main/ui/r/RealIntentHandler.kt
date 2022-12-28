@@ -84,6 +84,10 @@ class RealIntentHandler(
 		return intent.isActionView() && intent.type?.startsWith("audio/") == true
 	}
 
+	override fun intentRequireAuthPermission(intent: Intent): Boolean {
+		return false
+	}
+
 	override fun dispose() {
 		// temp
 		sync(_stateLock) {

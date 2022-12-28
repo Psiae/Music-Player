@@ -18,6 +18,7 @@ import com.flammky.musicplayer.main.ui.MainViewModel
 import com.flammky.musicplayer.main.ui.compose.setContent
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import kotlin.random.Random
 
 @AndroidEntryPoint
@@ -82,17 +83,31 @@ class MainActivity : ComponentActivity() {
 	}
 
 	private fun setupSplashScreen() {
-		installSplashScreen()
+		mainVM.splashHolders.apply {
+			if (contains(EntrySplashHolder)) {
+				return@apply
+			}
+			add(EntrySplashHolder)
+			mainVM.authGuardWaiter.add { mainVM.splashHolders.remove(EntrySplashHolder) }
+		}
+		installSplashScreen().setKeepOnScreenCondition {
+			run {
+				mainVM.splashHolders.isNotEmpty()
+			}.also { keep ->
+				Timber.d("MainActivity_DEBUG_onPreDraw: SplashCheckKeepOnScreenCondition=$keep")
+			}
+		}
 	}
 
 	private inner class InnerIntentHandler {
 		fun handleIntent(intent: Intent) {
 			// wait for intent interceptor
-			mainVM.entryCheckWaiter.add { mainVM.intentHandler.handleIntent(intent) }
+			mainVM.entryGuardWaiter.add { mainVM.intentHandler.handleIntent(intent) }
 		}
 	}
 
 	companion object : ActivityCompanion(), RequireLauncher {
+		private val EntrySplashHolder = Any()
 
 		private val LauncherSignatureCode = (Random.nextInt() shl 13).toString()
 		private val LauncherSignatureKey = "l_sign"

@@ -25,6 +25,10 @@ interface IntentHandler {
 		permission: AndroidPermission
 	): Boolean
 
+	fun intentRequireAuthPermission(
+		intent: Intent
+	): Boolean
+
 	fun dispose()
 
 	interface Interceptor {

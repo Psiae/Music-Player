@@ -130,9 +130,9 @@ private fun entryPermissionAsState(): State<Boolean> {
 	)
 
 	NoInline {
-		if (vm.entryCheckWaiter.isNotEmpty()) {
-			vm.entryCheckWaiter.forEach { it() }
-			vm.entryCheckWaiter.clear()
+		if (vm.authGuardWaiter.isNotEmpty()) {
+			vm.authGuardWaiter.forEach { it() }
+			vm.authGuardWaiter.clear()
 		}
 	}
 	return remember {

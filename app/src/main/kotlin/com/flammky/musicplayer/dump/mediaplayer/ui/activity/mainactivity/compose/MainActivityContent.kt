@@ -23,7 +23,10 @@ import androidx.compose.material.Icon
 import androidx.compose.material.ripple.LocalRippleTheme
 import androidx.compose.material.ripple.RippleAlpha
 import androidx.compose.material.ripple.RippleTheme
-import androidx.compose.material3.*
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -41,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -49,15 +53,24 @@ import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.flammky.android.x.lifecycle.viewmodel.compose.activityViewModel
 import com.flammky.musicplayer.R
+import com.flammky.musicplayer.base.compose.NoInlineBox
+import com.flammky.musicplayer.base.compose.NoInlineColumn
 import com.flammky.musicplayer.base.compose.VisibilityViewModel
+import com.flammky.musicplayer.base.nav.compose.ComposeRootDestination
+import com.flammky.musicplayer.base.theme.Theme
+import com.flammky.musicplayer.base.theme.compose.backgroundColorAsState
+import com.flammky.musicplayer.base.theme.compose.backgroundContentColorAsState
+import com.flammky.musicplayer.base.theme.compose.elevatedTonalPrimarySurfaceAsState
+import com.flammky.musicplayer.base.theme.compose.secondaryContainerContentColorAsState
 import com.flammky.musicplayer.dump.mediaplayer.domain.viewmodels.MainViewModel
 import com.flammky.musicplayer.dump.mediaplayer.domain.viewmodels.MediaViewModel
 import com.flammky.musicplayer.dump.mediaplayer.ui.activity.mainactivity.compose.theme.AppTypography
+import com.flammky.musicplayer.main.ui.compose.nav.RootNavigator
 import com.flammky.musicplayer.playbackcontrol.ui.compose.TransitioningPlaybackControl
 import com.flammky.musicplayer.ui.main.compose.navigation.MainNavigator
 import com.flammky.musicplayer.ui.main.compose.navigation.MainNavigator.ProvideNavHostController
 import com.flammky.musicplayer.ui.main.compose.screens.root.PlaybackControl
-import com.flammky.musicplayer.ui.main.compose.theme.color.ColorHelper
+import com.flammky.musicplayer.ui.util.compose.NoRipple
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import timber.log.Timber
 import kotlin.math.roundToInt
@@ -125,7 +138,8 @@ private fun RootScaffold(
 
 	Scaffold(
 		bottomBar = {
-			if (showBottomNav(backStackEntry.value)) {
+			BottomNavigation(navController)
+			/*if (showBottomNav(backStackEntry.value)) {
 				val elevation = if (isSystemInDarkTheme()) 2.dp else 8.dp
 				val backgroundColor = ColorHelper.tonePrimarySurface(elevation = elevation)
 					.copy(alpha = appSettings.navigationSettings.bnvSettings.visibility / 100)
@@ -145,7 +159,7 @@ private fun RootScaffold(
 						}
 					}
 				)
-			}
+			}*/
 		}
 	) { padding ->
 		content(padding)
@@ -193,7 +207,7 @@ private fun RootBottomNavigation(
 				listOf(
 					backgroundColor,
 					backgroundColor,
-					backgroundColor,
+					backgroundColor.compositeOver(themeColor.copy(alpha = 0.8f)),
 					backgroundColor.compositeOver(themeColor)
 				)
 			)
@@ -223,7 +237,6 @@ private fun RootBottomNavigation(
 
 					Box(
 						modifier = Modifier
-							.padding(start = 12.dp, end = 12.dp)
 							.weight(1f),
 						contentAlignment = Alignment.BottomCenter
 					) {
@@ -255,6 +268,7 @@ private fun NavigationBarsSpacer() {
 		)
 		.fillMaxWidth()
 	)
+
 }
 
 @Composable
@@ -498,23 +512,116 @@ private fun MainBottomNavItem(
 }
 
 @Composable
-fun PermissionScreen(
-	grantButtonText: String,
-	onGrantButton: () -> Unit
+private fun BottomNavigation(
+	navController: NavController
 ) {
-	Column(
-		modifier = Modifier
-			.fillMaxSize()
-			.background(MaterialTheme.colorScheme.surface),
-		verticalArrangement = Arrangement.Center,
-		horizontalAlignment = Alignment.CenterHorizontally
-	) {
-		Button(
-			onClick = { onGrantButton() },
-			colors = ButtonDefaults
-				.buttonColors(containerColor = ColorHelper.tonePrimarySurface(elevation = 8.dp))
+	val backstackEntryState = navController.currentBackStackEntryAsState()
+	val navigators = RootNavigator.navigators
+	val currentRoute = backstackEntryState.value?.destination?.route
+
+	if (navigators.find { it.getRootDestination().routeID == currentRoute } == null) {
+		return
+	}
+
+	// TODO: Customizable indication
+	NoRipple {
+
+		val absBackgroundColor = Theme.backgroundColorAsState().value
+		val alpha = (/* preference */ 0.97f).coerceAtLeast(0.3f)
+		val backgroundColor = Theme
+			.elevatedTonalPrimarySurfaceAsState(elevation = 5.dp).value
+			.copy(alpha = alpha)
+		val backgroundModifier = remember(alpha, backgroundColor, absBackgroundColor) {
+			if (alpha == 1f) {
+				Modifier.background(backgroundColor)
+			} else {
+				Modifier.background(
+					brush = Brush
+						.verticalGradient(
+							listOf(
+								backgroundColor,
+								backgroundColor,
+								backgroundColor,
+								backgroundColor.copy(alpha = 0.4f).compositeOver(absBackgroundColor)
+							)
+						)
+				)
+			}
+		}
+
+		NoInlineBox(
+			modifier = backgroundModifier.navigationBarsPadding(),
+			contentAlignment = Alignment.BottomCenter
 		) {
-			Text(text = grantButtonText, color = MaterialTheme.colorScheme.onSurface)
+			BottomNavigation(
+				contentColor = Theme.secondaryContainerContentColorAsState().value,
+				backgroundColor = /* already set above by column */ Color.Transparent,
+				elevation = /* already set above by elevated backgroundColor */ 0.dp
+			) {
+				navigators.forEach { rootNavigator ->
+					val destination = rootNavigator.getRootDestination()
+					val selected = destination.routeID == currentRoute
+					val interactionSource = remember { MutableInteractionSource() }
+					NoInlineColumn(
+						modifier = Modifier
+							.align(Alignment.Bottom)
+							.weight(1f)
+							.selectable(
+								selected = selected,
+								onClick = {
+									if (destination.routeID != backstackEntryState.value?.destination?.route) {
+										rootNavigator.navigateToRoot(navController) {
+											launchSingleTop = true
+											restoreState = true
+											popUpTo(navController.graph.findStartDestination().id) {
+												saveState = true
+											}
+										}
+									}
+								},
+								enabled = true,
+								role = Role.Tab,
+								interactionSource = interactionSource,
+								indication = /* TODO: Customizable */ null,
+							),
+						verticalArrangement = Arrangement.Bottom,
+						horizontalAlignment = Alignment.CenterHorizontally
+					) {
+						// TODO: Customizable indicator
+						val pressed by interactionSource.collectIsPressedAsState()
+						val sizeFactor by animateFloatAsState(targetValue = if (pressed) 0.94f else 1f)
+
+						val painter = when (
+							val res = if (selected) destination.selectedIconResource else destination.iconResource
+						) {
+							is ComposeRootDestination.IconResource.ResID -> {
+								painterResource(id = res.id)
+							}
+							is ComposeRootDestination.IconResource.ComposeImageVector -> {
+								rememberVectorPainter(image = res.getVector())
+							}
+						}
+
+						Icon(
+							modifier = Modifier.size(27.dp * sizeFactor),
+							painter = painter,
+							contentDescription = null
+						)
+
+						Spacer(modifier = Modifier.height(3.dp))
+
+						Text(
+							color = Theme.backgroundContentColorAsState().value,
+							fontWeight = MaterialTheme.typography.labelMedium.fontWeight,
+							fontSize = (MaterialTheme.typography.labelMedium.fontSize.value * sizeFactor).sp,
+							fontStyle = MaterialTheme.typography.labelMedium.fontStyle,
+							lineHeight = MaterialTheme.typography.labelMedium.lineHeight,
+							letterSpacing = MaterialTheme.typography.labelMedium.letterSpacing,
+							text = destination.label
+						)
+					}
+				}
+			}
 		}
 	}
 }

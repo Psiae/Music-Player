@@ -1,0 +1,25 @@
+package com.flammky.musicplayer.base.compose
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+
+@Composable
+fun NoInlineBox(modifier: Modifier) = Box(modifier)
+
+@Composable
+fun NoInlineBox(
+	modifier: Modifier = Modifier,
+	contentAlignment: Alignment = Alignment.TopStart,
+	propagateMinConstraints: Boolean = false,
+	content: @Composable BoxScope.() -> Unit
+) = Box(modifier, contentAlignment, propagateMinConstraints, content)
+@Composable
+
+fun NoInlineColumn(
+	modifier: Modifier = Modifier,
+	verticalArrangement: Arrangement.Vertical = Arrangement.Top,
+	horizontalAlignment: Alignment.Horizontal = Alignment.Start,
+	content: @Composable ColumnScope.() -> Unit
+) = Column(modifier, verticalArrangement, horizontalAlignment, content)

@@ -4,11 +4,13 @@ import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.flammky.musicplayer.main.ui.MainViewModel
 import com.flammky.musicplayer.ui.main.compose.entry.NoInline
+import timber.log.Timber
 
 @Composable
 internal fun EntryGuard(
 	content: @Composable () -> Unit
 ) {
+	Timber.d("Nav EntryGuard")
 	if (guard().value == true) {
 		content()
 	}
@@ -67,4 +69,4 @@ private fun guard(): State<Boolean?> {
 	return allowState
 }
 
-private fun invoke(block: () -> Unit) = block.invoke()
+private inline fun invoke(block: () -> Unit) = block.invoke()

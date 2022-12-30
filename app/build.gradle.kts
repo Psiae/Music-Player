@@ -91,7 +91,10 @@ dependencies {
     implementation(project("base:lifecycle"))
     implementation(project("media"))
     implementation(project("medialib"))
+    implementation(project("home"))
+    implementation(project("search"))
     implementation(project("library"))
+    implementation(project("user"))
 
     /* Android.material */
     dependencies {

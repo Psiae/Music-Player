@@ -8,11 +8,14 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.flammky.musicplayer.dump.mediaplayer.domain.viewmodels.MainViewModel
 import com.flammky.musicplayer.dump.mediaplayer.ui.activity.mainactivity.compose.MainActivityRoot
+import com.flammky.musicplayer.main.MainActivity
 import com.flammky.musicplayer.main.ui.compose.entry.EntryGuard
+import com.flammky.musicplayer.main.ui.compose.nav.RootNavigation
 
 @Composable
-internal fun ComposeContent() = MainSurface {
+internal fun MainActivity.ComposeContent() = MainSurface {
 	EntryGuard {
+		RootNavigation()
 		val mainViewModel: MainViewModel = viewModel()
 		MainActivityRoot(mainViewModel.appSettings.collectAsState().value)
 	}

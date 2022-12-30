@@ -41,6 +41,14 @@ dependencies {
 
         // Foundation
         api("androidx.compose.foundation:foundation:$v")
+
+        // Material
+        api("androidx.compose.material:material:$v")
+        api("androidx.compose.material:material-icons-core:$v")
+
+        // Material3
+        val vMaterial3 = "1.0.0-alpha14"
+        api("androidx.compose.material3:material3:$vMaterial3")
     }
 
     /* androidx.navigation */

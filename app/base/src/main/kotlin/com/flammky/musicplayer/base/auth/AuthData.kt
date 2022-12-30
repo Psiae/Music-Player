@@ -35,7 +35,7 @@ class AuthData internal constructor(
 			).deserialize(decoder).toPersistentMap().let { s -> Map(s) }
 		}
 
-		override val descriptor: SerialDescriptor = PersistentAuthMapDescriptor()
+		override val descriptor: SerialDescriptor = AuthDataMapDescriptor()
 
 		override fun serialize(
 			encoder: Encoder,
@@ -49,9 +49,9 @@ class AuthData internal constructor(
 	}
 
 	@ExperimentalSerializationApi
-	private class PersistentAuthMapDescriptor() : SerialDescriptor {
+	private class AuthDataMapDescriptor() : SerialDescriptor {
 		override val annotations: List<Annotation> = super.annotations
-		override val elementsCount: Int = Int.MAX_VALUE
+		override val elementsCount: Int = 2
 		override val isInline: Boolean = super.isInline
 		override val isNullable: Boolean = super.isNullable
 		override val kind: SerialKind = StructureKind.MAP

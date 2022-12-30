@@ -11,7 +11,11 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navigation
 import com.flammky.musicplayer.dump.mediaplayer.ui.activity.mainactivity.compose.home.HomeScreen
+import com.flammky.musicplayer.home.nav.compose.HomeRootNavigator
+import com.flammky.musicplayer.library.nav.compose.LibraryRootNavigator
 import com.flammky.musicplayer.library.ui.LibraryNavigator
+import com.flammky.musicplayer.search.nav.compose.SearchRootNavigator
+import com.flammky.musicplayer.user.nav.compose.UserRootNavigator
 
 sealed class Screen(
 	val route: String,
@@ -58,9 +62,9 @@ private fun NavGraphBuilder.addHomeRoute(
 ) {
 	navigation(
 		route = homeRoute,
-		startDestination = Screen.Home.route,
+		startDestination = HomeRootNavigator.getRootDestination().routeID,
 	) {
-		addHomeScreen(controller)
+		HomeRootNavigator.addRootDestination(this, controller)
 	}
 }
 
@@ -86,9 +90,9 @@ private fun NavGraphBuilder.addSearchRoute(
 ) {
 	navigation(
 		route = searchRoute,
-		startDestination = Screen.Search.route
+		startDestination = SearchRootNavigator.getRootDestination().routeID
 	) {
-		addSearchScreen(controller)
+		SearchRootNavigator.addRootDestination(this, controller)
 	}
 }
 
@@ -106,9 +110,9 @@ private fun NavGraphBuilder.addLibraryRoute(
 ) {
 	navigation(
 		route = libraryRoute,
-		startDestination = Screen.Library.route
+		startDestination = LibraryRootNavigator.getRootDestination().routeID
 	) {
-		addLibraryScreen(controller)
+		LibraryRootNavigator.addRootDestination(this, controller)
 	}
 }
 
@@ -124,10 +128,8 @@ private fun NavGraphBuilder.addUserRoute(
 ) {
 	navigation(
 		route = userRoute,
-		startDestination = Screen.User.route
+		startDestination = UserRootNavigator.getRootDestination().routeID
 	) {
-		composable(route = Screen.User.route) {
-
-		}
+	  UserRootNavigator.addRootDestination(this, controller)
 	}
 }

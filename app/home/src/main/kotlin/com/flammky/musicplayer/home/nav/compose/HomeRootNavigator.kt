@@ -1,6 +1,7 @@
 package com.flammky.musicplayer.home.nav.compose
 
 import androidx.navigation.NavController
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.compose.composable
@@ -39,7 +40,7 @@ object HomeRootNavigator : ComposeRootNavigator() {
 			Home {
 				controller.navigate(it) {
 					popUpTo(rootDestination.routeID) {
-						inclusive = true
+						inclusive = controller.graph.findStartDestination().route != rootDestination.routeID
 					}
 				}
 			}

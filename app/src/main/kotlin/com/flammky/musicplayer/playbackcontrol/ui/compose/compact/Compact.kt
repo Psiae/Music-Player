@@ -1,5 +1,12 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
-
 package com.flammky.musicplayer.playbackcontrol.ui.compose.compact
 
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+
+@Composable
+fun CompactPlaybackControl(
+	onArtworkClicked: () -> Unit,
+	onDescriptionClicked: () -> Unit,
+	onBaseClicked: () -> Unit
+) {
+
+}

@@ -49,6 +49,7 @@ import timber.log.Timber
 
 @Composable
 fun PlaybackControl(
+	modifier: Modifier = Modifier,
 	model: PlaybackControlModel,
 	bottomOffset: Dp,
 	onClick: () -> Unit
@@ -78,7 +79,7 @@ fun PlaybackControl(
 	if (animatedOffset.read() > 0.dp) {
 		val density = LocalDensity.current.density
 		Box(
-			modifier = Modifier.onGloballyPositioned { bounds ->
+			modifier = modifier.onGloballyPositioned { bounds ->
 				mainVM.playbackControlShownHeight.rewrite {
 					(animatedOffset.read() - bottomOffset) + (bounds.size.height / density).dp
 				}

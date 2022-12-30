@@ -1,6 +1,7 @@
 package com.flammky.musicplayer.search.nav.compose
 
 import androidx.navigation.NavController
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.compose.composable
@@ -36,7 +37,7 @@ object SearchRootNavigator : ComposeRootNavigator() {
 			Search {
 				controller.navigate(it) {
 					popUpTo(rootDestination.routeID) {
-						inclusive = true
+						inclusive = controller.graph.findStartDestination().route != rootDestination.routeID
 					}
 				}
 			}

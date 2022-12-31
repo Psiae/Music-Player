@@ -42,14 +42,14 @@ import com.flammky.musicplayer.base.theme.compose.backgroundContentColorAsState
 import com.flammky.musicplayer.base.theme.compose.elevatedTonalPrimarySurfaceAsState
 import com.flammky.musicplayer.base.theme.compose.secondaryContainerContentColorAsState
 import com.flammky.musicplayer.dump.mediaplayer.domain.viewmodels.MainViewModel
-import com.flammky.musicplayer.dump.mediaplayer.domain.viewmodels.MediaViewModel
 import com.flammky.musicplayer.main.MainActivity
 import com.flammky.musicplayer.playbackcontrol.ui.compose.TransitioningPlaybackControl
-import com.flammky.musicplayer.ui.main.compose.screens.root.PlaybackControl
+import com.flammky.musicplayer.playbackcontrol.ui.compose.compact.TransitioningCompactPlaybackControl
 import com.flammky.musicplayer.ui.util.compose.NoRipple
 
 @Composable
 internal fun MainActivity.RootNavigation() {
+	MaterialTheme.colorScheme
 	val navController = rememberNavController()
 	RootScaffold(navController)
 }
@@ -64,6 +64,12 @@ private fun MainActivity.RootScaffold(
 	val topLevelNavigationRegisteredState = remember {
 		mutableStateOf(false)
 	}
+	// TODO: make CompositionLocal
+	val mvm = viewModel<MainViewModel>()
+	viewModel<VisibilityViewModel>()
+		.apply {
+			bottomVisibilityOffset.value = mvm.bottomVisibilityHeight.value
+		}
 	Scaffold(
 		modifier = Modifier.fillMaxSize(),
 		bottomBar = { BottomNavigation(navController = navController) },
@@ -81,18 +87,15 @@ private fun MainActivity.RootScaffold(
 			}.also {
 				topLevelNavigationRegisteredState.value = true
 			}
-			// Todo rewrite on playbackcontrol.ui.compose.compact
-			PlaybackControl(
-				modifier = Modifier.align(Alignment.BottomCenter),
-				model = viewModel<MediaViewModel>().playbackControlModel,
-				bottomOffset = contentPadding.calculateBottomPadding(),
-				onClick = { showFullPlaybackControllerState.value = true }
+			mvm.bottomNavigationHeight.value = contentPadding.calculateBottomPadding()
+			TransitioningCompactPlaybackControl(
+				bottomVisibilityVerticalPadding = contentPadding.calculateBottomPadding(),
+				onArtworkClicked = { showFullPlaybackControllerState.value = true },
+				onBaseClicked = { showFullPlaybackControllerState.value = true },
+				onVerticalOffsetChanged = {
+					mvm.playbackControlOffset.value = it
+				}
 			)
-			// think whether to keep as viewmodel or create a composition local, the latter might be better
-			viewModel<MainViewModel>().apply {
-				bottomNavigationHeight.value = contentPadding.calculateBottomPadding()
-				viewModel<VisibilityViewModel>().bottomVisibilityOffset.value = bottomVisibilityHeight.value
-			}
 		}
 	}
 

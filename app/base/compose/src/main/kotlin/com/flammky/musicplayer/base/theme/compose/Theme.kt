@@ -30,6 +30,15 @@ fun Theme.Companion.surfaceColorAsState(): State<Color> {
 }
 
 @Composable
+fun Theme.Companion.surfaceVariantColorAsState(): State<Color> {
+	val state = remember {
+		mutableStateOf(Color.Unspecified)
+	}
+	state.value = MaterialTheme.colorScheme.surfaceVariant
+	return state
+}
+
+@Composable
 fun Theme.Companion.backgroundColorAsState(): State<Color> {
 	val state = remember {
 		mutableStateOf<Color>(Color.Unspecified)

@@ -160,10 +160,10 @@ internal class RealPlaybackControlPresenter(
 	}
 
 	override fun currentSessionID(): String? {
-		return sync(_stateLock) {
+		sync(_stateLock) {
 			if (_disposed || !_initialized) return null
-			playbackConnection.getSession()?.id
 		}
+		return playbackConnection.getSession()?.id
 	}
 
 	// should we return listenable for the actual disposal ?

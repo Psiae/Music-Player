@@ -193,8 +193,11 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 		return callbackFlow {
 			val timelineObserver = object : LibraryPlayerEventListener {
 				override fun onTimelineChanged(old: Timeline, new: Timeline, reason: Int) {
-					if (reason == 0) playerScope.launch(playerDispatcher) {
-						send(s.mediaController.getAllMediaItem().map { it.mediaId })
+					if (reason == 0) {
+						val get = s.mediaController.getAllMediaItem().map { it.mediaId }
+						playerScope.launch(playerDispatcher) {
+							send(get)
+						}
 					}
 				}
 			}

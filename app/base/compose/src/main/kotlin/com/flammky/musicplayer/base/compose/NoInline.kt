@@ -5,6 +5,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 
+// consider naming this SubCompose instead
+@Composable
+fun NoInline(content: @Composable () -> Unit) = content()
+
 @Composable
 fun NoInlineBox(modifier: Modifier) = Box(modifier)
 

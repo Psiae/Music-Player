@@ -112,7 +112,7 @@ private fun rememberFlingBehavior(state: PagerState): FlingBehavior {
 	return remember(state, base) {
 		object : FlingBehavior {
 			override suspend fun ScrollScope.performFling(initialVelocity: Float): Float {
-				return with(base) { performFling(initialVelocity * 0.25f) }
+				return with(base) { performFling(initialVelocity * 0.05f) }
 			}
 		}
 	}

@@ -15,9 +15,12 @@ import com.flammky.musicplayer.playbackcontrol.ui.controller.PlaybackController
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
 import com.flammky.musicplayer.ui.playbackcontrol.PlaybackControlPresenter
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.*
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.annotation.concurrent.Immutable
 import javax.inject.Inject
@@ -73,7 +76,7 @@ internal class PlaybackControlViewModel @Inject constructor(
 	): PlaybackController {
 		return presenter.createController(
 			sessionID = sessionID,
-			coroutineContext = viewModelScope.coroutineContext.job + coroutineContext
+			coroutineContext = viewModelScope.coroutineContext + coroutineContext
 		).also {
 			Timber.d("PlaybackController for $sessionID created with coroutineContext: $coroutineContext")
 		}
@@ -101,7 +104,7 @@ internal class PlaybackControlViewModel @Inject constructor(
 					emit(null)
 					return@transform
 				}
-				val channel = Channel<PlaybackObserver?>()
+				val channel = Channel<PlaybackObserver?>(Channel.CONFLATED)
 				job = viewModelScope.launch {
 					val controller = presenter.createController(id, viewModelScope.coroutineContext)
 					channel.send(controller.createPlaybackObserver())
@@ -162,6 +165,8 @@ internal class PlaybackControlViewModel @Inject constructor(
 			}.collect(this)
 		}.stateIn(viewModelScope, SharingStarted.Lazily, PlaybackControlTrackMetadata(id))
 	}
+
+	// TODO: rewrite
 
 	fun playWhenReady() {
 		mediaConnection.playback.playWhenReady()

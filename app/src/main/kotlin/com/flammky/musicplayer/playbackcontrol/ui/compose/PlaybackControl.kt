@@ -145,8 +145,6 @@ internal fun TransitioningPlaybackControl(
 			)
 		}
 	}
-
-
 }
 
 @Composable
@@ -594,8 +592,9 @@ private fun TracksPager(
 			touched.overwrite(true)
 		}
 
-		PagerListenPageChange(
+		PagerListenPageState(
 			pagerState = pagerState,
+			queueState = actualQueueState,
 			touchedState = touched,
 			shouldSeekIndex = { index ->
 				queueOverrideState.value = queue.copy(currentIndex = index)
@@ -637,7 +636,11 @@ private fun PagerListenMediaIndexChange(
 			!pagerState.isScrollInProgress
 		) {
 			onScroll()
-			pagerState.animateScrollToPage(currentIndex)
+			if (pagerState.currentPage in currentIndex - 2 .. currentIndex + 2) {
+				pagerState.animateScrollToPage(currentIndex)
+			} else {
+				pagerState.scrollToPage(currentIndex)
+			}
 		}
 	}
 }
@@ -658,8 +661,9 @@ private fun PagerListenUserDrag(
 
 @OptIn(ExperimentalPagerApi::class)
 @Composable
-private fun PagerListenPageChange(
+private fun PagerListenPageState(
 	pagerState: PagerState,
+	queueState: State<PlaybackQueue>,
 	touchedState: State<Boolean>,
 	shouldSeekIndex: (Int) -> Boolean,
 	seekIndex: suspend (Int) -> Boolean
@@ -672,7 +676,10 @@ private fun PagerListenPageChange(
 		mutableStateOf(page)
 	}
 	remember(page, dragging, touched) {
-		if (touched && !dragging && page != rememberedPageState.value) {
+		if (touched && !dragging &&
+			(page != rememberedPageState.value
+				|| rememberedPageState.value != queueState.value.currentIndex)
+		) {
 			if (shouldSeekIndex(page)) {
 				rememberedPageState.value = page
 				coroutineScope.launch { seekIndex(page) }
@@ -764,6 +771,7 @@ private fun PlaybackDescriptionSubtitle(textState: State<String>) {
 	)
 }
 
+// TODO: rewrite
 @Composable
 private fun PlaybackControls(
 	modifier: Modifier = Modifier,

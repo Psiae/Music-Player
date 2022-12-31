@@ -1,6 +1,7 @@
 package com.flammky.musicplayer.ui.main.compose.screens.root
 
 import android.graphics.Bitmap
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -80,7 +81,7 @@ fun PlaybackControl(
 		val density = LocalDensity.current.density
 		Box(
 			modifier = modifier.onGloballyPositioned { bounds ->
-				mainVM.playbackControlShownHeight.rewrite {
+				mainVM.playbackControlOffset.rewrite {
 					(animatedOffset.read() - bottomOffset) + (bounds.size.height / density).dp
 				}
 			}
@@ -88,7 +89,7 @@ fun PlaybackControl(
 			PlaybackControlBox(model, animatedOffset.read(), onClick)
 		}
 	} else {
-		mainVM.playbackControlShownHeight.overwrite(0.dp)
+		mainVM.playbackControlOffset.overwrite(0.dp)
 	}
 }
 
@@ -302,7 +303,7 @@ private fun paletteColorState(
 			}
 		} ?: -1
 		val color = if (int != -1) Color(int) else defaultCardBackgroundColor
-		color.copy(alpha = 0.5f)
+		color.copy(alpha = 0.7f)
 			.compositeOver(defaultCardBackgroundColor)
 			.also { colorState.overwrite(it) }
 	}
@@ -311,9 +312,13 @@ private fun paletteColorState(
 
 @Composable
 private fun PlaybackBoxBackground(colorState: State<Color>) {
+	val color by animateColorAsState(
+		targetValue = colorState.value,
+		animationSpec = tween(300),
+	)
 	Box(modifier = Modifier
 		.fillMaxSize()
-		.background(colorState.read()))
+		.background(color))
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

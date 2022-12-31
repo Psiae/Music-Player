@@ -11,6 +11,7 @@ import com.flammky.musicplayer.base.media.mediaconnection.MediaConnectionDelegat
 import com.flammky.musicplayer.base.media.mediaconnection.MediaConnectionPlayback
 import com.flammky.musicplayer.media.playback.*
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.*
 import kotlinx.coroutines.android.asCoroutineDispatcher
@@ -160,7 +161,23 @@ class RealMediaConnection(
 		): PlaybackQueue {
 			scope.launch {
 				playback.observePlaylistStream().collect {
-					onQueueChange(PlaybackEvent.QueueChange(old = PlaybackQueue.UNSET, new = queue, PlaybackQueueChangeReason.UNKNOWN))
+					val newList = it.list
+					val newIndex = it.currentIndex
+					val new = if (newIndex in newList.indices) {
+						PlaybackQueue(
+							list = newList,
+							currentIndex = newIndex
+						)
+					} else {
+						PlaybackQueue(
+							list = persistentListOf(),
+							currentIndex = PlaybackConstants.INDEX_UNSET
+						)
+					}
+					onQueueChange(
+						PlaybackEvent.QueueChange(
+							old = PlaybackQueue.UNSET, new = new, PlaybackQueueChangeReason.UNKNOWN)
+					)
 				}
 			}
 			return queue

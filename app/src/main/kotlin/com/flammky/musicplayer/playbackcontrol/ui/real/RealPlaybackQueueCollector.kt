@@ -97,7 +97,7 @@ internal class RealPlaybackQueueCollector(
 						emit(PlaybackQueue.UNSET)
 						return@transform
 					}
-					val channel = Channel<PlaybackQueue>(Channel.CONFLATED)
+					val channel = Channel<PlaybackQueue>(Channel.BUFFERED)
 					listenerJob = launch {
 						try {
 							session.controller.acquireObserver(owner).let { observer ->

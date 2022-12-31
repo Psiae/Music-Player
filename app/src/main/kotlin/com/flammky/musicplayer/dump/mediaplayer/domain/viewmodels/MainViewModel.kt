@@ -5,11 +5,13 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.max
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import com.flammky.common.kotlin.collection.mutable.doEachClear
 import com.flammky.musicplayer.dump.mediaplayer.data.repository.ProtoRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import timber.log.Timber
 import javax.inject.Inject
 
 @HiltViewModel
@@ -18,14 +20,13 @@ class MainViewModel @Inject constructor(
   private val protoRepo: ProtoRepository
 ) : ViewModel() {
 
-	val playbackControlShownHeight = mutableStateOf(0.dp)
+	val playbackControlOffset = mutableStateOf(0.dp)
 	val bottomNavigationHeight = mutableStateOf(0.dp)
 
-	val bottomVisibilityHeight = listOf(
-		playbackControlShownHeight,
-		bottomNavigationHeight
-	).derive { dpValues ->
-		dpValues.sum()
+	val bottomVisibilityHeight = derivedStateOf {
+		max(playbackControlOffset.value.unaryMinus(), bottomNavigationHeight.value).also {
+			Timber.d("calc: $it, ${playbackControlOffset.value.unaryMinus()}, ${bottomNavigationHeight.value}")
+		}
 	}
 
   var savedBottomNavIndex = 0

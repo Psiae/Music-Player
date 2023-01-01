@@ -1,4 +1,6 @@
-@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalPagerApi::class,
+@file:OptIn(
+	ExperimentalMaterial3Api::class,
+	ExperimentalPagerApi::class,
 	ExperimentalSnapperApi::class
 )
 
@@ -6,7 +8,9 @@ package com.flammky.musicplayer.playbackcontrol.ui.compose.compact
 
 import android.graphics.Bitmap
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.*
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.FlingBehavior
@@ -25,6 +29,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -68,36 +74,28 @@ internal fun TransitioningCompactPlaybackControl(
 	bottomVisibilityVerticalPadding: Dp,
 	onArtworkClicked: () -> Unit,
 	onBaseClicked: () -> Unit,
-	onVerticalOffsetChanged: (Dp) -> Unit
+	onVerticalVisibilityChanged: (Dp) -> Unit
 ) {
 	val vm = viewModel<PlaybackControlViewModel>()
 	val coroutineScope = rememberCoroutineScope()
-
-	val offsetTargetState = remember {
-		mutableStateOf(CompactHeight)
-	}
 
 	val sessionIDState = remember {
 		mutableStateOf(vm.currentSessionID())
 	}
 
 	val controllerState = remember {
-		mutableStateOf(value = sessionIDState.value?.let { id ->
-			vm.createController(id) }
-		)
+		mutableStateOf<PlaybackController?>(null)
+	}
+
+	val showSelfState = remember {
+		mutableStateOf(false)
 	}
 
 	val animatedOffset by animateDpAsState(
-		targetValue = offsetTargetState.value.let { target ->
-			Timber.d("CompactPlaybackControl, target=$target")
-			if (target < CompactHeight) {
-				// visible
-				bottomVisibilityVerticalPadding.unaryMinus()
-			}	else {
-				target
-			}
-		},
-		animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+		targetValue = if (showSelfState.value)
+			bottomVisibilityVerticalPadding.unaryMinus()
+		else
+			CompactHeight
 	)
 
 	val sessionID = sessionIDState.value
@@ -117,71 +115,64 @@ internal fun TransitioningCompactPlaybackControl(
 		effect = {
 			if (sessionID == null) {
 				return@DisposableEffect onDispose {  }
-			} else if (sessionID == sessionController?.sessionID) {
-				return@DisposableEffect onDispose { sessionController.dispose() }
-			}
-			val newController = vm.createController(sessionID, coroutineScope.coroutineContext)
-			controllerState.value = newController
-			onDispose { newController.dispose() }
-		}
-	)
-
-	DisposableEffect(
-		key1 = sessionController,
-		effect = {
-			if (sessionController == null) {
-				return@DisposableEffect onDispose {  }
 			}
 			val supervisor = SupervisorJob()
-			val observer = sessionController.createPlaybackObserver(coroutineScope.coroutineContext)
+			val newController = vm.createController(sessionID, coroutineScope.coroutineContext)
+			controllerState.value = newController
+			showSelfState.value = false
+			newController.createPlaybackObserver(coroutineScope.coroutineContext)
 				.apply {
-
 					createQueueCollector()
 						.apply {
 							coroutineScope.launch(supervisor) {
 								startCollect().join()
 								queueStateFlow.collect { queue ->
-									Timber.d("CompactPlaybackControl, collected queue: $queue")
-									if (queue.list.getOrNull(queue.currentIndex) != null) {
-										offsetTargetState.value = CompactHeight.unaryMinus()
-									} else {
-										offsetTargetState.value = CompactHeight
-									}
+									showSelfState.value = queue.currentIndex >= 0
 								}
 							}
 						}
-
 				}
-			onDispose { supervisor.cancel() ; observer.dispose() }
+			onDispose { supervisor.cancel() ; newController.dispose() }
 		}
 	)
 
 	LaunchedEffect(
 		key1 = animatedOffset,
-		block = {
-			Timber.d("CompactPlaybackControl, onOffsetChanged: $animatedOffset")
-			onVerticalOffsetChanged(animatedOffset)
-		}
+		block = { onVerticalVisibilityChanged(animatedOffset - CompactHeight) }
 	)
 
 	BoxWithConstraints(
 		modifier = Modifier.fillMaxSize(),
 		contentAlignment = Alignment.BottomCenter
 	) {
+		val disposeCardState = remember {
+			mutableStateOf(animatedOffset >= CompactHeight)
+		}
 		if (sessionController == null) {
 			// hide & dispose
 			return@BoxWithConstraints
 		}
-		CardLayout(
-			modifier = Modifier.offset(y = animatedOffset),
-			viewModel = viewModel(),
-			sessionController,
-			onArtworkClicked = { onArtworkClicked() },
-			onBaseClicked = { onBaseClicked() }
-		)
+		if (!disposeCardState.value) {
+			CardLayout(
+				modifier = Modifier.offset(y = animatedOffset)
+					.onGloballyPositioned { lc ->
+						if (lc.positionInParent().y >= constraints.maxHeight) {
+							disposeCardState.value = true
+						}
+					},
+				viewModel = viewModel(),
+				sessionController,
+				onArtworkClicked = { onArtworkClicked() },
+				onBaseClicked = { onBaseClicked() }
+			)
+		}
+		if (animatedOffset < CompactHeight) {
+			disposeCardState.value = false
+		}
 	}
 }
 
+// Consider a single observer
 @Composable
 private fun CardLayout(
 	modifier: Modifier = Modifier,
@@ -224,7 +215,6 @@ private fun CardLayout(
 					.padding(7.5.dp),
 				verticalAlignment = Alignment.CenterVertically,
 			) {
-				// consider sharing `Artwork` between the Card Image and the Card Surface
 				ArtworkCard(
 					modifier = Modifier
 						.fillMaxHeight()
@@ -262,6 +252,9 @@ private fun CardLayout(
 			)
 		}
 	}
+	DisposableEffect(key1 = null, effect = {
+		onDispose { Timber.d("CompactPlaybackControl disposed") }
+	})
 }
 
 @Composable

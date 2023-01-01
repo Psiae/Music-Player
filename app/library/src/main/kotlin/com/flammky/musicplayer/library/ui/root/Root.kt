@@ -21,10 +21,10 @@ import androidx.navigation.compose.rememberNavController
 import com.flammky.android.content.context.ContextHelper
 import com.flammky.androidx.content.context.findBase
 import com.flammky.androidx.viewmodel.compose.activityViewModel
+import com.flammky.musicplayer.base.compose.LocalLayoutVisibility
 import com.flammky.musicplayer.base.compose.VisibilityViewModel
 import com.flammky.musicplayer.library.localmedia.ui.LocalSongDisplay
 import com.flammky.musicplayer.library.localmedia.ui.LocalSongNavigator
-import com.flammky.musicplayer.library.util.read
 
 @Composable
 internal fun LibraryRoot() {
@@ -51,8 +51,7 @@ private fun LibraryRootNavigation(
 private fun LibraryRootContent(
 	navController: NavController
 ) {
-	val vvm: VisibilityViewModel = activityViewModel()
-	val bottomVisibilityOffset = vvm.bottomVisibilityOffset.read()
+	val bottomVisibilityHeight = LocalLayoutVisibility.LocalBottomBar.current
 	BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
 		Column(
 			modifier = Modifier
@@ -69,7 +68,7 @@ private fun LibraryRootContent(
 					navController.navigate(route)
 				}
 			)
-			Spacer(modifier = Modifier.height(bottomVisibilityOffset))
+			Spacer(modifier = Modifier.height(bottomVisibilityHeight))
 		}
 	}
 }

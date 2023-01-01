@@ -55,7 +55,7 @@ dependencies {
     dependencies {
 
         // Compose
-        val vCompose = "2.5.2"
+        val vCompose = "2.6.0-alpha04"
         api("androidx.navigation:navigation-compose:$vCompose")
     }
 

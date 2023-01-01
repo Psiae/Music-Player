@@ -28,8 +28,7 @@ import coil.request.CachePolicy
 import coil.request.ImageRequest
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.androidx.viewmodel.compose.activityViewModel
-import com.flammky.common.kotlin.coroutines.safeCollect
-import com.flammky.musicplayer.base.compose.VisibilityViewModel
+import com.flammky.musicplayer.base.compose.LocalLayoutVisibility
 import com.flammky.musicplayer.library.R
 import com.flammky.musicplayer.library.localmedia.data.LocalSongModel
 import com.flammky.musicplayer.library.ui.base.LibraryViewModel
@@ -85,10 +84,9 @@ private fun LocalSongListsColumn(
 				LocalSongListsItem(vm, model) { vm.play(localSongs, index) }
 			}
 			item() {
-				val height = activityViewModel<VisibilityViewModel>().bottomVisibilityOffset.read()
 				Spacer(modifier = Modifier
 					.fillMaxWidth()
-					.height(height))
+					.height(LocalLayoutVisibility.LocalBottomBar.current))
 			}
 		}
 	}
@@ -226,7 +224,7 @@ private fun ItemTextDescription(
 
 	DisposableEffect(key1 = model) {
 		val job = coroutineScope.launch(coroutineContext) {
-			vm.collectMetadata(model).safeCollect {
+			vm.collectMetadata(model).collect {
 				metadata.overwrite(it)
 			}
 		}

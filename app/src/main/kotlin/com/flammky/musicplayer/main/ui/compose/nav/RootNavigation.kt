@@ -25,23 +25,20 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.flammky.musicplayer.base.compose.LocalLayoutVisibility
 import com.flammky.musicplayer.base.compose.NoInlineBox
 import com.flammky.musicplayer.base.compose.NoInlineColumn
-import com.flammky.musicplayer.base.compose.VisibilityViewModel
 import com.flammky.musicplayer.base.nav.compose.ComposeRootDestination
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.backgroundColorAsState
 import com.flammky.musicplayer.base.theme.compose.backgroundContentColorAsState
 import com.flammky.musicplayer.base.theme.compose.elevatedTonalPrimarySurfaceAsState
 import com.flammky.musicplayer.base.theme.compose.secondaryContainerContentColorAsState
-import com.flammky.musicplayer.dump.mediaplayer.domain.viewmodels.MainViewModel
 import com.flammky.musicplayer.main.MainActivity
 import com.flammky.musicplayer.playbackcontrol.ui.compose.TransitioningPlaybackControl
 import com.flammky.musicplayer.playbackcontrol.ui.compose.compact.TransitioningCompactPlaybackControl
@@ -64,18 +61,29 @@ private fun MainActivity.RootScaffold(
 	val topLevelNavigationRegisteredState = remember {
 		mutableStateOf(false)
 	}
-	// TODO: make CompositionLocal
-	val mvm = viewModel<MainViewModel>()
-	viewModel<VisibilityViewModel>()
-		.apply {
-			bottomVisibilityOffset.value = mvm.bottomVisibilityHeight.value
-		}
 	Scaffold(
 		modifier = Modifier.fillMaxSize(),
 		bottomBar = { BottomNavigation(navController = navController) },
 		containerColor = Theme.backgroundColorAsState().value
 	) { contentPadding ->
-		Box(modifier = Modifier.fillMaxSize()) {
+		val playbackControlVisibilityOffset = remember {
+			mutableStateOf(0.dp)
+		}
+		val topBarVisibility = remember {
+			mutableStateOf(0.dp)
+		}.apply {
+			contentPadding.calculateTopPadding()
+		}
+		val bottomBarVisibility = remember {
+			mutableStateOf(0.dp)
+		}.apply {
+			value = maxOf(contentPadding.calculateBottomPadding(),
+				playbackControlVisibilityOffset.value.unaryMinus())
+		}
+		CompositionLocalProvider(
+			LocalLayoutVisibility.LocalTopBar provides contentPadding.calculateTopPadding(),
+			LocalLayoutVisibility.LocalBottomBar provides bottomBarVisibility.value
+		) {
 			NavHost(
 				modifier = Modifier
 					// will also consume insets for children
@@ -87,16 +95,13 @@ private fun MainActivity.RootScaffold(
 			}.also {
 				topLevelNavigationRegisteredState.value = true
 			}
-			mvm.bottomNavigationHeight.value = contentPadding.calculateBottomPadding()
-			TransitioningCompactPlaybackControl(
-				bottomVisibilityVerticalPadding = contentPadding.calculateBottomPadding(),
-				onArtworkClicked = { showFullPlaybackControllerState.value = true },
-				onBaseClicked = { showFullPlaybackControllerState.value = true },
-				onVerticalOffsetChanged = {
-					mvm.playbackControlOffset.value = it
-				}
-			)
 		}
+		TransitioningCompactPlaybackControl(
+			bottomVisibilityVerticalPadding = contentPadding.calculateBottomPadding(),
+			onArtworkClicked = { showFullPlaybackControllerState.value = true },
+			onBaseClicked = { showFullPlaybackControllerState.value = true },
+			onVerticalVisibilityChanged = { playbackControlVisibilityOffset.value = it }
+		)
 	}
 
 	TransitioningPlaybackControl(
@@ -154,6 +159,7 @@ private fun MainActivity.BottomNavigation(
 				backgroundColor = /* already set above by column */ Color.Transparent,
 				elevation = /* already set above by elevated backgroundColor */ 0.dp
 			) {
+				val startRouteID = navigators[0].getRootDestination().routeID
 				navigators.forEach { rootNavigator ->
 					val destination = rootNavigator.getRootDestination()
 					val selected = destination.routeID == currentRoute
@@ -168,8 +174,8 @@ private fun MainActivity.BottomNavigation(
 									if (destination.routeID != backstackEntryState.value?.destination?.route) {
 										rootNavigator.navigateToRoot(navController) {
 											launchSingleTop = true
-											restoreState = true
-											popUpTo(navController.graph.findStartDestination().id) {
+											restoreState = destination.routeID != startRouteID
+											popUpTo(startRouteID) {
 												saveState = true
 											}
 										}

@@ -36,8 +36,13 @@ object SearchRootNavigator : ComposeRootNavigator() {
 		navGraphBuilder.composable(rootDestination.routeID) {
 			Search {
 				controller.navigate(it) {
+					val isCurrentStart = controller.graph.findStartDestination().route == rootDestination.routeID
+					if (isCurrentStart) {
+						restoreState = true
+						launchSingleTop = true
+					}
 					popUpTo(rootDestination.routeID) {
-						inclusive = controller.graph.findStartDestination().route != rootDestination.routeID
+						inclusive = !isCurrentStart
 					}
 				}
 			}

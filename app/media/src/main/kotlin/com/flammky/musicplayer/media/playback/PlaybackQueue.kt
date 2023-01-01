@@ -15,7 +15,7 @@ data class PlaybackQueue(
 					"PlaybackConstants.INDEX_UNSET=${PlaybackConstants.DURATION_UNSET}"
 			}
 		} else {
-			requireNotNull(list.getOrNull(currentIndex)) {
+			require(currentIndex in list.indices) {
 				"currentIndex=$currentIndex must be within the list range=${list.indices}"
 			}
 		}

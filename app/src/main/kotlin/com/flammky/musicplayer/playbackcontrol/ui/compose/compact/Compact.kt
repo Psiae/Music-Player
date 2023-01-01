@@ -154,7 +154,8 @@ internal fun TransitioningCompactPlaybackControl(
 		}
 		if (!disposeCardState.value) {
 			CardLayout(
-				modifier = Modifier.offset(y = animatedOffset)
+				modifier = Modifier
+					.offset(y = animatedOffset)
 					.onGloballyPositioned { lc ->
 						if (lc.positionInParent().y >= constraints.maxHeight) {
 							disposeCardState.value = true
@@ -265,29 +266,26 @@ private fun cardSurfacePaletteColor(
 ): Color {
 	val coroutineScope = rememberCoroutineScope()
 
-	val paletteColorState = remember(controller) {
+	val paletteColorState = remember() {
 		mutableStateOf(Color.Unspecified)
 	}
 
-	val observer = remember(controller) {
-		controller.createPlaybackObserver()
-	}
-
-	val queueState = remember(controller) {
+	val queueState = remember() {
 		mutableStateOf(PlaybackConstants.QUEUE_UNSET)
 	}
 
-	val artworkState = remember(paletteColorState) {
+	val artworkState = remember() {
 		mutableStateOf<Any?>(null)
 	}
 
 	val queue = queueState.value
-	val id = queue?.list?.getOrNull(queue.currentIndex)
+	val id = queue.list.getOrNull(queue.currentIndex)
 	val artwork = artworkState.value
 
-	DisposableEffect(key1 = observer, effect = {
+	DisposableEffect(key1 = controller, effect = {
 		val supervisor = SupervisorJob()
-		observer.createQueueCollector()
+		val observer = controller.createPlaybackObserver().apply {
+			createQueueCollector()
 			.apply {
 				coroutineScope.launch(supervisor) {
 					startCollect().join()
@@ -296,6 +294,8 @@ private fun cardSurfacePaletteColor(
 					}
 				}
 			}
+		}
+
 		onDispose { supervisor.cancel() ; observer.dispose() }
 	})
 
@@ -305,7 +305,10 @@ private fun cardSurfacePaletteColor(
 			return@LaunchedEffect
 		}
 		viewModel.observeMetadata(id).collect {
-			artworkState.value = it.artwork
+			val q = queueState.value
+			if (q.list.getOrNull(q.currentIndex) == id) {
+				artworkState.value = it.artwork
+			}
 		}
 	})
 
@@ -351,7 +354,7 @@ private fun animatedCompositeCardSurfacePaletteColorAsState(
 			?.copy(compositeFactor)
 			?.compositeOver(compositeOver)
 		?: compositeOver
-	return animateColorAsState(paletteColor, tween(100))
+	return animateColorAsState(paletteColor, tween(150))
 }
 
 @Composable
@@ -360,13 +363,19 @@ private fun ArtworkCard(
 	viewModel: PlaybackControlViewModel,
 	controller: PlaybackController,
 ) {
+
+	val rememberControllerState = remember {
+		mutableStateOf(controller)
+	}.apply {
+		value = controller
+	}
+
 	val coroutineScope = rememberCoroutineScope()
-	val artState = remember(controller) {
+
+	val artState = remember() {
 		mutableStateOf<Any?>(null)
 	}
-	val observer = remember(controller) {
-		controller.createPlaybackObserver(coroutineScope.coroutineContext)
-	}
+
 	val context = LocalContext.current
 	val art = artState.value
 	val req = remember(artState.value) {
@@ -389,10 +398,13 @@ private fun ArtworkCard(
 	)
 
 	DisposableEffect(
-		key1 = observer,
+		key1 = controller,
 		effect = {
 			val supervisor = SupervisorJob()
-			val channel = Channel<PlaybackQueue>(capacity = Channel.CONFLATED)
+			val channel = Channel<PlaybackQueue>(capacity = Channel.CONFLATED) {
+				error("PlaybackControlCompact, undelivered element=$it on CONFLATED Channel")
+			}
+			val observer = controller.createPlaybackObserver()
 			val qCollector = observer.createQueueCollector(coroutineScope.coroutineContext)
 				.apply {
 					coroutineScope.launch(supervisor) {
@@ -407,7 +419,9 @@ private fun ArtworkCard(
 										}
 									}
 								}
-								?: run { artState.value = null }
+								?: run {
+									artState.value = null
+								}
 						}
 					}
 					coroutineScope.launch(supervisor) {
@@ -465,7 +479,7 @@ private fun DescriptionPager(
 
 		Timber.d("DescriptionPager: $queue")
 
-		if (queue?.list?.getOrNull(queue.currentIndex) == null ||
+		if (queue.list.getOrNull(queue.currentIndex) == null ||
 			(queueOverride != null && queueOverride.list.getOrNull(queueOverride.currentIndex) == null)
 		) {
 			return@BoxWithConstraints
@@ -474,6 +488,7 @@ private fun DescriptionPager(
 		val pagerState = rememberPagerState(queue.currentIndex)
 		val touchedState = remember { mutableStateOf(false) }
 		val draggingState = pagerState.interactionSource.collectIsDraggedAsState()
+		val rememberDragging = remember { mutableStateOf(false) }
 		val baseFling = PagerDefaults.flingBehavior(state = pagerState)
 
 		HorizontalPager(
@@ -514,12 +529,18 @@ private fun DescriptionPager(
 			})
 
 			LaunchedEffect(key1 = draggingState.value, block = {
-				if (draggingState.value) touchedState.value = true
+				rememberDragging.value = draggingState.value
+			})
+
+			LaunchedEffect(key1 = rememberDragging.value, block = {
+				touchedState.value = true
 			})
 
 			val rememberedPageState = remember {
 				mutableStateOf(pagerState.currentPage)
 			}
+
+			// Consider event polling similar to drag listener
 			LaunchedEffect(
 				key1 = pagerState.currentPage,
 				key2 = draggingState.value,

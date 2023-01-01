@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalSnapperApi::class)
+
 package com.flammky.musicplayer.playbackcontrol.ui.compose
 
 import android.annotation.SuppressLint
@@ -10,6 +12,9 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.FlingBehavior
+import androidx.compose.foundation.gestures.ScrollScope
+import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -54,13 +59,12 @@ import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
 import com.flammky.musicplayer.ui.Theme
 import com.flammky.musicplayer.ui.playbackcontrol.Slider
 import com.flammky.musicplayer.ui.playbackcontrol.SliderDefaults
-import com.google.accompanist.pager.ExperimentalPagerApi
-import com.google.accompanist.pager.HorizontalPager
-import com.google.accompanist.pager.PagerState
-import com.google.accompanist.pager.rememberPagerState
+import com.google.accompanist.pager.*
+import dev.chrisbanes.snapper.ExperimentalSnapperApi
 import kotlinx.coroutines.*
 import timber.log.Timber
 import kotlin.coroutines.coroutineContext
+import kotlin.math.abs
 import kotlin.reflect.KProperty
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.ZERO
@@ -562,17 +566,30 @@ private fun TracksPager(
 		}
 	} ?: return
 
-	Box(
+	BoxWithConstraints(
 		modifier = Modifier
 			.fillMaxWidth()
 			.height(300.dp),
 	) {
 		val pagerState = rememberPagerState(actualQueueState.value.currentIndex.clampPositive())
+		val basePagerFling = PagerDefaults.flingBehavior(state = pagerState)
+		val rememberUpdatedConstraintState = rememberUpdatedState(newValue = constraints)
 
 		HorizontalPager(
 			modifier = Modifier.fillMaxSize(),
 			state = pagerState,
-			count = queueList.size
+			count = queueList.size,
+			flingBehavior = remember {
+				object : FlingBehavior {
+					override suspend fun ScrollScope.performFling(initialVelocity: Float): Float {
+						val constraint = rememberUpdatedConstraintState.value.maxWidth.toFloat() * 1.5f * 6
+						val coerced = initialVelocity.coerceIn(-abs(constraint)..abs(constraint))
+						return with(basePagerFling) { performFling(coerced) }.also {
+							Timber.d("FullPlaybackControl, fling vel=$initialVelocity, coerced=$coerced, left=$it")
+						}
+					}
+				}
+			}
 		) {
 			TracksPagerItem(metadataStateForId(queueList[it]))
 		}
@@ -587,10 +604,10 @@ private fun TracksPager(
 		)
 
 		PagerListenUserDrag(
-			pagerState = pagerState
-		) {
-			touched.overwrite(true)
-		}
+			pagerState = pagerState,
+			onStartDrag = { touched.value = true },
+			onEndDrag = { touched.value = true }
+		)
 
 		PagerListenPageState(
 			pagerState = pagerState,
@@ -649,13 +666,33 @@ private fun PagerListenMediaIndexChange(
 @Composable
 private fun PagerListenUserDrag(
 	pagerState: PagerState,
-	onUserInteract: () -> Unit
+	onStartDrag: () -> Unit,
+	onEndDrag: () -> Unit
 ) {
 	val dragged = pagerState.interactionSource.collectIsDraggedAsState()
 	LaunchedEffect(
-		dragged.value
+		null
 	) {
-		if (dragged.value) onUserInteract()
+		var wasDragging = false
+		val stack = mutableListOf<DragInteraction.Start>()
+		pagerState.interactionSource.interactions.collect { interaction ->
+			when (interaction) {
+				is DragInteraction.Start -> stack.add(interaction)
+				is DragInteraction.Stop -> stack.remove(interaction.start)
+				is DragInteraction.Cancel -> stack.remove(interaction.start)
+			}
+			if (stack.isNotEmpty()) {
+				if (!wasDragging) {
+					wasDragging = true
+					onStartDrag()
+				}
+			} else {
+				if (wasDragging) {
+					wasDragging = false
+					onEndDrag()
+				}
+			}
+		}
 	}
 }
 
@@ -670,23 +707,27 @@ private fun PagerListenPageState(
 ) {
 	val dragging by pagerState.interactionSource.collectIsDraggedAsState()
 	val touched by touchedState
-	val coroutineScope = rememberCoroutineScope()
 	val page = pagerState.currentPage
 	val rememberedPageState = remember {
 		mutableStateOf(page)
 	}
-	remember(page, dragging, touched) {
-		if (touched && !dragging &&
-			(page != rememberedPageState.value
-				|| rememberedPageState.value != queueState.value.currentIndex)
-		) {
-			if (shouldSeekIndex(page)) {
-				rememberedPageState.value = page
-				coroutineScope.launch { seekIndex(page) }
+	LaunchedEffect(
+		page,
+		dragging,
+		touched,
+		block = {
+			Timber.d("FullPlaybackConctrol, PageChangeListener: $page, $dragging, $touched")
+			if (touched && !dragging &&
+				(page != rememberedPageState.value
+					|| rememberedPageState.value != queueState.value.currentIndex)
+			) {
+				if (shouldSeekIndex(page)) {
+					rememberedPageState.value = page
+					seekIndex(page)
+				}
 			}
 		}
-		null
-	}
+	)
 }
 
 private fun Int.inRangeSpread(a: Int, amount: Int): Boolean {
@@ -965,7 +1006,7 @@ private fun PlaybackControlProgressSeekbar(
 	maxWidth: Dp,
 	controller: PlaybackController
 ) {
-	val playbackObserverState = remember(controller) {
+	val playbackObserverState = remember {
 		mutableStateOf<PlaybackObserver?>(null)
 	}
 

@@ -39,7 +39,8 @@ object HomeRootNavigator : ComposeRootNavigator() {
 		) {
 			Home {
 				controller.navigate(it) {
-					val isCurrentStart = controller.graph.findStartDestination().route == rootDestination.routeID
+					val isCurrentStart =
+						controller.graph.findStartDestination().route == rootDestination.routeID
 					if (isCurrentStart) {
 						restoreState = true
 						launchSingleTop = true

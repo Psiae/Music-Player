@@ -21,6 +21,11 @@ data class PlaybackQueue(
 		}
 	}
 
+	data class Item(
+		val id: String,
+		val qId: String
+	)
+
 	companion object {
 		val UNSET = PlaybackQueue(
 			list = persistentListOf(),

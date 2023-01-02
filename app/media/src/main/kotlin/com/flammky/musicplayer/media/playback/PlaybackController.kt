@@ -21,6 +21,11 @@ interface PlaybackController {
 	fun setShuffleMode(mode: ShuffleMode): Boolean
 	fun seekProgress(progress: Duration): Boolean
 	fun seekIndex(index: Int, startPosition: Duration): Boolean
+	fun play(): Boolean
+	fun seekNext(): Boolean
+	fun seekPrevious(): Boolean
+
+	fun getPlaybackProperties(): PlaybackProperties
 
 	/**
 	 * Acquire Observer for the specified owner, Get Or Create
@@ -59,6 +64,10 @@ interface PlaybackController {
 		fun getAndObserveDurationChange(
 			onDurationChange: (Duration) -> Unit
 		): Duration
+
+		fun getAndObservePropertiesChange(
+			onPropertiesChange: (PlaybackProperties) -> Unit
+		): PlaybackProperties
 
 		fun release()
 	}

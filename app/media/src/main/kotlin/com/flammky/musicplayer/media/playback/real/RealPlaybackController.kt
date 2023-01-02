@@ -1,10 +1,7 @@
 package com.flammky.musicplayer.media.playback.real
 
 import android.os.Looper
-import com.flammky.musicplayer.media.playback.PlaybackController
-import com.flammky.musicplayer.media.playback.PlaybackQueue
-import com.flammky.musicplayer.media.playback.RepeatMode
-import com.flammky.musicplayer.media.playback.ShuffleMode
+import com.flammky.musicplayer.media.playback.*
 import kotlin.time.Duration
 
 class RealPlaybackController(
@@ -127,6 +124,7 @@ class RealPlaybackController(
 	private var _shuffleMode: ShuffleMode = ShuffleMode.OFF
 	private var _queue: PlaybackQueue = PlaybackQueue.UNSET
 
+
 	override val playing: Boolean
 		get() {
 			checkInLooper()
@@ -164,6 +162,22 @@ class RealPlaybackController(
 
 	override val looper: Looper
 		get() = TODO("Not yet implemented")
+
+	override fun play(): Boolean {
+		TODO("Not yet implemented")
+	}
+
+	override fun seekNext(): Boolean {
+		TODO("Not yet implemented")
+	}
+
+	override fun seekPrevious(): Boolean {
+		TODO("Not yet implemented")
+	}
+
+	override fun getPlaybackProperties(): PlaybackProperties {
+		TODO("Not yet implemented")
+	}
 
 	override fun acquireObserver(owner: Any): PlaybackController.Observer {
 		TODO("Not yet implemented")

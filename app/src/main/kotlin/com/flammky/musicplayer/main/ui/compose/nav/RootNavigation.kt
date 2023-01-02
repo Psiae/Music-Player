@@ -103,7 +103,6 @@ private fun MainActivity.RootScaffold(
 			onVerticalVisibilityChanged = { playbackControlVisibilityOffset.value = it }
 		)
 	}
-
 	TransitioningPlaybackControl(
 		showSelfState = remember {
 			derivedStateOf { showFullPlaybackControllerState.value && topLevelNavigationRegisteredState.value }

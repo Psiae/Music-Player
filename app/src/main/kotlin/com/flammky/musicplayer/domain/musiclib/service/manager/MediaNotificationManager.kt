@@ -22,6 +22,7 @@ import com.flammky.android.medialib.common.mediaitem.AudioFileMetadata
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.android.medialib.providers.metadata.VirtualFileMetadata
+import com.flammky.android.medialib.temp.image.ImageRepository
 import com.flammky.common.kotlin.comparable.clamp
 import com.flammky.common.kotlin.coroutines.AutoCancelJob
 import com.flammky.musicplayer.activity.ActivityWatcher
@@ -244,7 +245,7 @@ class MediaNotificationManager(
 
 		private val emptyItem = MediaItem.fromUri("empty")
 
-		private val lruCache: com.flammky.android.medialib.temp.cache.lru.LruCache<String, Bitmap> = com.flammky.android.medialib.temp.MediaLibrary.API.imageRepository.sharedBitmapLru
+		private val lruCache: com.flammky.android.medialib.temp.cache.lru.LruCache<ImageRepository.ImageCacheKey, Bitmap> = com.flammky.android.medialib.temp.MediaLibrary.API.imageRepository.sharedBitmapLru
 
 		// config later
 		private val cacheConfig
@@ -396,37 +397,57 @@ class MediaNotificationManager(
 
 			try {
 
-				if (cache) {
-					lruCache[item.mediaId]?.let { return@withContext item to it }
-				}
+				val key = ImageRepository.ImageCacheKey(
+					id = item.mediaId,
+					config = "raw"
+				)
+				val extKey = ImageRepository.ImageCacheKey(
+					id = item.mediaId,
+					config = "notification"
+				)
+				val maybeCache = if (cache) {
+					val getExt = lruCache[extKey]
 
-				val reqSize = 500
-				val scale = Scale.FILL
+					if (getExt != null && getExt.width == getExt.height) {
+						return@withContext item to getExt
+					}
 
-				val bytes = MediaItemFactory.getEmbeddedImage(context, item)
-					?: return@withContext item to null
+					val get = lruCache[key]
 
-				if (bytes.isEmpty()) {
-					item.putEmbedSize(0f)
+					if (get != null && get.width == get.height) {
+						lruCache.put(extKey, get)
+						return@withContext item to get
+					}
+
+					get
 				} else {
-					item.putEmbedSize(bytes.size.toFloat() / 1000000)
+					null
 				}
-
-				ensureActive()
 
 				// if possible find sources that provide media style notification width and height
 				// 128 to 1024 is ideal
 
+				val reqSize = 500
+				val scale = Scale.FILL
+				val source: Any = maybeCache ?: run {
 
-				val source: Any = bytes
+					val bytes = MediaItemFactory.getEmbeddedImage(context, item)
+						?: return@withContext item to null
+
+					if (bytes.isEmpty()) {
+						item.putEmbedSize(0f)
+					} else {
+						item.putEmbedSize(bytes.size.toFloat() / 1000000)
+					}
+
+					ensureActive()
+				}
 
 				// maybe create Fitter Class for some APIs version or Device that require some modification
 				// to have proper display
 				val squaredBitmap = coilHelper.loadSquaredBitmap(source, reqSize, scale)
 
-				if (squaredBitmap != null) {
-					lruCache.put(item.mediaId, squaredBitmap)
-				}
+				lruCache.put(extKey, squaredBitmap ?: NO_BITMAP)
 
 				item to squaredBitmap
 			} catch (oom: OutOfMemoryError) {
@@ -436,7 +457,7 @@ class MediaNotificationManager(
 
 		private fun getItemBitmap(player: Player): Bitmap? {
 			return player.currentMediaItem?.mediaId?.let { id ->
-				lruCache[id]
+				lruCache[ImageRepository.ImageCacheKey(id, "notification")]
 			}
 		}
 

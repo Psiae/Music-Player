@@ -5,12 +5,10 @@ import androidx.lifecycle.viewModelScope
 import com.flammky.android.medialib.common.mediaitem.AudioFileMetadata
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
-import com.flammky.android.medialib.player.Player
 import com.flammky.android.medialib.providers.metadata.VirtualFileMetadata
 import com.flammky.musicplayer.base.coroutine.NonBlockingDispatcherPool
 import com.flammky.musicplayer.common.android.concurrent.ConcurrencyHelper.checkMainThread
 import com.flammky.musicplayer.domain.media.MediaConnection
-import com.flammky.musicplayer.playbackcontrol.ui.PlaybackDetailPropertiesInfo.Companion.asPlaybackDetails
 import com.flammky.musicplayer.playbackcontrol.ui.controller.PlaybackController
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
 import com.flammky.musicplayer.ui.playbackcontrol.PlaybackControlPresenter
@@ -88,12 +86,6 @@ internal class PlaybackControlViewModel @Inject constructor(
 
 	private val _metadataStateMap = mutableMapOf<String, StateFlow<PlaybackControlTrackMetadata>>()
 
-	private val _playbackPropertiesFlow = mediaConnection.playback.observePropertiesInfo()
-	// Inject as Dependency instead
-	val playbackPropertiesStateFlow = _playbackPropertiesFlow
-		.map { it.asPlaybackDetails }
-		.stateIn(viewModelScope, SharingStarted.Eagerly, PlaybackDetailPropertiesInfo())
-
 	@OptIn(ExperimentalCoroutinesApi::class)
 	val currentMetadataStateFlow = flow<PlaybackControlTrackMetadata> {
 		var job: Job? = null
@@ -145,10 +137,9 @@ internal class PlaybackControlViewModel @Inject constructor(
 		return _metadataStateMap[id]!!
 	}
 
-
-
 	private fun createMetadataStateFlowForId(id: String): StateFlow<PlaybackControlTrackMetadata> {
 		return flow {
+			if (id == "") return@flow
 			combine(
 				flow = mediaConnection.repository.observeArtwork(id),
 				flow2 = mediaConnection.repository.observeMetadata(id)
@@ -165,42 +156,9 @@ internal class PlaybackControlViewModel @Inject constructor(
 			}.collect(this)
 		}.stateIn(viewModelScope, SharingStarted.Lazily, PlaybackControlTrackMetadata(id))
 	}
-
-	// TODO: rewrite
-
-	fun playWhenReady() {
-		mediaConnection.playback.playWhenReady()
-	}
-	fun pause() {
-		mediaConnection.playback.pause()
-	}
-	fun seekNext() {
-		mediaConnection.playback.seekNext()
-	}
-
-	fun seekPrevious() {
-		mediaConnection.playback.seekPrevious()
-	}
-	fun seekPreviousMediaForPager() {
-		mediaConnection.playback.seekPreviousMedia()
-	}
-	fun enableShuffleMode() {
-		mediaConnection.playback.setShuffleMode(true)
-	}
-	fun disableShuffleMode() {
-		mediaConnection.playback.setShuffleMode(false)
-	}
-	fun enableRepeatMode() {
-		mediaConnection.playback.setRepeatMode(Player.RepeatMode.ONE)
-	}
-	fun enableRepeatAllMode() {
-		mediaConnection.playback.setRepeatMode(Player.RepeatMode.ALL)
-	}
-	fun disableRepeatMode() {
-		mediaConnection.playback.setRepeatMode(Player.RepeatMode.OFF)
-	}
 }
 
+// TODO: Rewrite
 @Immutable
 data class PlaybackControlTrackMetadata(
 	val id: String = "",
@@ -208,30 +166,3 @@ data class PlaybackControlTrackMetadata(
 	val title: String? = null,
 	val subtitle: String? = null,
 )
-
-@Immutable
-data class PlaybackDetailPropertiesInfo(
-	val playWhenReady: Boolean = false,
-	val playing: Boolean = false,
-	// should be hasNext instead, it's our UI properties
-	val hasNextMediaItem: Boolean = false,
-	// should be hasPrevious instead, it's our UI properties
-	val hasPreviousMediaItem: Boolean = false,
-	val shuffleOn: Boolean = false,
-	val repeatMode: Player.RepeatMode = Player.RepeatMode.OFF,
-	val playerState: Player.State = Player.State.IDLE
-	// later suppressionInfo
-) {
-	companion object {
-		inline val MediaConnection.Playback.PropertiesInfo.asPlaybackDetails
-			get() = PlaybackDetailPropertiesInfo(
-				playWhenReady = playWhenReady,
-				playing = playing,
-				hasNextMediaItem = hasNextMediaItem,
-				hasPreviousMediaItem = hasPreviousMediaItem,
-				shuffleOn = shuffleEnabled,
-				repeatMode = repeatMode,
-				playerState = playerState
-			)
-	}
-}

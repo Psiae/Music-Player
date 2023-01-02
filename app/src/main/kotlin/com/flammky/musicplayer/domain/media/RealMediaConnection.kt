@@ -88,6 +88,41 @@ class RealMediaConnection(
 	override val playbackSpeed: Float
 		get() = delegate.playback.playbackSpeed()
 
+	override fun getPlaybackProperties(): PlaybackProperties {
+		val player = delegate.playback
+		val repeatMode = when (player.repeatMode) {
+			Player.RepeatMode.OFF -> RepeatMode.OFF
+			Player.RepeatMode.ONE -> RepeatMode.ONE
+			Player.RepeatMode.ALL -> RepeatMode.ALL
+		}
+		return PlaybackProperties(
+			playbackState = when (player.playerState) {
+				is Player.State.READY -> PlaybackProperties.PlaybackState.READY
+				is Player.State.BUFFERING -> PlaybackProperties.PlaybackState.BUFFERING
+				is Player.State.ENDED -> PlaybackProperties.PlaybackState.ENDED
+				is Player.State.ERROR, is Player.State.IDLE -> PlaybackProperties.PlaybackState.IDLE
+			},
+			playWhenReady = player.playWhenReady,
+			canPlayWhenReady = !player.playWhenReady,
+			canPlay = player.mediaItemCount > 0,
+			playing = player.playing,
+			loading = player.loading,
+			speed = player.playbackSpeed(),
+			hasNextMediaItem = player.hasNextMediaItem,
+			canSeekNext = player.hasNextMediaItem,
+			hasPreviousMediaItem = player.hasPreviousMediaItem,
+			canSeekPrevious = true /* position > 0 */,
+			shuffleMode = if (player.shuffleEnabled) { ShuffleMode.ON } else ShuffleMode.OFF,
+			canShuffleOff = false,
+			canShuffleOn = false,
+			repeatMode = repeatMode,
+			canRepeatOne = true,
+			canRepeatAll = true,
+			canRepeatOff = true,
+			playbackSuppression = persistentListOf()
+		)
+	}
+
 	override fun setQueue(queue: PlaybackQueue): Boolean {
 		TODO("Not yet implemented")
 	}
@@ -119,6 +154,20 @@ class RealMediaConnection(
 
 	override fun seekIndex(index: Int, startPosition: Duration): Boolean {
 		return delegate.playback.index != index && delegate.playback.seekToIndex(index, startPosition.inWholeMilliseconds)
+	}
+
+	override fun play(): Boolean {
+		delegate.playback.play()
+		return true
+	}
+
+	override fun seekNext(): Boolean {
+		return delegate.playback.seekToIndex(delegate.playback.index + 1, 0)
+	}
+
+	override fun seekPrevious(): Boolean {
+		delegate.playback.seekPrevious()
+		return true
 	}
 
 	override fun setPlayWhenReady(playWhenReady: Boolean): Boolean {
@@ -221,6 +270,39 @@ class RealMediaConnection(
 			}
 
 			return duration
+		}
+
+		override fun getAndObservePropertiesChange(onPropertiesChange: (PlaybackProperties) -> Unit): PlaybackProperties {
+			scope.launch {
+				suspend fun sendCurrent() = delegate.playback
+					.joinDispatcher { onPropertiesChange(getPlaybackProperties()) }
+				val job1 = launch { delegate.playback.observePlayWhenReadyChange()
+					.safeCollect { sendCurrent() } }
+				val job2 = launch { delegate.playback.observeIsPlayingChange()
+					.safeCollect { sendCurrent() } }
+				val job3 = launch { delegate.playback.observeShuffleEnabledChange()
+					.safeCollect { sendCurrent() } }
+				val job4 = launch { delegate.playback.observeMediaItemTransition()
+					.safeCollect { sendCurrent() } }
+				val job5 = launch { delegate.playback.observeTimelineChange()
+					.safeCollect { sendCurrent() } }
+				val job6 = launch { delegate.playback.observeRepeatModeChange()
+					.safeCollect { sendCurrent() } }
+				val job7 = launch { delegate.playback.observePlayerStateChange()
+					.safeCollect { sendCurrent() } }
+				val job8 = launch { delegate.playback.observeIsLoading()
+					.safeCollect { sendCurrent() }}
+				val job9 = launch { delegate.playback.observeSpeed()
+					.safeCollect { sendCurrent() }}
+				try {
+					awaitCancellation()
+				} finally {
+					job1.cancel();job2.cancel();job3.cancel();job4.cancel();job5.cancel();job6.cancel()
+					job7.cancel();job8.cancel();job9.cancel()
+				}
+			}
+
+			return getPlaybackProperties()
 		}
 
 		override fun release() {
@@ -342,15 +424,15 @@ class RealMediaConnection(
 
 				sendNew()
 
-				val job1 = ioScope.launch {
+				val job1 = launch {
 					delegate.playback.observeMediaItemTransition().safeCollect { sendNew() }
 				}
 
-				val job2 = ioScope.launch {
+				val job2 = launch {
 					delegate.playback.observePlayWhenReadyChange().safeCollect { sendNew() }
 				}
 
-				val job3 = ioScope.launch {
+				val job3 = launch {
 					delegate.playback.observeIsPlayingChange().safeCollect { sendNew() }
 				}
 
@@ -481,7 +563,7 @@ class RealMediaConnection(
 
 			sendNew(0)
 
-			val playlistObserver = ioScope.launch {
+			val playlistObserver = launch {
 				delegate.playback.observePlaylistChange().safeCollect {
 					if (it.isEmpty()) {
 						Timber.d("onPlaylistChange safeCollect $it")
@@ -491,7 +573,7 @@ class RealMediaConnection(
 				}
 			}
 
-			val currentObserver = ioScope.launch {
+			val currentObserver = launch {
 				delegate.playback.observeMediaItemTransition().safeCollect {
 					if (it == null || it is MediaItem.UNSET) {
 						Timber.d("onMediaItemTransition safeCollect $it")
@@ -525,13 +607,13 @@ class RealMediaConnection(
 
 			sendCurrent()
 
-			val job1 = ioScope.launch { delegate.playback.observePlayWhenReadyChange().safeCollect { sendCurrent() } }
-			val job2 = ioScope.launch { delegate.playback.observeIsPlayingChange().safeCollect { sendCurrent() } }
-			val job3 = ioScope.launch { delegate.playback.observeShuffleEnabledChange().safeCollect { sendCurrent() } }
-			val job4 = ioScope.launch { delegate.playback.observeMediaItemTransition().safeCollect { sendCurrent() } }
-			val job5 = ioScope.launch { delegate.playback.observePlaylistChange().safeCollect { sendCurrent() } }
-			val job6 = ioScope.launch { delegate.playback.observeRepeatModeChange().safeCollect { sendCurrent() } }
-			val job7 = ioScope.launch { delegate.playback.observePlayerStateChange().safeCollect { sendCurrent() } }
+			val job1 = launch { delegate.playback.observePlayWhenReadyChange().safeCollect { sendCurrent() } }
+			val job2 = launch { delegate.playback.observeIsPlayingChange().safeCollect { sendCurrent() } }
+			val job3 = launch { delegate.playback.observeShuffleEnabledChange().safeCollect { sendCurrent() } }
+			val job4 = launch { delegate.playback.observeMediaItemTransition().safeCollect { sendCurrent() } }
+			val job5 = launch { delegate.playback.observeTimelineChange().safeCollect { sendCurrent() } }
+			val job6 = launch { delegate.playback.observeRepeatModeChange().safeCollect { sendCurrent() } }
+			val job7 = launch { delegate.playback.observePlayerStateChange().safeCollect { sendCurrent() } }
 
 			awaitClose {
 				job1.cancel();job2.cancel();job3.cancel();job4.cancel();job5.cancel();job6.cancel();job7.cancel()

@@ -1,6 +1,8 @@
 package com.flammky.musicplayer.playbackcontrol.ui.controller
 
-import androidx.annotation.FloatRange
+import com.flammky.musicplayer.media.playback.PlaybackQueue
+import com.flammky.musicplayer.media.playback.RepeatMode
+import com.flammky.musicplayer.media.playback.ShuffleMode
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
@@ -12,6 +14,10 @@ import kotlin.time.Duration
  * PlaybackController for sending command / observe @param [sessionID]
  * @param sessionID the session ID
  */
+// Note: keep this to `playbackcontrol` package only, made due to the dynamic nature of the ui
+// don't stretch this to other module unnecessarily
+
+// consider to limit the command dispatch to the `Main` dispatcher only
 internal abstract class PlaybackController(
 	/* auth: AuthContext */
 	val sessionID: String
@@ -27,6 +33,9 @@ internal abstract class PlaybackController(
 
 	/**
 	 * create a disposable Playback Observer to observe the session playback info
+	 *
+	 * @param coroutineContext The coroutine context
+	 * ** Do note that the dispatcher might be ignored **
 	 */
 	abstract fun createPlaybackObserver(
 		coroutineContext: CoroutineContext = EmptyCoroutineContext,
@@ -43,18 +52,47 @@ internal abstract class PlaybackController(
 		coroutineContext: CoroutineContext = EmptyCoroutineContext
 	): Deferred<RequestResult>
 
-	/**
-	 * seek to [progress] percentage in current playback
-	 *
-	 * @param [progress] the progress percentage
-	 * @return [RequestResult]
-	 */
-	abstract fun requestSeekAsync(@FloatRange(from = 0.0, to = 1.0) progress: Float): Deferred<RequestResult>
-
 	abstract fun requestSeekAsync(
 		index: Int,
 		startPosition: Duration,
 		coroutineContext: CoroutineContext = EmptyCoroutineContext
+	): Deferred<RequestResult>
+
+	abstract fun requestSeekNextAsync(
+		startPosition: Duration,
+		coroutineContext: CoroutineContext = EmptyCoroutineContext
+	): Deferred<RequestResult>
+
+	abstract fun requestSeekPreviousAsync(
+		startPosition: Duration,
+		coroutineContext: CoroutineContext = EmptyCoroutineContext
+	): Deferred<RequestResult>
+
+	abstract fun requestSetPlayWhenReadyAsync(
+		playWhenReady: Boolean,
+		coroutineContext: CoroutineContext = EmptyCoroutineContext
+	): Deferred<RequestResult>
+
+	abstract fun requestPlayAsync(
+		coroutineContext: CoroutineContext = EmptyCoroutineContext
+	): Deferred<RequestResult>
+
+	abstract fun requestSetRepeatModeAsync(
+		repeatMode: RepeatMode,
+		coroutineContext: CoroutineContext = EmptyCoroutineContext
+	): Deferred<RequestResult>
+
+	abstract fun requestSetShuffleModeAsync(
+		shuffleMode: ShuffleMode,
+		coroutineContext: CoroutineContext = EmptyCoroutineContext
+	): Deferred<RequestResult>
+
+	/**
+	 * Request to do `CompareAndSet` operation directly
+	 * `compareAndSet` is executed directly in the controller looper
+	 */
+	abstract fun requestCompareAndSetAsync(
+		compareAndSet: CompareAndSetScope.() -> Unit
 	): Deferred<RequestResult>
 
 	abstract fun dispose()
@@ -76,5 +114,11 @@ internal abstract class PlaybackController(
 				"SeekRequest was not successful($success) but eventDispatch($eventDispatch) is not null"
 			}
 		}
+	}
+
+	// TODO
+	interface CompareAndSetScope {
+		fun getQueue(): PlaybackQueue
+		fun setQueue(expect: PlaybackQueue, set: PlaybackQueue)
 	}
 }

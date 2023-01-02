@@ -5,6 +5,8 @@ import com.flammky.musicplayer.base.coroutine.NonBlockingDispatcherPool
 import com.flammky.musicplayer.media.mediaconnection.playback.PlaybackConnection
 import com.flammky.musicplayer.media.playback.PlaybackConstants
 import com.flammky.musicplayer.media.playback.PlaybackQueue
+import com.flammky.musicplayer.media.playback.RepeatMode
+import com.flammky.musicplayer.media.playback.ShuffleMode
 import com.flammky.musicplayer.playbackcontrol.ui.controller.PlaybackController
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
 import com.flammky.musicplayer.playbackcontrol.ui.real.RealPlaybackController
@@ -266,6 +268,8 @@ internal class RealPlaybackControlPresenter(
 
 	private class EmptyPlaybackController(sessionID: String) : PlaybackController(sessionID) {
 
+
+
 		override val disposed: Boolean = true
 
 		override fun createPlaybackObserver(coroutineContext: CoroutineContext): PlaybackObserver {
@@ -279,12 +283,51 @@ internal class RealPlaybackControlPresenter(
 			return CompletableDeferred<RequestResult>().apply { cancel() }
 		}
 
-		override fun requestSeekAsync(progress: Float): Deferred<RequestResult> {
+		override fun requestSeekAsync(index: Int, startPosition: Duration, coroutineContext: CoroutineContext): Deferred<RequestResult> {
 			return CompletableDeferred<RequestResult>().apply { cancel() }
 		}
 
-		override fun requestSeekAsync(index: Int, startPosition: Duration, coroutineContext: CoroutineContext): Deferred<RequestResult> {
-			return CompletableDeferred<RequestResult>().apply { cancel() }
+		override fun requestSetPlayWhenReadyAsync(
+			playWhenReady: Boolean,
+			coroutineContext: CoroutineContext
+		): Deferred<RequestResult> {
+			TODO("Not yet implemented")
+		}
+
+		override fun requestSetRepeatModeAsync(
+			repeatMode: RepeatMode,
+			coroutineContext: CoroutineContext
+		): Deferred<RequestResult> {
+			TODO("Not yet implemented")
+		}
+
+		override fun requestSeekNextAsync(
+			startPosition: Duration,
+			coroutineContext: CoroutineContext
+		): Deferred<RequestResult> {
+			TODO("Not yet implemented")
+		}
+
+		override fun requestSeekPreviousAsync(
+			startPosition: Duration,
+			coroutineContext: CoroutineContext
+		): Deferred<RequestResult> {
+			TODO("Not yet implemented")
+		}
+
+		override fun requestPlayAsync(coroutineContext: CoroutineContext): Deferred<RequestResult> {
+			TODO("Not yet implemented")
+		}
+
+		override fun requestSetShuffleModeAsync(
+			shuffleMode: ShuffleMode,
+			coroutineContext: CoroutineContext
+		): Deferred<RequestResult> {
+			TODO("Not yet implemented")
+		}
+
+		override fun requestCompareAndSetAsync(compareAndSet: CompareAndSetScope.() -> Unit): Deferred<RequestResult> {
+			TODO("Not yet implemented")
 		}
 
 		override fun dispose() = Unit
@@ -308,13 +351,17 @@ internal class RealPlaybackControlPresenter(
 				return QueueCollector
 			}
 
+			override fun createPropertiesCollector(collectorContext: CoroutineContext): PlaybackObserver.PropertiesCollector {
+				TODO("Not yet implemented")
+			}
+
 			override fun dispose() = Unit
 
 			object DurationCollector : PlaybackObserver.DurationCollector {
 				override val disposed: Boolean = true
 				override val durationStateFlow: StateFlow<Duration> = MutableStateFlow(PlaybackConstants.DURATION_UNSET)
 				override fun startCollect(): Job = Job().apply { cancel() }
-				override fun stopObserve(): Job = Job().apply { cancel() }
+				override fun stopCollect(): Job = Job().apply { cancel() }
 				override fun dispose() = Unit
 			}
 

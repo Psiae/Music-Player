@@ -41,6 +41,7 @@ internal class /* Debug */ RealPlaybackObserver(
 	private val _durationCollectors = mutableListOf<PlaybackObserver.DurationCollector>()
 	private val _progressionCollectors = mutableListOf<PlaybackObserver.ProgressionCollector>()
 	private val _queueCollectors = mutableListOf<RealPlaybackQueueCollector>()
+	private val _playbackPropertiesCollectors = mutableListOf<RealPlaybackPropertiesCollector>()
 
 	override val disposed: Boolean
 		get() = sync(_stateLock) { _disposed }
@@ -58,9 +59,18 @@ internal class /* Debug */ RealPlaybackObserver(
 			"Collector $collector was Not disposed"
 		}
 		when (collector) {
-			is PlaybackObserver.DurationCollector -> _durationCollectors.sync { remove(collector) }
-			is PlaybackObserver.ProgressionCollector -> _progressionCollectors.sync { remove(collector) }
-			is PlaybackObserver.QueueCollector -> _queueCollectors.sync { remove(collector) }
+			is PlaybackObserver.DurationCollector -> _durationCollectors.sync(_stateLock) {
+				remove(collector)
+			}
+			is PlaybackObserver.ProgressionCollector -> _progressionCollectors.sync(_stateLock) {
+				remove(collector)
+			}
+			is PlaybackObserver.QueueCollector -> _queueCollectors.sync(_stateLock) {
+				remove(collector)
+			}
+			is PlaybackObserver.PropertiesCollector -> _playbackPropertiesCollectors.sync(_stateLock) {
+				remove(collector)
+			}
 		}
 	}
 
@@ -132,6 +142,27 @@ internal class /* Debug */ RealPlaybackObserver(
 		}
 	}
 
+	override fun createPropertiesCollector(
+		collectorContext: CoroutineContext
+	): PlaybackObserver.PropertiesCollector {
+		val collectorJob = collectorContext[Job]
+			?: parentScopeJob
+		val collectorDispatcher = collectorContext[CoroutineDispatcher]
+		val tryLimit = collectorDispatcher?.limitedParallelism(1)
+		val dispatcher = collectorDispatcher?.limitedParallelism(1)
+			.takeIf { it === tryLimit }
+			?: parentScopeDispatcher
+		val supervisor = SupervisorJob(collectorJob)
+		val confinedScope = CoroutineScope(context = supervisor + dispatcher)
+		return RealPlaybackPropertiesCollector(
+			scope = confinedScope,
+			parentObserver = this,
+			connectionController = connection.getSession(controller.sessionID)!!.controller
+		).also {
+			sync(_stateLock) { if (_disposed) it.dispose() else _playbackPropertiesCollectors.sync { add(it) } }
+		}
+	}
+
 	fun updateProgress(): Job {
 		return parentScope.launch {
 			val jobs = mutableListOf<Job>()
@@ -146,10 +177,48 @@ internal class /* Debug */ RealPlaybackObserver(
 	fun updateQueue(): Job {
 		return parentScope.launch {
 			val jobs = mutableListOf<Job>()
-			val queueCollectors = sync(_stateLock) { _queueCollectors.sync { ArrayList(this) } }
+			val queueCollectors = sync(_stateLock) {
+				_queueCollectors.sync { ArrayList(this) }
+			}
 			queueCollectors.forEach { jobs.add(it.updateQueue()) }
 			updateProgress().join()
 			jobs.joinAll()
+		}
+	}
+
+	fun updatePlayWhenReady(): Job {
+		return parentScope.launch {
+			val jobs = mutableListOf<Job>()
+			val playWhenReadyCollectors = sync(_stateLock) {
+				_playbackPropertiesCollectors.sync { ArrayList(this) }
+			}
+			playWhenReadyCollectors.forEach {
+				jobs.add(it.updatePlayWhenReady())
+			}
+		}
+	}
+
+	fun updateRepeatMode(): Job {
+		return parentScope.launch {
+			val jobs = mutableListOf<Job>()
+			val repeatModeCollectors = sync(_stateLock) {
+				_playbackPropertiesCollectors.sync { ArrayList(this) }
+			}
+			repeatModeCollectors.forEach {
+				jobs.add(it.updateRepeatMode())
+			}
+		}
+	}
+
+	fun updateShuffleMode(): Job {
+		return parentScope.launch {
+			val jobs = mutableListOf<Job>()
+			val shuffleModeCollectors = sync(_stateLock) {
+				_playbackPropertiesCollectors.sync { ArrayList(this) }
+			}
+			shuffleModeCollectors.forEach {
+				jobs.add(it.updateShuffleMode())
+			}
 		}
 	}
 

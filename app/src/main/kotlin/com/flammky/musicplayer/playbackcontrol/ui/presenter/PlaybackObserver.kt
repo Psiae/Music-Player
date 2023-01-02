@@ -1,5 +1,6 @@
 package com.flammky.musicplayer.playbackcontrol.ui.presenter
 
+import com.flammky.musicplayer.media.playback.PlaybackProperties
 import com.flammky.musicplayer.media.playback.PlaybackQueue
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.StateFlow
@@ -23,6 +24,10 @@ interface PlaybackObserver {
 	fun createQueueCollector(
 		collectorContext: CoroutineContext = EmptyCoroutineContext,
 	): QueueCollector
+
+	fun createPropertiesCollector(
+		collectorContext: CoroutineContext = EmptyCoroutineContext
+	): PropertiesCollector
 
 	/**
 	 * Dispose the observer, any ongoing job will be cancelled, and no more emission is possible
@@ -84,8 +89,7 @@ interface PlaybackObserver {
 	interface DurationCollector : Collector {
 		val durationStateFlow: StateFlow<Duration>
 		fun startCollect(): Job
-		fun stopObserve(): Job
-		override fun dispose()
+		fun stopCollect(): Job
 	}
 
 	interface QueueCollector : Collector {
@@ -101,6 +105,14 @@ interface PlaybackObserver {
 		 */
 		fun startCollect(): Job
 		fun stopCollect(): Job
-		override fun dispose()
+	}
+
+	interface PropertiesCollector : Collector {
+
+		val propertiesStateFlow: StateFlow<PlaybackProperties>
+
+		fun startCollect(): Job
+		fun stopCollect(): Job
+
 	}
 }

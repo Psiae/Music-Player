@@ -86,7 +86,7 @@ internal class RealPlaybackQueueCollector(
 		if (queueCollectorJob?.isActive == true) {
 			return
 		}
-		_queueStateFlow.value = localUNSET
+		_queueStateFlow.emit(PlaybackQueue.UNSET)
 		queueCollectorJob = scope.launch {
 			val owner = Any()
 			var listenerJob: Job? = null
@@ -97,7 +97,7 @@ internal class RealPlaybackQueueCollector(
 						emit(PlaybackQueue.UNSET)
 						return@transform
 					}
-					val channel = Channel<PlaybackQueue>(Channel.BUFFERED)
+					val channel = Channel<PlaybackQueue>(Channel.UNLIMITED)
 					listenerJob = launch {
 						try {
 							session.controller.acquireObserver(owner).let { observer ->

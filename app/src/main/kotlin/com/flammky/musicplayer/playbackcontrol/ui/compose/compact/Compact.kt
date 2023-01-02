@@ -48,6 +48,7 @@ import com.flammky.musicplayer.base.theme.compose.backgroundColorAsState
 import com.flammky.musicplayer.base.theme.compose.backgroundContentColorAsState
 import com.flammky.musicplayer.base.theme.compose.surfaceVariantColorAsState
 import com.flammky.musicplayer.media.playback.PlaybackConstants
+import com.flammky.musicplayer.media.playback.PlaybackProperties
 import com.flammky.musicplayer.media.playback.PlaybackQueue
 import com.flammky.musicplayer.playbackcontrol.ui.PlaybackControlTrackMetadata
 import com.flammky.musicplayer.playbackcontrol.ui.PlaybackControlViewModel
@@ -192,6 +193,7 @@ private fun CardLayout(
 		controller = controller,
 		viewModel = viewModel
 	)
+
 	val isBackgroundDarkState = remember {
 		derivedStateOf { animatedSurfaceColorState.value.luminance() < 0.35f }
 	}
@@ -236,8 +238,7 @@ private fun CardLayout(
 				PlaybackButtons(
 					modifier = Modifier,
 					dark = !isBackgroundDarkState.value,
-					controller = controller,
-					viewModel = viewModel
+					controller = controller
 				)
 			}
 			AnimatedProgressBar(
@@ -619,9 +620,34 @@ private fun PlaybackButtons(
 	modifier: Modifier = Modifier,
 	dark: Boolean,
 	controller: PlaybackController,
-	// TODO: remove
-	viewModel: PlaybackControlViewModel,
 ) {
+	val coroutineScope = rememberCoroutineScope()
+
+	val playbackPropertiesState = remember {
+		mutableStateOf(PlaybackConstants.PROPERTIES_UNSET)
+	}
+
+	DisposableEffect(key1 = controller, effect = {
+		val supervisor = SupervisorJob()
+		val observer = controller.createPlaybackObserver()
+			.apply {
+				createPropertiesCollector()
+					.apply {
+						coroutineScope.launch(supervisor) {
+							startCollect().join()
+							propertiesStateFlow.collect {
+								playbackPropertiesState.value = it
+							}
+						}
+					}
+			}
+		onDispose {
+			supervisor.cancel()
+			observer.dispose()
+			playbackPropertiesState.value = PlaybackProperties.UNSET
+		}
+	})
+
 	NoRipple {
 		Row(
 			modifier = modifier.fillMaxHeight(),
@@ -648,9 +674,13 @@ private fun PlaybackButtons(
 					.width(30.dp),
 				contentAlignment = Alignment.Center
 			) {
-				val propertiesInfoState = viewModel.playbackPropertiesStateFlow.collectAsState()
 				// IsPlaying callback from mediaController is somewhat not accurate
-				val showPlay = !propertiesInfoState.value.playWhenReady
+				val showPlay = remember {
+					derivedStateOf { !playbackPropertiesState.value.playWhenReady }
+				}.value
+				val allowPlay = remember {
+					derivedStateOf { playbackPropertiesState.value.canPlayWhenReady }
+				}.value
 				val icon =
 					if (showPlay) {
 						R.drawable.play_filled_round_corner_32
@@ -665,13 +695,14 @@ private fun PlaybackButtons(
 					modifier = Modifier
 						.size(size)
 						.clickable(
+							enabled = !showPlay || allowPlay,
 							interactionSource = interactionSource,
-							indication = null
+							indication = null,
 						) {
 							if (showPlay) {
-								viewModel.playWhenReady()
+								controller.requestPlayAsync()
 							} else {
-								viewModel.pause()
+								controller.requestSetPlayWhenReadyAsync(false)
 							}
 						},
 					painter = painterResource(id = icon),

@@ -84,6 +84,9 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 			else -> error("Unknown Player State $state")
 		}
 
+	override val loading: Boolean
+		get() = s.mediaController.isLoading
+
 	override fun post(block: MediaConnectionPlayback.() -> Unit): Unit {
 		playerScope.launch { block() }
 	}
@@ -114,6 +117,10 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 
 	override fun play(mediaItem: MediaItem) {
 		s.mediaController.play(mediaItem)
+	}
+
+	override fun play() {
+		s.mediaController.play()
 	}
 
 	override fun pause() {
@@ -166,6 +173,30 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 
 	override fun getCurrentMediaItem(): MediaItem? {
 		return s.mediaController.currentActualMediaItem
+	}
+
+	override fun observeIsLoading(): Flow<Boolean> {
+		return callbackFlow {
+			val listener = object : LibraryPlayerEventListener {
+				override fun onIsLoadingChanged(isLoading: Boolean) {
+					playerScope.launch { send(isLoading) }
+				}
+			}
+			s.mediaController.addListener(listener)
+			awaitClose { s.mediaController.removeListener(listener) }
+		}
+	}
+
+	override fun observeSpeed(): Flow<Float> {
+		return callbackFlow {
+			val listener = object : LibraryPlayerEventListener {
+				override fun onPlaybackSpeedChanged(speed: Float) {
+					playerScope.launch { send(speed) }
+				}
+			}
+			s.mediaController.addListener(listener)
+			awaitClose { s.mediaController.removeListener(listener) }
+		}
 	}
 
 	override fun observeMediaItemTransition(): Flow<MediaItem?> {

@@ -22,6 +22,12 @@ internal class RealPlaybackDurationCollector(
 
 	@Volatile
 	private var _job: Job? = null
+		set(value) {
+			require(value == null || scope.coroutineContext.job.children.contains(value)) {
+				"Job=$value is not attached to Scope=$scope"
+			}
+			field = value
+		}
 
 	@GuardedBy("lock")
 	override var disposed: Boolean = false
@@ -54,7 +60,7 @@ internal class RealPlaybackDurationCollector(
 		}
 	}
 
-	override fun stopObserve(): Job {
+	override fun stopCollect(): Job {
 		return scope.launch() {
 			if (_job?.isActive != true) {
 				return@launch

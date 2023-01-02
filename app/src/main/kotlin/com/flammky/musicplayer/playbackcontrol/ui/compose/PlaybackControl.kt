@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalSnapperApi::class)
+@file:OptIn(ExperimentalSnapperApi::class, ExperimentalSnapperApi::class)
 
 package com.flammky.musicplayer.playbackcontrol.ui.compose
 
@@ -43,17 +43,15 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.flammky.android.medialib.player.Player
 import com.flammky.androidx.content.context.findActivity
 import com.flammky.common.kotlin.comparable.clamp
 import com.flammky.common.kotlin.comparable.clampPositive
 import com.flammky.musicplayer.R
 import com.flammky.musicplayer.base.compose.rememberLocalContextHelper
-import com.flammky.musicplayer.media.playback.PlaybackConstants
-import com.flammky.musicplayer.media.playback.PlaybackQueue
+import com.flammky.musicplayer.media.playback.*
+import com.flammky.musicplayer.media.playback.RepeatMode
 import com.flammky.musicplayer.playbackcontrol.ui.PlaybackControlTrackMetadata
 import com.flammky.musicplayer.playbackcontrol.ui.PlaybackControlViewModel
-import com.flammky.musicplayer.playbackcontrol.ui.PlaybackDetailPropertiesInfo
 import com.flammky.musicplayer.playbackcontrol.ui.controller.PlaybackController
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
 import com.flammky.musicplayer.ui.Theme
@@ -370,7 +368,7 @@ private fun DetailsContent(
 			)
 			PlaybackControls(
 				modifier = Modifier.padding(top = 5.dp),
-				viewModel
+				controller = playbackController
 			)
 		}
 	}
@@ -381,13 +379,25 @@ private fun TracksPagerDisplay(
 	viewModel: PlaybackControlViewModel,
 	controller: PlaybackController
 ) {
+	val coroutineScope = rememberCoroutineScope()
 	val observerState = remember { mutableStateOf<PlaybackObserver?>(null) }
 	val queueState = remember { mutableStateOf(PlaybackQueue.UNSET) }
 
 	DisposableEffect(key1 = controller) {
-		val observer = controller.createPlaybackObserver()
-		observerState.value = observer
 		queueState.value = PlaybackQueue.UNSET
+		val supervisor = SupervisorJob()
+		val observer = controller.createPlaybackObserver()
+			.apply {
+				createQueueCollector()
+					.apply {
+						coroutineScope.launch(supervisor) {
+							startCollect().join()
+							queueStateFlow.collect { queueState.value = it }
+						}
+					}
+			}
+		observerState.value = observer
+
 		onDispose { observer.dispose() }
 	}
 
@@ -396,21 +406,6 @@ private fun TracksPagerDisplay(
 			.fillMaxWidth()
 			.height(300.dp)
 	) {
-		val observer = observerState.value ?: return@NoInlineBox
-
-		val coroutineScope = rememberCoroutineScope()
-
-		DisposableEffect(key1 = observer) {
-			observer.createQueueCollector(coroutineScope.coroutineContext)
-				.apply {
-					coroutineScope.launch {
-						startCollect().join()
-						queueStateFlow.collect { queueState.value = it }
-					}
-				}
-			onDispose { observer.dispose() }
-		}
-
 		TracksPager(
 			queueState = queueState,
 			metadataStateForId = { id ->
@@ -548,8 +543,8 @@ private fun TracksPager(
 ) {
 	val queueOverrideAmountState = remember { mutableStateOf(0) }
 	val queueOverrideState = remember { mutableStateOf<PlaybackQueue?>(null) }
-	val actualQueueState = queueState.rememberDerive(calculation = { queueOverrideState.value ?: it })
-	val queue = actualQueueState.value
+	val maskedQueueState = queueState.rememberDerive(calculation = { queueOverrideState.value ?: it })
+	val queue = maskedQueueState.value
 	val queueIndex = queue.currentIndex
 	val queueList = queue.list
 
@@ -571,7 +566,7 @@ private fun TracksPager(
 			.fillMaxWidth()
 			.height(300.dp),
 	) {
-		val pagerState = rememberPagerState(actualQueueState.value.currentIndex.clampPositive())
+		val pagerState = rememberPagerState(maskedQueueState.value.currentIndex.clampPositive())
 		val basePagerFling = PagerDefaults.flingBehavior(state = pagerState)
 		val rememberUpdatedConstraintState = rememberUpdatedState(newValue = constraints)
 
@@ -591,7 +586,8 @@ private fun TracksPager(
 				}
 			}
 		) {
-			TracksPagerItem(metadataStateForId(queueList[it]))
+			val id = maskedQueueState.value.list.getOrNull(it)
+			TracksPagerItem(metadataStateForId(id ?:""))
 		}
 
 		val touched = remember { mutableStateOf(false) }
@@ -603,6 +599,8 @@ private fun TracksPager(
 			onScroll = { touched.overwrite(false) }
 		)
 
+		// Should consider to Just be be either `seekPrevious / seekNext`
+
 		PagerListenUserDrag(
 			pagerState = pagerState,
 			onStartDrag = { touched.value = true },
@@ -611,14 +609,19 @@ private fun TracksPager(
 
 		PagerListenPageState(
 			pagerState = pagerState,
-			queueState = actualQueueState,
+			queueState = maskedQueueState,
 			touchedState = touched,
 			shouldSeekIndex = { index ->
-				queueOverrideState.value = queue.copy(currentIndex = index)
+				val currentQ = maskedQueueState.value
+
+				if (index !in currentQ.list.indices) {
+					return@PagerListenPageState false
+				}
+
+				queueOverrideState.value = currentQ.copy(currentIndex = index)
 				true
 			},
 			seekIndex = { index ->
-				Timber.d("PagerListenPageChange seek to $index")
 				queueOverrideAmountState.value++
 				runCatching {
 					seekIndex(index)
@@ -669,7 +672,6 @@ private fun PagerListenUserDrag(
 	onStartDrag: () -> Unit,
 	onEndDrag: () -> Unit
 ) {
-	val dragged = pagerState.interactionSource.collectIsDraggedAsState()
 	LaunchedEffect(
 		null
 	) {
@@ -716,7 +718,7 @@ private fun PagerListenPageState(
 		dragging,
 		touched,
 		block = {
-			Timber.d("FullPlaybackConctrol, PageChangeListener: $page, $dragging, $touched")
+			Timber.d("FullPlaybackControl, PageChangeListener: $page, $dragging, $touched")
 			if (touched && !dragging &&
 				(page != rememberedPageState.value
 					|| rememberedPageState.value != queueState.value.currentIndex)
@@ -816,27 +818,72 @@ private fun PlaybackDescriptionSubtitle(textState: State<String>) {
 @Composable
 private fun PlaybackControls(
 	modifier: Modifier = Modifier,
-	viewModel: PlaybackControlViewModel
+	controller: PlaybackController
 ) {
-	Box(modifier = modifier) {
+	val coroutineScope = rememberCoroutineScope()
+
+	val rememberUpdatedController = rememberUpdatedState(newValue = controller)
+
+	val propertiesState = remember {
+		mutableStateOf(PlaybackConstants.PROPERTIES_UNSET)
+	}
+
+	DisposableEffect(key1 = controller, effect = {
+		val supervisor = SupervisorJob()
+		val observer = controller.createPlaybackObserver().createPropertiesCollector()
+			.apply {
+				coroutineScope.launch(supervisor) {
+					startCollect().join()
+					propertiesStateFlow.collect { propertiesState.value = it }
+				}
+			}
+		onDispose {
+			supervisor.cancel()
+			observer.dispose()
+			propertiesState.value = PlaybackConstants.PROPERTIES_UNSET
+		}
+	})
+
+
+	Box(modifier = modifier.height(40.dp)) {
+
+		@Suppress("DeferredResultUnused")
 		PlaybackControlButtons(
-			viewModel.playbackPropertiesStateFlow.collectAsState(),
-			play = viewModel::playWhenReady,
-			pause = viewModel::pause,
-			next = viewModel::seekNext,
-			previous = viewModel::seekPrevious,
-			enableRepeat = viewModel::enableRepeatMode,
-			enableRepeatAll = viewModel::enableRepeatAllMode,
-			disableRepeat = viewModel::disableRepeatMode,
-			enableShuffle = viewModel::enableShuffleMode,
-			disableShuffle = viewModel::disableShuffleMode
+			propertiesState,
+			play = {
+				rememberUpdatedController.value.requestPlayAsync()
+			},
+			pause = {
+				rememberUpdatedController.value.requestSetPlayWhenReadyAsync(false)
+			},
+			next = {
+				rememberUpdatedController.value.requestSeekNextAsync(Duration.ZERO)
+			},
+			previous = {
+				rememberUpdatedController.value.requestSeekPreviousAsync(Duration.ZERO)
+			},
+			enableRepeat = {
+				rememberUpdatedController.value.requestSetRepeatModeAsync(RepeatMode.ONE)
+			},
+			enableRepeatAll = {
+				rememberUpdatedController.value.requestSetRepeatModeAsync(RepeatMode.ALL)
+			},
+			disableRepeat = {
+				rememberUpdatedController.value.requestSetRepeatModeAsync(RepeatMode.OFF)
+			},
+			enableShuffle = {
+				rememberUpdatedController.value.requestSetShuffleModeAsync(ShuffleMode.ON)
+			},
+			disableShuffle = {
+				rememberUpdatedController.value.requestSetShuffleModeAsync(ShuffleMode.OFF)
+			}
 		)
 	}
 }
 
 @Composable
 private fun PlaybackControlButtons(
-	propertiesInfoState: State<PlaybackDetailPropertiesInfo>,
+	playbackPropertiesState: State<PlaybackProperties>,
 	play: () -> Unit,
 	pause: () -> Unit,
 	next: () -> Unit,
@@ -862,7 +909,9 @@ private fun PlaybackControlButtons(
 			val size by animateDpAsState(
 				targetValue = if (interactionSource.collectIsPressedAsState().read()) 27.dp else 30.dp
 			)
-			val shuffleOn = propertiesInfoState.rememberDerive(calculation = { it.shuffleOn }).value
+			val shuffleOn = playbackPropertiesState.rememberDerive(
+				calculation = { it.shuffleMode == ShuffleMode.ON }
+			).value
 			Icon(
 				modifier = Modifier
 					.size(size)
@@ -914,7 +963,7 @@ private fun PlaybackControlButtons(
 			val size by animateDpAsState(
 				targetValue = if (interactionSource.collectIsPressedAsState().read()) 37.dp else 40.dp
 			)
-			val playWhenReady = propertiesInfoState.rememberDerive(calculation = { it.playWhenReady }).value
+			val playWhenReady = playbackPropertiesState.rememberDerive(calculation = { it.playWhenReady }).value
 			Icon(
 				modifier = Modifier
 					.size(size)
@@ -943,7 +992,7 @@ private fun PlaybackControlButtons(
 			val size by animateDpAsState(
 				targetValue = if (interactionSource.collectIsPressedAsState().read()) 32.dp else 35.dp
 			)
-			val hasNext = propertiesInfoState.rememberDerive(calculation = { it.hasNextMediaItem }).value
+			val hasNext = playbackPropertiesState.rememberDerive(calculation = { it.hasNextMediaItem }).value
 			Icon(
 				modifier = Modifier
 					.size(size)
@@ -969,7 +1018,7 @@ private fun PlaybackControlButtons(
 			val size by animateDpAsState(
 				targetValue = if (interactionSource.collectIsPressedAsState().read()) 27.dp else 30.dp
 			)
-			val repeatMode = propertiesInfoState.rememberDerive(calculation = { it.repeatMode }).value
+			val repeatMode = playbackPropertiesState.rememberDerive(calculation = { it.repeatMode }).value
 			Icon(
 				modifier = Modifier
 					.size(size)
@@ -979,19 +1028,19 @@ private fun PlaybackControlButtons(
 						indication = null,
 						onClick = {
 							when (repeatMode) {
-								Player.RepeatMode.OFF -> enableRepeat()
-								Player.RepeatMode.ONE -> enableRepeatAll()
-								Player.RepeatMode.ALL -> disableRepeat()
+								RepeatMode.OFF -> enableRepeat()
+								RepeatMode.ONE -> enableRepeatAll()
+								RepeatMode.ALL -> disableRepeat()
 							}
 						}
 					),
 				painter = when (repeatMode) {
-					Player.RepeatMode.OFF -> painterResource(id = R.drawable.ios_glyph_repeat_100)
-					Player.RepeatMode.ONE -> painterResource(id = R.drawable.ios_glyph_repeat_one_100)
-					Player.RepeatMode.ALL -> painterResource(id = R.drawable.ios_glyph_repeat_100)
+					RepeatMode.OFF -> painterResource(id = R.drawable.ios_glyph_repeat_100)
+					RepeatMode.ONE -> painterResource(id = R.drawable.ios_glyph_repeat_one_100)
+					RepeatMode.ALL -> painterResource(id = R.drawable.ios_glyph_repeat_100)
 				},
 				contentDescription = "repeat",
-				tint = if (repeatMode == Player.RepeatMode.OFF)
+				tint = if (repeatMode == RepeatMode.OFF)
 					Color(0xFF787878)
 				else
 					Theme.dayNightAbsoluteContentColor()

@@ -27,8 +27,20 @@ internal class RealPlaybackProgressionCollector(
 	private val _stateLock = Any()
 
 	private var progressCollectorJob: Job? = null
+		set(value) {
+			require(value == null || scope.coroutineContext.job.children.contains(value)) {
+				"Job=$value is not attached to Scope=$scope"
+			}
+			field = value
+		}
 
 	private var eventCollectorJob: Job? = null
+		set(value) {
+			require(value == null || scope.coroutineContext.job.children.contains(value)) {
+				"Job=$value is not attached to Scope=$scope"
+			}
+			field = value
+		}
 
 	private var _collectEvent: Boolean = collectEvent
 

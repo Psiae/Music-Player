@@ -275,5 +275,13 @@ class SessionManager(
 				toReturn
 			}.asListenableFuture()
 		}
+		override fun onConnect(
+			session: MediaSession,
+			controller: ControllerInfo
+		): MediaSession.ConnectionResult {
+			val s = super.onConnect(session, controller)
+			val pcb = s.availablePlayerCommands.buildUpon().remove(Player.COMMAND_SET_SHUFFLE_MODE)
+			return MediaSession.ConnectionResult.accept(s.availableSessionCommands, pcb.build())
+		}
 	}
 }

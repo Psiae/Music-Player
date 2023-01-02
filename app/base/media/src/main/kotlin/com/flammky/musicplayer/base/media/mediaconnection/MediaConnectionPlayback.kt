@@ -21,6 +21,7 @@ interface MediaConnectionPlayback {
 	val hasPreviousMediaItem: Boolean
 	val repeatMode: Player.RepeatMode
 	val playerState: Player.State
+	val loading: Boolean
 
 	val mediaItemCount: Int
 
@@ -51,6 +52,7 @@ interface MediaConnectionPlayback {
 	fun getPlaylist(): List<MediaItem>
 
 	fun play(mediaItem: MediaItem)
+	fun play()
 	fun pause()
 
 	fun observeMediaItemTransition(): Flow<MediaItem?>
@@ -64,6 +66,8 @@ interface MediaConnectionPlayback {
 	fun observeShuffleEnabledChange(): Flow<Boolean>
 	fun observeRepeatModeChange(): Flow<Player.RepeatMode>
 	fun observePlayerStateChange(): Flow<Player.State>
+	fun observeIsLoading(): Flow<Boolean>
+	fun observeSpeed(): Flow<Float>
 
 	fun seekToPosition(position: Long): Boolean
 	suspend fun <R> joinDispatcher(block: suspend MediaConnectionPlayback.() -> R): R

@@ -1,11 +1,8 @@
 package com.flammky.android.medialib.temp.player.event
 
 import android.net.Uri
-import androidx.media3.common.AudioAttributes
-import androidx.media3.common.MediaItem
-import androidx.media3.common.Player
+import androidx.media3.common.*
 import androidx.media3.common.Player.PositionInfo
-import androidx.media3.common.Timeline
 import com.flammky.android.medialib.common.Contract
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.common.mediaitem.MediaItem.Companion.buildMediaItem
@@ -95,6 +92,8 @@ interface LibraryPlayerEventListener {
 	 * @param [reason] the reason
 	 */
 	fun onIsPlayingChanged(isPlaying: Boolean, reason: IsPlayingChangedReason) {}
+
+	fun onPlaybackSpeedChanged(speed: Float) {}
 
 	/**
 	 * Called when current [LibraryPlayer.isLoading] changes
@@ -201,6 +200,13 @@ interface LibraryPlayerEventListener {
 					}
 				}
 
+				private var rememberSpeed = player.speed
+				override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
+					if (rememberSpeed != playbackParameters.speed) {
+						rememberSpeed = playbackParameters.speed
+						delegated.onPlaybackSpeedChanged(playbackParameters.speed)
+					}
+				}
 
 				override fun onIsPlayingChanged(isPlaying: Boolean) {
 					if (isPlaying != rememberIsPlaying) {

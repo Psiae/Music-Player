@@ -8,6 +8,11 @@ Simple Music Player `100% Made in Kotlin` with Jetpack Compose & AndroidX Media3
 
 > I'm usually active helping mobile-devs in https://discord.gg/programming for self-learning
 
+## Contribution
+Due to full-scale rewrite on the codebase it will be quite hard to accept any pull-request, I might consider if it aligns with the current target
+
+Feel free to open an [issue](https://github.com/flammky/Music-Player/issues) for suggestion
+
 ## Features
 > Audio Playback + Playback Control in App and Notification
 

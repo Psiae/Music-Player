@@ -1,4 +1,4 @@
-package com.flammky.musicplayer.ui.main.compose.entry
+package com.flammky.musicplayer.main.ui.compose.entry
 
 import android.app.Activity
 import android.content.Context
@@ -11,7 +11,10 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.neverEqualPolicy
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -25,10 +28,10 @@ import com.flammky.android.app.permission.AndroidPermission
 import com.flammky.android.content.context.ContextHelper
 import com.flammky.androidx.content.context.findActivity
 import com.flammky.musicplayer.R
-import com.flammky.musicplayer.base.compose.rememberLocalContextHelper
-import com.flammky.musicplayer.main.ui.MainViewModel
-import com.flammky.musicplayer.ui.main.compose.theme.MainMaterial3Theme
-import com.flammky.musicplayer.ui.main.compose.theme.color.ColorHelper
+import com.flammky.musicplayer.base.theme.Theme
+import com.flammky.musicplayer.base.theme.compose.backgroundContentColorAsState
+import com.flammky.musicplayer.base.theme.compose.surfaceContentColorAsState
+import com.flammky.musicplayer.main.ui.compose.MaterialDesign3Theme
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.HorizontalPagerIndicator
@@ -37,13 +40,7 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 
-@Composable
-fun MainEntry(content: @Composable () -> Unit) {
-	if (entryPermissionAsState().value) {
-		content()
-	}
-
-}
+// Tech-Debt from old package
 
 class EntryViewModel() : ViewModel() {
 	var shouldPersistPager: Boolean? = null
@@ -66,82 +63,6 @@ private val pageItems = listOf(
 		optional = true, title = "Write Storage Permission"
 	),
 )
-
-
-
-@OptIn(ExperimentalPermissionsApi::class)
-@Composable
-private fun entryPermissionAsState(): State<Boolean> {
-
-	val contextHelper = rememberLocalContextHelper()
-
-	val entryVM = entryViewModel
-	val vm: MainViewModel = viewModel()
-
-	val readStorageGranted = contextHelper.permissions.common.hasReadExternalStorage
-
-	val authPermissionState = remember {
-		mutableStateOf(false)
-	}
-
-	val androidPermissionState = remember {
-		mutableStateOf(entryVM.shouldPersistPager != true && readStorageGranted)
-	}
-
-	if (!androidPermissionState.value) {
-		val interceptor = remember {
-			val intentHandler = vm.intentHandler
-			intentHandler.createInterceptor()
-				.apply {
-					setFilter {
-						val clone = it.cloneActual()
-						intentHandler.intentRequireAndroidPermission(clone, com.flammky.android.manifest.permission.AndroidPermission.Read_External_Storage)
-					}
-					start()
-				}
-		}
-		DisposableEffect(
-			// wait to be removed from composition tree by either `state.value` become true
-			// or parent branch
-			key1 = null
-		) {
-			onDispose {
-				if (!androidPermissionState.value) {
-					// should we tho ?
-					interceptor.dropAllInterceptedIntent()
-				}
-				interceptor.dispose()
-			}
-		}
-
-		EntryPermissionPager(contextHelper) { androidPermissionState.value = true }
-	}
-
-	LaunchedEffect(
-		key1 = null,
-		block = {
-			if (vm.rememberAuthAsync().await() == null) {
-				vm.loginLocalAsync().await()
-			}
-			vm.currentUserFlow.collect {
-				authPermissionState.value = it != null
-			}
-		}
-	)
-
-	NoInline {
-		if (vm.authGuardWaiter.isNotEmpty()) {
-			vm.authGuardWaiter.forEach { it() }
-			vm.authGuardWaiter.clear()
-		}
-	}
-	return remember {
-		derivedStateOf { authPermissionState.value && androidPermissionState.value }
-	}
-}
-
-@Composable
-fun NoInline(block: @Composable () -> Unit) = block()
 
 @OptIn(ExperimentalPagerApi::class)
 @ExperimentalPermissionsApi
@@ -235,7 +156,10 @@ fun EntryPermissionPager(contextHelper: ContextHelper, onGranted: () -> Unit) {
 				modifier = Modifier.fillMaxSize(0.3F),
 				contentAlignment = Alignment.Center
 			) {
-				HorizontalPagerIndicator(pagerState = pagerState)
+				HorizontalPagerIndicator(
+					pagerState = pagerState,
+					activeColor = Theme.surfaceContentColorAsState().value
+				)
 			}
 
 			Row(
@@ -255,7 +179,7 @@ fun EntryPermissionPager(contextHelper: ContextHelper, onGranted: () -> Unit) {
 						val style = MaterialTheme.typography
 						Text(
 							text = "Let's Go",
-							color = ColorHelper.textColor(),
+							color = Theme.backgroundContentColorAsState().value,
 							fontSize = style.titleMedium.fontSize
 						)
 					}
@@ -304,7 +228,7 @@ private inline fun PermissionPage(
 			contentDescription = "Image"
 		)
 
-		Text(text = description, color = ColorHelper.textColor())
+		Text(text = description, color = Theme.backgroundContentColorAsState().value)
 
 		Box(
 			modifier = Modifier
@@ -322,7 +246,7 @@ private inline fun PermissionPage(
 				val style = MaterialTheme.typography.titleMedium
 				Text(
 					text = text,
-					color = ColorHelper.textColor(),
+					color = Theme.backgroundContentColorAsState().value,
 					fontSize = style.fontSize,
 					fontStyle = style.fontStyle
 				)
@@ -350,7 +274,7 @@ private data class PermissionPageItem(
 @Composable
 @Preview()
 private fun ReadStoragePermissionScreenPreview() {
-	MainMaterial3Theme(darkTheme = false) {
+	MaterialDesign3Theme(useDarkTheme = false) {
 		val state = remember {
 			mutableStateOf(false)
 		}
@@ -369,7 +293,7 @@ private fun ReadStoragePermissionScreenPreview() {
 @Composable
 @Preview
 private fun ReadStoragePermissionScreenPreviewDark() {
-	MainMaterial3Theme(darkTheme = true) {
+	MaterialDesign3Theme(useDarkTheme = false) {
 		Surface {
 			PermissionPage(resId = R.drawable.folder_search_base_256_blu_glass,
 				description = "Read Storage Permission is Required",

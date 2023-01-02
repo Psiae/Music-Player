@@ -2,8 +2,8 @@ package com.flammky.musicplayer.main.ui.compose.entry
 
 import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.flammky.musicplayer.base.compose.NoInline
 import com.flammky.musicplayer.main.ui.MainViewModel
-import com.flammky.musicplayer.ui.main.compose.entry.NoInline
 import timber.log.Timber
 
 @Composable

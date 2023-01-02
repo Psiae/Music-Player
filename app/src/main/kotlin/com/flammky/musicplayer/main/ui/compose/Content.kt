@@ -5,9 +5,14 @@ package com.flammky.musicplayer.main.ui.compose
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
 import com.flammky.musicplayer.main.MainActivity
-import com.flammky.musicplayer.ui.main.compose.ComposeContent
+import com.flammky.musicplayer.main.ui.compose.entry.EntryGuard
+import com.flammky.musicplayer.main.ui.compose.nav.RootNavigation
 
 fun MainActivity.setContent() = setContent { ThemedContent() }
 
 @Composable
-private inline fun MainActivity.ThemedContent() = MaterialDesign3Theme { ComposeContent() }
+private inline fun MainActivity.ThemedContent() = MaterialDesign3Theme {
+	EntryGuard {
+		RootNavigation()
+	}
+}

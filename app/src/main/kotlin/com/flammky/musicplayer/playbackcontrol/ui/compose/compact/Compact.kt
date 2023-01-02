@@ -53,7 +53,6 @@ import com.flammky.musicplayer.media.playback.PlaybackQueue
 import com.flammky.musicplayer.playbackcontrol.ui.PlaybackControlTrackMetadata
 import com.flammky.musicplayer.playbackcontrol.ui.PlaybackControlViewModel
 import com.flammky.musicplayer.playbackcontrol.ui.controller.PlaybackController
-import com.flammky.musicplayer.ui.util.compose.NoRipple
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.PagerDefaults
@@ -647,69 +646,66 @@ private fun PlaybackButtons(
 			playbackPropertiesState.value = PlaybackProperties.UNSET
 		}
 	})
-
-	NoRipple {
-		Row(
-			modifier = modifier.fillMaxHeight(),
-			verticalAlignment = Alignment.CenterVertically,
-			horizontalArrangement = Arrangement.SpaceEvenly
+	Row(
+		modifier = modifier.fillMaxHeight(),
+		verticalAlignment = Alignment.CenterVertically,
+		horizontalArrangement = Arrangement.SpaceEvenly
+	) {
+		Box(
+			modifier = Modifier
+				.fillMaxHeight()
+				.width(30.dp),
+			contentAlignment = Alignment.Center
+		) {}
+		Box(
+			modifier = Modifier
+				.fillMaxHeight()
+				.width(30.dp),
+			contentAlignment = Alignment.Center
 		) {
-			Box(
-				modifier = Modifier
-					.fillMaxHeight()
-					.width(30.dp),
-				contentAlignment = Alignment.Center
-			) {}
-			Box(
-				modifier = Modifier
-					.fillMaxHeight()
-					.width(30.dp),
-				contentAlignment = Alignment.Center
-			) {
 
-			}
-			Box(
-				modifier = Modifier
-					.fillMaxHeight()
-					.width(30.dp),
-				contentAlignment = Alignment.Center
-			) {
-				// IsPlaying callback from mediaController is somewhat not accurate
-				val showPlay = remember {
-					derivedStateOf { !playbackPropertiesState.value.playWhenReady }
-				}.value
-				val allowPlay = remember {
-					derivedStateOf { playbackPropertiesState.value.canPlayWhenReady }
-				}.value
-				val icon =
-					if (showPlay) {
-						R.drawable.play_filled_round_corner_32
-					} else {
-						R.drawable.pause_filled_narrow_rounded_corner_32
-					}
+		}
+		Box(
+			modifier = Modifier
+				.fillMaxHeight()
+				.width(30.dp),
+			contentAlignment = Alignment.Center
+		) {
+			// IsPlaying callback from mediaController is somewhat not accurate
+			val showPlay = remember {
+				derivedStateOf { !playbackPropertiesState.value.playWhenReady }
+			}.value
+			val allowPlay = remember {
+				derivedStateOf { playbackPropertiesState.value.canPlayWhenReady }
+			}.value
+			val icon =
+				if (showPlay) {
+					R.drawable.play_filled_round_corner_32
+				} else {
+					R.drawable.pause_filled_narrow_rounded_corner_32
+				}
 
-				val interactionSource = remember { MutableInteractionSource() }
-				val pressed by interactionSource.collectIsPressedAsState()
-				val size by animateDpAsState(targetValue =  if (pressed) 18.dp else 21.dp)
-				Icon(
-					modifier = Modifier
-						.size(size)
-						.clickable(
-							enabled = !showPlay || allowPlay,
-							interactionSource = interactionSource,
-							indication = null,
-						) {
-							if (showPlay) {
-								controller.requestPlayAsync()
-							} else {
-								controller.requestSetPlayWhenReadyAsync(false)
-							}
-						},
-					painter = painterResource(id = icon),
-					contentDescription = null,
-					tint = if (dark) Color.Black else Color.White,
-				)
-			}
+			val interactionSource = remember { MutableInteractionSource() }
+			val pressed by interactionSource.collectIsPressedAsState()
+			val size by animateDpAsState(targetValue =  if (pressed) 18.dp else 21.dp)
+			Icon(
+				modifier = Modifier
+					.size(size)
+					.clickable(
+						enabled = !showPlay || allowPlay,
+						interactionSource = interactionSource,
+						indication = null,
+					) {
+						if (showPlay) {
+							controller.requestPlayAsync()
+						} else {
+							controller.requestSetPlayWhenReadyAsync(false)
+						}
+					},
+				painter = painterResource(id = icon),
+				contentDescription = null,
+				tint = if (dark) Color.Black else Color.White,
+			)
 		}
 	}
 }

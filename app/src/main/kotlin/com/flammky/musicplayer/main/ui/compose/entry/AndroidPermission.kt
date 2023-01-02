@@ -65,7 +65,7 @@ internal fun permGuard(
 
 	if (!allow.value && allowShowContentState.value) {
 		Box(modifier = Modifier.fillMaxSize()) {
-			com.flammky.musicplayer.ui.main.compose.entry.EntryPermissionPager(
+			EntryPermissionPager(
 				contextHelper = contextHelper,
 				onGranted = { allow.value = true ; showPagerState.value = false }
 			)

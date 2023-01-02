@@ -1,3 +1,3 @@
 package com.flammky.musicplayer.dump.mediaplayer
 
-// Deprecated package
+// TO BE REMOVED package

@@ -47,16 +47,16 @@ import com.flammky.androidx.content.context.findActivity
 import com.flammky.common.kotlin.comparable.clamp
 import com.flammky.common.kotlin.comparable.clampPositive
 import com.flammky.musicplayer.R
+import com.flammky.musicplayer.base.compose.NoInline
 import com.flammky.musicplayer.base.compose.rememberLocalContextHelper
+import com.flammky.musicplayer.base.theme.Theme
+import com.flammky.musicplayer.base.theme.compose.*
 import com.flammky.musicplayer.media.playback.*
 import com.flammky.musicplayer.media.playback.RepeatMode
 import com.flammky.musicplayer.playbackcontrol.ui.PlaybackControlTrackMetadata
 import com.flammky.musicplayer.playbackcontrol.ui.PlaybackControlViewModel
 import com.flammky.musicplayer.playbackcontrol.ui.controller.PlaybackController
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
-import com.flammky.musicplayer.ui.Theme
-import com.flammky.musicplayer.ui.playbackcontrol.Slider
-import com.flammky.musicplayer.ui.playbackcontrol.SliderDefaults
 import com.google.accompanist.pager.*
 import dev.chrisbanes.snapper.ExperimentalSnapperApi
 import kotlinx.coroutines.*
@@ -188,7 +188,7 @@ private fun ContentTransition(
 				.offset(0.dp, yOffsetState.value)
 				.background(
 					Theme
-						.dayNightAbsoluteColor()
+						.absoluteBackgroundColorAsState().value
 						.copy(alpha = 0.94f)
 				),
 			viewModel = viewModel,
@@ -306,7 +306,7 @@ private fun DetailToolbar(
 						modifier = Modifier.size(26.dp),
 						painter = painterResource(id = R.drawable.more_vert_48px),
 						contentDescription = "more",
-						tint = Theme.dayNightAbsoluteContentColor()
+						tint = Theme.backgroundContentColorAsState().value
 					)
 				}
 			}
@@ -332,7 +332,7 @@ private fun RowScope.DismissAction(
 				.size(size),
 			painter = painterResource(id = R.drawable.ios_glyph_expand_arrow_down_100),
 			contentDescription = "close",
-			tint = Theme.dayNightAbsoluteContentColor()
+			tint = Theme.backgroundContentColorAsState().value
 		)
 	}
 }
@@ -426,8 +426,8 @@ private fun RadialPlaybackPaletteBackground(
 	modifier: Modifier = Modifier,
 	artState: State<Any?>
 ) {
-	val absoluteBackgroundColor = Theme.dayNightAbsoluteColor()
-	val backgroundColor = Theme.backgroundColor()
+	val absoluteBackgroundColor = Theme.backgroundColorAsState().value
+	val backgroundColor = Theme.backgroundColorAsState().value
 	val radialPaletteColor = remember { mutableStateOf(backgroundColor) }
 
 	val compositeBase =
@@ -798,7 +798,7 @@ private fun PlaybackDescription(
 private fun PlaybackDescriptionTitle(textState: State<String>) {
 	Text(
 		text = textState.read(),
-		color = Theme.dayNightAbsoluteContentColor(),
+		color = Theme.backgroundContentColorAsState().value,
 		style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
 		overflow = TextOverflow.Ellipsis
 	)
@@ -808,7 +808,7 @@ private fun PlaybackDescriptionTitle(textState: State<String>) {
 private fun PlaybackDescriptionSubtitle(textState: State<String>) {
 	Text(
 		text = textState.read(),
-		color = Theme.dayNightAbsoluteContentColor(),
+		color = Theme.backgroundContentColorAsState().value,
 		style = MaterialTheme.typography.titleMedium,
 		overflow = TextOverflow.Ellipsis
 	)
@@ -925,7 +925,7 @@ private fun PlaybackControlButtons(
 				painter = painterResource(id = R.drawable.ios_glyph_shuffle_100),
 				contentDescription = "shuffle",
 				tint = if (shuffleOn)
-					Theme.dayNightAbsoluteContentColor()
+					Theme.backgroundContentColorAsState().value
 				else
 					Color(0xFF787878)
 			)
@@ -950,7 +950,7 @@ private fun PlaybackControlButtons(
 				,
 				painter = painterResource(id = R.drawable.ios_glyph_seek_previos_100),
 				contentDescription = "previous",
-				tint = Theme.dayNightAbsoluteContentColor()
+				tint = Theme.backgroundContentColorAsState().value
 			)
 		}
 
@@ -980,7 +980,7 @@ private fun PlaybackControlButtons(
 					rememberPlayPainter
 				,
 				contentDescription = "play",
-				tint = Theme.dayNightAbsoluteContentColor()
+				tint = Theme.backgroundContentColorAsState().value
 			)
 		}
 
@@ -1006,7 +1006,7 @@ private fun PlaybackControlButtons(
 				painter = painterResource(id = R.drawable.ios_glyph_seek_next_100),
 				contentDescription = "next",
 				tint = if (hasNext)
-					Theme.dayNightAbsoluteContentColor()
+					Theme.backgroundContentColorAsState().value
 				else
 					Color(0xFF787878)
 			)
@@ -1043,7 +1043,7 @@ private fun PlaybackControlButtons(
 				tint = if (repeatMode == RepeatMode.OFF)
 					Color(0xFF787878)
 				else
-					Theme.dayNightAbsoluteContentColor()
+					Theme.backgroundContentColorAsState().value
 			)
 		}
 	}
@@ -1242,8 +1242,8 @@ private fun PlaybackControlProgressSeekbar(
 				trackHeight = 6.dp,
 				thumbSize = 12.dp,
 				colors = SliderDefaults.colors(
-					activeTrackColor = Theme.dayNightAbsoluteContentColor(),
-					thumbColor = Theme.dayNightAbsoluteContentColor()
+					activeTrackColor = Theme.surfaceContentColorAsState().value,
+					thumbColor = Theme.backgroundContentColorAsState().value
 				)
 			)
 			Row(
@@ -1269,12 +1269,6 @@ private fun PlaybackControlProgressSeekbar(
 		}
 	}
 }
-
-@Composable
-private fun NoInline(content: @Composable () -> Unit) = content()
-
-@Composable
-private fun <C> C.NoInline(content: @Composable C.() -> Unit) = content()
 
 /**
  * non-Inlined box for easier recomposition control without introducing a function
@@ -1352,6 +1346,7 @@ private fun RowScope.PlaybackProgressSliderText(
 
 		Text(
 			text = formattedProgress,
+			color = Theme.backgroundContentColorAsState().value,
 			style = MaterialTheme.typography.bodySmall
 		)
 	}
@@ -1379,6 +1374,7 @@ private fun RowScope.PlaybackProgressSliderText(
 		}
 		Text(
 			text = formattedDuration,
+			color = Theme.backgroundContentColorAsState().value,
 			style = MaterialTheme.typography.bodySmall
 		)
 	}

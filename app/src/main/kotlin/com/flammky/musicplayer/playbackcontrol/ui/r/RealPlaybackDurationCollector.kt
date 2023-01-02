@@ -1,4 +1,4 @@
-package com.flammky.musicplayer.playbackcontrol.ui.real
+package com.flammky.musicplayer.playbackcontrol.ui.r
 
 import androidx.annotation.GuardedBy
 import com.flammky.kotlin.common.sync.sync

@@ -1,4 +1,4 @@
-package com.flammky.musicplayer.ui.playbackcontrol
+package com.flammky.musicplayer.playbackcontrol.ui.compose
 
 /*
  * Copyright 2022 The Android Open Source Project
@@ -52,6 +52,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.*
 
+// rewrite for specific need
 
 /**
  * Material Design slider

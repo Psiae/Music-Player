@@ -5,15 +5,16 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.flammky.musicplayer.base.theme.Theme
+import com.flammky.musicplayer.base.theme.compose.absoluteBackgroundContentColorAsState
 import com.flammky.musicplayer.main.ui.MainViewModel
-import com.flammky.musicplayer.ui.Theme
-import com.flammky.musicplayer.ui.common.compose.CircularProgressIndicator
 
 // TODO
 @Composable
@@ -68,7 +69,7 @@ internal fun authGuard(
 		Box(
 			modifier = Modifier
 				.fillMaxSize()
-				.background(Theme.dayNightAbsoluteColor().copy(alpha = 0.94f))
+				.background(Theme.absoluteBackgroundContentColorAsState().value.copy(alpha = 0.94f))
 				.clickable(
 					interactionSource = remember { MutableInteractionSource() },
 					indication = null,

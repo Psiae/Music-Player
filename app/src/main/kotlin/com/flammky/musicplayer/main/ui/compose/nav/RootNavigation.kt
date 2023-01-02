@@ -35,14 +35,10 @@ import com.flammky.musicplayer.base.compose.NoInlineBox
 import com.flammky.musicplayer.base.compose.NoInlineColumn
 import com.flammky.musicplayer.base.nav.compose.ComposeRootDestination
 import com.flammky.musicplayer.base.theme.Theme
-import com.flammky.musicplayer.base.theme.compose.backgroundColorAsState
-import com.flammky.musicplayer.base.theme.compose.backgroundContentColorAsState
-import com.flammky.musicplayer.base.theme.compose.elevatedTonalPrimarySurfaceAsState
-import com.flammky.musicplayer.base.theme.compose.secondaryContainerContentColorAsState
+import com.flammky.musicplayer.base.theme.compose.*
 import com.flammky.musicplayer.main.MainActivity
 import com.flammky.musicplayer.playbackcontrol.ui.compose.TransitioningPlaybackControl
 import com.flammky.musicplayer.playbackcontrol.ui.compose.compact.TransitioningCompactPlaybackControl
-import com.flammky.musicplayer.ui.util.compose.NoRipple
 
 @Composable
 internal fun MainActivity.RootNavigation() {
@@ -124,7 +120,7 @@ private fun MainActivity.BottomNavigation(
 	}
 
 	// TODO: Customizable indication
-	NoRipple {
+	NoRippleColor {
 
 		val absBackgroundColor = Theme.backgroundColorAsState().value
 		val alpha = (/* preference */ 0.97f).coerceAtLeast(0.3f)

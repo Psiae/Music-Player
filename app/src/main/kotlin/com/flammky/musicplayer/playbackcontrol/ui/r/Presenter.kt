@@ -9,7 +9,7 @@ import com.flammky.musicplayer.media.playback.RepeatMode
 import com.flammky.musicplayer.media.playback.ShuffleMode
 import com.flammky.musicplayer.playbackcontrol.ui.controller.PlaybackController
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
-import com.flammky.musicplayer.playbackcontrol.ui.real.RealPlaybackController
+import com.flammky.musicplayer.playbackcontrol.ui.r.RealPlaybackController
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*

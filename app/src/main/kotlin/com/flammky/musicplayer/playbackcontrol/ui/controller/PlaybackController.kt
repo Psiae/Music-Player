@@ -1,8 +1,8 @@
 package com.flammky.musicplayer.playbackcontrol.ui.controller
 
-import com.flammky.musicplayer.media.playback.PlaybackQueue
-import com.flammky.musicplayer.media.playback.RepeatMode
-import com.flammky.musicplayer.media.playback.ShuffleMode
+import com.flammky.musicplayer.base.media.playback.PlaybackQueue
+import com.flammky.musicplayer.base.media.playback.RepeatMode
+import com.flammky.musicplayer.base.media.playback.ShuffleMode
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job

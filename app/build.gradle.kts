@@ -86,15 +86,16 @@ android {
 
 dependencies {
 
-    implementation(project("base"))
-    implementation(project("base:compose"))
-    implementation(project("base:lifecycle"))
-    implementation(project("media"))
-    implementation(project("medialib"))
-    implementation(project("home"))
-    implementation(project("search"))
-    implementation(project("library"))
-    implementation(project("user"))
+    implementation(project(":base"))
+    implementation(project(":base:compose"))
+    implementation(project(":base:media"))
+    implementation(project(":base:compose"))
+    implementation(project(":base:lifecycle"))
+    implementation(project(":base:media:medialib"))
+    implementation(project(":feature:home"))
+    implementation(project(":feature:search"))
+    implementation(project(":feature:library"))
+    implementation(project(":feature:user"))
 
     /* Android.material */
     dependencies {

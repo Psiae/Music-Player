@@ -10,10 +10,10 @@ import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaItem.RequestMetadata
 import androidx.media3.common.MediaMetadata
-import com.flammky.common.kotlin.string.setPrefix
-import com.flammky.musicplayer.common.media.audio.meta_tag.audio.mp3.MP3File
-import com.flammky.common.media.audio.AudioFile
 import com.flammky.android.app.AppDelegate
+import com.flammky.common.kotlin.string.setPrefix
+import com.flammky.common.media.audio.AudioFile
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.mp3.MP3File
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemPropertyHelper.mediaUri
 import timber.log.Timber
 import java.io.File
@@ -122,6 +122,8 @@ object MediaItemFactory {
 			af.file?.delete()
 			val embed = af.imageData
 			embed
+		}.also {
+			Timber.d("getEmbeddedImage for $uri returned ${it?.size}")
 		}
 
 		return try {
@@ -141,6 +143,8 @@ object MediaItemFactory {
 		} catch (e: Exception) {
 			Timber.e("getEmbeddedImage exception: $e")
 			null
+		}.also {
+			Timber.d("getEmbeddedImage for $uri returned $it")
 		}
 	}
 

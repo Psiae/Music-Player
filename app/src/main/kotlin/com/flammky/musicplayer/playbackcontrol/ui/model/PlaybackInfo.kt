@@ -1,7 +1,7 @@
 package com.flammky.musicplayer.playbackcontrol.ui.model
 
 import com.flammky.musicplayer.core.media.MediaConstants
-import com.flammky.musicplayer.media.playback.PlaybackConstants
+import com.flammky.musicplayer.base.media.playback.PlaybackConstants
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlin.time.Duration

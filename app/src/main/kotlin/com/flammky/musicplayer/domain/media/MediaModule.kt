@@ -1,8 +1,8 @@
 package com.flammky.musicplayer.domain.media
 
-import com.flammky.musicplayer.base.media.mediaconnection.MediaConnectionDelegate
-import com.flammky.musicplayer.media.mediaconnection.playback.PlaybackConnection
-import com.flammky.musicplayer.media.mediaconnection.playback.real.RealPlaybackConnection
+import com.flammky.musicplayer.base.media.r.MediaConnectionDelegate
+import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConnection
+import com.flammky.musicplayer.base.media.mediaconnection.playback.real.RealPlaybackConnection
 import com.flammky.musicplayer.ui.playbackcontrol.PlaybackControlPresenter
 import com.flammky.musicplayer.ui.playbackcontrol.RealPlaybackControlPresenter
 import dagger.Provides

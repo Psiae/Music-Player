@@ -1,6 +1,6 @@
 package com.flammky.musicplayer.playbackcontrol.domain.usecase
 
-import com.flammky.musicplayer.media.mediaconnection.tracks.Track
+import com.flammky.musicplayer.base.media.mediaconnection.tracks.Track
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.flow.Flow
 

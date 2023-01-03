@@ -20,7 +20,7 @@ import com.flammky.common.kotlin.collection.mutable.forEachClear
 import com.flammky.common.kotlin.coroutines.safeCollect
 import com.flammky.musicplayer.BuildConfig
 import com.flammky.musicplayer.activity.ActivityWatcher
-import com.flammky.musicplayer.base.media.mediaconnection.MediaConnectionDelegate
+import com.flammky.musicplayer.base.media.r.MediaConnectionDelegate
 import com.flammky.musicplayer.core.sdk.VersionHelper
 import com.flammky.musicplayer.domain.musiclib.service.manager.MediaNotificationManager
 import com.flammky.musicplayer.domain.musiclib.service.manager.PlaybackManager

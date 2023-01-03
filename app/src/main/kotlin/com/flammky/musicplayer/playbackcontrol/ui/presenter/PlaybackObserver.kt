@@ -1,7 +1,7 @@
 package com.flammky.musicplayer.playbackcontrol.ui.presenter
 
-import com.flammky.musicplayer.media.playback.PlaybackProperties
-import com.flammky.musicplayer.media.playback.PlaybackQueue
+import com.flammky.musicplayer.base.media.playback.PlaybackProperties
+import com.flammky.musicplayer.base.media.playback.PlaybackQueue
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.StateFlow
 import kotlin.coroutines.CoroutineContext

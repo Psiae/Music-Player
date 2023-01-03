@@ -1,7 +1,7 @@
 package com.flammky.musicplayer.playbackcontrol.domain.usecase
 
-import com.flammky.musicplayer.media.playback.RepeatMode
-import com.flammky.musicplayer.media.playback.ShuffleMode
+import com.flammky.musicplayer.base.media.playback.RepeatMode
+import com.flammky.musicplayer.base.media.playback.ShuffleMode
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.flow.Flow
 import kotlin.time.Duration

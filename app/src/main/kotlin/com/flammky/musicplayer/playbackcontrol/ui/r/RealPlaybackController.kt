@@ -4,9 +4,9 @@ package com.flammky.musicplayer.playbackcontrol.ui.r
 
 import androidx.annotation.GuardedBy
 import com.flammky.kotlin.common.sync.sync
-import com.flammky.musicplayer.media.mediaconnection.playback.PlaybackConnection
-import com.flammky.musicplayer.media.playback.RepeatMode
-import com.flammky.musicplayer.media.playback.ShuffleMode
+import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConnection
+import com.flammky.musicplayer.base.media.playback.RepeatMode
+import com.flammky.musicplayer.base.media.playback.ShuffleMode
 import com.flammky.musicplayer.playbackcontrol.ui.controller.PlaybackController
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
 import com.flammky.musicplayer.ui.playbackcontrol.RealPlaybackControlPresenter

@@ -47,9 +47,9 @@ import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.backgroundColorAsState
 import com.flammky.musicplayer.base.theme.compose.backgroundContentColorAsState
 import com.flammky.musicplayer.base.theme.compose.surfaceVariantColorAsState
-import com.flammky.musicplayer.media.playback.PlaybackConstants
-import com.flammky.musicplayer.media.playback.PlaybackProperties
-import com.flammky.musicplayer.media.playback.PlaybackQueue
+import com.flammky.musicplayer.base.media.playback.PlaybackConstants
+import com.flammky.musicplayer.base.media.playback.PlaybackProperties
+import com.flammky.musicplayer.base.media.playback.PlaybackQueue
 import com.flammky.musicplayer.playbackcontrol.ui.PlaybackControlTrackMetadata
 import com.flammky.musicplayer.playbackcontrol.ui.PlaybackControlViewModel
 import com.flammky.musicplayer.playbackcontrol.ui.controller.PlaybackController

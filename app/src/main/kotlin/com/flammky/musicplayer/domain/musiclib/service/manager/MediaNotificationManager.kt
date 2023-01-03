@@ -389,7 +389,9 @@ class MediaNotificationManager(
 			currentCompleted: suspend () -> Unit = {}
 		): Unit = withContext(this@MediaNotificationManager.appDispatchers.main) {
 			val currentItem = player.currentMediaItem.orEmpty()
-			getItemBitmap(currentItem, true)
+			getItemBitmap(currentItem, true).also { pair ->
+				Timber.d("MediaNotificationManager, getItemBitmap: $pair ${pair?.second?.width} ${pair?.second?.height}")
+			}
 			currentCompleted()
 		}
 
@@ -440,8 +442,10 @@ class MediaNotificationManager(
 						item.putEmbedSize(bytes.size.toFloat() / 1000000)
 					}
 
-					ensureActive()
+					bytes
 				}
+
+				ensureActive()
 
 				// maybe create Fitter Class for some APIs version or Device that require some modification
 				// to have proper display

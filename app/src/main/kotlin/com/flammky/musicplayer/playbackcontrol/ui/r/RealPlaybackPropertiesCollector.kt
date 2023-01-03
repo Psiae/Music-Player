@@ -1,14 +1,14 @@
 package com.flammky.musicplayer.playbackcontrol.ui.r
 
 import com.flammky.kotlin.common.sync.sync
-import com.flammky.musicplayer.media.playback.PlaybackConstants
-import com.flammky.musicplayer.media.playback.PlaybackProperties
+import com.flammky.musicplayer.base.media.playback.PlaybackConstants
+import com.flammky.musicplayer.base.media.playback.PlaybackProperties
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import javax.annotation.concurrent.GuardedBy
-import com.flammky.musicplayer.media.playback.PlaybackController as ConnectionController
+import com.flammky.musicplayer.base.media.playback.PlaybackController as ConnectionController
 
 internal class RealPlaybackPropertiesCollector(
 	private val scope: CoroutineScope,

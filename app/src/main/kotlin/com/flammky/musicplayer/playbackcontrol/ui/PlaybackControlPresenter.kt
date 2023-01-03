@@ -1,7 +1,7 @@
 package com.flammky.musicplayer.playbackcontrol.ui
 
-import com.flammky.musicplayer.media.playback.RepeatMode
-import com.flammky.musicplayer.media.playback.ShuffleMode
+import com.flammky.musicplayer.base.media.playback.RepeatMode
+import com.flammky.musicplayer.base.media.playback.ShuffleMode
 import com.flammky.musicplayer.playbackcontrol.ui.model.PlayPauseCommand
 import com.flammky.musicplayer.playbackcontrol.ui.model.TrackArtwork
 import com.flammky.musicplayer.playbackcontrol.ui.model.TrackDescription

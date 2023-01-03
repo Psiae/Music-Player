@@ -2,10 +2,10 @@ package com.flammky.musicplayer.playbackcontrol.ui.r
 
 import androidx.annotation.GuardedBy
 import com.flammky.kotlin.common.sync.sync
-import com.flammky.musicplayer.media.mediaconnection.playback.PlaybackConnection
-import com.flammky.musicplayer.media.playback.PlaybackConstants
-import com.flammky.musicplayer.media.playback.PlaybackEvent
-import com.flammky.musicplayer.media.playback.PlaybackSession
+import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConnection
+import com.flammky.musicplayer.base.media.playback.PlaybackConstants
+import com.flammky.musicplayer.base.media.playback.PlaybackEvent
+import com.flammky.musicplayer.base.media.playback.PlaybackSession
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel

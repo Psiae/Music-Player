@@ -18,8 +18,8 @@ import com.flammky.android.medialib.providers.metadata.VirtualFileMetadata
 import com.flammky.android.medialib.temp.MediaLibrary
 import com.flammky.android.medialib.temp.image.ArtworkProvider
 import com.flammky.common.kotlin.coroutines.AutoCancelJob
-import com.flammky.musicplayer.base.media.mediaconnection.MediaConnectionRepository
-import com.flammky.musicplayer.media.mediaconnection.playback.PlaybackConnection
+import com.flammky.musicplayer.base.media.r.MediaConnectionRepository
+import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConnection
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive

@@ -7,9 +7,9 @@ import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.android.medialib.player.Player
 import com.flammky.common.kotlin.coroutines.safeCollect
 import com.flammky.kotlin.common.sync.sync
-import com.flammky.musicplayer.base.media.mediaconnection.MediaConnectionDelegate
-import com.flammky.musicplayer.base.media.mediaconnection.MediaConnectionPlayback
-import com.flammky.musicplayer.media.playback.*
+import com.flammky.musicplayer.base.media.playback.*
+import com.flammky.musicplayer.base.media.r.MediaConnectionDelegate
+import com.flammky.musicplayer.base.media.r.MediaConnectionPlayback
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toPersistentList

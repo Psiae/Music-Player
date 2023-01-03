@@ -2,11 +2,11 @@ package com.flammky.musicplayer.ui.playbackcontrol
 
 import com.flammky.kotlin.common.sync.sync
 import com.flammky.musicplayer.base.coroutine.NonBlockingDispatcherPool
-import com.flammky.musicplayer.media.mediaconnection.playback.PlaybackConnection
-import com.flammky.musicplayer.media.playback.PlaybackConstants
-import com.flammky.musicplayer.media.playback.PlaybackQueue
-import com.flammky.musicplayer.media.playback.RepeatMode
-import com.flammky.musicplayer.media.playback.ShuffleMode
+import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConnection
+import com.flammky.musicplayer.base.media.playback.PlaybackConstants
+import com.flammky.musicplayer.base.media.playback.PlaybackQueue
+import com.flammky.musicplayer.base.media.playback.RepeatMode
+import com.flammky.musicplayer.base.media.playback.ShuffleMode
 import com.flammky.musicplayer.playbackcontrol.ui.controller.PlaybackController
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
 import com.flammky.musicplayer.playbackcontrol.ui.r.RealPlaybackController
@@ -376,7 +376,8 @@ internal class RealPlaybackControlPresenter(
 			object ProgressionCollector : PlaybackObserver.ProgressionCollector {
 				override val disposed: Boolean = true
 				override val positionStateFlow: StateFlow<Duration> = MutableStateFlow(PlaybackConstants.POSITION_UNSET)
-				override val bufferedPositionStateFlow: StateFlow<Duration> = MutableStateFlow(PlaybackConstants.POSITION_UNSET)
+				override val bufferedPositionStateFlow: StateFlow<Duration> = MutableStateFlow(
+					PlaybackConstants.POSITION_UNSET)
 
 				override fun startCollectPosition(): Job = Job().apply { cancel() }
 				override fun stopCollectProgress(): Job = Job().apply { cancel() }

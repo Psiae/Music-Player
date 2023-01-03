@@ -9,12 +9,12 @@ import com.flammky.kotlin.common.sync.sync
 import com.flammky.musicplayer.base.auth.AuthService
 import com.flammky.musicplayer.base.auth.LocalAuth
 import com.flammky.musicplayer.base.coroutine.NonBlockingDispatcherPool
-import com.flammky.musicplayer.base.media.mediaconnection.MediaConnectionRepository
+import com.flammky.musicplayer.base.media.r.MediaConnectionRepository
 import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.main.ext.IntentHandler
 import com.flammky.musicplayer.main.ext.MediaIntentHandler
 import com.flammky.musicplayer.main.ui.MainPresenter
-import com.flammky.musicplayer.media.mediaconnection.playback.PlaybackConnection
+import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConnection
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow

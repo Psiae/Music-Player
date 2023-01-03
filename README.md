@@ -22,7 +22,7 @@ Feel free to open an [issue](https://github.com/flammky/Music-Player/issues) for
 
 > Audio Metadata Extraction backed by [JAudioTagger](https://www.jthink.net/jaudiotagger/) 
 >
-> (will improve this myself)
+> because of SAF artwork currently only read to MP3, file specification will be routed to use `InputStream` directly `( TODO )`
 
 > Artwork color generated Playback background on PlaybackController UI backed by [Palette API](https://developer.android.com/develop/ui/views/graphics/palette-colors) 
 >
@@ -40,6 +40,8 @@ Feel free to open an [issue](https://github.com/flammky/Music-Player/issues) for
 > Lyrics
 
 > Metadata writer
+>
+> will probably shift metadata operation to rust via NDK JNI
 
 > Online Artwork Search
 

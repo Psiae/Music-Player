@@ -33,10 +33,12 @@ import java.nio.ByteBuffer
  * TODO unaware of any other binary fields at the moment
  */
 open class Mp4TagBinaryField : Mp4TagField {
+
 	var dataSize = 0
 		protected set
 
 	var data: ByteArray = byteArrayOf()
+		private set
 
 	override var isBinary = false
 		protected set
@@ -73,7 +75,9 @@ open class Mp4TagBinaryField : Mp4TagField {
 		get() = Mp4FieldType.IMPLICIT
 
 	override var dataBytes: ByteArray
-		get() = data
+		get() {
+			return data
+		}
 		set(value) {
 			data = value
 		}

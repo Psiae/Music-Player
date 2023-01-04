@@ -64,8 +64,8 @@ class Mp4TagCoverField : Mp4TagBinaryField {
 	 */
 	constructor(raw: ByteBuffer, imageType: Mp4FieldType) : super(
 		Mp4FieldKey.ARTWORK.fieldName,
-		raw
 	) {
+		build(raw)
 		this.imageType = imageType
 		if (!Mp4FieldType.Companion.isCoverArtType(imageType)) {
 			logger.warning(ErrorMessage.MP4_IMAGE_FORMAT_IS_NOT_TO_EXPECTED_TYPE.getMsg(imageType))
@@ -153,6 +153,7 @@ class Mp4TagCoverField : Mp4TagBinaryField {
 			}
 		}
 
+		println("$this built, data=${data.size}")
 		//After returning buffers position will be after the end of this atom
 	}
 

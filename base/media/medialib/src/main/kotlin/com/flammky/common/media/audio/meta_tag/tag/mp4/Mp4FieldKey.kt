@@ -35,7 +35,8 @@ enum class Mp4FieldKey {
 		Mp4FieldType.TEXT,
 		Tagger.PICARD
 	),
-	ACOUSTID_ID("com.apple.iTunes", "Acoustid Id", Mp4FieldType.TEXT, Tagger.PICARD), AK_ID(
+	ACOUSTID_ID("com.apple.iTunes", "Acoustid Id", Mp4FieldType.TEXT, Tagger.PICARD),
+	AK_ID(
 		"akID",
 		Mp4TagFieldSubType.UNKNOWN,
 		Mp4FieldType.INTEGER,
@@ -46,12 +47,14 @@ enum class Mp4FieldKey {
 		Mp4TagFieldSubType.TEXT,
 		Mp4FieldType.TEXT
 	),
-	ALBUM_ARTIST_SORT("soaa", Mp4TagFieldSubType.TEXT, Mp4FieldType.TEXT), ALBUM_SORT(
+	ALBUM_ARTIST_SORT("soaa", Mp4TagFieldSubType.TEXT, Mp4FieldType.TEXT),
+	ALBUM_SORT(
 		"soal",
 		Mp4TagFieldSubType.TEXT,
 		Mp4FieldType.TEXT
 	),
-	ALBUM_YEAR("com.apple.iTunes", "ALBUM_YEAR", Mp4FieldType.TEXT, Tagger.JAIKOZ), AP_ID(
+	ALBUM_YEAR("com.apple.iTunes", "ALBUM_YEAR", Mp4FieldType.TEXT, Tagger.JAIKOZ),
+	AP_ID(
 		"apID",
 		Mp4TagFieldSubType.UNKNOWN,
 		Mp4FieldType.TEXT
@@ -68,13 +71,15 @@ enum class Mp4FieldKey {
 		Mp4FieldType.TEXT,
 		Tagger.JAIKOZ
 	),
-	ARTIST("©ART", Mp4TagFieldSubType.TEXT, Mp4FieldType.TEXT), ARTISTS(
+	ARTIST("©ART", Mp4TagFieldSubType.TEXT, Mp4FieldType.TEXT),
+	ARTISTS(
 		"com.apple.iTunes",
 		"ARTISTS",
 		Mp4FieldType.TEXT,
 		Tagger.JAIKOZ
 	),
-	ARTISTS_SORT("com.apple.iTunes", "ARTISTS_SORT", Mp4FieldType.TEXT, Tagger.JAIKOZ), ALBUM_ARTISTS(
+	ARTISTS_SORT("com.apple.iTunes", "ARTISTS_SORT", Mp4FieldType.TEXT, Tagger.JAIKOZ),
+	ALBUM_ARTISTS(
 		"com.apple.iTunes",
 		"ALBUM_ARTISTS",
 		Mp4FieldType.TEXT,
@@ -86,34 +91,40 @@ enum class Mp4FieldKey {
 		Mp4FieldType.TEXT,
 		Tagger.JAIKOZ
 	),
-	ARTIST_SORT("soar", Mp4TagFieldSubType.TEXT, Mp4FieldType.TEXT), ARTWORK(
+	ARTIST_SORT("soar", Mp4TagFieldSubType.TEXT, Mp4FieldType.TEXT),
+	ARTWORK(
 		"covr",
 		Mp4TagFieldSubType.ARTWORK,
 		Mp4FieldType.COVERART_JPEG
 	),
-	ASIN("com.apple.iTunes", "ASIN", Mp4FieldType.TEXT, Tagger.PICARD), AT_ID(
+	ASIN("com.apple.iTunes", "ASIN", Mp4FieldType.TEXT, Tagger.PICARD),
+	AT_ID(
 		"atID",
 		Mp4TagFieldSubType.UNKNOWN,
 		Mp4FieldType.INTEGER,
 		4
 	),
-	BARCODE("com.apple.iTunes", "BARCODE", Mp4FieldType.TEXT, Tagger.PICARD), BPM(
+	BARCODE("com.apple.iTunes", "BARCODE", Mp4FieldType.TEXT, Tagger.PICARD),
+	BPM(
 		"tmpo",
 		Mp4TagFieldSubType.BYTE,
 		Mp4FieldType.INTEGER,
 		2
 	),
-	CATALOGNO("com.apple.iTunes", "CATALOGNUMBER", Mp4FieldType.TEXT, Tagger.PICARD), CATEGORY(
+	CATALOGNO("com.apple.iTunes", "CATALOGNUMBER", Mp4FieldType.TEXT, Tagger.PICARD),
+	CATEGORY(
 		"catg",
 		Mp4TagFieldSubType.TEXT,
 		Mp4FieldType.TEXT
 	),
-	CDDB_1("com.apple.iTunes", "iTunes_CDDB_1", Mp4FieldType.TEXT), CDDB_IDS(
+	CDDB_1("com.apple.iTunes", "iTunes_CDDB_1", Mp4FieldType.TEXT),
+	CDDB_IDS(
 		"com.apple.iTunes",
 		"iTunes_CDDB_IDs",
 		Mp4FieldType.TEXT
 	),
-	CDDB_TRACKNUMBER("com.apple.iTunes", "iTunes_CDDB_TrackNumber", Mp4FieldType.TEXT), CN_ID(
+	CDDB_TRACKNUMBER("com.apple.iTunes", "iTunes_CDDB_TrackNumber", Mp4FieldType.TEXT),
+	CN_ID(
 		"cnID",
 		Mp4TagFieldSubType.UNKNOWN,
 		Mp4FieldType.INTEGER,
@@ -125,7 +136,8 @@ enum class Mp4FieldKey {
 		Mp4FieldType.TEXT,
 		Tagger.JAIKOZ
 	),
-	CHOIR_SORT("com.apple.iTunes", "CHOIR_SORT", Mp4FieldType.TEXT, Tagger.JAIKOZ), CLASSICAL_CATALOG(
+	CHOIR_SORT("com.apple.iTunes", "CHOIR_SORT", Mp4FieldType.TEXT, Tagger.JAIKOZ),
+	CLASSICAL_CATALOG(
 		"com.apple.iTunes",
 		"CLASSICAL_CATALOG",
 		Mp4FieldType.TEXT,
@@ -137,13 +149,15 @@ enum class Mp4FieldKey {
 		Mp4FieldType.TEXT,
 		Tagger.JAIKOZ
 	),
-	COMMENT("©cmt", Mp4TagFieldSubType.TEXT, Mp4FieldType.TEXT), COMPILATION(
+	COMMENT("©cmt", Mp4TagFieldSubType.TEXT, Mp4FieldType.TEXT),
+	COMPILATION(
 		"cpil",
 		Mp4TagFieldSubType.BYTE,
 		Mp4FieldType.INTEGER,
 		1
 	),
-	COMPOSER("©wrt", Mp4TagFieldSubType.TEXT, Mp4FieldType.TEXT), COMPOSER_SORT(
+	COMPOSER("©wrt", Mp4TagFieldSubType.TEXT, Mp4FieldType.TEXT),
+	COMPOSER_SORT(
 		"soco",
 		Mp4TagFieldSubType.TEXT,
 		Mp4FieldType.TEXT
@@ -166,12 +180,14 @@ enum class Mp4FieldKey {
 		Mp4FieldType.TEXT,
 		Tagger.JAIKOZ
 	),
-	CONTENT_TYPE("stik", Mp4TagFieldSubType.BYTE, Mp4FieldType.INTEGER, 1), COPYRIGHT(
+	CONTENT_TYPE("stik", Mp4TagFieldSubType.BYTE, Mp4FieldType.INTEGER, 1),
+	COPYRIGHT(
 		"cprt",
 		Mp4TagFieldSubType.TEXT,
 		Mp4FieldType.TEXT
 	),
-	COUNTRY("com.apple.iTunes", "Country", Mp4FieldType.TEXT, Tagger.PICARD), CUSTOM_1(
+	COUNTRY("com.apple.iTunes", "Country", Mp4FieldType.TEXT, Tagger.PICARD),
+	CUSTOM_1(
 		"cus1",
 		Mp4TagFieldSubType.TEXT,
 		Mp4FieldType.TEXT,
@@ -195,12 +211,14 @@ enum class Mp4FieldKey {
 		Mp4FieldType.TEXT,
 		Tagger.MEDIA_MONKEY
 	),
-	CUSTOM_5("cus5", Mp4TagFieldSubType.TEXT, Mp4FieldType.TEXT, Tagger.MEDIA_MONKEY), DAY(
+	CUSTOM_5("cus5", Mp4TagFieldSubType.TEXT, Mp4FieldType.TEXT, Tagger.MEDIA_MONKEY),
+	DAY(
 		"©day",
 		Mp4TagFieldSubType.TEXT,
 		Mp4FieldType.TEXT
 	),
-	DESCRIPTION("desc", Mp4TagFieldSubType.TEXT, Mp4FieldType.TEXT), DISCNUMBER(
+	DESCRIPTION("desc", Mp4TagFieldSubType.TEXT, Mp4FieldType.TEXT),
+	DISCNUMBER(
 		"disk",
 		Mp4TagFieldSubType.DISC_NO,
 		Mp4FieldType.IMPLICIT
@@ -223,7 +241,8 @@ enum class Mp4FieldKey {
 		Mp4FieldType.TEXT,
 		Tagger.SONGKONG
 	),
-	ENCODER("©too", Mp4TagFieldSubType.TEXT, Mp4FieldType.TEXT), ENGINEER(
+	ENCODER("©too", Mp4TagFieldSubType.TEXT, Mp4FieldType.TEXT),
+	ENGINEER(
 		"com.apple.iTunes",
 		"ENGINEER",
 		Mp4FieldType.TEXT,
@@ -252,18 +271,21 @@ enum class Mp4FieldKey {
 		Mp4TagFieldSubType.NUMBER,
 		Mp4FieldType.IMPLICIT
 	),  //TODO Actually seems to store text but is marked as numeric!
-	FBPM("com.apple.iTunes", "fBPM", Mp4FieldType.TEXT, Tagger.JAIKOZ), GENRE(
+	FBPM("com.apple.iTunes", "fBPM", Mp4FieldType.TEXT, Tagger.JAIKOZ),
+	GENRE(
 		"gnre",
 		Mp4TagFieldSubType.GENRE,
 		Mp4FieldType.IMPLICIT
 	),
-	GENRE_CUSTOM("©gen", Mp4TagFieldSubType.TEXT, Mp4FieldType.TEXT), GE_ID(
+	GENRE_CUSTOM("©gen", Mp4TagFieldSubType.TEXT, Mp4FieldType.TEXT),
+	GE_ID(
 		"geID",
 		Mp4TagFieldSubType.UNKNOWN,
 		Mp4FieldType.INTEGER,
 		4
 	),
-	GROUP("com.apple.iTunes", "GROUP", Mp4FieldType.TEXT, Tagger.JAIKOZ), GROUPING(
+	GROUP("com.apple.iTunes", "GROUP", Mp4FieldType.TEXT, Tagger.JAIKOZ),
+	GROUPING(
 		"©grp",
 		Mp4TagFieldSubType.TEXT,
 		Mp4FieldType.TEXT
@@ -286,13 +308,15 @@ enum class Mp4FieldKey {
 		Mp4FieldType.TEXT,
 		Tagger.ROON
 	),
-	IPI("com.apple.iTunes", "IPI", Mp4FieldType.TEXT, Tagger.PICARD), ISRC(
+	IPI("com.apple.iTunes", "IPI", Mp4FieldType.TEXT, Tagger.PICARD),
+	ISRC(
 		"com.apple.iTunes",
 		"ISRC",
 		Mp4FieldType.TEXT,
 		Tagger.JAIKOZ
 	),
-	ISWC("com.apple.iTunes", "ISWC", Mp4FieldType.TEXT, Tagger.JAIKOZ), ISRC_MMBETA(
+	ISWC("com.apple.iTunes", "ISWC", Mp4FieldType.TEXT, Tagger.JAIKOZ),
+	ISRC_MMBETA(
 		"isrc",
 		Mp4TagFieldSubType.TEXT,
 		Mp4FieldType.TEXT,
@@ -304,7 +328,8 @@ enum class Mp4FieldKey {
 		Mp4FieldType.TEXT,
 		Tagger.JAIKOZ
 	),
-	IS_GREATEST_HITS("com.apple.iTunes", "IS_GREATEST_HITS", Mp4FieldType.TEXT, Tagger.JAIKOZ), IS_HD(
+	IS_GREATEST_HITS("com.apple.iTunes", "IS_GREATEST_HITS", Mp4FieldType.TEXT, Tagger.JAIKOZ),
+	IS_HD(
 		"com.apple.iTunes",
 		"IS_HD",
 		Mp4FieldType.TEXT,
@@ -316,7 +341,8 @@ enum class Mp4FieldKey {
 		Mp4FieldType.TEXT,
 		Tagger.ROON
 	),
-	IS_SOUNDTRACK("com.apple.iTunes", "IS_SOUNDTRACK", Mp4FieldType.TEXT, Tagger.JAIKOZ), ITUNES_NORM(
+	IS_SOUNDTRACK("com.apple.iTunes", "IS_SOUNDTRACK", Mp4FieldType.TEXT, Tagger.JAIKOZ),
+	ITUNES_NORM(
 		"com.apple.iTunes",
 		"iTunNORM",
 		Mp4FieldType.TEXT
@@ -338,7 +364,8 @@ enum class Mp4FieldKey {
 		Mp4FieldType.TEXT,
 		Tagger.JAIKOZ
 	),
-	LABEL("com.apple.iTunes", "LABEL", Mp4FieldType.TEXT, Tagger.PICARD), LANGUAGE(
+	LABEL("com.apple.iTunes", "LABEL", Mp4FieldType.TEXT, Tagger.PICARD),
+	LANGUAGE(
 		"com.apple.iTunes",
 		"LANGUAGE",
 		Mp4FieldType.TEXT,
@@ -356,12 +383,14 @@ enum class Mp4FieldKey {
 		Mp4FieldType.TEXT,
 		Tagger.JAIKOZ
 	),
-	LYRICIST_MM3BETA("lyrc", Mp4TagFieldSubType.TEXT, Mp4FieldType.TEXT, Tagger.MEDIA_MONKEY), LYRICS(
+	LYRICIST_MM3BETA("lyrc", Mp4TagFieldSubType.TEXT, Mp4FieldType.TEXT, Tagger.MEDIA_MONKEY),
+	LYRICS(
 		"©lyr",
 		Mp4TagFieldSubType.TEXT,
 		Mp4FieldType.TEXT
 	),
-	MEDIA("com.apple.iTunes", "MEDIA", Mp4FieldType.TEXT, Tagger.PICARD), MIXER(
+	MEDIA("com.apple.iTunes", "MEDIA", Mp4FieldType.TEXT, Tagger.PICARD),
+	MIXER(
 		"com.apple.iTunes",
 		"MIXER",
 		Mp4FieldType.TEXT,
@@ -493,13 +522,15 @@ enum class Mp4FieldKey {
 		Mp4FieldType.TEXT,
 		Tagger.JAIKOZ
 	),
-	MOOD_HAPPY("com.apple.iTunes", "MOOD_HAPPY", Mp4FieldType.TEXT, Tagger.JAIKOZ), MOOD_INSTRUMENTAL(
+	MOOD_HAPPY("com.apple.iTunes", "MOOD_HAPPY", Mp4FieldType.TEXT, Tagger.JAIKOZ),
+	MOOD_INSTRUMENTAL(
 		"com.apple.iTunes",
 		"MOOD_INSTRUMENTAL",
 		Mp4FieldType.TEXT,
 		Tagger.JAIKOZ
 	),
-	MOOD_MM3BETA("mood", Mp4TagFieldSubType.TEXT, Mp4FieldType.TEXT, Tagger.MEDIA_MONKEY), MOOD_PARTY(
+	MOOD_MM3BETA("mood", Mp4TagFieldSubType.TEXT, Mp4FieldType.TEXT, Tagger.MEDIA_MONKEY),
+	MOOD_PARTY(
 		"com.apple.iTunes",
 		"MOOD_PARTY",
 		Mp4FieldType.TEXT,
@@ -739,7 +770,8 @@ enum class Mp4FieldKey {
 		Mp4FieldType.TEXT,
 		Tagger.MEDIA_MONKEY
 	),
-	OPUS("com.apple.iTunes", "OPUS", Mp4FieldType.TEXT, Tagger.JAIKOZ), ORCHESTRA(
+	OPUS("com.apple.iTunes", "OPUS", Mp4FieldType.TEXT, Tagger.JAIKOZ),
+	ORCHESTRA(
 		"com.apple.iTunes",
 		"ORCHESTRA",
 		Mp4FieldType.TEXT,
@@ -822,13 +854,15 @@ enum class Mp4FieldKey {
 		Mp4FieldType.TEXT,
 		Tagger.JAIKOZ
 	),
-	PERIOD("com.apple.iTunes", "PERIOD", Mp4FieldType.TEXT, Tagger.JAIKOZ), PL_ID(
+	PERIOD("com.apple.iTunes", "PERIOD", Mp4FieldType.TEXT, Tagger.JAIKOZ),
+	PL_ID(
 		"plID",
 		Mp4TagFieldSubType.UNKNOWN,
 		Mp4FieldType.INTEGER,
 		8
 	),
-	PODCAST_KEYWORD("keyw", Mp4TagFieldSubType.TEXT, Mp4FieldType.TEXT), PODCAST_URL(
+	PODCAST_KEYWORD("keyw", Mp4TagFieldSubType.TEXT, Mp4FieldType.TEXT),
+	PODCAST_URL(
 		"purl",
 		Mp4TagFieldSubType.NUMBER,
 		Mp4FieldType.IMPLICIT
@@ -851,7 +885,8 @@ enum class Mp4FieldKey {
 		Mp4FieldType.TEXT,
 		Tagger.MEDIA_MONKEY
 	),
-	RANKING("com.apple.iTunes", "RANKING", Mp4FieldType.TEXT, Tagger.JAIKOZ), RATING(
+	RANKING("com.apple.iTunes", "RANKING", Mp4FieldType.TEXT, Tagger.JAIKOZ),
+	RATING(
 		"rtng",
 		Mp4TagFieldSubType.BYTE,
 		Mp4FieldType.INTEGER,
@@ -899,19 +934,22 @@ enum class Mp4FieldKey {
 		Mp4FieldType.TEXT,
 		Tagger.ROON
 	),
-	ROONTRACKTAG("com.apple.iTunes", "ROONTRACKTAG", Mp4FieldType.TEXT, Tagger.ROON), SCORE(
+	ROONTRACKTAG("com.apple.iTunes", "ROONTRACKTAG", Mp4FieldType.TEXT, Tagger.ROON),
+	SCORE(
 		"rate",
 		Mp4TagFieldSubType.TEXT,
 		Mp4FieldType.TEXT,
 		Tagger.MEDIA_MONKEY
 	),  //As in mark out of 100
-	SCRIPT("com.apple.iTunes", "SCRIPT", Mp4FieldType.TEXT, Tagger.JAIKOZ), SF_ID(
+	SCRIPT("com.apple.iTunes", "SCRIPT", Mp4FieldType.TEXT, Tagger.JAIKOZ),
+	SF_ID(
 		"sfID",
 		Mp4TagFieldSubType.UNKNOWN,
 		Mp4FieldType.INTEGER,
 		4
 	),
-	SECTION("com.apple.iTunes", "SECTION", Mp4FieldType.TEXT, Tagger.ROON), SHOW(
+	SECTION("com.apple.iTunes", "SECTION", Mp4FieldType.TEXT, Tagger.ROON),
+	SHOW(
 		"tvsh",
 		Mp4TagFieldSubType.TEXT,
 		Mp4FieldType.TEXT
@@ -945,7 +983,8 @@ enum class Mp4FieldKey {
 		Mp4FieldType.TEXT,
 		Tagger.MEDIA_MONKEY
 	),
-	TIMBRE("com.apple.iTunes", "TIMBRE_BRIGHTNESS", Mp4FieldType.TEXT, Tagger.JAIKOZ), TITLE(
+	TIMBRE("com.apple.iTunes", "TIMBRE_BRIGHTNESS", Mp4FieldType.TEXT, Tagger.JAIKOZ),
+	TITLE(
 		"©nam",
 		Mp4TagFieldSubType.TEXT,
 		Mp4FieldType.TEXT
@@ -967,7 +1006,8 @@ enum class Mp4FieldKey {
 		Mp4TagFieldSubType.TRACK_NO,
 		Mp4FieldType.IMPLICIT
 	),
-	TV_EPISODE("tves", Mp4TagFieldSubType.BYTE, Mp4FieldType.INTEGER, 1), TV_EPISODE_NUMBER(
+	TV_EPISODE("tves", Mp4TagFieldSubType.BYTE, Mp4FieldType.INTEGER, 1),
+	TV_EPISODE_NUMBER(
 		"tven",
 		Mp4TagFieldSubType.TEXT,
 		Mp4FieldType.TEXT
@@ -1032,7 +1072,8 @@ enum class Mp4FieldKey {
 		Mp4FieldType.TEXT,
 		Tagger.WINAMP
 	),
-	WORK("©wrk", Mp4TagFieldSubType.TEXT, Mp4FieldType.TEXT), WORK_TYPE(
+	WORK("©wrk", Mp4TagFieldSubType.TEXT, Mp4FieldType.TEXT),
+	WORK_TYPE(
 		"com.apple.iTunes",
 		"WORK_TYPE",
 		Mp4FieldType.TEXT,

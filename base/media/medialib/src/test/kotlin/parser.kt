@@ -6,7 +6,7 @@ object M {
 
 	@JvmStatic
 	fun main(args: Array<String>) {
-		testOgg()
+		testWav()
 	}
 	private fun testOgg() {
 		val opusFile = File("C:/Users/Kyle/Desktop/Dev/Media/Audio/OGG/OGG-sample-valid.ogg")
@@ -28,6 +28,12 @@ object M {
 
 	private fun testM4A() {
 		val testFile = File("C:/Users/Kyle/Desktop/Dev/Media/Audio/M4A/M4A-AAC-sample-convert.m4a")
+		val af = AudioFileIO.readMagic(testFile)
+		println("artDataSize=${af.tag?.firstArtwork?.binaryData?.size}")
+	}
+
+	private fun testWav() {
+		val testFile = File("C:/Users/Kyle/Desktop/Dev/Media/Audio/WAV/WAV-sample-valid.wav")
 		val af = AudioFileIO.readMagic(testFile)
 		println("artDataSize=${af.tag?.firstArtwork?.binaryData?.size}")
 	}

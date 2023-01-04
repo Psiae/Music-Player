@@ -20,6 +20,7 @@ package com.flammky.musicplayer.common.media.audio.meta_tag.tag.wav
 
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.generic.GenericTag
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.iff.ChunkHeader
+import com.flammky.musicplayer.common.media.audio.meta_tag.logging.ErrorMessage
 import com.flammky.musicplayer.common.media.audio.meta_tag.logging.Hex
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.*
 import java.util.*
@@ -95,6 +96,19 @@ class WavInfoTag : GenericTag() {
 
 	fun getUnrecognisedFields(): List<TagTextField> {
 		return unrecognisedFields
+	}
+
+	override fun createField(genericKey: FieldKey?, vararg values: String?): TagField? {
+		return if (supportedKeys.contains(genericKey)) {
+			require(values[0] != null) { ErrorMessage.GENERAL_INVALID_NULL_ARGUMENT.msg }
+			GenericTagTextField(genericKey!!.name, values[0])
+		} else {
+			throw UnsupportedOperationException(
+				ErrorMessage.OPERATION_NOT_SUPPORTED_FOR_FIELD.getMsg(
+					genericKey
+				)
+			)
+		}
 	}
 
 	companion object {

@@ -18,10 +18,10 @@ import java.util.logging.Logger
  * instead contains a number of name,size, value tuples. So for this reason we do not subclass the Chunk class
  */
 class WavInfoChunk(tag: WavTag, private val loggingName: String) {
-	private val wavInfoTag: WavInfoTag
+
+	private val wavInfoTag: WavInfoTag = WavInfoTag()
 
 	init {
-		wavInfoTag = WavInfoTag()
 		tag.infoTag = wavInfoTag
 	}
 

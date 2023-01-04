@@ -57,22 +57,20 @@ class WavInfoReader(private val loggingName: String) {
 
 	fun read(fc: FileChannel): GenericAudioHeader {
 		val info = GenericAudioHeader()
-		fc.use { fileChannel ->
-			if (WavRIFFHeader.isValidHeader(
-					loggingName, fileChannel
-				)
-			) {
-				while (fileChannel.position() < fileChannel.size()) {
-					//Problem reading chunk and no way to workround it so exit loop
-					if (!readChunk(fileChannel, info)) {
-						break
-					}
+		if (WavRIFFHeader.isValidHeader(
+				loggingName, fc
+			)
+		) {
+			while (fc.position() < fc.size()) {
+				//Problem reading chunk and no way to workround it so exit loop
+				if (!readChunk(fc, info)) {
+					break
 				}
-			} else {
-				throw CannotReadException(
-					"$loggingName Wav RIFF Header not valid"
-				)
 			}
+		} else {
+			throw CannotReadException(
+				"$loggingName Wav RIFF Header not valid"
+			)
 		}
 		return if (isFoundFormat && isFoundAudio) {
 			info.format = (SupportedFileFormat.WAV.displayName)

@@ -25,6 +25,7 @@ import java.io.*
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.channels.FileChannel
+import java.nio.channels.ReadableByteChannel
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 import java.util.*
@@ -83,6 +84,26 @@ object Utils {
 		return getMagicExt(fileType)
 	}
 
+	fun getMagicExtension(fc: FileChannel): String? {
+		val fileType = getMagicFileType(fc)
+		return getMagicExt(fileType)
+	}
+
+	@Throws(IOException::class)
+	fun fetchFromChannel(ch: ReadableByteChannel, size: Int): ByteBuffer {
+		val buf = ByteBuffer.allocate(size)
+		readFromChannel(ch, buf)
+		buf.flip()
+		return buf
+	}
+
+	@Throws(IOException::class)
+	fun readFromChannel(channel: ReadableByteChannel, buffer: ByteBuffer): Int {
+		val rem = buffer.position()
+		while (channel.read(buffer) != -1 && buffer.hasRemaining());
+		return buffer.position() - rem
+	}
+
 	/**
 	 * Computes a number whereby the 1st byte is the least signifcant and the last
 	 * byte is the most significant.
@@ -100,6 +121,10 @@ object Utils {
 			number += (b[start + i].toInt() and 0xFF shl i * 8).toLong()
 		}
 		return number
+	}
+
+	fun getLongLE(b: ByteArray, start: Int, end: Int): Long {
+		return getLongLE(ByteBuffer.wrap(b), start, end)
 	}
 
 	/**
@@ -323,6 +348,16 @@ object Utils {
 		val buf = ByteBuffer.allocate(charsToRead)
 		channel.read(buf)
 		return String(buf.array(), StandardCharsets.US_ASCII)
+	}
+
+	fun readString(buf: ByteBuffer, charsToRead: Int): String {
+		return String(buf.array(), StandardCharsets.US_ASCII)
+	}
+
+	fun skip(buffer: ByteBuffer, count: Int): Int {
+		val toSkip = buffer.remaining().coerceAtMost(count)
+		buffer.position(buffer.position() + toSkip)
+		return toSkip
 	}
 
 	/**

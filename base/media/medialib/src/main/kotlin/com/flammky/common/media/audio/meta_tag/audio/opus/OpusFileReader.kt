@@ -1,29 +1,9 @@
-/*
- * Entagged Audio Tag library
- * Copyright (c) 2003-2005 Raphaël Slinckx <raphael@slinckx.net>
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
- */
-package com.flammky.musicplayer.common.media.audio.meta_tag.audio.ogg
+package com.flammky.common.media.audio.meta_tag.audio.opus
 
-import com.flammky.common.media.audio.meta_tag.audio.opus.OpusInfoReader
-import com.flammky.common.media.audio.meta_tag.audio.opus.OpusVorbisTagReader
+
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadException
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.generic.AudioFileReader
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.generic.GenericAudioHeader
-import com.flammky.musicplayer.common.media.audio.meta_tag.audio.ogg.util.OggInfoReader
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.Tag
 import org.jaudiotagger.audio.ogg.util.OggPageHeader
 import java.io.File
@@ -32,60 +12,34 @@ import java.io.RandomAccessFile
 import java.nio.channels.FileChannel
 import java.util.logging.Logger
 
+
 /**
- * Read Ogg File Tag and Encoding information
- *
- * Only implemented for ogg files containing a vorbis stream with vorbis comments
+ * Read Ogg Opus File Tag and Encoding information
  */
-class OggFileReader : AudioFileReader() {
-	private val ir: OggInfoReader
-	private val vtr: OggVorbisTagReader
+class OpusFileReader : AudioFileReader() {
+	private val ir: OpusInfoReader = OpusInfoReader()
+	private val vtr: OpusVorbisTagReader = OpusVorbisTagReader()
 
-	init {
-		ir = OggInfoReader()
-		vtr = OggVorbisTagReader()
-	}
-
-	// TODO: Decide whether to change the `magicRead` or the `infoReader`
-
-	@Throws(CannotReadException::class, IOException::class)
 	override fun getEncodingInfo(raf: RandomAccessFile): GenericAudioHeader {
-		return try {
-			ir.read(raf)
-		} catch (crx: CannotReadException) {
-			raf.seek(0)
-			OpusInfoReader().read(raf)
-		}
+		return ir.read(raf)
 	}
 
 	override fun getEncodingInfo(fc: FileChannel): GenericAudioHeader {
-		return try {
-			ir.read(fc)
-		} catch (crx: CannotReadException) {
-			OpusInfoReader().read(fc.position(0))
-		}
+		return ir.read(fc)
 	}
 
-	@Throws(CannotReadException::class, IOException::class)
 	override fun getTag(raf: RandomAccessFile): Tag {
-		return try {
-			vtr.read(raf)
-		} catch (crx: CannotReadException) {
-			raf.seek(0)
-			OpusVorbisTagReader().read(raf)
-		}
+		return vtr.read(raf)
 	}
 
-	override fun getTag(fc: FileChannel): Tag {
-		return try {
-			vtr.read(fc)
-		} catch (crx: CannotReadException) {
-			OpusVorbisTagReader().read(fc.position(0))
-		}
+	override fun getTag(fc: FileChannel): Tag? {
+		return vtr.read(fc)
 	}
+
 
 	/**
 	 * Return count Ogg Page header, count starts from zero
+	 *
 	 *
 	 * count=0; should return PageHeader that contains Vorbis Identification Header
 	 * count=1; should return Pageheader that contains VorbisComment and possibly SetupHeader
@@ -112,6 +66,7 @@ class OggFileReader : AudioFileReader() {
 	/**
 	 * Summarize all the ogg headers in a file
 	 *
+	 *
 	 * A useful utility function
 	 *
 	 * @param oggFile
@@ -127,9 +82,9 @@ class OggFileReader : AudioFileReader() {
 			println("pageHeader finishes at absolute file position:" + raf.filePointer)
 			println(
 				"""
-    $pageHeader
+								$pageHeader
 
-    """.trimIndent()
+								""".trimIndent()
 			)
 			raf.seek(raf.filePointer + pageHeader.getPageLength())
 		}
@@ -154,9 +109,9 @@ class OggFileReader : AudioFileReader() {
 			println("pageHeader finishes at absolute file position:" + raf.filePointer)
 			println(
 				"""
-    $pageHeader
+								$pageHeader
 
-    """.trimIndent()
+								""".trimIndent()
 			)
 			raf.seek(raf.filePointer + pageHeader.getPageLength())
 			i++
@@ -169,7 +124,6 @@ class OggFileReader : AudioFileReader() {
 	}
 
 	companion object {
-		// Logger Object
-		var logger = Logger.getLogger("org.jaudiotagger.audio.ogg")
+		var logger = Logger.getLogger(OpusFileReader::class.java.getPackage().name)
 	}
 }

@@ -20,12 +20,12 @@
 package com.flammky.musicplayer.common.media.audio.meta_tag.audio.ogg
 
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadException
-import com.flammky.musicplayer.common.media.audio.meta_tag.audio.ogg.util.OggPageHeader
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.ogg.util.VorbisHeader
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.ogg.util.VorbisPacketType
 import com.flammky.musicplayer.common.media.audio.meta_tag.logging.ErrorMessage
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.Tag
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.vorbiscomment.VorbisCommentReader
+import org.jaudiotagger.audio.ogg.util.OggPageHeader
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.RandomAccessFile
@@ -39,7 +39,7 @@ import java.util.logging.Logger
  *
  * Vorbis is the audiostream within an ogg file, Vorbis uses VorbisComments as its tag
  */
-class OggVorbisTagReader {
+open class OggVorbisTagReader {
 	private val vorbisCommentReader: VorbisCommentReader
 
 	init {
@@ -58,7 +58,7 @@ class OggVorbisTagReader {
 	 * @throws IOException
 	 */
 	@Throws(CannotReadException::class, IOException::class)
-	fun read(raf: RandomAccessFile?): Tag {
+	open fun read(raf: RandomAccessFile?): Tag {
 		logger.config("Starting to read ogg vorbis tag from file:")
 		val rawVorbisCommentData = readRawPacketData(raf)
 
@@ -68,7 +68,7 @@ class OggVorbisTagReader {
 		return tag
 	}
 
-	fun read(fc: FileChannel): Tag {
+	open fun read(fc: FileChannel): Tag {
 		val rawVorbisCommentData = readRawPacketData(fc)
 		//Begin tag reading
 		return vorbisCommentReader.read(rawVorbisCommentData, true, null)
@@ -83,7 +83,7 @@ class OggVorbisTagReader {
 	 * @throws IOException
 	 */
 	@Throws(CannotReadException::class, IOException::class)
-	fun readOggVorbisRawSize(raf: RandomAccessFile?): Int {
+	open fun readOggVorbisRawSize(raf: RandomAccessFile?): Int {
 		val rawVorbisCommentData = readRawPacketData(raf)
 		return rawVorbisCommentData.size + VorbisHeader.FIELD_PACKET_TYPE_LENGTH + VorbisHeader.FIELD_CAPTURE_PATTERN_LENGTH
 	}
@@ -100,7 +100,7 @@ class OggVorbisTagReader {
 		CannotReadException::class,
 		IOException::class
 	)
-	fun readRawPacketData(raf: RandomAccessFile?): ByteArray {
+	open fun readRawPacketData(raf: RandomAccessFile?): ByteArray {
 		logger.fine(
 			"Read 1st page"
 		)
@@ -124,6 +124,7 @@ class OggVorbisTagReader {
 		val b =
 			ByteArray(VorbisHeader.FIELD_PACKET_TYPE_LENGTH + VorbisHeader.FIELD_CAPTURE_PATTERN_LENGTH)
 		raf.read(b)
+
 		if (!isVorbisCommentHeader(b)) {
 			throw CannotReadException(
 				"Cannot find comment block (no vorbiscomment header)"
@@ -134,7 +135,7 @@ class OggVorbisTagReader {
 		return convertToVorbisCommentPacket(pageHeader, raf)
 	}
 
-	fun readRawPacketData(fc: FileChannel): ByteArray {
+	open fun readRawPacketData(fc: FileChannel): ByteArray {
 		//1st page = codec infos
 		var pageHeader =
 			OggPageHeader.read(fc)
@@ -145,7 +146,8 @@ class OggVorbisTagReader {
 		//Now at start of packets on page 2 , check this is the vorbis comment header
 		val b = ByteBuffer.allocate(VorbisHeader.FIELD_PACKET_TYPE_LENGTH + VorbisHeader.FIELD_CAPTURE_PATTERN_LENGTH)
 		fc.read(b)
-		if (!isVorbisCommentHeader(b.array())) {
+		val arr = b.array()
+		if (!isVorbisCommentHeader(arr)) {
 			throw CannotReadException(
 				"Cannot find comment block (no vorbiscomment header)"
 			)
@@ -163,7 +165,7 @@ class OggVorbisTagReader {
 	 * @param headerData
 	 * @return true if the headerData matches a VorbisComment header i.e is a Vorbis header of type COMMENT_HEADER
 	 */
-	fun isVorbisCommentHeader(headerData: ByteArray): Boolean {
+	open fun isVorbisCommentHeader(headerData: ByteArray): Boolean {
 		val vorbis = String(
 			headerData,
 			VorbisHeader.FIELD_CAPTURE_PATTERN_POS,
@@ -248,7 +250,7 @@ class OggVorbisTagReader {
 		}
 	}
 
-	private fun convertToVorbisCommentPacket(
+	open protected fun convertToVorbisCommentPacket(
 		startVorbisCommentPage: OggPageHeader,
 		fc: FileChannel
 	): ByteArray {

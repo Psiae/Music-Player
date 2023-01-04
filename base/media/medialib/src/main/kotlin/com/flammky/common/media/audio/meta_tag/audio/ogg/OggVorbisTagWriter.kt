@@ -23,11 +23,12 @@ import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.Cann
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotWriteException
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.generic.Utils.readThreeBytesAsChars
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.ogg.util.OggCRCFactory.Companion.computeCRC
-import com.flammky.musicplayer.common.media.audio.meta_tag.audio.ogg.util.OggPageHeader
-import com.flammky.musicplayer.common.media.audio.meta_tag.audio.ogg.util.OggPageHeader.Companion.read
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.Tag
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.id3.AbstractID3v1Tag
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.vorbiscomment.VorbisCommentTag.Companion.createNewTag
+import org.jaudiotagger.audio.ogg.OggVorbisCommentTagCreator
+import org.jaudiotagger.audio.ogg.util.OggPageHeader
+import org.jaudiotagger.audio.ogg.util.OggPageHeader.Companion.read
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.RandomAccessFile

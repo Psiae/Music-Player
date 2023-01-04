@@ -16,7 +16,7 @@ enum class SupportedFileFormat
 	 */
 	val displayName: String
 ) {
-	OGG("ogg", "Ogg"), OGA("oga", "Oga"), MP3("mp3", "Mp3"), FLAC("flac", "Flac"), MP4(
+	OGG("ogg", "Ogg"), OPUS("opus", "Opus"), OGA("oga", "Oga"), MP3("mp3", "Mp3"), FLAC("flac", "Flac"), MP4(
 		"mp4",
 		"Mp4"
 	),

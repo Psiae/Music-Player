@@ -16,7 +16,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -29,6 +28,9 @@ import coil.request.ImageRequest
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.androidx.viewmodel.compose.activityViewModel
 import com.flammky.musicplayer.base.compose.LocalLayoutVisibility
+import com.flammky.musicplayer.base.theme.compose.backgroundColorAsState
+import com.flammky.musicplayer.base.theme.compose.isDarkAsState
+import com.flammky.musicplayer.base.theme.compose.surfaceVariantColorAsState
 import com.flammky.musicplayer.library.R
 import com.flammky.musicplayer.library.localmedia.data.LocalSongModel
 import com.flammky.musicplayer.library.ui.base.LibraryViewModel
@@ -49,9 +51,7 @@ internal fun LocalSongListsLegacy() {
 		modifier = Modifier
 			.fillMaxSize()
 			.background(
-				color = with(MaterialTheme.colorScheme.background) {
-					copy(alpha = 0.97f).compositeOver(Color.Black)
-				}
+				color = com.flammky.musicplayer.base.theme.Theme.backgroundColorAsState().value
 			),
 	) {
 		LocalSongListsColumn(
@@ -72,16 +72,26 @@ private fun LocalSongListsColumn(
 		indicatorPadding = PaddingValues(top = 10.dp)
 	) {
 		val lazyColumnState = rememberLazyListState()
-		LazyColumn(
-			verticalArrangement = Arrangement.spacedBy(4.dp)
-		) {
+		LazyColumn() {
 			val localSongs = vm.listState.read()
-
 			itemsIndexed(
 				items = localSongs,
 				key = { index: Int, model: LocalSongModel -> model.id }
 			) { index: Int, model: LocalSongModel ->
-				LocalSongListsItem(vm, model) { vm.play(localSongs, index) }
+				Box(modifier = Modifier.padding(horizontal = 5.dp)) {
+					LocalSongListsItem(
+						vm,
+						model
+					) { vm.play(localSongs, index) }
+					if (!com.flammky.musicplayer.base.theme.Theme.isDarkAsState().value) {
+						Divider(
+							modifier = Modifier
+								.fillMaxWidth()
+								.padding(horizontal = 5.dp),
+							color = com.flammky.musicplayer.base.theme.Theme.surfaceVariantColorAsState().value
+						)
+					}
+				}
 			}
 			item() {
 				Spacer(modifier = Modifier
@@ -101,8 +111,7 @@ private fun LocalSongListsItem(
 	Box(
 		modifier = Modifier
 			.height(60.dp)
-			.clickable { play() }
-			.background(MaterialTheme.colorScheme.surface),
+			.clickable { play() },
 		contentAlignment = Alignment.Center
 	) {
 		Row(
@@ -110,7 +119,8 @@ private fun LocalSongListsItem(
 				.fillMaxWidth()
 				.fillMaxHeight()
 				.padding(5.dp),
-			horizontalArrangement = Arrangement.SpaceAround,
+			horizontalArrangement = Arrangement.SpaceBetween,
+			verticalAlignment = Alignment.CenterVertically
 		) {
 			ItemArtworkCard(model, vm)
 
@@ -145,13 +155,13 @@ private fun LocalSongListsItem(
 							.makeText(context.applicationContext, "Coming Soon", Toast.LENGTH_SHORT)
 							.show()
 					}
-					.weight(0.2f, true)
 			) {
 
 				Icon(
 					modifier = Modifier
 						.align(Alignment.Center)
-						.fillMaxSize(0.5f),
+						.fillMaxSize(0.5f)
+						.aspectRatio(1f),
 					painter = painterResource(id = id),
 					contentDescription = "More",
 				)

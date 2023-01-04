@@ -22,6 +22,7 @@ import java.io.File
 import java.io.FileDescriptor
 import java.io.FileNotFoundException
 import java.io.RandomAccessFile
+import java.nio.channels.FileChannel
 import java.nio.file.Path
 import java.util.*
 import java.util.logging.Logger
@@ -63,6 +64,7 @@ open class AudioFile {
 	 */
 	var mFile: File? = null
 	var mFd: FileDescriptor? = null
+	var mFc: FileChannel? = null
 	/**
 	 * Return audio header information
 	 * @return
@@ -141,6 +143,12 @@ open class AudioFile {
 
 	constructor(fd: FileDescriptor, audioHeader: AudioHeader?, tag: Tag?) {
 		mFd = fd
+		this.audioHeader = audioHeader
+		this.tag = tag
+	}
+
+	constructor(fc: FileChannel, audioHeader: AudioHeader?, tag: Tag?) {
+		mFc = fc
 		this.audioHeader = audioHeader
 		this.tag = tag
 	}

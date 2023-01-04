@@ -143,7 +143,7 @@ abstract class AudioFileReader {
 	open fun read(fileDescriptor: FileDescriptor): AudioFile {
 
 		return FileInputStream(fileDescriptor).use { fis ->
-			val avail = fis.available()
+			val avail = fis.channel.size()
 			if (avail <= MINIMUM_SIZE_FOR_VALID_AUDIO_FILE) {
 				throw CannotReadException(ErrorMessage.GENERAL_READ_FAILED_FILE_TOO_SMALL.getMsg(avail.toString()))
 			}
@@ -153,6 +153,19 @@ abstract class AudioFileReader {
 			val tag = getTag(channel)
 			AudioFile(fileDescriptor, info, tag)
 		}
+	}
+
+	open fun read(fc: FileChannel): AudioFile {
+		fc.position(0)
+		val avail = fc.size()
+		if (avail <= MINIMUM_SIZE_FOR_VALID_AUDIO_FILE) {
+			throw CannotReadException(ErrorMessage.GENERAL_READ_FAILED_FILE_TOO_SMALL.getMsg(avail.toString()))
+		}
+		fc.position(0)
+		val info = getEncodingInfo(fc)
+		fc.position(0)
+		val tag = getTag(fc)
+		return AudioFile(fc, info, tag)
 	}
 
 	companion object {

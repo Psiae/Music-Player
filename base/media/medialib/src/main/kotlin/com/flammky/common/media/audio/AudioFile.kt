@@ -89,7 +89,9 @@ class AudioFile private constructor() {
 				when {
 					mFileDescriptor != null -> _AF = AudioFileIO.readMagic(mFileDescriptor!!)
 				}
-			} catch (_: Exception) {}
+			} catch (ex: Exception) {
+				println("audioFile readMagic fail: ${ex.toString()}")
+			}
 
 			_fileDescriptor?.close()
 		}

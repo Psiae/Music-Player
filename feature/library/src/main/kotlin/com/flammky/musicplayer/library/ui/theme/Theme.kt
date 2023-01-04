@@ -5,7 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 
-internal object Theme {
+internal object Theme : com.flammky.musicplayer.base.theme.Theme() {
 
 	@Composable
 	fun localSurfaceColor(): Color {

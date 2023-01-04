@@ -18,6 +18,8 @@
  */
 package com.flammky.musicplayer.common.media.audio.meta_tag.audio
 
+import com.flammky.common.media.audio.meta_tag.audio.opus.OpusFileReader
+import com.flammky.common.media.audio.meta_tag.audio.opus.OpusFileWriter
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.aiff.AiffFileReader
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.aiff.AiffFileWriter
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.asf.AsfFileReader
@@ -53,6 +55,7 @@ import java.io.File
 import java.io.FileDescriptor
 import java.io.FileNotFoundException
 import java.io.IOException
+import java.nio.channels.FileChannel
 import java.util.logging.Logger
 
 /**
@@ -156,6 +159,7 @@ class AudioFileIO {
 
 		// Tag Readers
 		readers[SupportedFileFormat.OGG.filesuffix] = OggFileReader()
+		readers[SupportedFileFormat.OPUS.filesuffix] = OpusFileReader()
 		readers[SupportedFileFormat.OGA.filesuffix] = OggFileReader()
 		readers[SupportedFileFormat.FLAC.filesuffix] = FlacFileReader()
 		readers[SupportedFileFormat.MP3.filesuffix] = MP3FileReader()
@@ -176,6 +180,7 @@ class AudioFileIO {
 
 		// Tag Writers
 		writers[SupportedFileFormat.OGG.filesuffix] = OggFileWriter()
+		writers[SupportedFileFormat.OPUS.filesuffix] = OpusFileWriter()
 		writers[SupportedFileFormat.OGA.filesuffix] = OggFileWriter()
 		writers[SupportedFileFormat.FLAC.filesuffix] = FlacFileWriter()
 		writers[SupportedFileFormat.MP3.filesuffix] = MP3FileWriter()
@@ -267,6 +272,17 @@ class AudioFileIO {
 		val tempFile = afr.read(fd)
 		tempFile.ext = ext
 		return afr.read(fd).apply af@ {
+			this@af.ext = ext
+		}
+	}
+
+	fun readFileMagic(fc: FileChannel): AudioFile {
+		val ext = getMagicExtension(fc)
+		val afr = readers[ext]
+			?: throw CannotReadException(ErrorMessage.NO_READER_FOR_THIS_FORMAT.getMsg(ext))
+		val tempFile = afr.read(fc.position(0))
+		tempFile.ext = ext
+		return afr.read(fc).apply af@ {
 			this@af.ext = ext
 		}
 	}
@@ -450,6 +466,10 @@ class AudioFileIO {
 
 		fun readMagic(fd: FileDescriptor): AudioFile {
 			return defaultAudioFileIO!!.readFileMagic(fd)
+		}
+
+		fun readMagic(fc: FileChannel): AudioFile {
+			return defaultAudioFileIO!!.readFileMagic(fc)
 		}
 
 		/**

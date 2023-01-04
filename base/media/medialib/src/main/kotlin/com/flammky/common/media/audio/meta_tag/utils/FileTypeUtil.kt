@@ -4,6 +4,8 @@ import java.io.File
 import java.io.FileDescriptor
 import java.io.FileInputStream
 import java.io.IOException
+import java.nio.ByteBuffer
+import java.nio.channels.FileChannel
 
 object FileTypeUtil {
 	private const val BUFFER_SIZE_LIMIT = 4096
@@ -132,6 +134,26 @@ object FileTypeUtil {
 			}
 			fileType
 		}
+	}
+
+	@JvmStatic
+	@Throws(IOException::class)
+	fun getMagicFileType(fc: FileChannel): String {
+		fc.position(0)
+		val buffer = ByteBuffer.allocate(MAX_SIGNATURE_SIZE)
+		val length: Int = fc.read(buffer)
+		var fileType = "UNKNOWN"
+		signatureMap!!.forEach { entry ->
+			if (matchesSignature(
+					signature = entry.value,
+					buffer.array(),
+					length
+			)) {
+				fileType = entry.key
+				return@forEach
+			}
+		}
+		return fileType
 	}
 
 	@JvmStatic

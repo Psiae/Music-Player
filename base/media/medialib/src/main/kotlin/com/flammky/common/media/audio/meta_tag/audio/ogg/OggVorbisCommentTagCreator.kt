@@ -16,7 +16,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
-package com.flammky.musicplayer.common.media.audio.meta_tag.audio.ogg
+package org.jaudiotagger.audio.ogg
 
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.ogg.util.VorbisHeader
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.ogg.util.VorbisPacketType
@@ -27,37 +27,59 @@ import java.nio.ByteBuffer
 import java.util.logging.Logger
 
 /**
- * Creates an OggVorbis Comment Tag from a VorbisComment for use within an OggVorbis Container
+ * Creates a Vorbis Comment Tag from a VorbisComment for use within an OggVorbis Container.
+ *
  *
  * When a Vorbis Comment is used within OggVorbis it additionally has a vorbis header and a framing
  * bit.
+ *
+ *
+ * When a Vorbis Comment is used within OpusVorbis it additionally has a OpusTags header.
  */
 class OggVorbisCommentTagCreator {
 	private val creator = VorbisCommentCreator()
+	private val prefix: ByteArray
+	private val capturePattern: ByteArray
+	private val shouldWriteFramingBit: Boolean
 
-	//Creates the ByteBuffer for the ogg tag
+	constructor(prefix: ByteArray, pattern: ByteArray, shouldWriteFramingBit: Boolean) {
+		this.prefix = prefix
+		capturePattern = pattern
+		this.shouldWriteFramingBit = shouldWriteFramingBit
+	}
+
+	constructor() {
+		prefix = byteArrayOf(VorbisPacketType.COMMENT_HEADER.type.toByte())
+		capturePattern = VorbisHeader.CAPTURE_PATTERN_AS_BYTES
+		shouldWriteFramingBit = true
+	}
+
+	// Creates the ByteBuffer for the ogg tag
 	@Throws(UnsupportedEncodingException::class)
 	fun convert(tag: Tag?): ByteBuffer {
-		val ogg = creator.convertMetadata(tag)
-		val tagLength =
-			ogg.capacity() + VorbisHeader.FIELD_PACKET_TYPE_LENGTH + VorbisHeader.FIELD_CAPTURE_PATTERN_LENGTH + FIELD_FRAMING_BIT_LENGTH
+		val ogg: ByteBuffer = creator.convertMetadata(tag)
+		var tagLength = ogg.capacity() + prefix.size + capturePattern.size
+		if (shouldWriteFramingBit) {
+			tagLength += FIELD_FRAMING_BIT_LENGTH
+		}
 		val buf = ByteBuffer.allocate(tagLength)
 
 		//[packet type=comment0x03]['vorbis']
-		buf.put(VorbisPacketType.COMMENT_HEADER.type.toByte())
-		buf.put(VorbisHeader.CAPTURE_PATTERN_AS_BYTES)
+		buf.put(prefix)
+		buf.put(capturePattern)
 
 		//The actual tag
 		buf.put(ogg)
 
 		//Framing bit = 1
-		buf.put(FRAMING_BIT_VALID_VALUE)
+		if (shouldWriteFramingBit) {
+			buf.put(FRAMING_BIT_VALID_VALUE)
+		}
 		buf.rewind()
 		return buf
 	}
 
 	companion object {
-		// Logger Object
 		var logger = Logger.getLogger("org.jaudiotagger.audio.ogg")
 		const val FIELD_FRAMING_BIT_LENGTH = 1
 		const val FRAMING_BIT_VALID_VALUE = 0x01.toByte()

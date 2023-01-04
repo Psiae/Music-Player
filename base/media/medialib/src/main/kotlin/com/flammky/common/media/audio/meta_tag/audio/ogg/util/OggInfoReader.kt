@@ -25,6 +25,7 @@ import com.flammky.musicplayer.common.media.audio.meta_tag.audio.generic.Generic
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.generic.Utils
 import com.flammky.musicplayer.common.media.audio.meta_tag.logging.ErrorMessage
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.id3.ID3v2TagBase.Companion.isId3Tag
+import org.jaudiotagger.audio.ogg.util.OggPageHeader
 import java.io.IOException
 import java.io.RandomAccessFile
 import java.nio.ByteBuffer
@@ -92,7 +93,7 @@ class OggInfoReader {
 					fc.read(b)
 					val pageHeader = OggPageHeader(b.array())
 					fc.position(0)
-					pcmSamplesNumber = pageHeader.getAbsoluteGranulePosition()
+					pcmSamplesNumber = pageHeader.getAbsoluteGranulePosition().toDouble()
 					break
 				}
 			}
@@ -197,7 +198,7 @@ class OggInfoReader {
 					raf.readFully(b)
 					val pageHeader = OggPageHeader(b)
 					raf.seek(0)
-					pcmSamplesNumber = pageHeader.getAbsoluteGranulePosition()
+					pcmSamplesNumber = pageHeader.getAbsoluteGranulePosition().toDouble()
 					break
 				}
 			}
@@ -209,10 +210,10 @@ class OggInfoReader {
 		}
 
 		//1st page = Identification Header
-		val pageHeader: OggPageHeader = OggPageHeader.Companion.read(raf)
+		val pageHeader: OggPageHeader = OggPageHeader.read(raf)
 		val vorbisData = ByteArray(pageHeader.getPageLength())
 		if (vorbisData.size < OggPageHeader.Companion.OGG_PAGE_HEADER_FIXED_LENGTH) {
-			throw CannotReadException("Invalid Identification header for this Ogg File")
+			throw CannotReadException("Invalid Identification header for this Ogg File: ${vorbisData.size}")
 		}
 		raf.read(vorbisData)
 		val vorbisIdentificationHeader = VorbisIdentificationHeader(vorbisData)

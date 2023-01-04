@@ -12,11 +12,12 @@ import com.flammky.musicplayer.common.media.audio.meta_tag.audio.generic.Utils
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.iff.IffHeaderChunk
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.Tag
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.TagException
-import com.flammky.musicplayer.common.media.audio.meta_tag.tag.id3.ID3v2TagBase
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.id3.ID3v22Tag
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.id3.ID3v23Tag
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.id3.ID3v24Tag
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.id3.ID3v2TagBase
 import java.io.IOException
+import java.io.RandomAccessFile
 import java.nio.channels.FileChannel
 import java.nio.file.Path
 import java.util.logging.Level
@@ -29,41 +30,50 @@ import java.util.logging.Level
 class DsfFileReader : AudioFileReader2() {
 	@Throws(CannotReadException::class, IOException::class, UnsupportedOperationException::class)
 	override fun getEncodingInfo(file: Path): GenericAudioHeader {
-		if (!VersionHelper.hasOreo()) throw UnsupportedOperationException("Require API >= 26")
-
-		FileChannel.open(file).use { fc ->
-			val dsd: DsdChunk? =
-				DsdChunk.readChunk(Utils.readFileDataIntoBufferLE(fc, DsdChunk.DSD_HEADER_LENGTH))
-			return if (dsd != null) {
-				val fmtChunkBuffer =
-					Utils.readFileDataIntoBufferLE(
-						fc,
-						IffHeaderChunk.SIGNATURE_LENGTH + DsdChunk.CHUNKSIZE_LENGTH
-					)
-				FmtChunk.readChunkHeader(fmtChunkBuffer)
-					?.readChunkData(dsd, fc)
-					?: throw CannotReadException("$file Not a valid dsf file. Content does not include 'fmt ' chunk")
-			} else {
-				throw CannotReadException("$file Not a valid dsf file. Content does not start with 'DSD '")
+		return if (VersionHelper.hasOreo()) {
+			FileChannel.open(file).use { fc ->
+				getEncodingInfo(fc)
 			}
+		} else {
+			RandomAccessFile(file.toFile(), "r").use { getEncodingInfo(it.channel) }
+		}
+	}
+
+	override fun getEncodingInfo(fc: FileChannel): GenericAudioHeader {
+		val dsd: DsdChunk? =
+			DsdChunk.readChunk(Utils.readFileDataIntoBufferLE(fc, DsdChunk.DSD_HEADER_LENGTH))
+		return if (dsd != null) {
+			val fmtChunkBuffer =
+				Utils.readFileDataIntoBufferLE(
+					fc,
+					IffHeaderChunk.SIGNATURE_LENGTH + DsdChunk.CHUNKSIZE_LENGTH
+				)
+			FmtChunk.readChunkHeader(fmtChunkBuffer)
+				?.readChunkData(dsd, fc)
+				?: throw CannotReadException("$fc Not a valid dsf file. Content does not include 'fmt ' chunk")
+		} else {
+			throw CannotReadException("$fc Not a valid dsf file. Content does not start with 'DSD '")
+		}
+	}
+
+	override fun getTag(fc: FileChannel): Tag {
+		val dsd: DsdChunk? =
+			DsdChunk.readChunk(Utils.readFileDataIntoBufferLE(fc, DsdChunk.DSD_HEADER_LENGTH))
+		return if (dsd != null) {
+			readTag(fc, dsd, fc.toString())!!
+		} else {
+			throw CannotReadException("$fc Not a valid dsf file. Content does not start with 'DSD '.")
 		}
 	}
 
 	@Throws(CannotReadException::class, IOException::class, UnsupportedOperationException::class)
 	override fun getTag(path: Path): Tag {
-		if (!VersionHelper.hasOreo()) throw UnsupportedOperationException("Require API >= 26")
-
-		FileChannel.open(path).use { fc ->
-			val dsd: DsdChunk? =
-				DsdChunk.readChunk(Utils.readFileDataIntoBufferLE(fc, DsdChunk.DSD_HEADER_LENGTH))
-			return if (dsd != null) {
-				logger.config(
-					path.toString() + ":actualFileSize:" + fc.size() + ":" + dsd.toString()
-				)
-				readTag(fc, dsd, path.toString())!!
-			} else {
-				throw CannotReadException("$path Not a valid dsf file. Content does not start with 'DSD '.")
+		return if (VersionHelper.hasOreo()) {
+			FileChannel.open(path).use { fc ->
+				getTag(fc)
 			}
+		} else {
+			RandomAccessFile(path.toFile(), "r").use { getTag(it.channel) }
 		}
 	}
 

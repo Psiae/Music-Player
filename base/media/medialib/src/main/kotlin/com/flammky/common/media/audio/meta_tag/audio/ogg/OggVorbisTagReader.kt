@@ -29,6 +29,8 @@ import com.flammky.musicplayer.common.media.audio.meta_tag.tag.vorbiscomment.Vor
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.RandomAccessFile
+import java.nio.ByteBuffer
+import java.nio.channels.FileChannel
 import java.nio.charset.StandardCharsets
 import java.util.logging.Logger
 
@@ -64,6 +66,12 @@ class OggVorbisTagReader {
 		val tag = vorbisCommentReader.read(rawVorbisCommentData, true, null)
 		logger.fine("CompletedReadCommentTag")
 		return tag
+	}
+
+	fun read(fc: FileChannel): Tag {
+		val rawVorbisCommentData = readRawPacketData(fc)
+		//Begin tag reading
+		return vorbisCommentReader.read(rawVorbisCommentData, true, null)
 	}
 
 	/**
@@ -124,6 +132,27 @@ class OggVorbisTagReader {
 
 		//Convert the comment raw data which maybe over many pages back into raw packet
 		return convertToVorbisCommentPacket(pageHeader, raf)
+	}
+
+	fun readRawPacketData(fc: FileChannel): ByteArray {
+		//1st page = codec infos
+		var pageHeader =
+			OggPageHeader.read(fc)
+		//Skip over data to end of page header 1
+		fc.position(fc.position() + pageHeader.getPageLength())
+		//2nd page = comment, may extend to additional pages or not , may also have setup header
+		pageHeader = OggPageHeader.read(fc)
+		//Now at start of packets on page 2 , check this is the vorbis comment header
+		val b = ByteBuffer.allocate(VorbisHeader.FIELD_PACKET_TYPE_LENGTH + VorbisHeader.FIELD_CAPTURE_PATTERN_LENGTH)
+		fc.read(b)
+		if (!isVorbisCommentHeader(b.array())) {
+			throw CannotReadException(
+				"Cannot find comment block (no vorbiscomment header)"
+			)
+		}
+
+		//Convert the comment raw data which maybe over many pages back into raw packet
+		return convertToVorbisCommentPacket(pageHeader, fc)
 	}
 
 	/**
@@ -214,6 +243,48 @@ class OggVorbisTagReader {
 			//There is only the VorbisComment packet on page if it has completed on this page we can return
 			if (!nextPageHeader.isLastPacketIncomplete) {
 				logger.config("Comments finish on Page because this packet is complete")
+				return baos.toByteArray()
+			}
+		}
+	}
+
+	private fun convertToVorbisCommentPacket(
+		startVorbisCommentPage: OggPageHeader,
+		fc: FileChannel
+	): ByteArray {
+		val baos = ByteArrayOutputStream()
+		var b = ByteBuffer.allocate(startVorbisCommentPage.getPacketList()[0].length - (VorbisHeader.FIELD_PACKET_TYPE_LENGTH + VorbisHeader.FIELD_CAPTURE_PATTERN_LENGTH))
+		fc.read(b)
+		baos.write(b.array())
+
+		//Because there is at least one other packet (SetupHeaderPacket) this means the Comment Packet has finished
+		//on this page so thats all we need and we can return
+		if (startVorbisCommentPage.getPacketList().size > 1) {
+			return baos.toByteArray()
+		}
+
+		//There is only the VorbisComment packet on page if it has completed on this page we can return
+		if (!startVorbisCommentPage.isLastPacketIncomplete) {
+			return baos.toByteArray()
+		}
+
+		//The VorbisComment extends to the next page, so should be at end of page already
+		//so carry on reading pages until we get to the end of comment
+		while (true) {
+			logger.config("Reading next page")
+			val nextPageHeader = OggPageHeader.read(fc)
+			b = ByteBuffer.allocate(nextPageHeader.getPacketList()[0].length)
+			fc.read(b)
+			baos.write(b.array())
+
+			//Because there is at least one other packet (SetupHeaderPacket) this means the Comment Packet has finished
+			//on this page so thats all we need and we can return
+			if (nextPageHeader.getPacketList().size > 1) {
+				return baos.toByteArray()
+			}
+
+			//There is only the VorbisComment packet on page if it has completed on this page we can return
+			if (!nextPageHeader.isLastPacketIncomplete) {
 				return baos.toByteArray()
 			}
 		}

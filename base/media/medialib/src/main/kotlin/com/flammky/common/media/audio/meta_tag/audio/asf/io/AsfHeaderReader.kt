@@ -23,6 +23,8 @@ import com.flammky.musicplayer.common.media.audio.meta_tag.audio.asf.data.GUID
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.asf.util.Utils
 import java.io.*
 import java.math.BigInteger
+import java.nio.channels.Channels
+import java.nio.channels.FileChannel
 
 /**
  * This *class * reads an ASF header out of an input stream an creates an
@@ -205,6 +207,11 @@ class AsfHeaderReader
 			return INFO_READER.read(Utils.readGUID(stream), stream, 0)
 		}
 
+		fun readInfoHeader(fc: FileChannel): AsfHeader? {
+			val stream = FullRequestInputStream(BufferedInputStream(Channels.newInputStream(fc)))
+			return INFO_READER.read(Utils.readGUID(stream), stream, 0)
+		}
+
 		/**
 		 * This method tries to extract an ASF-header out of the given stream, which
 		 * only contains metadata.<br></br>
@@ -219,6 +226,11 @@ class AsfHeaderReader
 		@Throws(IOException::class)
 		fun readTagHeader(file: RandomAccessFile): AsfHeader? {
 			val stream = createStream(file)
+			return TAG_READER.read(Utils.readGUID(stream), stream, 0)
+		}
+
+		fun readTagHeader(fc: FileChannel): AsfHeader? {
+			val stream = FullRequestInputStream(BufferedInputStream(Channels.newInputStream(fc)))
 			return TAG_READER.read(Utils.readGUID(stream), stream, 0)
 		}
 	}

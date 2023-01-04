@@ -28,6 +28,7 @@ import com.flammky.musicplayer.common.media.audio.meta_tag.tag.Tag
 import java.io.File
 import java.io.IOException
 import java.io.RandomAccessFile
+import java.nio.channels.FileChannel
 import java.util.logging.Logger
 
 /**
@@ -49,9 +50,17 @@ class OggFileReader : AudioFileReader() {
 		return ir.read(raf)
 	}
 
+	override fun getEncodingInfo(fc: FileChannel): GenericAudioHeader {
+		return ir.read(fc)
+	}
+
 	@Throws(CannotReadException::class, IOException::class)
 	override fun getTag(raf: RandomAccessFile): Tag {
 		return vtr.read(raf)
+	}
+
+	override fun getTag(fc: FileChannel): Tag {
+		return vtr.read(fc)
 	}
 
 	/**

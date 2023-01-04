@@ -73,7 +73,7 @@ object Utils {
 	 */
 	@JvmStatic
 	@Throws(IOException::class)
-	fun getMagicExtension(f: File?): String? {
+	fun getMagicExtension(f: File): String? {
 		val fileType = getMagicFileType(f)
 		return getMagicExt(fileType)
 	}
@@ -288,6 +288,13 @@ object Utils {
 		return ByteBuffer.wrap(buf8).long
 	}
 
+	fun readUint32(fc: FileChannel): Long {
+		val buf8 = ByteBuffer.allocate(8)
+		fc.read(buf8)
+		buf8.position(4)
+		return buf8.long
+	}
+
 	/**
 	 * Read a 16-bit big-endian unsigned integer.
 	 *
@@ -310,6 +317,12 @@ object Utils {
 		val buf = ByteArray(charsToRead)
 		di.readFully(buf)
 		return String(buf, StandardCharsets.US_ASCII)
+	}
+
+	fun readString(channel: FileChannel, charsToRead: Int): String {
+		val buf = ByteBuffer.allocate(charsToRead)
+		channel.read(buf)
+		return String(buf.array(), StandardCharsets.US_ASCII)
 	}
 
 	/**

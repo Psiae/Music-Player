@@ -33,9 +33,11 @@ import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.Read
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.generic.AudioFileReader
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.generic.GenericAudioHeader
 import com.flammky.musicplayer.common.media.audio.meta_tag.logging.ErrorMessage
+import com.flammky.musicplayer.common.media.audio.meta_tag.tag.Tag
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.TagException
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.asf.AsfTag
 import java.io.*
+import java.nio.channels.FileChannel
 import java.util.logging.Logger
 
 /**
@@ -121,6 +123,23 @@ class AsfFileReader : AudioFileReader() {
 		return info
 	}
 
+	@Throws(CannotReadException::class, IOException::class)
+	override fun getEncodingInfo(fc: FileChannel): GenericAudioHeader {
+		fc.position(0)
+		return try {
+			val header = readInfoHeader(fc)
+				?: throw CannotReadException("Some values must have been " + "incorrect for interpretation as asf with wma content.")
+			getAudioHeader(header)
+		} catch (e: Exception) {
+			when (e) {
+				is IOException, is CannotReadException -> throw e
+				else -> throw CannotReadException("Failed to read. Cause: " + e.message, e)
+			}
+		}
+	}
+
+
+
 	/**
 	 * Creates a tag instance with provided data from header.
 	 *
@@ -155,6 +174,24 @@ class AsfFileReader : AudioFileReader() {
 			}
 		}
 		return tag
+	}
+
+	override fun getTag(fc: FileChannel): Tag {
+		fc.position(0)
+		return try {
+			val header = readTagHeader(fc)
+				?: throw CannotReadException("Some values must have been " + "incorrect for interpretation as asf with wma content.")
+			createTagOf(header)
+		} catch (e: Exception) {
+			when (e) {
+				is IOException, is CannotReadException -> {
+					throw e
+				}
+				else -> {
+					throw CannotReadException("Failed to read. Cause: " + e.message)
+				}
+			}
+		}
 	}
 
 	/**

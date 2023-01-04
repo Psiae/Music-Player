@@ -54,6 +54,25 @@ class AiffInfoReader(private val loggingName: String) : AiffChunkReader() {
 		}
 	}
 
+	fun read(fc: FileChannel): GenericAudioHeader {
+		val audioHeader = AiffAudioHeader()
+		val fileHeader = AiffFileHeader(loggingName)
+		val noOfBytes = fileHeader.readHeader(fc, audioHeader)
+		while (fc.position() < noOfBytes + ChunkHeader.CHUNK_HEADER_SIZE && fc.position() < fc.size()) {
+			val result = readChunk(fc, audioHeader)
+			if (!result) {
+				break
+			}
+		}
+		if (audioHeader.fileType == AiffType.AIFC) {
+			audioHeader.format = SupportedFileFormat.AIF.displayName
+		} else {
+			audioHeader.format = SupportedFileFormat.AIF.displayName
+		}
+		calculateBitRate(audioHeader)
+		return audioHeader
+	}
+
 	/**
 	 * Calculate bitrate, done it here because requires data from multiple chunks
 	 *

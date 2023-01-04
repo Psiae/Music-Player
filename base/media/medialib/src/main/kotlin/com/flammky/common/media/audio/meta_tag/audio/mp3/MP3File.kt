@@ -1,6 +1,5 @@
 package com.flammky.musicplayer.common.media.audio.meta_tag.audio.mp3
 
-import android.net.Uri
 import com.flammky.android.core.sdk.VersionHelper
 import com.flammky.common.media.audio.meta_tag.audio.generic.Permissions.displayPermissions
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.AudioFile
@@ -446,7 +445,7 @@ class MP3File : AudioFile {
 	*/
 
 	@JvmOverloads
-	constructor(fileDescriptor: FileDescriptor, uri: Uri, loadOptions: Int = LOAD_ALL, readOnly: Boolean = false) {
+	constructor(fileDescriptor: FileDescriptor, loadOptions: Int = LOAD_ALL, readOnly: Boolean = false) {
 		try {
 			//Read ID3v2 tag size (if tag exists) to allow audioHeader parsing to skip over tag
 			val tagSizeReportedByHeader = getV2TagSizeIfExists(fileDescriptor)
@@ -457,10 +456,6 @@ class MP3File : AudioFile {
 			} catch (e: InvalidAudioFrameException) {
 				null
 			}
-
-
-
-			Timber.d("try creating MP3File for: $fileDescriptor, $uri, createdAudioHeader")
 
 			//If the audio header is not straight after the end of the tag then search from start of file
 			if (audioHeader != null && tagSizeReportedByHeader != (audioHeader as MP3AudioHeader).mp3StartByte) {
@@ -474,8 +469,6 @@ class MP3File : AudioFile {
 			if (audioHeader != null) {
 				readV2Tag(fileDescriptor, loadOptions, (audioHeader as MP3AudioHeader).mp3StartByte.toInt())
 			}
-
-			Timber.d("try creating MP3File for: $fileDescriptor, $uri read \n$id3v1tag \n$iD3v2Tag")
 
 			//If we have a v2 tag use that, if we do not but have v1 tag use that
 			//otherwise use nothing

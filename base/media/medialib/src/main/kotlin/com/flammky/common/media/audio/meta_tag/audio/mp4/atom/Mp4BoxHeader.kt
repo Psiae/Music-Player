@@ -59,21 +59,25 @@ open class Mp4BoxHeader {
 		private set
 
 	//Box length
-	var length = 0
-		/**
-		 * Set the length.
-		 *
-		 * This will modify the dataBuffer accordingly
-		 */
+	private var _length = 0
+
+	var length: Int
+		get() = _length
 		set(value) {
+			/**
+			 * Set the length.
+			 *
+			 * This will modify the dataBuffer accordingly
+			 */
 			val headerSize = getSizeBEInt32(value)
 			val dataBuffer = dataBuffer!!
 			dataBuffer.put(0, headerSize[0])
 			dataBuffer.put(1, headerSize[1])
 			dataBuffer.put(2, headerSize[2])
 			dataBuffer.put(3, headerSize[3])
-			field = length
+			_length = value
 		}
+
 
 	/**
 	 * @return location in file of the start of atom  header (i.e where the 4 byte length field starts)
@@ -150,11 +154,9 @@ open class Mp4BoxHeader {
 		dataBuffer.order(ByteOrder.BIG_ENDIAN)
 
 		//Calculate box size and id
-		length = dataBuffer.int
+		_length = dataBuffer.int
 		id = readFourBytesAsChars(dataBuffer)
-		logger.finest(
-			"Mp4BoxHeader id:$id:length:$length"
-		)
+		println("Mp4BoxHeader id:$id length:$length ${b.size}")
 		if (id == "\u0000\u0000\u0000\u0000") {
 			throw NullBoxIdException(
 				ErrorMessage.MP4_UNABLE_TO_FIND_NEXT_ATOM_BECAUSE_IDENTIFIER_IS_INVALID.getMsg(
@@ -190,7 +192,7 @@ open class Mp4BoxHeader {
 		dataBuffer!!.put(6, headerSize[1])
 		dataBuffer!!.put(7, headerSize[2])
 		dataBuffer!!.put(8, headerSize[3])
-		this.length = length
+		_length = length
 	}
 
 	/**
@@ -254,7 +256,7 @@ open class Mp4BoxHeader {
 		 */
 		@Throws(IOException::class)
 		fun seekWithinLevel(fc: SeekableByteChannel, id: String): Mp4BoxHeader? {
-			logger.finer("Started searching for:" + id + " in file at:" + fc.position())
+			println("Started searching for:" + id + " in file at:" + fc.position())
 			val boxHeader = Mp4BoxHeader()
 			val headerBuffer = ByteBuffer.allocate(HEADER_LENGTH)
 			var bytesRead = fc.read(headerBuffer)

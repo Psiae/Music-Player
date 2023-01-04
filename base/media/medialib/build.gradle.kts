@@ -9,11 +9,11 @@ plugins {
 
 android {
     namespace = "com.flammky.android.medialib"
-    compileSdk = 32
+    compileSdk = 33
 
     defaultConfig {
         minSdk = 24
-        targetSdk = 32
+        targetSdk = 33
     }
 
     signingConfigs {

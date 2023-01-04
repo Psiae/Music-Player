@@ -250,21 +250,25 @@ class AudioFileIO {
 		ReadOnlyFileException::class,
 		InvalidAudioFrameException::class
 	)
-	fun readFileMagic(f: File?): AudioFile {
+	fun readFileMagic(f: File): AudioFile {
 		//checkFileExists(f);
 		val ext = getMagicExtension(f)
 		val afr = readers[ext]
 			?: throw CannotReadException(ErrorMessage.NO_READER_FOR_THIS_FORMAT.getMsg(ext))
-		val tempFile = afr.read(
-			f!!
-		)
+		val tempFile = afr.read(f)
 		tempFile.ext = ext
 		return tempFile
 	}
 
 	fun readFileMagic(fd: FileDescriptor): AudioFile {
-		// TODO
-		return AudioFile()
+		val ext = getMagicExtension(fd)
+		val afr = readers[ext]
+			?: throw CannotReadException(ErrorMessage.NO_READER_FOR_THIS_FORMAT.getMsg(ext))
+		val tempFile = afr.read(fd)
+		tempFile.ext = ext
+		return afr.read(fd).apply af@ {
+			this@af.ext = ext
+		}
 	}
 
 	/**
@@ -439,12 +443,13 @@ class AudioFileIO {
 			ReadOnlyFileException::class,
 			InvalidAudioFrameException::class
 		)
-		fun readMagic(f: File?): AudioFile {
+
+		fun readMagic(f: File): AudioFile {
 			return defaultAudioFileIO!!.readFileMagic(f)
 		}
 
-		fun readMagic(f: FileDescriptor): AudioFile {
-			return defaultAudioFileIO!!.readFileMagic(f)
+		fun readMagic(fd: FileDescriptor): AudioFile {
+			return defaultAudioFileIO!!.readFileMagic(fd)
 		}
 
 		/**

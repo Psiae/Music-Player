@@ -23,6 +23,7 @@ import com.flammky.musicplayer.common.media.audio.meta_tag.audio.generic.AudioFi
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.generic.GenericAudioHeader
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.Tag
 import java.io.IOException
+import java.nio.channels.FileChannel
 import java.nio.file.Path
 
 /**
@@ -43,5 +44,13 @@ class Mp4FileReader : AudioFileReader2() {
 	@Throws(IOException::class, CannotReadException::class)
 	override fun getTag(path: Path): Tag {
 		return tr.read(path)
+	}
+
+	override fun getEncodingInfo(fc: FileChannel): GenericAudioHeader {
+		return ir.read(fc)
+	}
+
+	override fun getTag(fc: FileChannel): Tag? {
+		return tr.read(fc)
 	}
 }

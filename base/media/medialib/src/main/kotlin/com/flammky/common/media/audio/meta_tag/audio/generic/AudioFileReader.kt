@@ -28,10 +28,8 @@ import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.Read
 import com.flammky.musicplayer.common.media.audio.meta_tag.logging.ErrorMessage
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.Tag
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.TagException
-import java.io.File
-import java.io.FileNotFoundException
-import java.io.IOException
-import java.io.RandomAccessFile
+import java.io.*
+import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.util.logging.Level
 import java.util.logging.Logger
@@ -59,6 +57,8 @@ abstract class AudioFileReader {
 	@Throws(CannotReadException::class, IOException::class)
 	protected abstract fun getEncodingInfo(raf: RandomAccessFile): GenericAudioHeader
 
+	protected abstract fun getEncodingInfo(fc: FileChannel): GenericAudioHeader
+
 	/*
 		* Same as above but returns the Tag contained in the file, or a new one.
 		*
@@ -67,7 +67,9 @@ abstract class AudioFileReader {
 		* @exception CannotReadException when an error occured during the parsing of the tag
 		*/
 	@Throws(CannotReadException::class, IOException::class)
-	protected abstract fun getTag(raf: RandomAccessFile): Tag
+	protected abstract fun getTag(raf: RandomAccessFile): Tag?
+
+	protected abstract fun getTag(fc: FileChannel): Tag?
 
 	/*
 		* Reads the given file, and return an AudioFile object containing the Tag
@@ -135,6 +137,21 @@ abstract class AudioFileReader {
 					ErrorMessage.GENERAL_READ_FAILED_UNABLE_TO_CLOSE_RANDOM_ACCESS_FILE.getMsg(f.absolutePath)
 				)
 			}
+		}
+	}
+
+	open fun read(fileDescriptor: FileDescriptor): AudioFile {
+
+		return FileInputStream(fileDescriptor).use { fis ->
+			val avail = fis.available()
+			if (avail <= MINIMUM_SIZE_FOR_VALID_AUDIO_FILE) {
+				throw CannotReadException(ErrorMessage.GENERAL_READ_FAILED_FILE_TOO_SMALL.getMsg(avail.toString()))
+			}
+			val channel = fis.channel.position(0)
+			val info = getEncodingInfo(channel)
+			channel.position(0)
+			val tag = getTag(channel)
+			AudioFile(fileDescriptor, info, tag)
 		}
 	}
 

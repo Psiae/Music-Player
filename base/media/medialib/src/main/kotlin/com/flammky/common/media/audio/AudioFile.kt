@@ -6,7 +6,7 @@ import android.net.Uri
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import com.flammky.android.app.AppDelegate
-import com.flammky.musicplayer.common.media.audio.meta_tag.audio.mp3.MP3File
+import com.flammky.musicplayer.common.media.audio.meta_tag.audio.AudioFileIO
 import com.flammky.musicplayer.common.media.audio.uri.AndroidFileBuilder
 import com.flammky.musicplayer.common.media.audio.uri.ContentFileBuilder
 import timber.log.Timber
@@ -25,11 +25,10 @@ class AudioFile private constructor() {
 	private var mFile: File? = null
 	private var mFileDescriptor: FileDescriptor? = null
 	private var mUri: Uri? = null
-	private var mp3File: MP3File? = null
 	private var _AF: com.flammky.musicplayer.common.media.audio.meta_tag.audio.AudioFile? = null
 
 	val imageData: ByteArray?
-		get() = mp3File?.iD3v2Tag?.firstArtwork?.binaryData
+		get() = _AF?.tag?.firstArtwork?.binaryData
 
 	val file: File?
 		get() = mFile
@@ -86,11 +85,9 @@ class AudioFile private constructor() {
 			mFileDescriptor = _fileDescriptor?.fileDescriptor
 			mUri = _uri
 
-			// TODO: Convert usage of `file` to FileDescriptor
-
 			try {
 				when {
-					mFileDescriptor != null -> mp3File = MP3File(mFileDescriptor!!, mUri!!)
+					mFileDescriptor != null -> _AF = AudioFileIO.readMagic(mFileDescriptor!!)
 				}
 			} catch (_: Exception) {}
 

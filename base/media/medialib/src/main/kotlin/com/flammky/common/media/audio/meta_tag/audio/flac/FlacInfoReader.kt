@@ -27,6 +27,7 @@ import com.flammky.musicplayer.common.media.audio.meta_tag.audio.flac.metadatabl
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.generic.Utils
 import java.io.File
 import java.io.IOException
+import java.io.RandomAccessFile
 import java.nio.channels.FileChannel
 import java.nio.file.Path
 import java.util.logging.Logger
@@ -37,68 +38,68 @@ import java.util.logging.Logger
 class FlacInfoReader {
 	@Throws(CannotReadException::class, IOException::class, NotImplementedError::class)
 	fun read(path: Path): FlacAudioHeader {
-		if (!VersionHelper.hasOreo()) TODO("Require API <= 26")
-
-		logger.config(
-			"$path:start"
-		)
-		FileChannel.open(path).use { fc ->
-			val flacStream = FlacStreamReader(fc, "$path ")
-			flacStream.findStream()
-			var mbdsi: MetadataBlockDataStreamInfo? = null
-			var isLastBlock = false
-
-			//Search for StreamInfo Block, but even after we found it we still have to continue through all
-			//the metadata blocks so that we can find the start of the audio frames which we need to calculate
-			//the bitrate
-			while (isLastBlock == false) {
-				val mbh = readHeader(fc)
-				logger.info(
-					"$path $mbh"
-				)
-				if (mbh.blockType === BlockType.STREAMINFO) {
-					//See #253:MetadataBlockDataStreamInfo exception when bytes length is 0
-					if (mbh.dataLength == 0) {
-						throw CannotReadException(
-							"$path:FLAC StreamInfo has zeo data length"
-						)
-					}
-					mbdsi = MetadataBlockDataStreamInfo(mbh, fc)
-					if (!mbdsi.isValid()) {
-						throw CannotReadException(
-							"$path:FLAC StreamInfo not valid"
-						)
-					}
-				} else {
-					fc.position(fc.position() + mbh.dataLength)
-				}
-				isLastBlock = mbh.isLastBlock
+		return if (VersionHelper.hasOreo()) {
+			FileChannel.open(path).use { fc ->
+				read(fc)
 			}
-
-			//Audio continues from this point to end of file (normally - TODO might need to allow for an ID3v1 tag at file end ?)
-			val streamStart = fc.position()
-			if (mbdsi == null) {
-				throw CannotReadException(
-					"$path:Unable to find Flac StreamInfo"
-				)
-			}
-			val info = FlacAudioHeader()
-			info.noOfSamples = mbdsi.getNoOfSamples()
-			info.preciseTrackLength = mbdsi.getPreciseLength().toDouble()
-			info.channelNumber = mbdsi.getNoOfChannels()
-			info.setSamplingRate(mbdsi.getSamplingRate())
-			info.bitsPerSample = mbdsi.getBitsPerSample()
-			info.encodingType = mbdsi.getEncodingType()
-			info.format =
-				SupportedFileFormat.FLAC.displayName
-			info.isLossless = true
-			info.md5 = mbdsi.getMD5Signature()
-			info.audioDataLength = fc.size() - streamStart
-			info.audioDataStartPosition = streamStart
-			info.audioDataEndPosition = fc.size()
-			info.setBitRate(computeBitrate(info.audioDataLength!!, mbdsi.getPreciseLength()))
-			return info
+		} else {
+			RandomAccessFile(path.toFile(), "r").use { read(it.channel) }
 		}
+	}
+
+	fun read(fc: FileChannel): FlacAudioHeader {
+		val flacStream = FlacStreamReader(fc, "")
+		flacStream.findStream()
+		var mbdsi: MetadataBlockDataStreamInfo? = null
+		var isLastBlock = false
+
+		//Search for StreamInfo Block, but even after we found it we still have to continue through all
+		//the metadata blocks so that we can find the start of the audio frames which we need to calculate
+		//the bitrate
+		while (isLastBlock == false) {
+			val mbh = readHeader(fc)
+			if (mbh.blockType === BlockType.STREAMINFO) {
+				//See #253:MetadataBlockDataStreamInfo exception when bytes length is 0
+				if (mbh.dataLength == 0) {
+					throw CannotReadException(
+						"$fc:FLAC StreamInfo has zeo data length"
+					)
+				}
+				mbdsi = MetadataBlockDataStreamInfo(mbh, fc)
+				if (!mbdsi.isValid()) {
+					throw CannotReadException(
+						"$fc:FLAC StreamInfo not valid"
+					)
+				}
+			} else {
+				fc.position(fc.position() + mbh.dataLength)
+			}
+			isLastBlock = mbh.isLastBlock
+		}
+
+		//Audio continues from this point to end of file (normally - TODO might need to allow for an ID3v1 tag at file end ?)
+		val streamStart = fc.position()
+		if (mbdsi == null) {
+			throw CannotReadException(
+				"$fc:Unable to find Flac StreamInfo"
+			)
+		}
+		val info = FlacAudioHeader()
+		info.noOfSamples = mbdsi.getNoOfSamples()
+		info.preciseTrackLength = mbdsi.getPreciseLength().toDouble()
+		info.channelNumber = mbdsi.getNoOfChannels()
+		info.setSamplingRate(mbdsi.getSamplingRate())
+		info.bitsPerSample = mbdsi.getBitsPerSample()
+		info.encodingType = mbdsi.getEncodingType()
+		info.format =
+			SupportedFileFormat.FLAC.displayName
+		info.isLossless = true
+		info.md5 = mbdsi.getMD5Signature()
+		info.audioDataLength = fc.size() - streamStart
+		info.audioDataStartPosition = streamStart
+		info.audioDataEndPosition = fc.size()
+		info.setBitRate(computeBitrate(info.audioDataLength!!, mbdsi.getPreciseLength()))
+		return info
 	}
 
 	private fun computeBitrate(size: Long, length: Float): Int {

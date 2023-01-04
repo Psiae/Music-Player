@@ -31,6 +31,7 @@ import com.flammky.musicplayer.common.media.audio.meta_tag.audio.wav.chunk.WavFa
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.wav.chunk.WavFormatChunk
 import com.flammky.musicplayer.common.media.audio.meta_tag.logging.Hex
 import java.io.IOException
+import java.io.RandomAccessFile
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.channels.FileChannel
@@ -47,17 +48,23 @@ class WavInfoReader(private val loggingName: String) {
 
 	@Throws(CannotReadException::class, IOException::class)
 	fun read(path: Path?): GenericAudioHeader {
-		if (!VersionHelper.hasOreo()) TODO("Implement API < 26")
+		return if (VersionHelper.hasOreo()) {
+			FileChannel.open(path).use { read(it) }
+		} else {
+			RandomAccessFile(path?.toFile(), "r").use { read(it.channel) }
+		}
+	}
 
+	fun read(fc: FileChannel): GenericAudioHeader {
 		val info = GenericAudioHeader()
-		FileChannel.open(path).use { fc ->
+		fc.use { fileChannel ->
 			if (WavRIFFHeader.isValidHeader(
-					loggingName, fc
+					loggingName, fileChannel
 				)
 			) {
-				while (fc.position() < fc.size()) {
+				while (fileChannel.position() < fileChannel.size()) {
 					//Problem reading chunk and no way to workround it so exit loop
-					if (!readChunk(fc, info)) {
+					if (!readChunk(fileChannel, info)) {
 						break
 					}
 				}

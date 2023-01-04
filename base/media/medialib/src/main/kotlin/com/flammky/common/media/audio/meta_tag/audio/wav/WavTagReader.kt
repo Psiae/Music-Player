@@ -32,6 +32,7 @@ import com.flammky.musicplayer.common.media.audio.meta_tag.tag.wav.WavInfoTag
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.wav.WavTag
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.wav.WavTag.Companion.createDefaultID3Tag
 import java.io.IOException
+import java.io.RandomAccessFile
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.channels.FileChannel
@@ -52,32 +53,31 @@ class WavTagReader(private val loggingName: String) {
 	 */
 	@Throws(CannotReadException::class, IOException::class)
 	fun read(path: Path?): WavTag {
-		if (!VersionHelper.hasOreo()) TODO("Implement API < 26")
+		return if (VersionHelper.hasOreo()) {
+			FileChannel.open(path).use { read(it) }
+		} else {
+			RandomAccessFile(path?.toFile(), "r").use { read(it.channel) }
+		}
+	}
 
-		logger.config(
-			"$loggingName Read Tag:start"
-		)
+	@Throws(CannotReadException::class, IOException::class)
+	fun read(fc: FileChannel): WavTag {
 		val tag = WavTag(TagOptionSingleton.instance.wavOptions)
-		FileChannel.open(path).use { fc ->
-			if (WavRIFFHeader.isValidHeader(
-					loggingName, fc
-				)
-			) {
-				while (fc.position() < fc.size()) {
-					if (!readChunk(fc, tag)) {
-						break
-					}
+		if (WavRIFFHeader.isValidHeader(
+				loggingName, fc
+			)
+		) {
+			while (fc.position() < fc.size()) {
+				if (!readChunk(fc, tag)) {
+					break
 				}
-			} else {
-				throw CannotReadException(
-					"$loggingName Wav RIFF Header not valid"
-				)
 			}
+		} else {
+			throw CannotReadException(
+				"$loggingName Wav RIFF Header not valid"
+			)
 		}
 		createDefaultMetadataTagsIfMissing(tag)
-		logger.config(
-			"$loggingName Read Tag:end"
-		)
 		return tag
 	}
 

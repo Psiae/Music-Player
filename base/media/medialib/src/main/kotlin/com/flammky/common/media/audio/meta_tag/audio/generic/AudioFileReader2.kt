@@ -16,7 +16,6 @@ import java.io.IOException
 import java.io.RandomAccessFile
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.logging.Level
 
 /**
  * Replacement for AudioFileReader class
@@ -39,30 +38,45 @@ abstract class AudioFileReader2 : AudioFileReader() {
 		InvalidAudioFrameException::class
 	)
 	override fun read(f: File): AudioFile {
-		if (!VersionHelper.hasOreo()) throw CannotReadException()
-
-		val path = f.toPath()
-		if (logger.isLoggable(Level.CONFIG)) {
-			logger.config(ErrorMessage.GENERAL_READ.getMsg(path))
-		}
-		if (!Files.isReadable(path)) {
-			if (!Files.exists(path)) {
-				throw FileNotFoundException(ErrorMessage.UNABLE_TO_FIND_FILE.getMsg(path))
-			} else {
-				logger.warning(Permissions.displayPermissions(path))
-				throw NoReadPermissionsException(
-					ErrorMessage.GENERAL_READ_FAILED_DO_NOT_HAVE_PERMISSION_TO_READ_FILE.getMsg(
-						path
+		return if (VersionHelper.hasOreo()) {
+			val path = f.toPath()
+			if (!Files.isReadable(path)) {
+				if (!Files.exists(path)) {
+					throw FileNotFoundException(ErrorMessage.UNABLE_TO_FIND_FILE.getMsg(path))
+				} else {
+					logger.warning(Permissions.displayPermissions(path))
+					throw NoReadPermissionsException(
+						ErrorMessage.GENERAL_READ_FAILED_DO_NOT_HAVE_PERMISSION_TO_READ_FILE.getMsg(
+							path
+						)
 					)
-				)
+				}
 			}
+			if (f.length() <= MINIMUM_SIZE_FOR_VALID_AUDIO_FILE) {
+				throw CannotReadException(ErrorMessage.GENERAL_READ_FAILED_FILE_TOO_SMALL.getMsg(path))
+			}
+			val info = getEncodingInfo(path)
+			val tag = getTag(path)
+			AudioFile(f, info, tag)
+		} else {
+			if (!f.canRead()) {
+				if (!f.exists()) {
+					throw FileNotFoundException(ErrorMessage.UNABLE_TO_FIND_FILE.getMsg(f))
+				} else {
+					throw NoReadPermissionsException(
+						ErrorMessage.GENERAL_READ_FAILED_DO_NOT_HAVE_PERMISSION_TO_READ_FILE.getMsg(
+							f
+						)
+					)
+				}
+			}
+			if (f.length() <= MINIMUM_SIZE_FOR_VALID_AUDIO_FILE) {
+				throw CannotReadException(ErrorMessage.GENERAL_READ_FAILED_FILE_TOO_SMALL.getMsg(f))
+			}
+			val info = getEncodingInfo(RandomAccessFile(f, "r").channel)
+			val tag = getTag(RandomAccessFile(f, "r").channel)
+			AudioFile(f, info, tag)
 		}
-		if (f.length() <= MINIMUM_SIZE_FOR_VALID_AUDIO_FILE) {
-			throw CannotReadException(ErrorMessage.GENERAL_READ_FAILED_FILE_TOO_SMALL.getMsg(path))
-		}
-		val info = getEncodingInfo(path)
-		val tag = getTag(path)
-		return AudioFile(f, info, tag)
 	}
 
 	/**

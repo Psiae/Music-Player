@@ -24,6 +24,7 @@ import com.flammky.musicplayer.common.media.audio.meta_tag.audio.generic.Generic
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.Tag
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.TagOptionSingleton
 import java.io.IOException
+import java.nio.channels.FileChannel
 import java.nio.file.Path
 
 /**
@@ -35,9 +36,25 @@ class WavFileReader : AudioFileReader2() {
 		return WavInfoReader(file.toString()).read(file)
 	}
 
+	override fun getEncodingInfo(fc: FileChannel): GenericAudioHeader {
+		return WavInfoReader(fc.toString()).read(fc)
+	}
+
 	@Throws(IOException::class, CannotReadException::class)
 	override fun getTag(path: Path): Tag {
 		val tag = WavTagReader(path.toString()).read(path)
+		when (TagOptionSingleton.instance.wavOptions) {
+			WavOptions.READ_ID3_ONLY_AND_SYNC,
+			WavOptions.READ_ID3_UNLESS_ONLY_INFO_AND_SYNC,
+			WavOptions.READ_INFO_ONLY_AND_SYNC,
+			WavOptions.READ_INFO_UNLESS_ONLY_ID3_AND_SYNC -> tag.syncTagsAfterRead()
+			else -> {}
+		}
+		return tag
+	}
+
+	override fun getTag(fc: FileChannel): Tag {
+		val tag = WavTagReader(fc.toString()).read(fc)
 		when (TagOptionSingleton.instance.wavOptions) {
 			WavOptions.READ_ID3_ONLY_AND_SYNC,
 			WavOptions.READ_ID3_UNLESS_ONLY_INFO_AND_SYNC,

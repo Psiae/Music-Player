@@ -33,8 +33,10 @@ import com.flammky.musicplayer.common.media.audio.meta_tag.tag.mp4.Mp4Tag
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.mp4.atom.Mp4DataBox
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.mp4.field.*
 import java.io.IOException
+import java.io.RandomAccessFile
 import java.io.UnsupportedEncodingException
 import java.nio.ByteBuffer
+import java.nio.channels.SeekableByteChannel
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
@@ -86,87 +88,92 @@ class Mp4TagReader {
 	 */
 	@Throws(CannotReadException::class, IOException::class)
 	fun read(file: Path): Mp4Tag {
-		if (!VersionHelper.hasOreo()) TODO("Implement API < 26")
-
-		Files.newByteChannel(file).use { fc ->
-			val tag = Mp4Tag()
-
-			//Get to the facts everything we are interested in is within the moov box, so just load data from file
-			//once so no more file I/O needed
-			val moovHeader = seekWithinLevel(
-				fc,
-				Mp4AtomIdentifier.MOOV.fieldName
-			)
-				?: throw CannotReadException(
-					ErrorMessage.MP4_FILE_NOT_CONTAINER.msg
-				)
-			val moovBuffer =
-				ByteBuffer.allocate(moovHeader.length - Mp4BoxHeader.HEADER_LENGTH)
-			fc.read(moovBuffer)
-			moovBuffer.rewind()
-
-			//Level 2-Searching for "udta" within "moov"
-			var boxHeader = seekWithinLevel(moovBuffer, Mp4AtomIdentifier.UDTA.fieldName)
-			if (boxHeader != null) {
-				//Level 3-Searching for "meta" within udta
-				boxHeader = seekWithinLevel(moovBuffer, Mp4AtomIdentifier.META.fieldName)
-				if (boxHeader == null) {
-					logger.warning(ErrorMessage.MP4_FILE_HAS_NO_METADATA.msg)
-					return tag
-				}
-				val meta = Mp4MetaBox(boxHeader, moovBuffer)
-				meta.processData()
-
-				//Level 4- Search for "ilst" within meta
-				boxHeader = seekWithinLevel(moovBuffer, Mp4AtomIdentifier.ILST.fieldName)
-				//This file does not actually contain a tag
-				if (boxHeader == null) {
-					logger.warning(ErrorMessage.MP4_FILE_HAS_NO_METADATA.msg)
-					return tag
-				}
-			} else {
-				//Level 2-Searching for "meta" not within udta
-				boxHeader = seekWithinLevel(moovBuffer, Mp4AtomIdentifier.META.fieldName)
-				if (boxHeader == null) {
-					logger.warning(ErrorMessage.MP4_FILE_HAS_NO_METADATA.msg)
-					return tag
-				}
-				val meta = Mp4MetaBox(boxHeader, moovBuffer)
-				meta.processData()
-
-
-				//Level 3- Search for "ilst" within meta
-				boxHeader = seekWithinLevel(moovBuffer, Mp4AtomIdentifier.ILST.fieldName)
-				//This file does not actually contain a tag
-				if (boxHeader == null) {
-					logger.warning(ErrorMessage.MP4_FILE_HAS_NO_METADATA.msg)
-					return tag
-				}
+		return if (VersionHelper.hasOreo()) {
+			Files.newByteChannel(file).use { fc ->
+				read(fc)
 			}
-
-			//Size of metadata (exclude the size of the ilst parentHeader), take a slice starting at
-			//metadata children to make things safer
-			val length = boxHeader.length - Mp4BoxHeader.HEADER_LENGTH
-			val metadataBuffer = moovBuffer.slice()
-			//Datalength is longer are there boxes after ilst at this level?
-			logger.config("headerlengthsays:" + length + "datalength:" + metadataBuffer.limit())
-			var read = 0
-			logger.config("Started to read metadata fields at position is in metadata buffer:" + metadataBuffer.position())
-			while (read < length) {
-				//Read the boxHeader
-				boxHeader.update(metadataBuffer)
-
-				//Create the corresponding datafield from the id, and slice the buffer so position of main buffer
-				//wont get affected
-				logger.config("Next position is at:" + metadataBuffer.position())
-				createMp4Field(tag, boxHeader, metadataBuffer.slice())
-
-				//Move position in buffer to the start of the next parentHeader
-				metadataBuffer.position(metadataBuffer.position() + boxHeader.dataLength)
-				read += boxHeader.length
-			}
-			return tag
+		} else {
+			RandomAccessFile(file.toFile(), "r").use { read(it.channel) }
 		}
+	}
+
+	fun read(sbc: SeekableByteChannel): Mp4Tag {
+		val tag = Mp4Tag()
+		//Get to the facts everything we are interested in is within the moov box, so just load data from file
+		//once so no more file I/O needed
+		val moovHeader = seekWithinLevel(
+			sbc,
+			Mp4AtomIdentifier.MOOV.fieldName
+		)
+			?: throw CannotReadException(
+				ErrorMessage.MP4_FILE_NOT_CONTAINER.msg
+			)
+		val moovBuffer =
+			ByteBuffer.allocate(moovHeader.length - Mp4BoxHeader.HEADER_LENGTH)
+		sbc.read(moovBuffer)
+		moovBuffer.rewind()
+
+		//Level 2-Searching for "udta" within "moov"
+		var boxHeader = seekWithinLevel(moovBuffer, Mp4AtomIdentifier.UDTA.fieldName)
+		if (boxHeader != null) {
+			//Level 3-Searching for "meta" within udta
+			boxHeader = seekWithinLevel(moovBuffer, Mp4AtomIdentifier.META.fieldName)
+			if (boxHeader == null) {
+				logger.warning(ErrorMessage.MP4_FILE_HAS_NO_METADATA.msg)
+				return tag
+			}
+			val meta = Mp4MetaBox(boxHeader, moovBuffer)
+			meta.processData()
+
+			//Level 4- Search for "ilst" within meta
+			boxHeader = seekWithinLevel(moovBuffer, Mp4AtomIdentifier.ILST.fieldName)
+			//This file does not actually contain a tag
+			if (boxHeader == null) {
+				logger.warning(ErrorMessage.MP4_FILE_HAS_NO_METADATA.msg)
+				return tag
+			}
+		} else {
+			//Level 2-Searching for "meta" not within udta
+			boxHeader = seekWithinLevel(moovBuffer, Mp4AtomIdentifier.META.fieldName)
+			if (boxHeader == null) {
+				logger.warning(ErrorMessage.MP4_FILE_HAS_NO_METADATA.msg)
+				return tag
+			}
+			val meta = Mp4MetaBox(boxHeader, moovBuffer)
+			meta.processData()
+
+
+			//Level 3- Search for "ilst" within meta
+			boxHeader = seekWithinLevel(moovBuffer, Mp4AtomIdentifier.ILST.fieldName)
+			//This file does not actually contain a tag
+			if (boxHeader == null) {
+				logger.warning(ErrorMessage.MP4_FILE_HAS_NO_METADATA.msg)
+				return tag
+			}
+		}
+
+		//Size of metadata (exclude the size of the ilst parentHeader), take a slice starting at
+		//metadata children to make things safer
+		val length = boxHeader.length - Mp4BoxHeader.HEADER_LENGTH
+		val metadataBuffer = moovBuffer.slice()
+		//Datalength is longer are there boxes after ilst at this level?
+		logger.config("headerlengthsays:" + length + "datalength:" + metadataBuffer.limit())
+		var read = 0
+		logger.config("Started to read metadata fields at position is in metadata buffer:" + metadataBuffer.position())
+		while (read < length) {
+			//Read the boxHeader
+			boxHeader.update(metadataBuffer)
+
+			//Create the corresponding datafield from the id, and slice the buffer so position of main buffer
+			//wont get affected
+			logger.config("Next position is at:" + metadataBuffer.position())
+			createMp4Field(tag, boxHeader, metadataBuffer.slice())
+
+			//Move position in buffer to the start of the next parentHeader
+			metadataBuffer.position(metadataBuffer.position() + boxHeader.dataLength)
+			read += boxHeader.length
+		}
+		return tag
 	}
 
 	/**
@@ -225,10 +232,7 @@ class Mp4TagReader {
 				} else if (header.id == Mp4FieldKey.GENRE.fieldName) {
 					val field: TagField = Mp4GenreField(header.id, raw)
 					tag.addField(field)
-				} else if (header.id == Mp4FieldKey.ARTWORK.fieldName || Mp4FieldType.isCoverArtType(
-						fieldType!!
-					)
-				) {
+				} else if (header.id == Mp4FieldKey.ARTWORK.fieldName || Mp4FieldType.isCoverArtType(fieldType!!)) {
 					var processedDataSize = 0
 					var imageCount = 0
 					//The loop should run for each image (each data atom)

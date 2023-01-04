@@ -13,6 +13,7 @@ import com.flammky.musicplayer.common.media.audio.meta_tag.logging.Hex
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.aiff.AiffTag
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.aiff.AiffTag.Companion.createDefaultID3Tag
 import java.io.IOException
+import java.io.RandomAccessFile
 import java.nio.ByteOrder
 import java.nio.channels.FileChannel
 import java.nio.file.Path
@@ -32,36 +33,33 @@ class AiffTagReader(private val loggingName: String) : AiffChunkReader() {
 	 */
 	@Throws(CannotReadException::class, IOException::class, UnsupportedOperationException::class)
 	fun read(file: Path): AiffTag {
-		if (!VersionHelper.hasOreo()) throw UnsupportedOperationException()
-
-		FileChannel.open(file).use { fc ->
-			val aiffAudioHeader = AiffAudioHeader()
-			val aiffTag = AiffTag()
-			val fileHeader = AiffFileHeader(file.toString())
-			val overallChunkSize = fileHeader.readHeader(fc, aiffAudioHeader)
-			aiffTag.formSize = overallChunkSize
-			aiffTag.fileSize = fc.size()
-			val endLocationOfAiffData = overallChunkSize + ChunkHeader.CHUNK_HEADER_SIZE
-			while (fc.position() < endLocationOfAiffData && fc.position() < fc.size()) {
-				if (!readChunk(fc, aiffTag)) {
-					logger.severe(
-						"$file:UnableToReadProcessChunk"
-					)
-					break
-				}
-			}
-			if (aiffTag.iD3Tag == null) {
-				aiffTag.iD3Tag = createDefaultID3Tag()
-			}
-			logger.config(
-				"LastChunkPos:" + Hex.asDecAndHex(fc.position())
-					+ ":OfficialEndLocation:" + Hex.asDecAndHex(endLocationOfAiffData)
-			)
-			if (fc.position() > endLocationOfAiffData) {
-				aiffTag.isLastChunkSizeExtendsPastFormSize = true
-			}
-			return aiffTag
+		return if (VersionHelper.hasOreo()) {
+			FileChannel.open(file).use { read(it)	}
+		} else {
+			RandomAccessFile(file.toFile(), "r").use { read(it.channel) }
 		}
+	}
+
+	fun read(fc: FileChannel): AiffTag {
+		val aiffAudioHeader = AiffAudioHeader()
+		val aiffTag = AiffTag()
+		val fileHeader = AiffFileHeader(fc.toString())
+		val overallChunkSize = fileHeader.readHeader(fc, aiffAudioHeader)
+		aiffTag.formSize = overallChunkSize
+		aiffTag.fileSize = fc.size()
+		val endLocationOfAiffData = overallChunkSize + ChunkHeader.CHUNK_HEADER_SIZE
+		while (fc.position() < endLocationOfAiffData && fc.position() < fc.size()) {
+			if (!readChunk(fc, aiffTag)) {
+				break
+			}
+		}
+		if (aiffTag.iD3Tag == null) {
+			aiffTag.iD3Tag = createDefaultID3Tag()
+		}
+		if (fc.position() > endLocationOfAiffData) {
+			aiffTag.isLastChunkSizeExtendsPastFormSize = true
+		}
+		return aiffTag
 	}
 
 	/**

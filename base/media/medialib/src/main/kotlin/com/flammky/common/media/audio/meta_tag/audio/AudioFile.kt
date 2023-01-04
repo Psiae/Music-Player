@@ -19,6 +19,7 @@ import com.flammky.musicplayer.common.media.audio.meta_tag.tag.reference.ID3V2Ve
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.vorbiscomment.VorbisCommentTag.Companion.createNewTag
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.wav.WavTag
 import java.io.File
+import java.io.FileDescriptor
 import java.io.FileNotFoundException
 import java.io.RandomAccessFile
 import java.nio.file.Path
@@ -61,6 +62,7 @@ open class AudioFile {
 	 * The physical file that this instance represents.
 	 */
 	var mFile: File? = null
+	var mFd: FileDescriptor? = null
 	/**
 	 * Return audio header information
 	 * @return
@@ -137,6 +139,12 @@ open class AudioFile {
 		this.tag = tag
 	}
 
+	constructor(fd: FileDescriptor, audioHeader: AudioHeader?, tag: Tag?) {
+		mFd = fd
+		this.audioHeader = audioHeader
+		this.tag = tag
+	}
+
 	/**
 	 *
 	 * Write the tag contained in this AudioFile in the actual file on the disk, this is the same as calling the `AudioFileIO.write(this)` method.
@@ -170,7 +178,7 @@ open class AudioFile {
 	 * TODO Maybe this can be changed ?
 	 */
 	override fun toString(): String {
-		return """AudioFile ${mFile!!.absolutePath}  --------
+		return """AudioFile ${mFile?.absolutePath}  --------
 ${audioHeader.toString()}
 ${if (tag == null) "" else tag.toString()}
 -------------------"""

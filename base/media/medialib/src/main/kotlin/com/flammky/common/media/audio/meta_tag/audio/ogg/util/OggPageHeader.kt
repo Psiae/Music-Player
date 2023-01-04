@@ -25,6 +25,7 @@ import com.flammky.musicplayer.common.media.audio.meta_tag.tag.id3.ID3v2TagBase.
 import java.io.IOException
 import java.io.RandomAccessFile
 import java.nio.ByteBuffer
+import java.nio.channels.FileChannel
 import java.util.*
 import java.util.logging.Level
 import java.util.logging.Logger
@@ -285,6 +286,40 @@ class OggPageHeader(
 
 			//Now just after PageHeader, ready for Packet Data
 			return OggPageHeader(b)
+		}
+
+		fun read(fc: FileChannel): OggPageHeader {
+			var start = fc.position()
+			var b = ByteBuffer.allocate(CAPTURE_PATTERN.size)
+			fc.read(b)
+			if (!Arrays.equals(b.array(), CAPTURE_PATTERN)) {
+				fc.position(start)
+				if (isId3Tag(fc)) {
+					logger.warning(ErrorMessage.OGG_CONTAINS_ID3TAG.getMsg(fc.position() - start))
+					fc.read(b)
+					if (Arrays.equals(b.array(), CAPTURE_PATTERN)) {
+						//Go to the end of the ID3 header
+						start = fc.position() - CAPTURE_PATTERN.size
+					}
+				} else {
+					throw CannotReadException(
+						ErrorMessage.OGG_HEADER_CANNOT_BE_FOUND.getMsg(
+							String(
+								b.array()
+							)
+						)
+					)
+				}
+			}
+			fc.position(start + FIELD_PAGE_SEGMENTS_POS)
+			val pageSegments = ByteBuffer.allocate(1).apply { fc.read(this) }.get(0).toInt() and 0xFF //unsigned
+			fc.position(start)
+			b = ByteBuffer.allocate(OGG_PAGE_HEADER_FIXED_LENGTH + pageSegments)
+			fc.read(b)
+			val pageHeader = OggPageHeader(b.array())
+			pageHeader.startByte = start
+			//Now just after PageHeader, ready for Packet Data
+			return pageHeader
 		}
 
 		/**

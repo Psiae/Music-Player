@@ -6,7 +6,7 @@ import com.flammky.android.medialib.common.mediaitem.MediaItem
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.android.medialib.player.Player
 import com.flammky.common.kotlin.coroutines.safeCollect
-import com.flammky.kotlin.common.sync.sync
+import com.flammky.musicplayer.core.common.sync
 import com.flammky.musicplayer.base.media.playback.*
 import com.flammky.musicplayer.base.media.r.MediaConnectionDelegate
 import com.flammky.musicplayer.base.media.r.MediaConnectionPlayback

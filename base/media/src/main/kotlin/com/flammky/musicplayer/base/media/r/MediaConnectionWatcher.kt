@@ -2,7 +2,7 @@ package com.flammky.musicplayer.base.media.r
 
 import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider
 import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider.ContentObserver.Flag.Companion.isDelete
-import com.flammky.kotlin.common.sync.sync
+import com.flammky.musicplayer.core.common.sync
 import timber.log.Timber
 
 class MediaConnectionWatcher(

@@ -3,7 +3,7 @@ package com.flammky.musicplayer.main.ui.r
 import android.content.Intent
 import com.flammky.android.content.intent.isActionView
 import com.flammky.android.manifest.permission.AndroidPermission
-import com.flammky.kotlin.common.sync.sync
+import com.flammky.musicplayer.core.common.sync
 import com.flammky.musicplayer.main.ext.IntentHandler
 import com.flammky.musicplayer.main.ext.MediaIntentHandler
 import timber.log.Timber

@@ -4,22 +4,12 @@ import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
 import android.os.ParcelFileDescriptor
-import android.util.Log
-import com.flammky.android.app.AppDelegate
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.AudioFileIO
-import com.flammky.musicplayer.common.media.audio.uri.AndroidFileBuilder
-import com.flammky.musicplayer.common.media.audio.uri.ContentFileBuilder
 import timber.log.Timber
 import java.io.File
 import java.io.FileDescriptor
 
-interface IDK
-class IDKImpl : IDK
-
-fun idk() {
-	Log.d("", "")
-}
-
+@Deprecated("TO BE REMOVED")
 class AudioFile private constructor() {
 	private var mContext: Context? = null
 	private var mFile: File? = null
@@ -43,23 +33,6 @@ class AudioFile private constructor() {
 
 		private constructor(context: Context) {
 			_context = context
-		}
-
-		constructor(context: Context, file: File) : this(context) {
-			_file = file
-		}
-
-		constructor(context: Context, uri: Uri, dir: File?) : this(context) {
-			val builder: AndroidFileBuilder = when {
-				uri.scheme == ContentResolver.SCHEME_CONTENT -> ContentFileBuilder(context, uri)
-				else -> TODO("Uri not yet supported")
-			}
-
-			builder.run {
-				val nDir = dir ?: AppDelegate.cacheManager.startupCacheDir
-				_file = buildToDir(nDir)
-				release()
-			}
 		}
 
 		constructor(context: Context, uri: Uri) : this(context) {
@@ -99,10 +72,5 @@ class AudioFile private constructor() {
 
 
 	companion object {
-		@Suppress("SpellCheckingInspection")
-		private val CACHE_DIR_NAME = File("flammky.media.audiofile")
-
-		fun fromContext(context: Context, file: File) = Builder(context, file)
-		fun fromContext(context: Context, uri: Uri, dir: File?) = Builder(context, uri, dir)
 	}
 }

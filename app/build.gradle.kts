@@ -86,7 +86,9 @@ android {
 
 dependencies {
 
+    implementation(project(":core"))
     implementation(project(":base"))
+    implementation(project(":base:common"))
     implementation(project(":base:compose"))
     implementation(project(":base:media"))
     implementation(project(":base:compose"))

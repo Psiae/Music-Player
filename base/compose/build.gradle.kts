@@ -28,7 +28,7 @@ android {
 
 dependencies {
     api(project(":base"))
-    api(project(":common:androidx:viewmodel:compose"))
+    api(project(":base:common:androidx:viewmodel:compose"))
 
     /* androidx.compose */
     dependencies {

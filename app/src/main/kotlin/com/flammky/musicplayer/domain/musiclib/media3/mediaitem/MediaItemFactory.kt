@@ -22,9 +22,6 @@ import java.io.InputStream
 
 object MediaItemFactory {
 
-	val cacheDir
-		get() = AppDelegate.cacheManager.startupCacheDir
-
 	private const val ART_URI_PREFIX = "ART"
 
 	val EMPTY

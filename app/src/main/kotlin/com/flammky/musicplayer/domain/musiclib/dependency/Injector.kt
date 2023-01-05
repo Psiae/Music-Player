@@ -1,6 +1,6 @@
 package com.flammky.musicplayer.domain.musiclib.dependency
 
-import com.flammky.kotlin.common.sync.sync
+import com.flammky.musicplayer.core.common.sync
 
 class Injector {
 	private val mParents: MutableSet<Injector> = mutableSetOf()

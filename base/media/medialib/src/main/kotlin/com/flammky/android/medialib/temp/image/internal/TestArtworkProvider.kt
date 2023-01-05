@@ -6,7 +6,6 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.os.Handler
 import android.os.Looper
-import com.flammky.android.app.AppDelegate
 import com.flammky.android.common.BitmapSampler
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.medialib.temp.cache.lru.LruCache
@@ -14,7 +13,7 @@ import com.flammky.android.medialib.temp.image.ArtworkProvider
 import com.flammky.android.medialib.temp.image.ImageRepository
 import com.flammky.android.medialib.temp.provider.mediastore.api28.MediaStore28
 import com.flammky.common.media.audio.AudioFile
-import com.flammky.kotlin.common.sync.sync
+import com.flammky.musicplayer.core.common.sync
 import kotlinx.coroutines.*
 import timber.log.Timber
 
@@ -24,7 +23,6 @@ class TestArtworkProvider(
 ) : ArtworkProvider {
 	private val dispatcher = AndroidCoroutineDispatchers.DEFAULT
 	private val scope = CoroutineScope(dispatcher.io + SupervisorJob())
-	private val cacheManager = AppDelegate.cacheManager
 
 	suspend fun removeCacheForId(id: String, mem: Boolean, disk: Boolean) {
 		if (mem) lru.remove(
@@ -32,7 +30,7 @@ class TestArtworkProvider(
 				id, "raw"
 			)
 		)
-		if (disk) cacheManager.removeImageFromCache(id, "TestArtworkProvider")
+		if (disk) {}
 	}
 
 	override fun <R> request(request: ArtworkProvider.Request<R>): ArtworkProvider.ListenableResult<R> {

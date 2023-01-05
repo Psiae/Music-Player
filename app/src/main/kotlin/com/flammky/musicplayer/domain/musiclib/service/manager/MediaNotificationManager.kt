@@ -26,7 +26,7 @@ import com.flammky.android.medialib.temp.image.ImageRepository
 import com.flammky.common.kotlin.comparable.clamp
 import com.flammky.common.kotlin.coroutines.AutoCancelJob
 import com.flammky.musicplayer.activity.ActivityWatcher
-import com.flammky.musicplayer.core.sdk.VersionHelper
+import com.flammky.musicplayer.core.build.BuildVersion
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory.orEmpty
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemInfo
@@ -173,7 +173,7 @@ class MediaNotificationManager(
 			private set
 
 		init {
-			if (VersionHelper.hasOreo()) {
+			if (BuildVersion.hasOreo()) {
 				createNotificationChannel(notificationManagerService)
 			}
 		}

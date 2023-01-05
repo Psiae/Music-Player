@@ -3,8 +3,8 @@ package com.flammky.musicplayer.domain.media
 import com.flammky.musicplayer.base.media.r.MediaConnectionDelegate
 import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConnection
 import com.flammky.musicplayer.base.media.mediaconnection.playback.real.RealPlaybackConnection
-import com.flammky.musicplayer.ui.playbackcontrol.PlaybackControlPresenter
-import com.flammky.musicplayer.ui.playbackcontrol.RealPlaybackControlPresenter
+import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackControlPresenter
+import com.flammky.musicplayer.playbackcontrol.ui.presenter.RealPlaybackControlPresenter
 import dagger.Provides
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton

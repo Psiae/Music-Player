@@ -21,7 +21,7 @@ import com.flammky.common.kotlin.coroutines.safeCollect
 import com.flammky.musicplayer.BuildConfig
 import com.flammky.musicplayer.activity.ActivityWatcher
 import com.flammky.musicplayer.base.media.r.MediaConnectionDelegate
-import com.flammky.musicplayer.core.sdk.VersionHelper
+import com.flammky.musicplayer.core.build.BuildVersion
 import com.flammky.musicplayer.domain.musiclib.service.manager.MediaNotificationManager
 import com.flammky.musicplayer.domain.musiclib.service.manager.PlaybackManager
 import com.flammky.musicplayer.domain.musiclib.service.manager.SessionManager
@@ -132,7 +132,7 @@ class MusicLibraryService : MediaLibraryService() {
 	private fun startForegroundService(notification: Notification) {
 		try {
 			if (!isServiceStarted) onStart()
-			if (VersionHelper.hasQ()) {
+			if (BuildVersion.hasQ()) {
 				startForeground(
 					MediaNotificationId, notification,
 					ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
@@ -146,7 +146,7 @@ class MusicLibraryService : MediaLibraryService() {
 		} catch (e: Exception) {
 			Timber.e(e)
 			if (BuildConfig.DEBUG
-				|| (VersionHelper.hasSnowCone() && e !is ForegroundServiceStartNotAllowedException)
+				|| (BuildVersion.hasSnowCone() && e !is ForegroundServiceStartNotAllowedException)
 			) throw e
 		}
 	}

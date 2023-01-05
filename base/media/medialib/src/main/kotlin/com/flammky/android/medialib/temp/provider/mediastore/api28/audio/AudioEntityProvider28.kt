@@ -18,7 +18,7 @@ import com.flammky.android.medialib.temp.provider.mediastore.api28.MediaStore28
 import com.flammky.android.medialib.temp.provider.mediastore.base.audio.AudioEntityProvider
 import com.flammky.common.kotlin.coroutine.CoroutineDispatchers
 import com.flammky.common.kotlin.throwable.throwAll
-import com.flammky.kotlin.common.sync.sync
+import com.flammky.musicplayer.core.common.sync
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock

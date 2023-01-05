@@ -23,9 +23,10 @@ java {
 }
 
 dependencies {
-    api(project(":common:kotlin"))
-    api(project(":common:android"))
-    api(project(":common:androidx"))
+    api(project(":core"))
+    api(project("common:kotlin"))
+    api(project("common:android"))
+    api(project("common:androidx"))
 
     //
     // Graphics
@@ -60,7 +61,7 @@ dependencies {
     //
     // DI
     //
-    
+
     /* google.dagger */
     dependencies {
 
@@ -121,4 +122,14 @@ dependencies {
         val v = "1.0.0"
         api("androidx.security:security-crypto:$v")
     }
+
+    //
+    // Misc
+    //
+    /* androidx.startup */
+    dependencies {
+        val v = "1.1.1"
+        api("androidx.startup:startup-runtime:$v")
+    }
 }
+

@@ -24,6 +24,7 @@ android {
 
 dependencies {
     api(project(":base"))
+    api(project(":base:common:kotlin"))
 
     // temporary
     api(project("medialib"))

@@ -8,7 +8,7 @@ import android.os.Environment
 import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.provider.OpenableColumns
-import com.flammky.musicplayer.core.sdk.VersionHelper
+import com.flammky.musicplayer.core.build.BuildVersion
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
@@ -34,7 +34,7 @@ object DocumentProviderHelper {
 
   @JvmStatic
   val storagePath
-    get() = if (VersionHelper.hasR()) {
+    get() = if (BuildVersion.hasR()) {
       Environment.getStorageDirectory().toString()
     } else {
       "/storage"
@@ -162,7 +162,7 @@ object DocumentProviderHelper {
 			}
 
 			val fUri = when {
-				VersionHelper.hasQ() && dSplit2F.last().startsWith("msf") -> {
+				BuildVersion.hasQ() && dSplit2F.last().startsWith("msf") -> {
 					val mime = context.contentResolver.query(uri, null, null, null, null)
 						?.use { cursor ->
 							cursor.moveToFirst()

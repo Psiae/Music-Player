@@ -24,10 +24,10 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.flammky.android.app.permission.AndroidPermission
 import com.flammky.android.content.context.ContextHelper
 import com.flammky.androidx.content.context.findActivity
 import com.flammky.musicplayer.R
+import com.flammky.android.manifest.permission.AndroidPermission
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.backgroundContentColorAsState
 import com.flammky.musicplayer.base.theme.compose.surfaceContentColorAsState
@@ -51,7 +51,7 @@ private val entryViewModel: EntryViewModel
 	get() = viewModel()
 
 private val readStoragePermission = AndroidPermission.Read_External_Storage
-private val writeStoragePermission = AndroidPermission.Write_External_Storage
+private val writeStoragePermission = AndroidPermission.Write_External_Stoage
 
 private val pageItems = listOf(
 	PermissionPageItem(
@@ -143,7 +143,7 @@ fun EntryPermissionPager(contextHelper: ContextHelper, onGranted: () -> Unit) {
 
 			allPermissionGranted.value = pageItems
 				.filter { !it.optional }
-				.all { contextHelper.permissions.hasPermission(it.permission.manifestPath) }
+				.all { contextHelper.permissions.hasPermission(it.permission) }
 		}
 
 		Column(
@@ -265,10 +265,10 @@ private fun isPermissionGranted(
 }
 
 private data class PermissionPageItem(
-    val permission: AndroidPermission,
-    @DrawableRes val resId: Int,
-    val optional: Boolean,
-    val title: String,
+	val permission: AndroidPermission,
+	@DrawableRes val resId: Int,
+	val optional: Boolean,
+	val title: String,
 )
 
 @Composable

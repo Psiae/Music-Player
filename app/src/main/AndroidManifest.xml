@@ -13,7 +13,7 @@
     </queries>
 
     <application
-        android:name="com.flammky.musicplayer.core.app.MusicPlayerApp"
+        android:name="com.flammky.musicplayer.app.MusicPlayerApp"
         android:allowBackup="true"
         android:exported="true"
         android:icon="@mipmap/ic_launcher_blu_dark"

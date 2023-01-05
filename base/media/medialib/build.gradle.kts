@@ -39,10 +39,11 @@ android {
 dependencies {
 
     // Project Local
-    api(project(":common:android"))
-    api(project(":common:androidx"))
-    api(project(":common:androidx:lifecycle"))
-    api(project(":common:kotlin"))
+    api(project(":base:common:android"))
+    api(project(":base:common:androidx"))
+    api(project(":base:common:androidx:lifecycle"))
+    api(project(":base:common:kotlin"))
+    api(project(":base"))
 
     /* androidx.media3 */
     dependencies {

@@ -11,7 +11,7 @@ import com.flammky.musicplayer.common.android.concurrent.ConcurrencyHelper.check
 import com.flammky.musicplayer.domain.media.MediaConnection
 import com.flammky.musicplayer.playbackcontrol.ui.controller.PlaybackController
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
-import com.flammky.musicplayer.ui.playbackcontrol.PlaybackControlPresenter
+import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackControlPresenter
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job

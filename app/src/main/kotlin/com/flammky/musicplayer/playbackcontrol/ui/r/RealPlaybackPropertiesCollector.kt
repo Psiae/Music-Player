@@ -1,6 +1,6 @@
 package com.flammky.musicplayer.playbackcontrol.ui.r
 
-import com.flammky.kotlin.common.sync.sync
+import com.flammky.musicplayer.core.common.sync
 import com.flammky.musicplayer.base.media.playback.PlaybackConstants
 import com.flammky.musicplayer.base.media.playback.PlaybackProperties
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver

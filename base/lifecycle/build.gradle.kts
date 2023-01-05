@@ -24,5 +24,5 @@ android {
 
 dependencies {
     api(project(":base"))
-    api(project(":common:androidx:viewmodel"))
+    api(project(":base:common:androidx:viewmodel"))
 }

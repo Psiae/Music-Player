@@ -3,7 +3,7 @@ package com.flammky.android.medialib.temp.api.session.component.internal
 import com.flammky.android.medialib.temp.api.session.component.SessionManager
 import com.flammky.android.medialib.temp.internal.MediaLibraryContext
 import com.flammky.android.medialib.temp.session.LibrarySession
-import com.flammky.kotlin.common.sync.sync
+import com.flammky.musicplayer.core.common.sync
 import timber.log.Timber
 
 internal class InternalSessionManager(private val libraryContext: MediaLibraryContext) :

@@ -7,7 +7,7 @@ import androidx.datastore.dataStore
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.kotlin.common.lazy.LazyConstructor
 import com.flammky.kotlin.common.lazy.LazyConstructor.Companion.valueOrNull
-import com.flammky.kotlin.common.sync.atomic
+import com.flammky.musicplayer.core.common.atomic
 import com.flammky.musicplayer.base.auth.AuthData
 import com.flammky.musicplayer.base.auth.AuthService
 import com.flammky.musicplayer.base.auth.ProviderNotFoundException

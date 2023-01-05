@@ -21,7 +21,7 @@
  */
 package com.flammky.musicplayer.common.media.audio.meta_tag.tag.id3.valuepair
 
-import com.flammky.kotlin.common.sync.sync
+import com.flammky.musicplayer.core.common.sync
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.datatype.AbstractIntStringValuePair
 
 class InterpolationTypes private constructor() : AbstractIntStringValuePair() {

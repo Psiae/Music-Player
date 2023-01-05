@@ -1,6 +1,6 @@
 package com.flammky.android.medialib.temp.session.internal
 
-import com.flammky.kotlin.common.sync.sync
+import com.flammky.musicplayer.core.common.sync
 import com.flammky.android.medialib.temp.internal.MediaLibraryContext
 import com.flammky.android.medialib.temp.session.LibrarySession
 

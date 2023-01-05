@@ -31,6 +31,7 @@ import com.flammky.musicplayer.base.compose.LocalLayoutVisibility
 import com.flammky.musicplayer.base.theme.compose.backgroundColorAsState
 import com.flammky.musicplayer.base.theme.compose.isDarkAsState
 import com.flammky.musicplayer.base.theme.compose.surfaceVariantColorAsState
+import com.flammky.musicplayer.base.theme.compose.surfaceVariantContentColorAsState
 import com.flammky.musicplayer.library.R
 import com.flammky.musicplayer.library.localmedia.data.LocalSongModel
 import com.flammky.musicplayer.library.ui.base.LibraryViewModel
@@ -225,7 +226,7 @@ private fun ItemTextDescription(
 	modifier: Modifier,
 	model: LocalSongModel,
 	vm: LocalSongViewModel,
-	textColor: Color = if (isSystemInDarkTheme()) Color.White else Color.Black
+	textColor: Color = com.flammky.musicplayer.base.theme.Theme.surfaceVariantContentColorAsState().value
 ) {
 	val coroutineScope = rememberCoroutineScope()
 	val coroutineContext = Dispatchers.Main.immediate + SupervisorJob()

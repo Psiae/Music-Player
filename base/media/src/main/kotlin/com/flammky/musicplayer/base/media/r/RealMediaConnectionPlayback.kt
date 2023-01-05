@@ -14,6 +14,7 @@ import com.flammky.android.medialib.temp.player.event.LibraryPlayerEventListener
 import com.flammky.android.medialib.temp.player.event.PlayWhenReadyChangedReason
 import com.flammky.android.medialib.temp.player.playback.RepeatMode.Companion.toRepeatModeInt
 import com.flammky.common.kotlin.coroutines.safeCollect
+import com.flammky.musicplayer.base.media.playback.PlaybackConstants
 import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.*
 import kotlinx.coroutines.android.asCoroutineDispatcher
@@ -23,6 +24,7 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.guava.future
 import timber.log.Timber
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.ZERO
 import kotlin.time.Duration.Companion.milliseconds
 
 class RealMediaConnectionPlayback : MediaConnectionPlayback {
@@ -157,14 +159,20 @@ class RealMediaConnectionPlayback : MediaConnectionPlayback {
 
 	override fun bufferedPosition(): Duration {
 		return s.mediaController.bufferedPositionMs.milliseconds
+			.takeIf { it >= ZERO }
+			?: PlaybackConstants.POSITION_UNSET
 	}
 
 	override fun position(): Duration {
 		return s.mediaController.positionMs.milliseconds
+			.takeIf { it >= ZERO }
+			?: PlaybackConstants.POSITION_UNSET
 	}
 
 	override fun duration(): Duration {
 		return s.mediaController.durationMs.milliseconds
+			.takeIf { it >= ZERO }
+			?: PlaybackConstants.DURATION_UNSET
 	}
 
 	override fun playbackSpeed(): Float {

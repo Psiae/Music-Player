@@ -19,8 +19,8 @@ fun NoInlineBox(
 	propagateMinConstraints: Boolean = false,
 	content: @Composable BoxScope.() -> Unit
 ) = Box(modifier, contentAlignment, propagateMinConstraints, content)
-@Composable
 
+@Composable
 fun NoInlineColumn(
 	modifier: Modifier = Modifier,
 	verticalArrangement: Arrangement.Vertical = Arrangement.Top,

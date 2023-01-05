@@ -43,13 +43,11 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.flammky.musicplayer.R
 import com.flammky.musicplayer.base.compose.NoInline
-import com.flammky.musicplayer.base.theme.Theme
-import com.flammky.musicplayer.base.theme.compose.backgroundColorAsState
-import com.flammky.musicplayer.base.theme.compose.backgroundContentColorAsState
-import com.flammky.musicplayer.base.theme.compose.surfaceVariantColorAsState
 import com.flammky.musicplayer.base.media.playback.PlaybackConstants
 import com.flammky.musicplayer.base.media.playback.PlaybackProperties
 import com.flammky.musicplayer.base.media.playback.PlaybackQueue
+import com.flammky.musicplayer.base.theme.Theme
+import com.flammky.musicplayer.base.theme.compose.*
 import com.flammky.musicplayer.playbackcontrol.ui.PlaybackControlTrackMetadata
 import com.flammky.musicplayer.playbackcontrol.ui.PlaybackControlViewModel
 import com.flammky.musicplayer.playbackcontrol.ui.controller.PlaybackController
@@ -62,9 +60,10 @@ import dev.chrisbanes.snapper.ExperimentalSnapperApi
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import timber.log.Timber
-import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.resume
+import kotlin.math.abs
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.ZERO
 import kotlin.time.Duration.Companion.milliseconds
 
 private val CompactHeight = 55.dp
@@ -186,7 +185,7 @@ private fun CardLayout(
 	val absBackgroundColor = Theme.backgroundColorAsState().value
 	val absBackgroundContentColor = Theme.backgroundContentColorAsState().value
 	val animatedSurfaceColorState = animatedCompositeCardSurfacePaletteColorAsState(
-		dark = surface.luminance() < 0.35f,
+		dark = surface.luminance() < 0.4f,
 		compositeFactor = 0.7f,
 		compositeOver = surface,
 		controller = controller,
@@ -194,7 +193,9 @@ private fun CardLayout(
 	)
 
 	val isBackgroundDarkState = remember {
-		derivedStateOf { animatedSurfaceColorState.value.luminance() < 0.35f }
+		derivedStateOf { animatedSurfaceColorState.value.luminance() < 0.4f }
+	}.also {
+		Timber.d("isBackgroundDark: ${it.value} ${animatedSurfaceColorState.value.luminance()}")
 	}
 	Card(
 		modifier = modifier
@@ -474,8 +475,15 @@ private fun DescriptionPager(
 	})
 
 	BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+		val rememberUpdatedConstraintState = rememberUpdatedState(newValue = this)
+
+		val maskedQueueState = remember {
+			derivedStateOf { queueOverrideState.value ?: queueState.value }
+		}
+
 		val queue = queueState.value
 		val queueOverride = queueOverrideState.value
+		val maskedQueue = maskedQueueState.value
 
 		Timber.d("DescriptionPager: $queue")
 
@@ -494,11 +502,14 @@ private fun DescriptionPager(
 		HorizontalPager(
 			modifier = Modifier.fillMaxSize(),
 			state = pagerState,
-			count = queue.list.size,
+			count = maskedQueue.list.size,
 			flingBehavior = remember(pagerState) {
 				object : FlingBehavior {
 					override suspend fun ScrollScope.performFling(initialVelocity: Float): Float {
-						return with(baseFling) { performFling(initialVelocity * 0.05f) }
+						val constraint = rememberUpdatedConstraintState.value.constraints.maxWidth / 0.5f
+						val coerced = initialVelocity.coerceIn(-abs(constraint)..abs(constraint))
+						Timber.d("CompactPlaybackControl, performFling: init=$initialVelocity, constraint=$constraint, coerced=$coerced")
+						return with(baseFling) { performFling(coerced) }
 					}
 				}
 			}
@@ -506,7 +517,7 @@ private fun DescriptionPager(
 			DescriptionPagerItem(
 				dark = !isBackgroundDarkState.value,
 				viewModel = viewModel,
-				mediaID = queue.list[it]
+				mediaID = maskedQueue.list[it]
 			)
 		}
 
@@ -552,17 +563,27 @@ private fun DescriptionPager(
 							rememberedPageState.value != queueState.value.currentIndex) &&
 						currentPage in queue.list.indices
 					) {
-						queueOverrideState.value = queue.copy(currentIndex = currentPage)
+						val copy = queue.copy(currentIndex = currentPage)
+						queueOverrideState.value = copy
 						rememberedPageState.value = currentPage
 						queueOverrideAmountState.value++
-						runCatching {
-							controller.requestSeekAsync(
-								currentPage,
-								startPosition = Duration.ZERO,
-								coroutineContext = /* defaulted by ViewModel */ EmptyCoroutineContext
-							).await().eventDispatch?.join()
+						val seek = runCatching {
+							val currentIndex = queueState.value.currentIndex
+							when (copy.currentIndex) {
+								currentIndex + 1 -> controller.requestSeekNextAsync(ZERO)
+								currentIndex - 1 -> controller.requestSeekPreviousAsync(ZERO)
+								else -> return@runCatching false
+							}.await().eventDispatch?.join()
+							true
 						}
-						if (--queueOverrideAmountState.value == 0) queueOverrideState.value = null
+						if (--queueOverrideAmountState.value == 0) {
+							queueOverrideState.value = null
+						}
+						@Suppress("SimplifyBooleanWithConstants")
+						if (seek.getOrElse { false } == false && queueOverrideAmountState.value == 0) {
+							touchedState.value = false
+							pagerState.scrollToPage(maskedQueueState.value.currentIndex)
+						}
 					}
 				}
 			)
@@ -577,9 +598,12 @@ private fun DescriptionPagerItem(
 	viewModel: PlaybackControlViewModel,
 	mediaID: String
 ) {
+
 	val metadataState = remember {
 		mutableStateOf<PlaybackControlTrackMetadata>(PlaybackControlTrackMetadata())
 	}
+
+	val isThemeDark = Theme.isDarkAsState().value
 
 	LaunchedEffect(key1 = mediaID, block = {
 		viewModel.observeMetadata(mediaID).collect { metadataState.value = it }
@@ -589,14 +613,28 @@ private fun DescriptionPagerItem(
 		modifier = modifier.fillMaxSize(),
 		verticalArrangement = Arrangement.Center
 	) {
-		val textColor = if (dark) Color.Black else Color.White
+		// or we can just add more base ratio of the background on the palette
+		val textColorState = remember {
+			mutableStateOf(Color.Unspecified)
+		}.apply {
+			value = if (!dark) {
+				if (isThemeDark) {
+					Theme.surfaceContentColorAsState().value
+				} else {
+					Theme.defaultDarkColorScheme().onSurface
+				}
+			} else {
+				Color(0xFF101010)
+			}
+		}
+
 		val metadata = metadataState.value
 
 		Text(
 			text = metadata.title ?: "",
 			fontSize = MaterialTheme.typography.bodyMedium.fontSize,
 			fontWeight = FontWeight.Bold,
-			color = textColor,
+			color = textColorState.value,
 			maxLines = 1,
 			overflow = TextOverflow.Ellipsis,
 		)
@@ -607,7 +645,7 @@ private fun DescriptionPagerItem(
 			text = metadata.subtitle ?: "",
 			fontSize = MaterialTheme.typography.labelMedium.fontSize,
 			fontWeight = FontWeight.SemiBold,
-			color = textColor,
+			color = textColorState.value,
 			maxLines = 1,
 			overflow = TextOverflow.Ellipsis,
 		)
@@ -704,7 +742,11 @@ private fun PlaybackButtons(
 					},
 				painter = painterResource(id = icon),
 				contentDescription = null,
-				tint = if (dark) Color.Black else Color.White,
+				tint = if (dark) {
+					Color(0xFF0F0F0F)
+				} else {
+					Color(0xFFEBEBEB)
+				},
 			)
 		}
 	}

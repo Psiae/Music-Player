@@ -61,7 +61,6 @@ import com.google.accompanist.pager.*
 import dev.chrisbanes.snapper.ExperimentalSnapperApi
 import kotlinx.coroutines.*
 import timber.log.Timber
-import kotlin.coroutines.coroutineContext
 import kotlin.math.abs
 import kotlin.reflect.KProperty
 import kotlin.time.Duration
@@ -411,9 +410,16 @@ private fun TracksPagerDisplay(
 			metadataStateForId = { id ->
 				viewModel.observeMetadata(id).collectAsState()
 			},
-			seekIndex = { index ->
-				coroutineContext.ensureActive()
-				val result = controller.requestSeekAsync(index, ZERO, coroutineContext).await()
+			seekIndex = { q, index ->
+				val result: PlaybackController.RequestResult = when (index) {
+					q.currentIndex + 1 -> {
+						controller.requestSeekNextAsync(ZERO).await()
+					}
+					q.currentIndex - 1 -> {
+						controller.requestSeekPreviousAsync(ZERO).await()
+					}
+					else -> return@TracksPager false
+				}
 				result.eventDispatch?.join()
 				result.success
 			}
@@ -539,7 +545,7 @@ private fun RadialPlaybackPaletteBackground(
 private fun TracksPager(
 	queueState: State<PlaybackQueue>,
 	metadataStateForId: @Composable (String) -> State<PlaybackControlTrackMetadata>,
-	seekIndex: suspend (Int) -> Boolean,
+	seekIndex: suspend (PlaybackQueue, Int) -> Boolean,
 ) {
 	val queueOverrideAmountState = remember { mutableStateOf(0) }
 	val queueOverrideState = remember { mutableStateOf<PlaybackQueue?>(null) }
@@ -577,8 +583,8 @@ private fun TracksPager(
 			flingBehavior = remember {
 				object : FlingBehavior {
 					override suspend fun ScrollScope.performFling(initialVelocity: Float): Float {
-						val constraint = rememberUpdatedConstraintState.value.maxWidth.toFloat() * 1.5f * 6
-						val coerced = initialVelocity.coerceIn(-abs(constraint)..abs(constraint))
+						val constraint = rememberUpdatedConstraintState.value.maxWidth.toFloat() * 0.8F / 0.5f
+						val coerced = (initialVelocity).coerceIn(-abs(constraint)..abs(constraint))
 						return with(basePagerFling) { performFling(coerced) }.also {
 							Timber.d("FullPlaybackControl, fling vel=$initialVelocity, coerced=$coerced, left=$it")
 						}
@@ -590,45 +596,49 @@ private fun TracksPager(
 			TracksPagerItem(metadataStateForId(id ?:""))
 		}
 
-		val touched = remember { mutableStateOf(false) }
+		val touchedState = remember { mutableStateOf(false) }
 
 		PagerListenMediaIndexChange(
 			indexState = queueState.rememberDerive { it.currentIndex },
 			pagerState = pagerState,
 			overrideState = queueOverrideState.rememberDerive(calculation = { it != null }),
-			onScroll = { touched.overwrite(false) }
+			onScroll = { touchedState.overwrite(false) }
 		)
 
 		// Should consider to Just be be either `seekPrevious / seekNext`
 
 		PagerListenUserDrag(
 			pagerState = pagerState,
-			onStartDrag = { touched.value = true },
-			onEndDrag = { touched.value = true }
+			onStartDrag = { touchedState.value = true },
+			onEndDrag = { touchedState.value = true }
 		)
 
 		PagerListenPageState(
 			pagerState = pagerState,
 			queueState = maskedQueueState,
-			touchedState = touched,
+			touchedState = touchedState,
 			shouldSeekIndex = { index ->
 				val currentQ = maskedQueueState.value
-
-				if (index !in currentQ.list.indices) {
-					return@PagerListenPageState false
-				}
-
 				queueOverrideState.value = currentQ.copy(currentIndex = index)
 				true
 			},
 			seekIndex = { index ->
 				queueOverrideAmountState.value++
-				runCatching {
-					seekIndex(index)
-				}.isSuccess.also {
-					if (--queueOverrideAmountState.value == 0) queueOverrideState.value = null
-					Timber.d("PagerListenPageChange seek to $index done, ${queueOverrideAmountState.value}, ${queueOverrideState.value}")
+				val seek = runCatching {
+					seekIndex(queue, index)
 				}
+				if (--queueOverrideAmountState.value == 0) {
+					queueOverrideState.value = null
+				}
+				(seek.getOrElse { false })
+					.also {
+						if (!it && queueOverrideAmountState.value == 0) {
+							touchedState.value = false
+							pagerState.scrollToPage(maskedQueueState.value.currentIndex)
+						}
+						Timber.d("PagerListenPageChange seek to $index done, " +
+							"$it ${queueOverrideAmountState.value}, ${queueOverrideState.value}")
+					}
 			}
 		)
 	}
@@ -798,8 +808,9 @@ private fun PlaybackDescription(
 private fun PlaybackDescriptionTitle(textState: State<String>) {
 	Text(
 		text = textState.read(),
-		color = Theme.backgroundContentColorAsState().value,
+		color = Theme.surfaceContentColorAsState().value,
 		style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+		maxLines = 1,
 		overflow = TextOverflow.Ellipsis
 	)
 }
@@ -808,8 +819,9 @@ private fun PlaybackDescriptionTitle(textState: State<String>) {
 private fun PlaybackDescriptionSubtitle(textState: State<String>) {
 	Text(
 		text = textState.read(),
-		color = Theme.backgroundContentColorAsState().value,
+		color = Theme.surfaceContentColorAsState().value,
 		style = MaterialTheme.typography.titleMedium,
+		maxLines = 1,
 		overflow = TextOverflow.Ellipsis
 	)
 }

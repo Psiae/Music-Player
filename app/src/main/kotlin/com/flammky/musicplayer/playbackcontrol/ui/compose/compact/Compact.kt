@@ -571,7 +571,7 @@ private fun DescriptionPager(
 							val currentIndex = queueState.value.currentIndex
 							when (copy.currentIndex) {
 								currentIndex + 1 -> controller.requestSeekNextAsync(ZERO)
-								currentIndex - 1 -> controller.requestSeekPreviousAsync(ZERO)
+								currentIndex - 1 -> controller.requestSeekPreviousItemAsync(ZERO)
 								else -> return@runCatching false
 							}.await().eventDispatch?.join()
 							true

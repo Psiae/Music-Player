@@ -24,6 +24,7 @@ interface PlaybackController {
 	fun play(): Boolean
 	fun seekNext(): Boolean
 	fun seekPrevious(): Boolean
+	fun seekPreviousMediaItem(): Boolean
 
 	fun getPlaybackProperties(): PlaybackProperties
 

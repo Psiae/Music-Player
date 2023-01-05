@@ -175,6 +175,10 @@ class RealPlaybackController(
 		TODO("Not yet implemented")
 	}
 
+	override fun seekPreviousMediaItem(): Boolean {
+		TODO("Not yet implemented")
+	}
+
 	override fun getPlaybackProperties(): PlaybackProperties {
 		TODO("Not yet implemented")
 	}

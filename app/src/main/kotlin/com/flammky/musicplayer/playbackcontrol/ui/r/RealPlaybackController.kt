@@ -156,6 +156,31 @@ internal class RealPlaybackController(
 		}
 	}
 
+	override fun requestSeekPreviousItemAsync(
+		startPosition: Duration,
+		coroutineContext: CoroutineContext
+	): Deferred<RequestResult> {
+		return scope.async(coroutineContext.minusKey(CoroutineDispatcher)) {
+			val success = playbackConnection.getSession(sessionID)?.controller?.withContext {
+				seekPreviousMediaItem()
+			} ?: false
+			RequestResult(
+				success = success,
+				eventDispatch = if (success) {
+					scope.launch {
+						val jobs = mutableListOf<Job>()
+						_observers.forEach {
+							jobs.add(it.updateQueue())
+						}
+						jobs.joinAll()
+					}
+				} else {
+					null
+				}
+			)
+		}
+	}
+
 	override fun requestCompareAndSetAsync(
 		compareAndSet: CompareAndSetScope.() -> Unit)
 	: Deferred<RequestResult> {

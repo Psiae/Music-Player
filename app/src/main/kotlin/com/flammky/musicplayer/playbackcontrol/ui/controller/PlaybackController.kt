@@ -68,6 +68,11 @@ internal abstract class PlaybackController(
 		coroutineContext: CoroutineContext = EmptyCoroutineContext
 	): Deferred<RequestResult>
 
+	abstract fun requestSeekPreviousItemAsync(
+		startPosition: Duration,
+		coroutineContext: CoroutineContext = EmptyCoroutineContext
+	): Deferred<RequestResult>
+
 	abstract fun requestSetPlayWhenReadyAsync(
 		playWhenReady: Boolean,
 		coroutineContext: CoroutineContext = EmptyCoroutineContext

@@ -315,6 +315,13 @@ internal class RealPlaybackControlPresenter(
 			TODO("Not yet implemented")
 		}
 
+		override fun requestSeekPreviousItemAsync(
+			startPosition: Duration,
+			coroutineContext: CoroutineContext
+		): Deferred<RequestResult> {
+			TODO("Not yet implemented")
+		}
+
 		override fun requestPlayAsync(coroutineContext: CoroutineContext): Deferred<RequestResult> {
 			TODO("Not yet implemented")
 		}

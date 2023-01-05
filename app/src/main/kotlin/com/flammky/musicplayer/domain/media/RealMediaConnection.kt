@@ -170,6 +170,10 @@ class RealMediaConnection(
 		return true
 	}
 
+	override fun seekPreviousMediaItem(): Boolean {
+		return delegate.playback.seekToIndex(delegate.playback.index - 1, 0)
+	}
+
 	override fun setPlayWhenReady(playWhenReady: Boolean): Boolean {
 		delegate.playback.playWhenReady = playWhenReady
 		return true

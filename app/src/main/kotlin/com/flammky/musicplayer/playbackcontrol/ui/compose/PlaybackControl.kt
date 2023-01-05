@@ -416,7 +416,7 @@ private fun TracksPagerDisplay(
 						controller.requestSeekNextAsync(ZERO).await()
 					}
 					q.currentIndex - 1 -> {
-						controller.requestSeekPreviousAsync(ZERO).await()
+						controller.requestSeekPreviousItemAsync(ZERO).await()
 					}
 					else -> return@TracksPager false
 				}

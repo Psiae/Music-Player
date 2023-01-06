@@ -1,16 +1,17 @@
 package com.flammky.musicplayer.playbackcontrol.ui.presenter
 
+import android.content.Context
 import com.flammky.musicplayer.base.coroutine.NonBlockingDispatcherPool
 import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConnection
 import com.flammky.musicplayer.base.media.playback.PlaybackConstants
 import com.flammky.musicplayer.base.media.playback.PlaybackQueue
 import com.flammky.musicplayer.base.media.playback.RepeatMode
 import com.flammky.musicplayer.base.media.playback.ShuffleMode
+import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.core.common.sync
 import com.flammky.musicplayer.playbackcontrol.ui.controller.PlaybackController
 import com.flammky.musicplayer.playbackcontrol.ui.r.RealPlaybackController
 import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
@@ -28,16 +29,6 @@ internal interface PlaybackControlPresenter {
 		viewModel: ViewModel
 	)
 
-	fun currentSessionID(): String?
-
-	/**
-	 * Observe the Id of the currently active Session, null will be emitted if there's none
-	 *
-	 * will not emit anything until [initialize] is called
-	 * calling this function after [dispose] is called will return an empty flow
-	 */
-	fun observeCurrentSessionId(): Flow<String?>
-
 	/**
 	 * create a Playback Controller.
 	 *
@@ -45,7 +36,7 @@ internal interface PlaybackControlPresenter {
 	 * @param coroutineContext optional CoroutineContext this controller will use to dispatch / observe
 	 */
 	fun createController(
-		sessionID: String,
+		user: User,
 		coroutineContext: CoroutineContext = EmptyCoroutineContext
 	): PlaybackController
 
@@ -63,7 +54,8 @@ internal interface PlaybackControlPresenter {
 }
 
 @OptIn(ExperimentalStdlibApi::class, ExperimentalCoroutinesApi::class)
-internal class RealPlaybackControlPresenter(
+internal class RealPlaybackControlPresenter (
+	private val context: Context,
 	private val playbackConnection: PlaybackConnection
 ): PlaybackControlPresenter {
 
@@ -132,12 +124,6 @@ internal class RealPlaybackControlPresenter(
 			return field
 		}
 
-	private val _connectionSessionObservers = mutableMapOf<String, () -> Unit>()
-		get() {
-			check(Thread.holdsLock(_stateLock))
-			return field
-		}
-
 	override fun initialize(
 		coroutineContext: CoroutineContext,
 		viewModel: PlaybackControlPresenter.ViewModel
@@ -160,13 +146,6 @@ internal class RealPlaybackControlPresenter(
 		}
 	}
 
-	override fun currentSessionID(): String? {
-		sync(_stateLock) {
-			if (_disposed || !_initialized) return null
-		}
-		return playbackConnection.getSession()?.id
-	}
-
 	// should we return listenable for the actual disposal ?
 	override fun dispose() {
 		sync(_stateLock) {
@@ -183,12 +162,12 @@ internal class RealPlaybackControlPresenter(
 
 	@OptIn(ExperimentalStdlibApi::class, ExperimentalCoroutinesApi::class)
 	override fun createController(
-		sessionID: String,
+		user: User,
 		coroutineContext: CoroutineContext
 	): PlaybackController {
 		val scope = sync(_stateLock) {
 			if (_disposed) {
-				return EmptyPlaybackController(sessionID)
+				return EmptyPlaybackController(user)
 			}
 			check(_initialized) {
 				"Presenter must be initialized"
@@ -213,7 +192,7 @@ internal class RealPlaybackControlPresenter(
 		}
 		val supervisor = SupervisorJob(scopeJob)
 		return RealPlaybackController(
-			sessionID = sessionID,
+			user = user,
 			scope = CoroutineScope(context = supervisor + scopeDispatcher),
 			presenter = this,
 			playbackConnection
@@ -222,31 +201,8 @@ internal class RealPlaybackControlPresenter(
 				if (_disposed) {
 					return@sync controller.dispose()
 				}
-				_controllersMap.getOrPut(sessionID) { mutableListOf() }.add(controller)
+				_controllersMap.getOrPut(user.uid + user.verify) { mutableListOf() }.add(controller)
 			}
-		}
-	}
-
-	override fun observeCurrentSessionId(): Flow<String?> {
-		val scope = sync(_stateLock) {
-			if (_disposed) return flow { }
-			check(_initialized)
-			_coroutineScope!!
-		}
-		return flow {
-			val channel = Channel<String?>()
-			val job = scope.launch {
-				playbackConnection.observeCurrentSession()
-					.map { it?.id }
-					.distinctUntilChanged()
-					.collect(channel::send)
-			}
-			runCatching {
-				emitAll(channel.consumeAsFlow())
-			}.onFailure { t ->
-				if (t !is CancellationException) throw t
-			}
-			job.cancel()
 		}
 	}
 
@@ -254,7 +210,7 @@ internal class RealPlaybackControlPresenter(
 		controller: RealPlaybackController
 	) {
 		sync(_stateLock) {
-			_controllersMap[controller.sessionID]?.remove(controller)
+			_controllersMap[controller.user.uid + controller.user.verify]?.remove(controller)
 		}
 	}
 
@@ -265,7 +221,7 @@ internal class RealPlaybackControlPresenter(
 		}
 	}
 
-	private class EmptyPlaybackController(sessionID: String) : PlaybackController(sessionID) {
+	private class EmptyPlaybackController(user: User) : PlaybackController(user) {
 
 
 

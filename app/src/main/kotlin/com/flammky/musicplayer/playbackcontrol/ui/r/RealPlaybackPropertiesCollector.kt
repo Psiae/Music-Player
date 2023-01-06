@@ -1,19 +1,23 @@
 package com.flammky.musicplayer.playbackcontrol.ui.r
 
-import com.flammky.musicplayer.core.common.sync
+import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConnection
 import com.flammky.musicplayer.base.media.playback.PlaybackConstants
 import com.flammky.musicplayer.base.media.playback.PlaybackProperties
+import com.flammky.musicplayer.base.user.User
+import com.flammky.musicplayer.core.common.sync
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
 import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import javax.annotation.concurrent.GuardedBy
-import com.flammky.musicplayer.base.media.playback.PlaybackController as ConnectionController
 
 internal class RealPlaybackPropertiesCollector(
+	private val user: User,
 	private val scope: CoroutineScope,
 	private val parentObserver: RealPlaybackObserver,
-	private val connectionController: ConnectionController
+	private val connection: PlaybackConnection
 ) : PlaybackObserver.PropertiesCollector {
 
 	private val _lock = Any()
@@ -69,44 +73,36 @@ internal class RealPlaybackPropertiesCollector(
 	private fun collectProperties(): Job {
 		return scope.launch {
 			val owner = Any()
-			val channel = Channel<PlaybackProperties>(capacity = Channel.UNLIMITED)
-			connectionController.acquireObserver(owner).getAndObservePropertiesChange {
-				channel.trySend(it)
-			}.also {
-				channel.send(it)
-			}
-			try {
-				channel.consumeAsFlow().collect {
-					_stateFlow.value = it
+			connection.requestUserSessionAsync(user).await().controller
+				.apply {
+					acquireObserver(owner).observePlaybackProperties()
+						.runCatching {
+							collect { _stateFlow.value = it }
+						}.onFailure {
+							releaseObserver(owner)
+						}
 				}
-			} finally {
-				connectionController.releaseObserver(owner)
-				channel.close()
-			}
 		}
 	}
 
 	fun updatePlayWhenReady(): Job {
 		return scope.launch {
-			_stateFlow.update {
-				connectionController.getPlaybackProperties()
-			}
+			val c = connection.requestUserSessionAsync(user).await().controller
+			_stateFlow.value = c.withLooperContext { getPlaybackProperties() }
 		}
 	}
 
 	fun updateRepeatMode(): Job {
 		return scope.launch {
-			_stateFlow.update {
-				connectionController.getPlaybackProperties()
-			}
+			val c = connection.requestUserSessionAsync(user).await().controller
+			_stateFlow.value = c.withLooperContext { getPlaybackProperties() }
 		}
 	}
 
 	fun updateShuffleMode(): Job {
 		return scope.launch {
-			_stateFlow.update {
-				connectionController.getPlaybackProperties()
-			}
+			val c = connection.requestUserSessionAsync(user).await().controller
+			_stateFlow.value = c.withLooperContext { getPlaybackProperties() }
 		}
 	}
 

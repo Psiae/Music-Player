@@ -26,7 +26,7 @@
             android:authorities="${applicationId}.androidx-startup"
             android:exported="false">
             <meta-data
-                android:name="com.flammky.musicplayer.core.app.startup.AppInitializer"
+                android:name="com.flammky.musicplayer.AppInitializer"
                 android:value="androidx.startup"/>
         </provider>
 

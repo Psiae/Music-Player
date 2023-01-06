@@ -5,6 +5,8 @@ import java.util.*
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
+    id("kotlin-kapt")
+    id("dagger.hilt.android.plugin")
 }
 
 android {
@@ -45,13 +47,15 @@ dependencies {
     api(project(":base:common:kotlin"))
     api(project(":base"))
 
+    api("androidx.media:media:1.6.0")
+
     /* androidx.media3 */
     dependencies {
         val v = "1.0.0-beta03"
-        implementation("androidx.media3:media3-exoplayer:$v")
-        implementation("androidx.media3:media3-session:$v")
-        implementation("androidx.media3:media3-common:$v")
-        implementation("androidx.media3:media3-ui:$v")
+        api("androidx.media3:media3-exoplayer:$v")
+        api("androidx.media3:media3-session:$v")
+        api("androidx.media3:media3-common:$v")
+        api("androidx.media3:media3-ui:$v")
     }
 
     /* androidx.annotation */
@@ -72,6 +76,23 @@ dependencies {
         val v = "5.0.1"
         implementation("com.jakewharton.timber:timber:$v")
     }
+
+    /* wasabeef.transformers*/
+    dependencies {
+        val vCoil = "1.0.6"
+        implementation("jp.wasabeef.transformers:coil:$vCoil")
+        implementation("jp.wasabeef.transformers:coil-gpu:$vCoil")
+    }
+
+    /* google.dagger */
+    dependencies {
+
+        // Hilt-Android
+        val vHiltAndroid = "2.44"
+        implementation("com.google.dagger:hilt-android:$vHiltAndroid")
+        kapt("com.google.dagger:hilt-android-compiler:$vHiltAndroid")
+    }
+
 }
 
 fun getProp(file: File): Properties {

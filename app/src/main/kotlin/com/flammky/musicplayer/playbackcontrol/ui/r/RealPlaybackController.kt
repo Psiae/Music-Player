@@ -3,10 +3,11 @@
 package com.flammky.musicplayer.playbackcontrol.ui.r
 
 import androidx.annotation.GuardedBy
-import com.flammky.musicplayer.core.common.sync
 import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConnection
 import com.flammky.musicplayer.base.media.playback.RepeatMode
 import com.flammky.musicplayer.base.media.playback.ShuffleMode
+import com.flammky.musicplayer.base.user.User
+import com.flammky.musicplayer.core.common.sync
 import com.flammky.musicplayer.playbackcontrol.ui.controller.PlaybackController
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.RealPlaybackControlPresenter
@@ -15,11 +16,11 @@ import kotlin.coroutines.CoroutineContext
 import kotlin.time.Duration
 
 internal class RealPlaybackController(
-	sessionID: String,
+	user: User,
 	private val scope: CoroutineScope,
 	private val presenter: RealPlaybackControlPresenter,
 	private val playbackConnection: PlaybackConnection,
-) : PlaybackController(sessionID) {
+) : PlaybackController(user) {
 
 	private val _stateLock = Any()
 
@@ -49,6 +50,7 @@ internal class RealPlaybackController(
 		coroutineContext: CoroutineContext
 	): PlaybackObserver {
 		return RealPlaybackObserver(
+			user = user,
 			controller = this,
 			parentScope = scope,
 			connection = playbackConnection
@@ -57,14 +59,21 @@ internal class RealPlaybackController(
 		}
 	}
 
+	// We obviously don't have to request for the controller everytime
+	// but that's for later
+
 	override fun requestSeekAsync(
 		position: Duration,
 		coroutineContext: CoroutineContext
 	): Deferred<RequestResult> {
 		return scope.async(coroutineContext.minusKey(CoroutineDispatcher)) {
-			val success = playbackConnection.getSession(sessionID)?.controller?.withContext {
-				seekProgress(position)
-			} ?: false
+			val success = runCatching {
+				playbackConnection.requestUserSessionAsync(user).await().controller.withLooperContext {
+					seekPosition(position)
+				}
+			}.getOrElse {
+				false
+			}
 			RequestResult(
 				success = success,
 				eventDispatch = if (success) {
@@ -84,11 +93,15 @@ internal class RealPlaybackController(
 		index: Int,
 		startPosition: Duration,
 		coroutineContext: CoroutineContext
-	): Deferred<RequestResult> {
+	): Deferred<PlaybackController.RequestResult> {
 		return scope.async(coroutineContext.minusKey(CoroutineDispatcher)) {
-			val success = playbackConnection.getSession(sessionID)?.controller?.withContext {
-				seekIndex(index, startPosition)
-			} ?: false
+			val success = runCatching {
+				playbackConnection.requestUserSessionAsync(user).await().controller.withLooperContext {
+					seekIndex(index, startPosition)
+				}
+			}.getOrElse {
+				false
+			}
 			RequestResult(
 				success = success,
 				eventDispatch = if (success) {
@@ -111,9 +124,13 @@ internal class RealPlaybackController(
 		coroutineContext: CoroutineContext
 	): Deferred<RequestResult> {
 		return scope.async(coroutineContext.minusKey(CoroutineDispatcher)) {
-			val success = playbackConnection.getSession(sessionID)?.controller?.withContext {
-				seekNext()
-			} ?: false
+			val success = runCatching {
+				playbackConnection.requestUserSessionAsync(user).await().controller.withLooperContext {
+					seekNext()
+				}
+			}.getOrElse {
+				false
+			}
 			RequestResult(
 				success = success,
 				eventDispatch = if (success) {
@@ -136,9 +153,13 @@ internal class RealPlaybackController(
 		coroutineContext: CoroutineContext
 	): Deferred<RequestResult> {
 		return scope.async(coroutineContext.minusKey(CoroutineDispatcher)) {
-			val success = playbackConnection.getSession(sessionID)?.controller?.withContext {
-				seekPrevious()
-			} ?: false
+			val success = runCatching {
+				playbackConnection.requestUserSessionAsync(user).await().controller.withLooperContext {
+					seekPrevious()
+				}
+			}.getOrElse {
+				false
+			}
 			RequestResult(
 				success = success,
 				eventDispatch = if (success) {
@@ -161,9 +182,13 @@ internal class RealPlaybackController(
 		coroutineContext: CoroutineContext
 	): Deferred<RequestResult> {
 		return scope.async(coroutineContext.minusKey(CoroutineDispatcher)) {
-			val success = playbackConnection.getSession(sessionID)?.controller?.withContext {
-				seekPreviousMediaItem()
-			} ?: false
+			val success = runCatching {
+				playbackConnection.requestUserSessionAsync(user).await().controller.withLooperContext {
+					seekPreviousMediaItem()
+				}
+			}.getOrElse {
+				false
+			}
 			RequestResult(
 				success = success,
 				eventDispatch = if (success) {
@@ -191,9 +216,13 @@ internal class RealPlaybackController(
 		coroutineContext: CoroutineContext
 	): Deferred<RequestResult> {
 		return scope.async(coroutineContext.minusKey(CoroutineDispatcher)) {
-			val success = playbackConnection.getSession(sessionID)?.controller?.withContext {
-				play()
-			} ?: false
+			val success = runCatching {
+				playbackConnection.requestUserSessionAsync(user).await().controller.withLooperContext {
+					play()
+				}
+			}.getOrElse {
+				false
+			}
 			RequestResult(
 				success = success,
 				eventDispatch = if (success) {
@@ -216,9 +245,13 @@ internal class RealPlaybackController(
 		coroutineContext: CoroutineContext
 	): Deferred<RequestResult> {
 		return scope.async(coroutineContext.minusKey(CoroutineDispatcher)) {
-			val success = playbackConnection.getSession(sessionID)?.controller?.withContext {
-				setPlayWhenReady(playWhenReady)
-			} ?: false
+			val success = runCatching {
+				playbackConnection.requestUserSessionAsync(user).await().controller.withLooperContext {
+					setPlayWhenReady(playWhenReady)
+				}
+			}.getOrElse {
+				false
+			}
 			RequestResult(
 				success = success,
 				eventDispatch = if (success) {
@@ -241,9 +274,13 @@ internal class RealPlaybackController(
 		coroutineContext: CoroutineContext
 	): Deferred<RequestResult> {
 		return scope.async(coroutineContext.minusKey(CoroutineDispatcher)) {
-			val success = playbackConnection.getSession(sessionID)?.controller?.withContext {
-				setRepeatMode(repeatMode)
-			} ?: false
+			val success = runCatching {
+				playbackConnection.requestUserSessionAsync(user).await().controller.withLooperContext {
+					setRepeatMode(repeatMode)
+				}
+			}.getOrElse {
+				false
+			}
 			RequestResult(
 				success = success,
 				eventDispatch = if (success) {
@@ -268,9 +305,13 @@ internal class RealPlaybackController(
 		coroutineContext: CoroutineContext
 	): Deferred<RequestResult> {
 		return scope.async(coroutineContext.minusKey(CoroutineDispatcher)) {
-			val success = playbackConnection.getSession(sessionID)?.controller?.withContext {
-				setShuffleMode(shuffleMode)
-			} ?: false
+			val success = runCatching {
+				playbackConnection.requestUserSessionAsync(user).await().controller.withLooperContext {
+					setShuffleMode(shuffleMode)
+				}
+			}.getOrElse {
+				false
+			}
 			RequestResult(
 				success = success,
 				eventDispatch = if (success) {

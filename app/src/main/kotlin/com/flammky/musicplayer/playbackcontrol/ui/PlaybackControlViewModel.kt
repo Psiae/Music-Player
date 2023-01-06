@@ -6,12 +6,14 @@ import com.flammky.android.medialib.common.mediaitem.AudioFileMetadata
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.android.medialib.providers.metadata.VirtualFileMetadata
+import com.flammky.musicplayer.base.auth.AuthService
 import com.flammky.musicplayer.base.coroutine.NonBlockingDispatcherPool
+import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.common.android.concurrent.ConcurrencyHelper.checkMainThread
 import com.flammky.musicplayer.domain.media.MediaConnection
 import com.flammky.musicplayer.playbackcontrol.ui.controller.PlaybackController
-import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackControlPresenter
+import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -27,6 +29,8 @@ import kotlin.coroutines.EmptyCoroutineContext
 
 @HiltViewModel
 internal class PlaybackControlViewModel @Inject constructor(
+	// should probably handled by presenter
+	private val authService: AuthService,
 	private val mediaConnection: MediaConnection,
 	private val presenter: PlaybackControlPresenter,
 ) : ViewModel(), PlaybackControlPresenter.ViewModel {
@@ -36,21 +40,17 @@ internal class PlaybackControlViewModel @Inject constructor(
 	}
 
 	/**
-	 * get the currently active sessionID,
-	 * if this ViewModel is already cleared this function will return null regardless of current
+	 * get the currently active user
 	 */
-	fun currentSessionID(): String? {
-		return presenter.currentSessionID()
+	fun currentAuth(): User? {
+		return authService.currentUser
 	}
 
 	/**
-	 * observe the currently active session ID as a flow,
-	 * if this ViewModel is already cleared this will return an empty flow
-	 * if this ViewModel is cleared during flow collection the flow will stop emitting
-	 * null emission means that there is currently no active session
+	 * observe the currently active User as a flow,
 	 */
-	fun observeCurrentSessionId(): Flow<String?> {
-		return presenter.observeCurrentSessionId()
+	fun observeCurrentAuth(): Flow<User?> {
+		return authService.observeCurrentUser()
 	}
 
 	/**
@@ -69,14 +69,14 @@ internal class PlaybackControlViewModel @Inject constructor(
 	 * **
 	 */
 	fun createController(
-		sessionID: String,
+		user: User,
 		coroutineContext: CoroutineContext = EmptyCoroutineContext
 	): PlaybackController {
 		return presenter.createController(
-			sessionID = sessionID,
+			user = user,
 			coroutineContext = viewModelScope.coroutineContext + coroutineContext
 		).also {
-			Timber.d("PlaybackController for $sessionID created with coroutineContext: $coroutineContext")
+			Timber.d("PlaybackController for $user created with coroutineContext: $coroutineContext")
 		}
 	}
 
@@ -89,16 +89,16 @@ internal class PlaybackControlViewModel @Inject constructor(
 	@OptIn(ExperimentalCoroutinesApi::class)
 	val currentMetadataStateFlow = flow<PlaybackControlTrackMetadata> {
 		var job: Job? = null
-		presenter.observeCurrentSessionId()
-			.transform { id ->
+		observeCurrentAuth()
+			.transform { user ->
 				job?.cancel()
-				if (id == null) {
+				if (user == null) {
 					emit(null)
 					return@transform
 				}
 				val channel = Channel<PlaybackObserver?>(Channel.CONFLATED)
 				job = viewModelScope.launch {
-					val controller = presenter.createController(id, viewModelScope.coroutineContext)
+					val controller = presenter.createController(user, viewModelScope.coroutineContext)
 					channel.send(controller.createPlaybackObserver())
 					try {
 						awaitCancellation()

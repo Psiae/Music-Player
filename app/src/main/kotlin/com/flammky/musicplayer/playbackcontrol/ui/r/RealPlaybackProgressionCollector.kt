@@ -1,14 +1,13 @@
 package com.flammky.musicplayer.playbackcontrol.ui.r
 
 import androidx.annotation.GuardedBy
-import com.flammky.musicplayer.core.common.sync
 import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConnection
 import com.flammky.musicplayer.base.media.playback.PlaybackConstants
-import com.flammky.musicplayer.base.media.playback.PlaybackEvent
-import com.flammky.musicplayer.base.media.playback.PlaybackSession
+import com.flammky.musicplayer.base.media.playback.PlaybackSessionConnector
+import com.flammky.musicplayer.base.user.User
+import com.flammky.musicplayer.core.common.sync
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
 import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import timber.log.Timber
 import kotlin.coroutines.coroutineContext
@@ -17,6 +16,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class RealPlaybackProgressionCollector(
+	private val user: User,
 	private val observer: RealPlaybackObserver,
 	private val scope: CoroutineScope,
 	// remove
@@ -71,10 +71,11 @@ internal class RealPlaybackProgressionCollector(
 
 	init {
 		observer.observeUpdateRequest(scope) {
-			if (collectEvent) playbackConnection.getSession()?.controller?.withContext {
-				_progressStateFlow.value = progress
-				_bufferedProgressStateFlow.value = bufferedProgress
-			}
+			if (collectEvent) playbackConnection.requestUserSessionAsync(user).await().controller
+				.withLooperContext {
+					_progressStateFlow.value = getPosition()
+					_bufferedProgressStateFlow.value = getBufferedPosition()
+				}
 		}
 		if (collectEvent) {
 			startCollectEvent()
@@ -139,7 +140,7 @@ internal class RealPlaybackProgressionCollector(
 
 	private suspend fun internalStartProgress(
 		isEvent: Boolean,
-		session: PlaybackSession? = null
+		session: PlaybackSessionConnector? = null
 	) {
 		stopCollectProgressInternal()
 		progressCollectorJob = dispatchCollectProgress(isEvent, session)
@@ -152,7 +153,7 @@ internal class RealPlaybackProgressionCollector(
 
 	private fun dispatchCollectProgress(
 		isEvent: Boolean,
-		session: PlaybackSession? = null
+		session: PlaybackSessionConnector? = null
 	): Job {
 		return scope.launch {
 			if (isEvent) {
@@ -161,11 +162,11 @@ internal class RealPlaybackProgressionCollector(
 				var duration: Duration = PlaybackConstants.DURATION_UNSET
 				var speed: Float = 1f
 
-				session?.controller?.withContext {
-					progress = this.progress
-					buffered = bufferedProgress
-					duration = this.duration
-					speed = playbackSpeed
+				session?.controller?.withLooperContext {
+					progress = getPosition()
+					buffered = getBufferedPosition()
+					duration = getDuration()
+					speed = getPlaybackSpeed()
 				}
 
 				_bufferedProgressStateFlow.update { buffered }
@@ -173,7 +174,7 @@ internal class RealPlaybackProgressionCollector(
 
 				val nextInterval = intervalHandler(true, progress, duration, speed)
 					?: run {
-						val currentProgress = session?.controller?.withContext { progress }
+						val currentProgress = session?.controller?.withLooperContext { progress }
 							?.takeIf { it != PlaybackConstants.POSITION_UNSET }
 							?: return@run PlaybackConstants.POSITION_UNSET
 						// from next second
@@ -190,17 +191,17 @@ internal class RealPlaybackProgressionCollector(
 
 			var nextInterval: Duration
 			do {
-				val currentSession = session ?: playbackConnection.getSession()
+				val currentSession = session ?: playbackConnection.requestUserSessionAsync(user).await()
 				var progress: Duration = PlaybackConstants.POSITION_UNSET
 				var buffered: Duration = PlaybackConstants.POSITION_UNSET
 				var duration: Duration = PlaybackConstants.DURATION_UNSET
 				var speed: Float = 1f
 
-				currentSession?.controller?.withContext {
-					progress = this.progress
-					buffered = bufferedProgress
-					duration = this.duration
-					speed = playbackSpeed
+				currentSession.controller.withLooperContext {
+					progress = getPosition()
+					buffered = getBufferedPosition()
+					duration = getDuration()
+					speed = getPlaybackSpeed()
 				}
 
 				_bufferedProgressStateFlow.update { buffered }
@@ -208,7 +209,7 @@ internal class RealPlaybackProgressionCollector(
 
 				nextInterval = intervalHandler(false, progress, duration, speed)
 					?: run {
-						val currentProgress = session?.controller?.withContext { progress }
+						val currentProgress = session?.controller?.withLooperContext { progress }
 							?.takeIf { it != PlaybackConstants.POSITION_UNSET }
 							?: return@run PlaybackConstants.POSITION_UNSET
 						// from next second
@@ -239,79 +240,12 @@ internal class RealPlaybackProgressionCollector(
 	private fun dispatchCollectEvent(): Job {
 		return scope.launch {
 			val owner = Any()
-			var listenerJob: Job? = null
-			// TODO: observe session should be done separately
-			playbackConnection.observeCurrentSession().distinctUntilChanged()
-				.transform { session ->
-					// assert the collectEvent state
-					check(_collectEvent) {
-						"CollectEventJob was still active when `collectingEvent` is false"
-					}
-					// cancel any active listener
-					listenerJob?.cancel()
-					if (session == null) {
-						listenerJob = null
-						stopCollectProgressInternal()
-						_bufferedProgressStateFlow.update { PlaybackConstants.POSITION_UNSET }
-						_progressStateFlow.update { PlaybackConstants.POSITION_UNSET }
-						return@transform
-					}
-					// as emitting from different coroutine context is not allowed, emit outside the listener
-					// job via this channel
-					val channel = Channel<Pair<PlaybackSession, PlaybackEvent>>(1)
-					listenerJob = scope.launch {
-						try {
-							session.controller.acquireObserver(owner).let { observer ->
-								observer.observeDiscontinuity {
-									channel.trySend(session to it)
-								}
-								observer.getAndObserveIsPlayingChange {
-									channel.trySend(session to it)
-								}.also { playing ->
-									// current
-									if (playing && progressCollectorJob?.isActive != true) {
-										internalStartProgress(true, session)
-									} else if (!playing && progressCollectorJob?.isActive == true) {
-
-										stopCollectProgressInternal()
-										var buffered: Duration = PlaybackConstants.POSITION_UNSET
-										var progress: Duration = PlaybackConstants.POSITION_UNSET
-
-										session.controller.withContext {
-											buffered = this@withContext.bufferedProgress
-											progress = this@withContext.progress
-										}
-
-										_bufferedProgressStateFlow.update { buffered }
-										_progressStateFlow.update { progress }
-									}
-								}
-							}
-							// wait until job cancellation, cleanup will be done inside finally block
-							awaitCancellation()
-						} finally {
-							// not sure if closing the channel is necessary as the emitter is already cancelled
-							channel.close()
-							session.controller.releaseObserver(owner)
-						}
-					}
-					// emit the channel until job cancellation
-					emitAll(channel.consumeAsFlow())
-				}
-				.collect { sessionEvent ->
-					// assert the collectEvent state
-					check(_collectEvent) {
-						"CollectEventJob was still active when `collectingEvent` is false"
-					}
-					@Suppress("UnnecessaryVariable")
-					val session = sessionEvent.first
-					@Suppress("UnnecessaryVariable")
-					val event = sessionEvent.second
-					when (event) {
-						// isPlaying
-						// playWhenReady
-						is PlaybackEvent.IsPlayingChange -> {
-							val playing = event.new
+			val session = playbackConnection.requestUserSessionAsync(user).await()
+			session.controller
+				.apply {
+					val observer = acquireObserver(owner)
+					launch {
+						observer.observeIsPlaying().collect { playing ->
 							if (playing && progressCollectorJob?.isActive != true) {
 								internalStartProgress(true, session)
 							} else if (!playing && progressCollectorJob?.isActive == true) {
@@ -320,34 +254,35 @@ internal class RealPlaybackProgressionCollector(
 								var buffered: Duration = PlaybackConstants.POSITION_UNSET
 								var progress: Duration = PlaybackConstants.POSITION_UNSET
 
-								session.controller.withContext controller@ {
-									buffered = this@controller.bufferedProgress
-									progress = this@controller.progress
+								session.controller.withLooperContext {
+									buffered = getBufferedPosition()
+									progress = getPosition()
 								}
 
 								_bufferedProgressStateFlow.update { buffered }
 								_progressStateFlow.update { progress }
 							}
 						}
-						// Discontinuity
-						is PlaybackEvent.ProgressDiscontinuity -> {
-							if (session.controller.withContext { playing }) {
+					}
+					launch {
+						observer.observePositionDiscontinuityEvent().collect {
+							if (session.controller.withLooperContext { isPlaying() }) {
 								internalStartProgress(true, session)
 							} else {
 								var buffered: Duration = PlaybackConstants.POSITION_UNSET
 								var progress: Duration = PlaybackConstants.POSITION_UNSET
 
-								session.controller.withContext controller@ {
-									buffered = this@controller.bufferedProgress
-									progress = this@controller.progress
+								session.controller.withLooperContext controller@ {
+									buffered = getBufferedPosition()
+									progress = getPosition()
 								}
 
 								_bufferedProgressStateFlow.update { buffered }
 								_progressStateFlow.update { progress }
 							}
 						}
-						else -> error("Unused PlaybackEvent is sent to collector")
 					}
+					runCatching { awaitCancellation() }.onFailure { session.controller.releaseObserver(owner) }
 				}
 		}
 	}

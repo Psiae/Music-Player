@@ -5,7 +5,7 @@ import android.content.Intent
 import android.os.Bundle
 import com.flammky.android.content.intent.isActionView
 import com.flammky.musicplayer.R
-import com.flammky.musicplayer.activity.ActivityWatcher
+import com.flammky.musicplayer.base.activity.ActivityWatcher
 import com.flammky.musicplayer.main.MainActivity
 
 /**
@@ -24,7 +24,6 @@ class ReceiverActivity : Activity() {
 
 	private fun resolveActionView(intent: Intent) {
 		require(intent.isActionView())
-		// TODO: use Resolver before launching MainActivity
 		launchMainActivity()
 	}
 

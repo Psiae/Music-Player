@@ -1,7 +1,11 @@
 package com.flammky.musicplayer.base
 
+import android.app.Application
 import android.content.Context
 import androidx.startup.Initializer
+import com.flammky.musicplayer.base.auth.AuthService
+import com.flammky.musicplayer.base.auth.r.RealAuthService
+import com.flammky.musicplayer.base.auth.r.local.LocalAuthProvider
 import com.flammky.musicplayer.core.CoreDebugInitializer
 import com.flammky.musicplayer.core.CoreInitializer
 import com.flammky.musicplayer.core.common.atomic
@@ -9,9 +13,13 @@ import com.flammky.musicplayer.core.common.atomic
 class BaseModuleInitializer : Initializer<Unit> {
 
 	override fun create(context: Context) {
-		check(C.incrementAndGet() == 0) {
+		check(C.incrementAndGet() == 1) {
 			"BaseModuleInitializer was called multiple times"
 		}
+		val app = context as Application
+		val realAuth = RealAuthService.provides(app)
+		RealAuthService.registerProvider(LocalAuthProvider(app))
+		AuthService.provides(realAuth)
 	}
 
 	override fun dependencies(): MutableList<Class<out Initializer<*>>> {
@@ -29,13 +37,13 @@ class BaseModuleInitializer : Initializer<Unit> {
 	}
 }
 
-private class BaseModuleDebugInitializer : Initializer<Unit> {
+class BaseModuleDebugInitializer : Initializer<Unit> {
 
 	override fun create(context: Context) {
 		check(BuildConfig.DEBUG) {
 			"BaseModuleDebugInitializer was called on non-debug build config"
 		}
-		check(C.incrementAndGet() == 0) {
+		check(C.incrementAndGet() == 1) {
 			"BaseModuleDebugInitializer was called multiple times"
 		}
 	}

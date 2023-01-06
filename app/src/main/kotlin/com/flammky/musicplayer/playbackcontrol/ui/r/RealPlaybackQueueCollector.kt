@@ -1,17 +1,19 @@
 package com.flammky.musicplayer.playbackcontrol.ui.r
 
 import androidx.annotation.GuardedBy
-import com.flammky.musicplayer.core.common.sync
 import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConnection
+import com.flammky.musicplayer.base.media.playback.PlaybackConstants
 import com.flammky.musicplayer.base.media.playback.PlaybackQueue
+import com.flammky.musicplayer.base.user.User
+import com.flammky.musicplayer.core.common.sync
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
 import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import timber.log.Timber
 
 @OptIn(ExperimentalStdlibApi::class, ExperimentalCoroutinesApi::class)
 internal class RealPlaybackQueueCollector(
+	private val user: User,
 	private val observer: RealPlaybackObserver,
 	private val scope: CoroutineScope,
 	private val playbackConnection: PlaybackConnection
@@ -23,7 +25,10 @@ internal class RealPlaybackQueueCollector(
 
 	private val _queueStateFlow = MutableStateFlow(localUNSET)
 
-	override val queueStateFlow: StateFlow<PlaybackQueue> = _queueStateFlow.asStateFlow()
+	override val queueStateFlow: StateFlow<PlaybackQueue> =
+		_queueStateFlow.mapLatest { if (it === localUNSET) PlaybackConstants.QUEUE_UNSET else it }
+			.stateIn(scope, SharingStarted.Lazily, PlaybackConstants.QUEUE_UNSET)
+
 
 	private var queueCollectorJob: Job? = null
 
@@ -41,8 +46,9 @@ internal class RealPlaybackQueueCollector(
 
 	fun updateQueue(): Job {
 		return scope.launch {
+			val s = playbackConnection.requestUserSessionAsync(user).await()
 			_queueStateFlow.update {
-				(playbackConnection.getSession(observer.sessionID)?.controller?.queue
+				(s.controller.getQueue()
 					.takeIf { it != PlaybackQueue.UNSET } ?: localUNSET).also { new ->
 					Timber.d(
 						"""
@@ -89,32 +95,16 @@ internal class RealPlaybackQueueCollector(
 		_queueStateFlow.emit(PlaybackQueue.UNSET)
 		queueCollectorJob = scope.launch {
 			val owner = Any()
-			var listenerJob: Job? = null
-			playbackConnection.observeCurrentSession().distinctUntilChanged()
-				.transform { session ->
-					listenerJob?.cancel()
-					if (session == null) {
-						emit(PlaybackQueue.UNSET)
-						return@transform
-					}
-					val channel = Channel<PlaybackQueue>(Channel.UNLIMITED)
-					listenerJob = launch {
-						try {
-							session.controller.acquireObserver(owner).let { observer ->
-								val get = observer.getAndObserveQueueChange { event ->
-									channel.trySend(event.new)
-								}
-								channel.send(get)
-							}
-							awaitCancellation()
-						} finally {
-							channel.close()
-							session.controller.releaseObserver(owner)
+			playbackConnection.requestUserSessionAsync(user).await().controller
+				.apply {
+					runCatching {
+						acquireObserver(owner).observeQueue().collect {
+							_queueStateFlow.value = it
 						}
+					}.onFailure {
+						releaseObserver(owner)
 					}
-					emitAll(channel.consumeAsFlow())
 				}
-				.collect(_queueStateFlow)
 		}
 	}
 }

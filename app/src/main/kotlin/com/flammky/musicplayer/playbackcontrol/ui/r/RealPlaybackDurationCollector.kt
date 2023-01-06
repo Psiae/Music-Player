@@ -1,20 +1,22 @@
 package com.flammky.musicplayer.playbackcontrol.ui.r
 
 import androidx.annotation.GuardedBy
-import com.flammky.musicplayer.core.common.sync
 import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConnection
 import com.flammky.musicplayer.base.media.playback.PlaybackConstants
+import com.flammky.musicplayer.base.user.User
+import com.flammky.musicplayer.core.common.sync
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
 import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import timber.log.Timber
 import kotlin.time.Duration
 
 internal class RealPlaybackDurationCollector(
+	private val user: User,
+	// parent should provide the necessary function
 	private val parentObserver: RealPlaybackObserver,
 	private val scope: CoroutineScope,
-	private val playbackConnection: PlaybackConnection
+	private val connection: PlaybackConnection
 ) : PlaybackObserver.DurationCollector {
 	// unfortunately identity check is not allowed
 	private val _durationStateFlow = MutableStateFlow<Duration?>(null)
@@ -82,38 +84,19 @@ internal class RealPlaybackDurationCollector(
 
 	private fun collectDuration(): Job {
 		return scope.launch {
-			Timber.d("DurationCollector collectDuration launched")
 			val owner = Any()
-			var listenerJob: Job? = null
-			playbackConnection.observeCurrentSession().distinctUntilChanged()
-				.transform { session ->
-					Timber.d("DurationCollector got session $session")
-					listenerJob?.cancel()
-					if (session == null) {
-						emit(PlaybackConstants.DURATION_UNSET)
-						return@transform
-					}
-					val channel = Channel<Duration>(1)
-					listenerJob = launch {
-						try {
-							session.controller.acquireObserver(owner).let { observer ->
-								val get = observer.getAndObserveDurationChange { new ->
-									channel.trySend(new)
-								}
-								channel.send(get)
+			connection.requestUserSessionAsync(user).await().controller
+				.apply {
+					acquireObserver(owner).observeDuration()
+						.runCatching {
+							collect {
+								_durationStateFlow.value = it
 							}
-							awaitCancellation()
-						} finally {
-							channel.close()
-							session.controller.releaseObserver(owner)
 						}
-					}
-					emitAll(channel.consumeAsFlow())
+						.onFailure {
+							releaseObserver(owner)
+						}
 				}
-				.onEach {
-					Timber.d("DurationCollector collected $it")
-				}
-				.collect(_durationStateFlow)
 		}
 	}
 }

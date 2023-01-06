@@ -53,6 +53,7 @@ import com.flammky.musicplayer.base.media.playback.*
 import com.flammky.musicplayer.base.media.playback.RepeatMode
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.*
+import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.playbackcontrol.ui.PlaybackControlTrackMetadata
 import com.flammky.musicplayer.playbackcontrol.ui.PlaybackControlViewModel
 import com.flammky.musicplayer.playbackcontrol.ui.controller.PlaybackController
@@ -251,27 +252,27 @@ private fun playbackControllerAsState(
 	viewModel: PlaybackControlViewModel
 ): State<PlaybackController?> {
 	val coroutineScope = rememberCoroutineScope()
-	val idState = remember {
-		mutableStateOf<String?>(viewModel.currentSessionID())
+	val userState = remember {
+		mutableStateOf<User?>(viewModel.currentAuth())
 	}
 	val controllerState = remember {
-		mutableStateOf<PlaybackController?>(idState.value?.let { id ->
+		mutableStateOf<PlaybackController?>(userState.value?.let { id ->
 			viewModel.createController(id, coroutineScope.coroutineContext)
 		})
 	}
-	val id = idState.value
+	val user = userState.value
 	val controller = controllerState.value
 	LaunchedEffect(key1 = null) {
-		viewModel.observeCurrentSessionId().collect { idState.value = it }
+		viewModel.observeCurrentAuth().collect { userState.value = it }
 	}
-	DisposableEffect(key1 = id) {
-		if (id == null) {
+	DisposableEffect(key1 = user) {
+		if (user == null) {
 			return@DisposableEffect onDispose {  }
 		}
-		if (id == controller?.sessionID) {
+		if (user == controller?.user) {
 			return@DisposableEffect onDispose { controller.dispose() }
 		}
-		val newController = viewModel.createController(id, coroutineScope.coroutineContext)
+		val newController = viewModel.createController(user, coroutineScope.coroutineContext)
 		controllerState.value = newController
 		onDispose {
 			newController.dispose()

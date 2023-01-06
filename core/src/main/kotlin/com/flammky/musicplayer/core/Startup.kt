@@ -8,7 +8,7 @@ import timber.log.Timber
 class CoreInitializer(): Initializer<Unit> {
 
     override fun create(context: Context) {
-        check(C.incrementAndGet() == 0) {
+        check(C.incrementAndGet() == 1) {
             "CoreInitializer was called multiple times"
         }
     }
@@ -32,7 +32,7 @@ class CoreDebugInitializer(): Initializer<Unit> {
         check(BuildConfig.DEBUG) {
             "CoreDebugInitializer was called on non-debug BuildConfig"
         }
-        check(C.incrementAndGet() == 0) {
+        check(C.incrementAndGet() == 1) {
             "CoreDebugInitializer was called multiple times"
         }
         Timber.plant(Timber.DebugTree())

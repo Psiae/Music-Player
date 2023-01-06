@@ -3,7 +3,7 @@ package com.flammky.musicplayer.core.app.startup
 import android.app.Application
 import android.content.Context
 import androidx.startup.Initializer
-import com.flammky.musicplayer.activity.ActivityWatcher
+import com.flammky.musicplayer.base.activity.ActivityWatcher
 import com.flammky.musicplayer.app.ApplicationDelegate
 
 class AppDelegateInitializer : Initializer<Unit> {

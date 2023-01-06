@@ -23,8 +23,13 @@ android {
 }
 
 dependencies {
+    api(project(":core"))
     api(project(":base"))
+    api(project(":base:common"))
+    api(project(":base:common:android"))
     api(project(":base:common:kotlin"))
+    api(project("medialib"))
+
 
     // temporary
     api(project("medialib"))

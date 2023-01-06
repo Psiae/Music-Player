@@ -6,10 +6,10 @@ import com.flammky.android.medialib.common.mediaitem.MediaItem
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.android.medialib.player.Player
 import com.flammky.common.kotlin.coroutines.safeCollect
-import com.flammky.musicplayer.core.common.sync
 import com.flammky.musicplayer.base.media.playback.*
 import com.flammky.musicplayer.base.media.r.MediaConnectionDelegate
 import com.flammky.musicplayer.base.media.r.MediaConnectionPlayback
+import com.flammky.musicplayer.core.common.sync
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toPersistentList
@@ -18,7 +18,6 @@ import kotlinx.coroutines.android.asCoroutineDispatcher
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import timber.log.Timber
@@ -37,58 +36,44 @@ class RealMediaConnection(
 	// Temp Start
 	//
 
-	val playbackSession: PlaybackSession = PlaybackSession("DEBUG", this)
-
 	override val looper: Looper
 		get() = delegate.playback.publicLooper
 
-	override val playing: Boolean
-		get() = delegate.playback.playing
+	override suspend fun isPlayWhenReady(): Boolean {
+		return delegate.playback.playWhenReady
+	}
 
-	override val playWhenReady: Boolean
-		get() = delegate.playback.playWhenReady
+	override suspend fun isPlaying(): Boolean {
+		return delegate.playback.playing
+	}
 
-	override val queue: PlaybackQueue
-		get() {
-			// I think we should just remove MediaController usage
-			val list = delegate.playback.getPlaylist().map { it.mediaId }.toPersistentList()
-			val index = if (list.isEmpty()) {
-				PlaybackConstants.INDEX_UNSET
-			} else {
-				delegate.playback.index
-			}
-			return PlaybackQueue(
-				list = list,
-				currentIndex = index
-			)
+	override suspend fun getPlaybackSpeed(): Float = delegate.playback.playbackSpeed()
+
+	override suspend fun getDuration(): Duration = delegate.playback.duration()
+
+	override suspend fun getBufferedPosition(): Duration = delegate.playback.bufferedPosition()
+
+	override suspend fun getPosition(): Duration = delegate.playback.position()
+
+	override suspend fun getShuffleMode(): ShuffleMode = when (delegate.playback.shuffleEnabled) {
+		true -> ShuffleMode.ON
+		else -> ShuffleMode.OFF
+	}
+
+	override suspend fun getRepeatMode(): RepeatMode = when (delegate.playback.repeatMode) {
+		Player.RepeatMode.OFF -> RepeatMode.OFF
+		Player.RepeatMode.ONE -> RepeatMode.ONE
+		Player.RepeatMode.ALL -> RepeatMode.ALL
+	}
+
+	override suspend fun getQueue(): PlaybackQueue {
+		val (l: List<String>, i: Int) = withLooperContext {
+			delegate.playback.getPlaylist().map { it.mediaId } to delegate.playback.index
 		}
+		return PlaybackQueue(l.toPersistentList(), i)
+	}
 
-	override val repeatMode: RepeatMode
-		get() = when (delegate.playback.repeatMode) {
-			Player.RepeatMode.OFF -> RepeatMode.OFF
-			Player.RepeatMode.ONE -> RepeatMode.ONE
-			Player.RepeatMode.ALL -> RepeatMode.ALL
-		}
-
-	override val shuffleMode: ShuffleMode
-		get() = when (delegate.playback.shuffleEnabled) {
-			true -> ShuffleMode.ON
-			else -> ShuffleMode.OFF
-		}
-
-	override val progress: Duration
-		get() = delegate.playback.position()
-
-	override val bufferedProgress: Duration
-		get() = delegate.playback.bufferedPosition()
-
-	override val duration: Duration
-		get() = delegate.playback.duration()
-
-	override val playbackSpeed: Float
-		get() = delegate.playback.playbackSpeed()
-
-	override fun getPlaybackProperties(): PlaybackProperties {
+	override suspend fun getPlaybackProperties(): PlaybackProperties {
 		val player = delegate.playback
 		val repeatMode = when (player.repeatMode) {
 			Player.RepeatMode.OFF -> RepeatMode.OFF
@@ -123,11 +108,11 @@ class RealMediaConnection(
 		)
 	}
 
-	override fun setQueue(queue: PlaybackQueue): Boolean {
+	override suspend fun setQueue(queue: PlaybackQueue): Boolean {
 		TODO("Not yet implemented")
 	}
 
-	override fun setRepeatMode(mode: RepeatMode): Boolean {
+	override suspend fun setRepeatMode(mode: RepeatMode): Boolean {
 		delegate.playback.setRepeatMode(
 			when (mode) {
 				RepeatMode.ALL -> Player.RepeatMode.ALL
@@ -138,7 +123,7 @@ class RealMediaConnection(
 		return true
 	}
 
-	override fun setShuffleMode(mode: ShuffleMode): Boolean {
+	override suspend fun setShuffleMode(mode: ShuffleMode): Boolean {
 		delegate.playback.setShuffleMode(
 			when (mode) {
 				ShuffleMode.OFF -> false
@@ -148,33 +133,33 @@ class RealMediaConnection(
 		return true
 	}
 
-	override fun seekProgress(progress: Duration): Boolean {
+	override suspend fun seekPosition(progress: Duration): Boolean {
 		return delegate.playback.seekToPosition(progress.inWholeMilliseconds)
 	}
 
-	override fun seekIndex(index: Int, startPosition: Duration): Boolean {
+	override suspend fun seekIndex(index: Int, startPosition: Duration): Boolean {
 		return delegate.playback.index != index && delegate.playback.seekToIndex(index, startPosition.inWholeMilliseconds)
 	}
 
-	override fun play(): Boolean {
+	override suspend fun play(): Boolean {
 		delegate.playback.play()
 		return true
 	}
 
-	override fun seekNext(): Boolean {
+	override suspend fun seekNext(): Boolean {
 		return delegate.playback.seekToIndex(delegate.playback.index + 1, 0)
 	}
 
-	override fun seekPrevious(): Boolean {
+	override suspend fun seekPrevious(): Boolean {
 		delegate.playback.seekPrevious()
 		return true
 	}
 
-	override fun seekPreviousMediaItem(): Boolean {
+	override suspend fun seekPreviousMediaItem(): Boolean {
 		return delegate.playback.seekToIndex(delegate.playback.index - 1, 0)
 	}
 
-	override fun setPlayWhenReady(playWhenReady: Boolean): Boolean {
+	override suspend fun setPlayWhenReady(playWhenReady: Boolean): Boolean {
 		delegate.playback.playWhenReady = playWhenReady
 		return true
 	}
@@ -184,137 +169,44 @@ class RealMediaConnection(
 		private val dispatcher = Handler(delegate.playback.publicLooper).asCoroutineDispatcher()
 		private val scope = CoroutineScope(dispatcher + SupervisorJob())
 
-
-		override fun getAndObserveRepeatModeChange(
-			onRepeatModeChange: (PlaybackEvent.RepeatModeChange) -> Unit
-		): RepeatMode {
-			scope.launch {
-				delegate.playback.observeRepeatModeChange().distinctUntilChanged().collect {
-					onRepeatModeChange(
-						PlaybackEvent.RepeatModeChange(RepeatMode.OFF, repeatMode, RepeatModeChangeReason.UNKNOWN)
-					)
-				}
-			}
-			return repeatMode
+		override fun observeRepeatMode(): Flow<RepeatMode> {
+			TODO("Not yet implemented")
 		}
 
-		override fun getAndObserveShuffleModeChange(
-			onShuffleModeChange: (PlaybackEvent.ShuffleModeChange) -> Unit
-		): ShuffleMode {
-			scope.launch {
-				delegate.playback.observeShuffleEnabledChange().distinctUntilChanged().collect {
-					onShuffleModeChange(PlaybackEvent.ShuffleModeChange(ShuffleMode.OFF, shuffleMode, ShuffleModeChangeReason.UNKNOWN))
-				}
-			}
-			return shuffleMode
+		override fun observeShuffleMode(): Flow<ShuffleMode> {
+			TODO("Not yet implemented")
 		}
 
-		override fun getAndObserveQueueChange(
-			onQueueChange: (PlaybackEvent.QueueChange) -> Unit
-		): PlaybackQueue {
-			scope.launch {
-				playback.observePlaylistStream().collect {
-					val newList = it.list
-					val newIndex = it.currentIndex
-					val new = if (newIndex in newList.indices) {
-						PlaybackQueue(
-							list = newList,
-							currentIndex = newIndex
-						)
-					} else {
-						PlaybackQueue(
-							list = persistentListOf(),
-							currentIndex = PlaybackConstants.INDEX_UNSET
-						)
-					}
-					onQueueChange(
-						PlaybackEvent.QueueChange(
-							old = PlaybackQueue.UNSET, new = new, PlaybackQueueChangeReason.UNKNOWN)
-					)
-				}
-			}
-			return queue
+		override fun observeQueue(): Flow<PlaybackQueue> {
+			TODO("Not yet implemented")
 		}
 
-		override fun getAndObserveIsPlayingChange(
-			onIsPlayingChange: (PlaybackEvent.IsPlayingChange) -> Unit
-		): Boolean {
-			scope.launch {
-				delegate.playback.observeIsPlayingChange().distinctUntilChanged().collect {
-					onIsPlayingChange(PlaybackEvent.IsPlayingChange(false, playing, IsPlayingChangeReason.UNKNOWN))
-				}
-			}
-			return playing
+		override fun observeIsPlaying(): Flow<Boolean> {
+			TODO("Not yet implemented")
 		}
 
-		override fun getAndObservePlaybackSpeed(
-			onPlaybackSpeedChange: (PlaybackEvent.PlaybackSpeedChange) -> Unit
-		): Float {
-			return 1f
+		override fun observePlaybackSpeed(): Flow<Float> {
+			TODO("Not yet implemented")
 		}
 
-		override fun observeDiscontinuity(
-			onDiscontinuity: (PlaybackEvent.ProgressDiscontinuity) -> Unit
-		) {
-			scope.launch {
-				delegate.playback.observeDiscontinuityEvent().collect {
-					onDiscontinuity(PlaybackEvent.ProgressDiscontinuity(it.oldPosition, it.newPosition, ProgressDiscontinuityReason.UNKNOWN))
-				}
-			}
+		override fun observePositionDiscontinuityEvent(): Flow<PlaybackEvent.PositionDiscontinuity> {
+			TODO("Not yet implemented")
 		}
 
-		override fun getAndObserveDurationChange(onDurationChange: (Duration) -> Unit): Duration {
-			scope.launch {
-
-				delegate.playback.joinDispatcher {
-					observeDurationChange().collect {
-						onDurationChange(it)
-					}
-				}
-			}
-
-			return duration
+		override fun observeDuration(): Flow<Duration> {
+			TODO("Not yet implemented")
 		}
 
-		override fun getAndObservePropertiesChange(onPropertiesChange: (PlaybackProperties) -> Unit): PlaybackProperties {
-			scope.launch {
-				suspend fun sendCurrent() = delegate.playback
-					.joinDispatcher { onPropertiesChange(getPlaybackProperties()) }
-				val job1 = launch { delegate.playback.observePlayWhenReadyChange()
-					.safeCollect { sendCurrent() } }
-				val job2 = launch { delegate.playback.observeIsPlayingChange()
-					.safeCollect { sendCurrent() } }
-				val job3 = launch { delegate.playback.observeShuffleEnabledChange()
-					.safeCollect { sendCurrent() } }
-				val job4 = launch { delegate.playback.observeMediaItemTransition()
-					.safeCollect { sendCurrent() } }
-				val job5 = launch { delegate.playback.observeTimelineChange()
-					.safeCollect { sendCurrent() } }
-				val job6 = launch { delegate.playback.observeRepeatModeChange()
-					.safeCollect { sendCurrent() } }
-				val job7 = launch { delegate.playback.observePlayerStateChange()
-					.safeCollect { sendCurrent() } }
-				val job8 = launch { delegate.playback.observeIsLoading()
-					.safeCollect { sendCurrent() }}
-				val job9 = launch { delegate.playback.observeSpeed()
-					.safeCollect { sendCurrent() }}
-				try {
-					awaitCancellation()
-				} finally {
-					job1.cancel();job2.cancel();job3.cancel();job4.cancel();job5.cancel();job6.cancel()
-					job7.cancel();job8.cancel();job9.cancel()
-				}
-			}
-
-			return getPlaybackProperties()
+		override fun observePlaybackProperties(): Flow<PlaybackProperties> {
+			TODO("Not yet implemented")
 		}
 
-		override fun release() {
+		fun release() {
 			scope.cancel()
 		}
 	}
 
-	private val owners = mutableMapOf<Any, PlaybackController.Observer>()
+	private val owners = mutableMapOf<Any, OBS>()
 
 	override fun acquireObserver(owner: Any): PlaybackController.Observer {
 		return owners.sync { getOrPut(owner) { OBS() } }
@@ -332,9 +224,10 @@ class RealMediaConnection(
 		return Looper.myLooper() == delegate.playback.publicLooper
 	}
 
-	override suspend fun <R> withContext(block: suspend PlaybackController.() -> R): R {
+	override suspend fun <R> withLooperContext(block: suspend PlaybackController.() -> R): R {
 		return delegate.playback.joinDispatcher { block() }
 	}
+
 
 	//
 	// Temp end

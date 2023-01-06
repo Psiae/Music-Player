@@ -3,6 +3,7 @@ package com.flammky.musicplayer.playbackcontrol.ui.controller
 import com.flammky.musicplayer.base.media.playback.PlaybackQueue
 import com.flammky.musicplayer.base.media.playback.RepeatMode
 import com.flammky.musicplayer.base.media.playback.ShuffleMode
+import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
@@ -11,16 +12,15 @@ import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.time.Duration
 
 /**
- * PlaybackController for sending command / observe @param [sessionID]
- * @param sessionID the session ID
+ * PlaybackController for sending command / observe
  */
 // Note: keep this to `playbackcontrol` package only, made due to the dynamic nature of the ui
 // don't stretch this to other module unnecessarily
 
 // consider to limit the command dispatch to the `Main` dispatcher only
 internal abstract class PlaybackController(
-	/* auth: AuthContext */
-	val sessionID: String
+	// maybe a wrapper object ?
+	val user: User
 ) {
 
 	// TODO: Playback Properties getter

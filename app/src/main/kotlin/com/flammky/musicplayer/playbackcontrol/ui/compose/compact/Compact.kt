@@ -78,8 +78,8 @@ internal fun TransitioningCompactPlaybackControl(
 	val vm = viewModel<PlaybackControlViewModel>()
 	val coroutineScope = rememberCoroutineScope()
 
-	val sessionIDState = remember {
-		mutableStateOf(vm.currentSessionID())
+	val sessionAuthState = remember {
+		mutableStateOf(vm.currentAuth())
 	}
 
 	val controllerState = remember {
@@ -97,26 +97,26 @@ internal fun TransitioningCompactPlaybackControl(
 			CompactHeight
 	)
 
-	val sessionID = sessionIDState.value
+	val sessionAuth = sessionAuthState.value
 	val sessionController = controllerState.value
 
 	LaunchedEffect(
 		key1 = null,
 		block = {
-			vm.observeCurrentSessionId().collect {
-				sessionIDState.value = it
+			vm.observeCurrentAuth().collect {
+				sessionAuthState.value = it
 			}
 		}
 	)
 
 	DisposableEffect(
-		key1 = sessionID,
+		key1 = sessionAuth,
 		effect = {
-			if (sessionID == null) {
+			if (sessionAuth == null) {
 				return@DisposableEffect onDispose {  }
 			}
 			val supervisor = SupervisorJob()
-			val newController = vm.createController(sessionID, coroutineScope.coroutineContext)
+			val newController = vm.createController(sessionAuth, coroutineScope.coroutineContext)
 			controllerState.value = newController
 			showSelfState.value = false
 			newController.createPlaybackObserver(coroutineScope.coroutineContext)

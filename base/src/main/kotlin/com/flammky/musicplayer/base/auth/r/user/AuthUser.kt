@@ -8,7 +8,7 @@ import kotlinx.collections.immutable.persistentMapOf
 internal abstract class AuthUser(
 	uid: String,
 	val provider: String
-) : User(uid) {
+) : User(uid, provider) {
 
 	abstract fun writeEntity(): AuthEntity
 

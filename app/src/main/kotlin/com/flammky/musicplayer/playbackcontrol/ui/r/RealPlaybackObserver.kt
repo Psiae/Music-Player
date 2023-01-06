@@ -1,24 +1,24 @@
 package com.flammky.musicplayer.playbackcontrol.ui.r
 
 import androidx.annotation.GuardedBy
-import com.flammky.musicplayer.core.common.sync
 import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConnection
 import com.flammky.musicplayer.base.media.playback.PlaybackEvent
+import com.flammky.musicplayer.base.user.User
+import com.flammky.musicplayer.core.common.sync
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
 import kotlinx.coroutines.*
 import kotlin.coroutines.CoroutineContext
 
-typealias ProgressDiscontinuityListener = suspend (PlaybackEvent.ProgressDiscontinuity) -> Unit
+typealias ProgressDiscontinuityListener = suspend (PlaybackEvent.PositionDiscontinuity) -> Unit
 typealias IsPlayingListener = suspend (Boolean) -> Unit
 
 @OptIn(ExperimentalStdlibApi::class, ExperimentalCoroutinesApi::class)
 internal class /* Debug */ RealPlaybackObserver(
+	private val user: User,
 	private val controller: RealPlaybackController,
 	private val parentScope: CoroutineScope,
 	private val connection: PlaybackConnection,
 ) : PlaybackObserver {
-
-	val sessionID = controller.sessionID
 
 	private val _stateLock = Any()
 
@@ -87,9 +87,10 @@ internal class /* Debug */ RealPlaybackObserver(
 		val supervisor = SupervisorJob(collectorJob)
 		val confinedScope = CoroutineScope(context = supervisor + dispatcher)
 		return RealPlaybackDurationCollector(
+			user = user,
 			parentObserver = this,
 			scope = confinedScope,
-			playbackConnection = connection
+			connection = connection,
 		).also {
 			sync(_stateLock) {
 				// seems to be better solution than having to throw an exception
@@ -112,6 +113,7 @@ internal class /* Debug */ RealPlaybackObserver(
 		val supervisor = SupervisorJob(collectorJob)
 		val confinedScope = CoroutineScope(context = supervisor + dispatcher)
 		return RealPlaybackProgressionCollector(
+			user = user,
 			observer = this,
 			scope = confinedScope,
 			playbackConnection = connection,
@@ -134,6 +136,7 @@ internal class /* Debug */ RealPlaybackObserver(
 		val supervisor = SupervisorJob(collectorJob)
 		val confinedScope = CoroutineScope(context = supervisor + dispatcher)
 		return RealPlaybackQueueCollector(
+			user,
 			observer = this,
 			scope = confinedScope,
 			playbackConnection = connection
@@ -155,9 +158,10 @@ internal class /* Debug */ RealPlaybackObserver(
 		val supervisor = SupervisorJob(collectorJob)
 		val confinedScope = CoroutineScope(context = supervisor + dispatcher)
 		return RealPlaybackPropertiesCollector(
+			user = user,
 			scope = confinedScope,
 			parentObserver = this,
-			connectionController = connection.getSession(controller.sessionID)!!.controller
+			connection = connection
 		).also {
 			sync(_stateLock) { if (_disposed) it.dispose() else _playbackPropertiesCollectors.sync { add(it) } }
 		}

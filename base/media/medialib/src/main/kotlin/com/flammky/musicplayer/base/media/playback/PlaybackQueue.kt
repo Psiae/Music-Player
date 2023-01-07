@@ -12,7 +12,7 @@ data class PlaybackQueue(
 		if (list.isEmpty() || currentIndex < 0) {
 			require(currentIndex == PlaybackConstants.INDEX_UNSET) {
 				"invalid currentIndex=$currentIndex must be " +
-					"PlaybackConstants.INDEX_UNSET=${PlaybackConstants.DURATION_UNSET}"
+					"PlaybackConstants.INDEX_UNSET=${PlaybackConstants.INDEX_UNSET}"
 			}
 		} else {
 			require(currentIndex in list.indices) {

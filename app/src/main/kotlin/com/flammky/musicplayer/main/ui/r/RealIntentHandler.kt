@@ -85,7 +85,7 @@ class RealIntentHandler(
 	}
 
 	override fun intentRequireAuthPermission(intent: Intent): Boolean {
-		return false
+		return true
 	}
 
 	override fun dispose() {

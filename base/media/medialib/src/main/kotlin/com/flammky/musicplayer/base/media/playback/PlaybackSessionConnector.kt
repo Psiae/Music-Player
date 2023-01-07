@@ -291,9 +291,13 @@ class PlaybackSessionConnector internal constructor(
 									add(controller.getMediaItemAt(i))
 								}
 							}
+						val list = mtb.map { it.mediaId }.toPersistentList()
 						PlaybackQueue(
-							list = mtb.map { it.mediaId }.toPersistentList(),
-							currentIndex = controller.currentMediaItemIndex
+							list = list,
+							currentIndex = if (list.isEmpty()) {
+								return@let null
+							} else
+								controller.currentMediaItemIndex
 						)
 					}
 					?: PlaybackConstants.QUEUE_UNSET
@@ -583,14 +587,25 @@ class PlaybackSessionConnector internal constructor(
 		}
 		shouldRegisterObserverListener = true
 
-		supervisorScope.launch(looperDispatcher) {
+		supervisorScope.launch(looperDispatcher.immediate) {
 			sync(_lock) {
 				if (!observerListenerRegistered && shouldRegisterObserverListener &&
 					_deferredController?.isCompleted == true && _deferredController?.isCancelled == false
 				) {
-					_deferredController!!.getCompleted().addListener(observerListener)
+					_deferredController!!.getCompleted()
+						.apply {
+							addListener(observerListener)
+						}
 				}
 			}
+			_playWhenReadySharedFlow.emit(controller.isPlayWhenReady())
+			_repeatModeSharedFlow.emit(controller.getRepeatMode())
+			_shuffleModeSharedFlow.emit(controller.getShuffleMode())
+			_queueSharedFlow.emit(controller.getQueue())
+			_isPlayingSharedFlow.emit(controller.isPlaying())
+			_playbackSpeedSharedFlow.emit(controller.getPlaybackSpeed())
+			_durationSharedFlow.emit(controller.getDuration())
+			_propertiesSharedFlow.emit(controller.getPlaybackProperties())
 		}
 	}
 

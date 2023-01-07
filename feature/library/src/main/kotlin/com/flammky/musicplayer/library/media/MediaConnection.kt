@@ -2,15 +2,18 @@ package com.flammky.musicplayer.library.media
 
 import android.net.Uri
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
+import com.flammky.musicplayer.base.user.User
 import kotlinx.coroutines.flow.Flow
 
 /**
  * Media Connection Interface for this library module
  */
 internal interface MediaConnection {
-	fun play(id: String, uri: Uri)
-
-	fun play(queue: List<Pair<String, Uri>>, index: Int)
+	fun play(
+		user: User,
+		queue: List<Pair<String, Uri>>,
+		index: Int
+	)
 
 	val repository: Repository
 

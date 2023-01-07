@@ -12,6 +12,7 @@ import androidx.lifecycle.viewModelScope
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.common.kotlin.coroutines.safeCollect
+import com.flammky.musicplayer.base.auth.AuthService
 import com.flammky.musicplayer.library.BuildConfig
 import com.flammky.musicplayer.library.localmedia.data.LocalSongModel
 import com.flammky.musicplayer.library.localmedia.data.LocalSongRepository
@@ -28,6 +29,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 internal class LocalSongViewModel @Inject constructor(
+	private val authService: AuthService,
 	private val dispatcher: AndroidCoroutineDispatchers,
 	private val mediaConnection: MediaConnection,
 	private val repository: LocalSongRepository,
@@ -86,15 +88,16 @@ internal class LocalSongViewModel @Inject constructor(
 		artworkCacheStateFlowMap.clear()
 	}
 
-	fun play(model: LocalSongModel) {
-		mediaConnection.play(model.id, model.mediaItem.mediaUri)
-	}
-
 	// queue should be recognized instead
 	fun play(queue: List<LocalSongModel>, index: Int) {
-		if (index !in queue.indices) return
+		val user = authService.currentUser
+		if (index !in queue.indices || user == null) return
 		val cut = queue
-		mediaConnection.play(cut.map { it.id to it.mediaItem.mediaUri }, index)
+		mediaConnection.play(
+			user = user,
+			cut.map { it.id to it.mediaItem.mediaUri },
+			index
+		)
 	}
 
 	@MainThread

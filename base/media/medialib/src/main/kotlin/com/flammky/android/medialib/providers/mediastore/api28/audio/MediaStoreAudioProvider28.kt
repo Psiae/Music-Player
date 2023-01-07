@@ -335,6 +335,6 @@ class MediaStoreAudioProvider28(private val context: MediaStoreContext)
 		private val INVALID_uri = Uri.parse("InvalidAudio28")
 		private val INVALID_rememberUris = listOf(INVALID_uri)
 
-		private val UID_PREFIX = "MediaStore_28_"
+		private val UID_PREFIX = "MediaStore_28_AUDIO_"
 	}
 }

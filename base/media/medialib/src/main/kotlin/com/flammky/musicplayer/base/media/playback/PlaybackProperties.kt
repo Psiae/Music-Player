@@ -127,18 +127,14 @@ data class PlaybackProperties(
 			}
 			PlaybackState.ENDED -> {
 				// does PlaybackState.ENDED == !playing ?
-				require(!hasNextMediaItem) {
+				/*require(!hasNextMediaItem) {
 					"Inconsistent info: playbackState=$playbackState was accompanied by wrong " +
 						"hasNextMediaItem=$hasNextMediaItem"
 				}
 				require(!canSeekNext) {
 					"Inconsistent info: playbackState=$playbackState was accompanied by wrong " +
 						"canSeekNext=$canSeekNext"
-				}
-				require(repeatMode == RepeatMode.OFF) {
-					"Inconsistent info: playbackState=$playbackState was accompanied by wrong " +
-						"repeatMode=$repeatMode"
-				}
+				}*/
 			}
 		}
 		if (canPlayWhenReady) {

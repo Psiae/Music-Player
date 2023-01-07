@@ -1,6 +1,7 @@
 package com.flammky.musicplayer.domain.musiclib.service.manager
 
 import android.content.Context
+import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.MediaLibraryService.MediaLibrarySession
@@ -263,11 +264,14 @@ class SessionManager(
 			controller: ControllerInfo,
 			mediaItems: MutableList<MediaItem>
 		): ListenableFuture<MutableList<MediaItem>> {
-			return mainScope.async<MutableList<MediaItem>> {
+			return mainScope.async<MutableList<MediaItem>>(appDispatchers.computation) {
 				val toReturn = mutableListOf<MediaItem>()
 				mediaItems.forEach {
 					with(MediaItemPropertyHelper) {
-						val uri = it.mediaUri ?: return@forEach
+						val uri = it.mediaUri
+							?: it.mediaId.takeIf { it.startsWith("content://") }?.toUri()
+							?: mediaLib.mediaProviders.mediaStore.audio.uriFromId(it.mediaId)
+							?: return@forEach
 						val filled = com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory.fillInLocalConfig(it, uri)
 						toReturn.add(filled)
 					}

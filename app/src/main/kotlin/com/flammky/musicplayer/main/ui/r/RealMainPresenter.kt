@@ -5,16 +5,16 @@ import androidx.annotation.GuardedBy
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider
 import com.flammky.android.medialib.temp.image.ArtworkProvider
-import com.flammky.musicplayer.core.common.sync
 import com.flammky.musicplayer.base.auth.AuthService
 import com.flammky.musicplayer.base.auth.LocalAuth
 import com.flammky.musicplayer.base.coroutine.NonBlockingDispatcherPool
+import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConnection
 import com.flammky.musicplayer.base.media.r.MediaConnectionRepository
 import com.flammky.musicplayer.base.user.User
+import com.flammky.musicplayer.core.common.sync
 import com.flammky.musicplayer.main.ext.IntentHandler
 import com.flammky.musicplayer.main.ext.MediaIntentHandler
 import com.flammky.musicplayer.main.ui.MainPresenter
-import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConnection
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
@@ -93,7 +93,7 @@ class RealMainPresenter @Inject constructor(
 	private class Actual(
 		private val viewModel: MainPresenter.ViewModel,
 		private val coroutineContext: CoroutineContext,
-		private val authService: AuthService,
+		override val authService: AuthService,
 		override val coroutineDispatchers: AndroidCoroutineDispatchers,
 		override val androidContext: Context,
 		override val playbackConnection: PlaybackConnection,

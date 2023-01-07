@@ -20,7 +20,6 @@ import coil.size.Scale
 import com.flammky.android.environment.DeviceInfo
 import com.flammky.android.medialib.common.mediaitem.AudioFileMetadata
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
-import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.android.medialib.providers.metadata.VirtualFileMetadata
 import com.flammky.android.medialib.temp.image.ImageRepository
 import com.flammky.common.kotlin.comparable.clamp
@@ -327,7 +326,7 @@ class MediaNotificationManager(
 			val largeIcon = getItemBitmap(player)
 			val id = player.currentMediaItem.orEmpty().mediaId
 
-			val metadata = serviceDelegate.property.mediaConnectionDelegate.repository.getMetadata(id) as? MediaMetadata
+			val metadata = serviceDelegate.property.mediaConnectionRepository.getMetadata(id)
 
 			return if (metadata != null) {
 				when (metadata) {

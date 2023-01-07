@@ -1,7 +1,7 @@
 package com.flammky.musicplayer.domain.media
 
 import android.content.Context
-import android.os.HandlerThread
+import com.flammky.musicplayer.base.Playback
 import com.flammky.musicplayer.base.auth.AuthService
 import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConnection
 import com.flammky.musicplayer.base.media.mediaconnection.playback.real.RealPlaybackConnection
@@ -32,9 +32,7 @@ object MediaModule {
 		return RealPlaybackConnection(
 			context = context,
 			authService = authService,
-			looper = object : HandlerThread("PlaybackConnection") {
-				init { start() }
-			}.looper,
+			looper = Playback.LOOPER,
 		)
 	}
 

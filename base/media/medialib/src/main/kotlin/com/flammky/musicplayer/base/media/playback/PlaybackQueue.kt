@@ -1,5 +1,6 @@
 package com.flammky.musicplayer.base.media.playback
 
+import android.net.Uri
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 
@@ -23,7 +24,8 @@ data class PlaybackQueue(
 
 	data class Item(
 		val id: String,
-		val qId: String
+		val qId: String,
+		val uri: Uri
 	)
 
 	companion object {

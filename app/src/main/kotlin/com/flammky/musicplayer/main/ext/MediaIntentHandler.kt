@@ -6,8 +6,6 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
 import android.net.Uri
-import androidx.media3.common.MediaItem
-import androidx.media3.common.MediaItem.RequestMetadata
 import com.flammky.android.content.intent.isActionView
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.medialib.common.mediaitem.AudioFileMetadata
@@ -15,11 +13,13 @@ import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider
 import com.flammky.android.medialib.providers.metadata.VirtualFileMetadata
-import com.flammky.android.medialib.temp.MediaLibrary
 import com.flammky.android.medialib.temp.image.ArtworkProvider
 import com.flammky.common.kotlin.coroutines.AutoCancelJob
-import com.flammky.musicplayer.base.media.r.MediaConnectionRepository
+import com.flammky.musicplayer.base.auth.AuthService
 import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConnection
+import com.flammky.musicplayer.base.media.playback.PlaybackQueue
+import com.flammky.musicplayer.base.media.r.MediaConnectionRepository
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
@@ -34,8 +34,6 @@ import kotlin.time.Duration.Companion.seconds
 class MediaIntentHandler constructor(
 	private val presenter: Presenter
 ) {
-
-	private val s = MediaLibrary.API.sessions.manager.findSessionById("DEBUG")!!
 
 	private var jobSlot: Job by AutoCancelJob()
 
@@ -67,13 +65,13 @@ class MediaIntentHandler constructor(
 				return@launch
 			}
 			ensureActive()
-			s.mediaController.play(
-				item = MediaItem.Builder()
-					.setMediaId(id)
-					.setUri(data)
-					.setRequestMetadata(RequestMetadata.Builder().setMediaUri(data).build())
-					.build()
-			)
+			presenter.playbackConnection
+				.requestUserSessionAsync(presenter.authService.currentUser ?: return@launch).await()
+				.controller.withLooperContext {
+					ensureActive()
+					setQueue(PlaybackQueue(persistentListOf(id), 0))
+					play()
+				}
 			launch(presenter.coroutineDispatchers.io) {
 				val metadata = fillMetadata(data)
 				presenter.sharedRepository.provideMetadata(id, metadata)
@@ -193,6 +191,7 @@ class MediaIntentHandler constructor(
 	}
 
 	interface Presenter {
+		val authService: AuthService
 		val androidContext: Context
 		val artworkProvider: ArtworkProvider
 		val coroutineDispatchers: AndroidCoroutineDispatchers

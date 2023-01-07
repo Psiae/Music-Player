@@ -30,7 +30,7 @@ class RealPlaybackConnection(
 		user: User,
 		coroutineContext: CoroutineContext
 	): Deferred<PlaybackSessionConnector> {
-		return supervisorScope.async(supervisorDispatcher + coroutineContext) {
+		return supervisorScope.async(coroutineContext + supervisorDispatcher) {
 
 			val state = authService.state
 

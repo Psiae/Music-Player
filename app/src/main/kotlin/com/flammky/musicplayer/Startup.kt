@@ -5,7 +5,6 @@ import androidx.startup.Initializer
 import com.flammky.android.app.AppDelegate
 import com.flammky.musicplayer.base.BaseModuleInitializer
 import com.flammky.musicplayer.core.app.startup.AppDelegateInitializer
-import com.flammky.musicplayer.core.app.startup.MusicLibraryInitializer
 import com.flammky.musicplayer.core.app.startup.medialib.MediaLibraryInitializer
 import com.flammky.musicplayer.core.common.atomic
 
@@ -33,7 +32,6 @@ class AppInitializer : Initializer<Unit> {
 				add(BaseModuleInitializer::class.java)
 				add(AppDelegateInitializer::class.java)
 				add(MediaLibraryInitializer::class.java)
-				add(MusicLibraryInitializer::class.java)
 			}
 	}
 

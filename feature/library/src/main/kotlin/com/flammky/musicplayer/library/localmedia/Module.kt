@@ -2,10 +2,8 @@ package com.flammky.musicplayer.library.localmedia
 
 import android.content.Context
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
-import com.flammky.android.medialib.MediaLib
 import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider
-import com.flammky.android.medialib.temp.MediaLibrary
-import com.flammky.android.medialib.temp.image.internal.TestArtworkProvider
+import com.flammky.android.medialib.temp.image.ArtworkProvider
 import com.flammky.musicplayer.library.localmedia.data.LocalSongRepository
 import com.flammky.musicplayer.library.localmedia.data.RealLocalSongRepository
 import com.flammky.musicplayer.library.media.MediaConnection
@@ -20,19 +18,13 @@ internal object Module {
 
 	@Singleton
 	@Provides
-	internal fun provideMediaStoreProvider(@ApplicationContext context: Context): MediaStoreProvider {
-		return MediaLib.singleton(context).mediaProviders.mediaStore
-	}
-
-	@Singleton
-	@Provides
 	internal fun provideLocalSongRepository(
 		@ApplicationContext context: Context,
 		dispatchers: AndroidCoroutineDispatchers,
 		mediaConnection: MediaConnection,
+		testArtworkProvider: ArtworkProvider,
+		mediaStoreProvider: MediaStoreProvider,
 	): LocalSongRepository {
-		val lru = MediaLibrary.API.imageRepository.sharedBitmapLru
-		return RealLocalSongRepository(context, dispatchers, TestArtworkProvider(context, lru), mediaConnection)
+		return RealLocalSongRepository(context, dispatchers, testArtworkProvider, mediaConnection, mediaStoreProvider)
 	}
-
 }

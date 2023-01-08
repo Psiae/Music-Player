@@ -4,7 +4,6 @@ import android.graphics.Bitmap
 import android.net.Uri
 import androidx.compose.runtime.Immutable
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
-import com.flammky.android.medialib.common.mediaitem.MediaItem
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.Deferred
@@ -23,9 +22,6 @@ interface LocalSongRepository {
 	suspend fun requestUpdateAsync(): Deferred<List<Uri>>
 
 	fun observeAvailable(): Flow<AvailabilityState>
-
-	fun buildMediaItem(build: MediaItem.Builder.() -> Unit): MediaItem
-
 	fun refreshMetadata(id: String): Job
 	fun refreshMetadata(id: String, uri: Uri): Job
 	fun refreshMetadata(model: LocalSongModel): Job

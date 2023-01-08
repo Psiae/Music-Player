@@ -17,6 +17,7 @@ import kotlin.time.Duration
 
 internal class RealPlaybackController(
 	user: User,
+	/* commandScope: CoroutineScope */
 	private val scope: CoroutineScope,
 	private val presenter: RealPlaybackControlPresenter,
 	private val playbackConnection: PlaybackConnection,

@@ -7,15 +7,15 @@ import android.net.Uri
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.medialib.common.mediaitem.AudioFileMetadata
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
-import com.flammky.android.medialib.common.mediaitem.MediaItem
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
-import com.flammky.android.medialib.core.MediaLibrary
+import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider
 import com.flammky.android.medialib.providers.metadata.VirtualFileMetadata
 import com.flammky.android.medialib.temp.image.ArtworkProvider
 import com.flammky.musicplayer.base.Playback
+import com.flammky.musicplayer.base.media.MediaConstants
 import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConnection
 import com.flammky.musicplayer.base.media.playback.PlaybackQueue
-import com.flammky.musicplayer.base.media.r.MediaConnectionRepository
+import com.flammky.musicplayer.base.media.r.MediaMetadataCacheRepository
 import com.flammky.musicplayer.base.user.User
 import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.CoroutineScope
@@ -30,8 +30,8 @@ internal class RealMediaConnection(
 	private val artworkProvider: ArtworkProvider,
 	private val context: Context,
 	private val dispatcher: AndroidCoroutineDispatchers,
-	private val mediaLibrary: MediaLibrary,
-	private val mediaRepo: MediaConnectionRepository,
+	private val mediaStore: MediaStoreProvider,
+	private val mediaRepo: MediaMetadataCacheRepository,
 	private val playbackConnection: PlaybackConnection
 ) : MediaConnection {
 	private val coroutineScope = CoroutineScope(SupervisorJob())
@@ -75,9 +75,9 @@ internal class RealMediaConnection(
 
 		override suspend fun provideArtwork(id: String, artwork: Any?, silent: Boolean) {
 			if (silent) {
-				mediaRepo.silentProvideArtwork(id, artwork)
+				mediaRepo.silentProvideArtwork(id, artwork ?: MediaConstants.NO_ARTWORK)
 			} else {
-				mediaRepo.provideArtwork(id, artwork)
+				mediaRepo.provideArtwork(id, artwork ?: MediaConstants.NO_ARTWORK)
 			}
 		}
 
@@ -95,19 +95,6 @@ internal class RealMediaConnection(
 
 		override suspend fun provideMetadata(id: String, metadata: MediaMetadata) {
 			return mediaRepo.provideMetadata(id, metadata)
-		}
-	}
-
-	/**
-	 * We should fill these metadata inside our service instead, or not at all and use singleton ?,
-	 * I think the latter is better
-	 */
-	private fun createMediaItem(id: String, uri: Uri): MediaItem {
-		return MediaItem.build(mediaLibrary.context) {
-			setMediaId(id)
-			setMediaUri(uri)
-			setExtra(MediaItem.Extra())
-			setMetadata(MediaMetadata.build { setExtra(MediaMetadata.Extra()) })
 		}
 	}
 
@@ -129,13 +116,13 @@ internal class RealMediaConnection(
 					.setDiskCacheAllowed(false)
 					.build()
 				val result = artworkProvider.request(req).await()
-				if (result.isSuccessful()) mediaRepo.provideArtwork(id, result.get())
+				if (result.isSuccessful()) mediaRepo.provideArtwork(id, result.get() ?: MediaConstants.NO_ARTWORK)
 			}
 		}
 	}
 
 	private suspend fun fillMetadata(uri: Uri): MediaMetadata {
-		mediaLibrary.mediaProviders.mediaStore.audio.queryByUri(uri)?.let { from ->
+		mediaStore.audio.queryByUri(uri)?.let { from ->
 			val audioMetadata = fillAudioMetadata(uri)
 			val fileMetadata = VirtualFileMetadata.build {
 				setUri(from.uri)

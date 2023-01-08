@@ -1,5 +1,5 @@
 package com.flammky.musicplayer.dump.mediaplayer.helper.external
-
+/*
 import android.app.Application
 import android.content.ContentUris
 import android.content.Context
@@ -37,24 +37,28 @@ import kotlin.coroutines.coroutineContext
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
+*/
 /**
  * Interface for handling Media Type [android.content.Intent]
  * @see [MediaIntentHandlerImpl]
  * @author Kylentt
  * @since 2022/04/30
- */
+ *//*
+
 
 interface MediaIntentHandler {
 	fun handleMediaIntentI(intent: IntentWrapper)
   suspend fun handleMediaIntent(intent: IntentWrapper)
 }
 
+*/
 /**
  * Base Implementation for [MediaIntentHandler]
  * @see [IntentWrapper]
  * @author Kylentt
  * @since 2022/04/30
- */
+ *//*
+
 
 @Singleton
 class MediaIntentHandlerImpl(
@@ -709,3 +713,4 @@ class MediaIntentHandlerImpl(
 }
 
 
+*/

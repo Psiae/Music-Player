@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalStdlibApi::class)
+
 package com.flammky.musicplayer.playbackcontrol.ui
 
 import androidx.lifecycle.ViewModel
@@ -7,20 +9,16 @@ import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.android.medialib.providers.metadata.VirtualFileMetadata
 import com.flammky.musicplayer.base.auth.AuthService
-import com.flammky.musicplayer.base.coroutine.NonBlockingDispatcherPool
+import com.flammky.musicplayer.base.media.r.MediaMetadataCacheRepository
 import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.common.android.concurrent.ConcurrencyHelper.checkMainThread
-import com.flammky.musicplayer.domain.media.MediaConnection
 import com.flammky.musicplayer.playbackcontrol.ui.controller.PlaybackController
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackControlPresenter
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.annotation.concurrent.Immutable
 import javax.inject.Inject
@@ -31,7 +29,7 @@ import kotlin.coroutines.EmptyCoroutineContext
 internal class PlaybackControlViewModel @Inject constructor(
 	// should probably handled by presenter
 	private val authService: AuthService,
-	private val mediaConnection: MediaConnection,
+	private val mediaRepo: MediaMetadataCacheRepository,
 	private val presenter: PlaybackControlPresenter,
 ) : ViewModel(), PlaybackControlPresenter.ViewModel {
 
@@ -54,14 +52,9 @@ internal class PlaybackControlViewModel @Inject constructor(
 	}
 
 	/**
-	 * create a playback controller for the given [sessionID]
-	 * @param sessionID the id of the session this controller should dispatch command onto
+	 * create a playback controller for the given [user]
+	 * @param user the User this controller should dispatch command onto
 	 * @param coroutineContext the parent [CoroutineContext] of this controller.
-	 *
-	 * **
-	 * provided dispatcher will be confined to a Single Parallelism via `limitedParallelism(1)`
-	 * failure on confining attempt will be default to [NonBlockingDispatcherPool]
-	 * **
 	 *
 	 * **
 	 * providing a Job means that cancelling the said Job will also cancel all the Job within the
@@ -74,10 +67,8 @@ internal class PlaybackControlViewModel @Inject constructor(
 	): PlaybackController {
 		return presenter.createController(
 			user = user,
-			coroutineContext = viewModelScope.coroutineContext + coroutineContext
-		).also {
-			Timber.d("PlaybackController for $user created with coroutineContext: $coroutineContext")
-		}
+			coroutineContext = viewModelScope.coroutineContext + coroutineContext.minusKey(CoroutineDispatcher)
+		)
 	}
 
 	override fun onCleared() {
@@ -141,8 +132,8 @@ internal class PlaybackControlViewModel @Inject constructor(
 		return flow {
 			if (id == "") return@flow
 			combine(
-				flow = mediaConnection.repository.observeArtwork(id),
-				flow2 = mediaConnection.repository.observeMetadata(id)
+				flow = mediaRepo.observeArtwork(id),
+				flow2 = mediaRepo.observeMetadata(id)
 			) { art: Any?, metadata: MediaMetadata? ->
 				val title = metadata?.title?.ifBlank { null }
 					?: (metadata as? AudioFileMetadata)?.file

@@ -21,7 +21,6 @@ import com.flammky.android.environment.DeviceInfo
 import com.flammky.android.medialib.common.mediaitem.AudioFileMetadata
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.providers.metadata.VirtualFileMetadata
-import com.flammky.android.medialib.temp.image.ImageRepository
 import com.flammky.common.kotlin.comparable.clamp
 import com.flammky.common.kotlin.coroutines.AutoCancelJob
 import com.flammky.musicplayer.base.activity.ActivityWatcher
@@ -244,8 +243,6 @@ class MediaNotificationManager(
 
 		private val emptyItem = MediaItem.fromUri("empty")
 
-		private val lruCache: com.flammky.android.medialib.temp.cache.lru.LruCache<ImageRepository.ImageCacheKey, Bitmap> = com.flammky.android.medialib.temp.MediaLibrary.API.imageRepository.sharedBitmapLru
-
 		// config later
 		private val cacheConfig
 			get() = true
@@ -394,73 +391,63 @@ class MediaNotificationManager(
 			currentCompleted()
 		}
 
-		private suspend fun getItemBitmap(item: MediaItem, cache: Boolean): Pair<MediaItem, Bitmap?>? = withContext(this@MediaNotificationManager.appDispatchers.io) {
+		private suspend fun getItemBitmap(item: MediaItem, cache: Boolean): Pair<MediaItem, Bitmap?>? =
+			withContext(this@MediaNotificationManager.appDispatchers.io) {
 
-			try {
+				try {
+					val key = item.mediaId + "_raw"
+					val extKey = item.mediaId + "_notification"
+					val repo = serviceDelegate.property.mediaConnectionRepository
+					val maybeCache = if (cache) {
+						repo.run {
+							val getExt = getArtwork(extKey)
 
-				val key = ImageRepository.ImageCacheKey(
-					id = item.mediaId,
-					config = "raw"
-				)
-				val extKey = ImageRepository.ImageCacheKey(
-					id = item.mediaId,
-					config = "notification"
-				)
-				val maybeCache = if (cache) {
-					val getExt = lruCache[extKey]
+							if (getExt != null && getExt is Bitmap && getExt.width == getExt.height) {
+								return@withContext item to getExt
+							}
 
-					if (getExt != null && getExt.width == getExt.height) {
-						return@withContext item to getExt
+							getArtwork(key)
+						}
+					} else {
+						null
 					}
 
-					val get = lruCache[key]
+					// if possible find sources that provide media style notification width and height
+					// 128 to 1024 is ideal
 
-					if (get != null && get.width == get.height) {
-						lruCache.put(extKey, get)
-						return@withContext item to get
+					val reqSize = 500
+					val scale = Scale.FILL
+					val source: Any = maybeCache ?: run {
+
+						val bytes = MediaItemFactory.getEmbeddedImage(context, item)
+							?: return@withContext item to null
+
+						if (bytes.isEmpty()) {
+							item.putEmbedSize(0f)
+						} else {
+							item.putEmbedSize(bytes.size.toFloat() / 1000000)
+						}
+
+						bytes
 					}
 
-					get
-				} else {
+					ensureActive()
+
+					// maybe create Fitter Class for some APIs version or Device that require some modification
+					// to have proper display
+					val squaredBitmap = coilHelper.loadSquaredBitmap(source, reqSize, scale)
+
+					repo.provideArtwork(extKey, squaredBitmap ?: NO_BITMAP)
+
+					item to squaredBitmap
+				} catch (oom: OutOfMemoryError) {
 					null
 				}
-
-				// if possible find sources that provide media style notification width and height
-				// 128 to 1024 is ideal
-
-				val reqSize = 500
-				val scale = Scale.FILL
-				val source: Any = maybeCache ?: run {
-
-					val bytes = MediaItemFactory.getEmbeddedImage(context, item)
-						?: return@withContext item to null
-
-					if (bytes.isEmpty()) {
-						item.putEmbedSize(0f)
-					} else {
-						item.putEmbedSize(bytes.size.toFloat() / 1000000)
-					}
-
-					bytes
-				}
-
-				ensureActive()
-
-				// maybe create Fitter Class for some APIs version or Device that require some modification
-				// to have proper display
-				val squaredBitmap = coilHelper.loadSquaredBitmap(source, reqSize, scale)
-
-				lruCache.put(extKey, squaredBitmap ?: NO_BITMAP)
-
-				item to squaredBitmap
-			} catch (oom: OutOfMemoryError) {
-				null
 			}
-		}
 
 		private fun getItemBitmap(player: Player): Bitmap? {
 			return player.currentMediaItem?.mediaId?.let { id ->
-				lruCache[ImageRepository.ImageCacheKey(id, "notification")]
+				serviceDelegate.property.mediaConnectionRepository.getArtwork(id + "_notification") as? Bitmap
 			}
 		}
 

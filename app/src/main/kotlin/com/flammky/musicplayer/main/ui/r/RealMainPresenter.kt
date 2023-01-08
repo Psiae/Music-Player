@@ -9,7 +9,7 @@ import com.flammky.musicplayer.base.auth.AuthService
 import com.flammky.musicplayer.base.auth.LocalAuth
 import com.flammky.musicplayer.base.coroutine.NonBlockingDispatcherPool
 import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConnection
-import com.flammky.musicplayer.base.media.r.MediaConnectionRepository
+import com.flammky.musicplayer.base.media.r.MediaMetadataCacheRepository
 import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.core.common.sync
 import com.flammky.musicplayer.main.ext.IntentHandler
@@ -28,7 +28,7 @@ class RealMainPresenter @Inject constructor(
 	private val androidCoroutineDispatchers: AndroidCoroutineDispatchers,
 	private val playbackConnection: PlaybackConnection,
 	private val artworkProvider: ArtworkProvider,
-	private val sharedRepository: MediaConnectionRepository,
+	private val sharedRepository: MediaMetadataCacheRepository,
 	private val mediaStore: MediaStoreProvider,
 ) : MainPresenter {
 
@@ -98,7 +98,7 @@ class RealMainPresenter @Inject constructor(
 		override val androidContext: Context,
 		override val playbackConnection: PlaybackConnection,
 		override val artworkProvider: ArtworkProvider,
-		override val sharedRepository: MediaConnectionRepository,
+		override val sharedRepository: MediaMetadataCacheRepository,
 		override val mediaStore: MediaStoreProvider,
 	) : MainPresenter, MediaIntentHandler.Presenter {
 

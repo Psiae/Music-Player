@@ -2,8 +2,17 @@ package com.flammky.musicplayer.base.media.hilt
 
 import android.content.Context
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
+import com.flammky.android.medialib.context.AndroidContext
+import com.flammky.android.medialib.context.internal.RealLibraryContext
+import com.flammky.android.medialib.providers.ProvidersContext
+import com.flammky.android.medialib.providers.mediastore.MediaStoreContext
 import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider
-import com.flammky.musicplayer.base.media.r.*
+import com.flammky.android.medialib.providers.mediastore.internal.RealMediaStoreProvider
+import com.flammky.musicplayer.base.auth.AuthService
+import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConnection
+import com.flammky.musicplayer.base.media.r.MediaContentWatcher
+import com.flammky.musicplayer.base.media.r.MediaMetadataCacheRepository
+import com.flammky.musicplayer.base.media.r.RealMediaMetadataCacheRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -17,21 +26,28 @@ object MediaModule {
 
 	@Provides
 	@Singleton
-	fun provideMediaConnectionRepository(
-		@ApplicationContext context: Context,
-		dispatchers: AndroidCoroutineDispatchers
-	): MediaConnectionRepository {
-		return RealMediaConnectionRepository.provide(context, dispatchers)
+	fun provideMediaStore(@ApplicationContext context: Context): MediaStoreProvider {
+		return RealMediaStoreProvider(MediaStoreContext(ProvidersContext(RealLibraryContext(
+			AndroidContext(context)
+		))))
 	}
 
 	@Provides
 	@Singleton
-	fun provideMediaConnectionDelegate(
+	fun provideMediaMetadataCache(
+		@ApplicationContext context: Context,
+		dispatchers: AndroidCoroutineDispatchers
+	): MediaMetadataCacheRepository {
+		return RealMediaMetadataCacheRepository.provide(context, dispatchers)
+	}
+
+	@Provides
+	@Singleton
+	fun provideMediaContentWatcher(
+		authService: AuthService,
+		playbackConnection: PlaybackConnection,
 		mediaStoreProvider: MediaStoreProvider,
-		repository: MediaConnectionRepository,
-	): MediaConnectionDelegate = RealMediaConnectionDelegate(
-		mediaStore = mediaStoreProvider,
-		repository = repository,
-		playback = RealMediaConnectionPlayback(),
-	)
+	): MediaContentWatcher {
+		return MediaContentWatcher(authService, playbackConnection, mediaStoreProvider)
+	}
 }

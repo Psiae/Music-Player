@@ -6,6 +6,7 @@ import com.flammky.android.medialib.internal.RealMediaLib
 import com.flammky.androidx.content.context.findActivity
 import com.flammky.androidx.content.context.findService
 
+@Deprecated("To Be Rewritten")
 object MediaLib {
 	private val delegate = RealMediaLib
 

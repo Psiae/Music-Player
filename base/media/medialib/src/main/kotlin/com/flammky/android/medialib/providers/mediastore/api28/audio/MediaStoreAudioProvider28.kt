@@ -60,7 +60,7 @@ class MediaStoreAudioProvider28(private val context: MediaStoreContext)
 			includeChild = true,
 			channelBuffer = Channel.UNLIMITED
 		)
-		internalIoScope.launch(mainDispatcher.immediate) {
+		internalIoScope.launch(mainDispatcher) {
 			audioUriEventFlow.collect { event ->
 				val uris = event.uris
 				val uri = event.uri

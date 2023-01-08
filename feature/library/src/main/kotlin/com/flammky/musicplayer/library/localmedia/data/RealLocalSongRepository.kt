@@ -38,11 +38,12 @@ internal class RealLocalSongRepository(
 	private val context: Context,
 	private val dispatchers: AndroidCoroutineDispatchers,
 	private val artworkProvider: ArtworkProvider,
-	private val mediaConnection: MediaConnection
+	private val mediaConnection: MediaConnection,
+	private val mediaStoreProvider: MediaStoreProvider,
 ) : LocalSongRepository {
 
 	private val mediaLib = MediaLib.singleton(context)
-	private val audioProvider = mediaLib.mediaProviders.mediaStore.audio
+	private val audioProvider = mediaStoreProvider.audio
 
 	private val ioScope = CoroutineScope(dispatchers.io)
 
@@ -91,7 +92,7 @@ internal class RealLocalSongRepository(
 
 	override fun refreshMetadata(id: String): Job {
 		return ioScope.launch {
-			mediaLib.mediaProviders.mediaStore.audio.uriFromId(id)
+			audioProvider.uriFromId(id)
 				?.let { uri -> refreshMetadata(id, uri).join() }
 		}
 	}
@@ -114,7 +115,7 @@ internal class RealLocalSongRepository(
 
 	override fun refreshArtwork(id: String): Job {
 		return ioScope.launch {
-			mediaLib.mediaProviders.mediaStore.audio.uriFromId(id)
+			audioProvider.uriFromId(id)
 				?.let { uri -> refreshArtwork(id, uri).join() }
 		}
 	}
@@ -136,12 +137,6 @@ internal class RealLocalSongRepository(
 			}
 		}
 	}
-
-
-	override fun buildMediaItem(build: MediaItem.Builder.() -> Unit): MediaItem {
-		return mediaLib.context.buildMediaItem(build)
-	}
-
 	private fun toLocalSongModel(from: MediaStoreAudioEntity): LocalSongModel {
 		val audioMetadata = AudioMetadata.build {
 			val durationMs = from.metadata.durationMs

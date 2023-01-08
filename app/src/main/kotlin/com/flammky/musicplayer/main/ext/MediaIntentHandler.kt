@@ -18,7 +18,7 @@ import com.flammky.common.kotlin.coroutines.AutoCancelJob
 import com.flammky.musicplayer.base.auth.AuthService
 import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConnection
 import com.flammky.musicplayer.base.media.playback.PlaybackQueue
-import com.flammky.musicplayer.base.media.r.MediaConnectionRepository
+import com.flammky.musicplayer.base.media.r.MediaMetadataCacheRepository
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -84,8 +84,7 @@ class MediaIntentHandler constructor(
 					.setMemoryCacheAllowed(false)
 					.setDiskCacheAllowed(false)
 					.build()
-				val result = artworkProvider.request(req).await()
-				if (result.isSuccessful()) presenter.sharedRepository.provideArtwork(id, result.get())
+				artworkProvider.request(req).await()
 			}
 		}
 	}
@@ -197,7 +196,7 @@ class MediaIntentHandler constructor(
 		val coroutineDispatchers: AndroidCoroutineDispatchers
 		val coroutineScope: CoroutineScope
 		val playbackConnection: PlaybackConnection
-		val sharedRepository: MediaConnectionRepository
+		val sharedRepository: MediaMetadataCacheRepository
 		val mediaStore: MediaStoreProvider
 
 		fun showIntentRequestErrorMessage(message: String)

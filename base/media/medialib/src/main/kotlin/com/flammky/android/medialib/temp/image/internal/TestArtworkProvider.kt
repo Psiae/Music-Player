@@ -8,28 +8,23 @@ import android.os.Handler
 import android.os.Looper
 import com.flammky.android.common.BitmapSampler
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
-import com.flammky.android.medialib.temp.cache.lru.LruCache
 import com.flammky.android.medialib.temp.image.ArtworkProvider
-import com.flammky.android.medialib.temp.image.ImageRepository
 import com.flammky.android.medialib.temp.provider.mediastore.api28.MediaStore28
 import com.flammky.common.media.audio.AudioFile
+import com.flammky.musicplayer.base.media.r.MediaMetadataCacheRepository
 import com.flammky.musicplayer.core.common.sync
 import kotlinx.coroutines.*
 import timber.log.Timber
 
 class TestArtworkProvider(
 	private val context: Context,
-	private val lru: LruCache<ImageRepository.ImageCacheKey, Bitmap>
+	private val repo: MediaMetadataCacheRepository
 ) : ArtworkProvider {
 	private val dispatcher = AndroidCoroutineDispatchers.DEFAULT
 	private val scope = CoroutineScope(dispatcher.io + SupervisorJob())
 
 	suspend fun removeCacheForId(id: String, mem: Boolean, disk: Boolean) {
-		if (mem) lru.remove(
-			ImageRepository.ImageCacheKey(
-				id, "raw"
-			)
-		)
+		if (mem) repo.evictArtwork(id + "_raw")
 		if (disk) {}
 	}
 
@@ -48,8 +43,8 @@ class TestArtworkProvider(
 		}
 		scope.launch {
 			if (request.memoryCacheAllowed) {
-				lru.get(
-					ImageRepository.ImageCacheKey(request.id, "raw")
+				repo.getArtwork(
+					request.id + "_raw"
 				)?.let {
 					listenable.setResult(it as? R)
 					// maybe check restore cache?
@@ -89,9 +84,7 @@ class TestArtworkProvider(
 							?.let { bitmap ->
 								bitmap.also {
 									if (request.storeMemoryCacheAllowed) {
-										lru.put(ImageRepository.ImageCacheKey(
-											request.id, "raw"
-										), it)
+										repo.provideArtwork(request.id + "_raw", it)
 									}
 								}
 							}

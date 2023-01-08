@@ -14,7 +14,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import timber.log.Timber
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.write
 
@@ -45,21 +44,18 @@ class RealMediaMetadataCacheRepository(
 	}
 
 	override fun observeMetadata(id: String): Flow<MediaMetadata?> = flow {
-		Timber.d("observeMetadata observing: $id")
 		if (id == "") {
 			return@flow
 		}
 		val channel = Channel<MediaMetadata?>()
 		val observer = MapObserver<String, MediaMetadata> { key, value ->
 			check(key == id)
-			Timber.d("observeMetadata callback: $value")
 			channel.send(value)
 		}
 		addMetadataObserver(id, observer)
 		emit(getMetadata(id))
 		runCatching {
 			for (metadata in channel) {
-				Timber.d("observeMetadata emitting: $metadata")
 				emit(metadata)
 			}
 		}.onFailure { ex ->
@@ -93,7 +89,6 @@ class RealMediaMetadataCacheRepository(
 		rwl.write {
 			metadataLRU.put(id, metadata)
 			dispatchMetadataChange(id, metadata)
-			Timber.d("observeMetadata provideMetadata provided: $metadata")
 		}
 	}
 

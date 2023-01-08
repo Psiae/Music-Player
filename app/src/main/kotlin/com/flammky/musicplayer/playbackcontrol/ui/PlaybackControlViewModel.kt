@@ -132,7 +132,7 @@ internal class PlaybackControlViewModel @Inject constructor(
 		return flow {
 			if (id == "") return@flow
 			combine(
-				flow = mediaRepo.observeArtwork(id),
+				flow = mediaRepo.observeArtwork(id + "_raw"),
 				flow2 = mediaRepo.observeMetadata(id)
 			) { art: Any?, metadata: MediaMetadata? ->
 				val title = metadata?.title?.ifBlank { null }

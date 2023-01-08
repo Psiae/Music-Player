@@ -232,7 +232,7 @@ internal class RealLocalSongRepository(
 				silent = false
 			)
 
-			mediaConnection.repository.observeArtwork(id).safeCollect {
+			mediaConnection.repository.observeArtwork(id + "_raw").safeCollect {
 				send(it as? Bitmap)
 			}
 

@@ -138,11 +138,8 @@ class ActivityWatcher private constructor(
 	companion object {
 		private val constructor = LazyConstructor<ActivityWatcher>()
 
-		infix fun provides(application: Application) = constructor.construct {
-			ActivityWatcher(
-				application
-			)
-		}
+		internal infix fun provides(application: Application) =
+			constructor.construct { ActivityWatcher(application) }
 
 		fun get(): ActivityWatcher = constructor.valueOrNull()
 			?: error("ActivityWatcher was not initialized")

@@ -17,6 +17,7 @@ import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import com.flammky.android.common.broadcast.ContextBroadcastManager
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
+import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider
 import com.flammky.common.kotlin.collection.mutable.forEachClear
 import com.flammky.common.kotlin.coroutines.safeCollect
 import com.flammky.musicplayer.base.BuildConfig
@@ -48,6 +49,9 @@ class MusicLibraryService : MediaLibraryService() {
 
 	@Inject
 	lateinit var iMediaMetadataCacheRepository: MediaMetadataCacheRepository
+
+	@Inject
+	lateinit var iMediaStoreProvider: MediaStoreProvider
 
 	@Inject
 	lateinit var mediaContentWatcher: MediaContentWatcher
@@ -361,6 +365,7 @@ class MusicLibraryService : MediaLibraryService() {
 		val serviceDispatchers get() = appDispatchers
 		val serviceMainJob get() = serviceJob
 		val mediaConnectionRepository get() = iMediaMetadataCacheRepository
+		val mediaStoreProvider: MediaStoreProvider get() = iMediaStoreProvider
 	}
 
 	inner class ComponentDelegate {

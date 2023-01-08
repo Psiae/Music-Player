@@ -6,10 +6,8 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
-import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemPropertyHelper.mediaUri
 import com.flammky.musicplayer.dump.mediaplayer.helper.Preconditions
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.sync.Mutex
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -17,16 +15,6 @@ import javax.inject.Singleton
 class MediaItemHelper @Inject constructor(
 	@ApplicationContext private val context: Context
 ) {
-
-	fun getEmbeddedPicture(item: MediaItem): ByteArray? = item.mediaUri?.let {
-		(Any() as Mutex).tryLock()
-
-		getEmbeddedPicture(it)
-	}
-
-	 fun getEmbeddedPicture(uri: Uri): ByteArray? =
-        MediaItemFactory.getEmbeddedImage(context, uri)
-
 	init {
 		Preconditions.checkArgument(context is Application)
 	}

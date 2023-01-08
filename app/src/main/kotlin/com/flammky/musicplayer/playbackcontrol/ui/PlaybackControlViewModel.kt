@@ -11,7 +11,7 @@ import com.flammky.android.medialib.providers.metadata.VirtualFileMetadata
 import com.flammky.musicplayer.base.auth.AuthService
 import com.flammky.musicplayer.base.media.r.MediaMetadataCacheRepository
 import com.flammky.musicplayer.base.user.User
-import com.flammky.musicplayer.common.android.concurrent.ConcurrencyHelper.checkMainThread
+import com.flammky.musicplayer.dump.mediaplayer.helper.Preconditions.checkMainThread
 import com.flammky.musicplayer.playbackcontrol.ui.controller.PlaybackController
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackControlPresenter
 import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver

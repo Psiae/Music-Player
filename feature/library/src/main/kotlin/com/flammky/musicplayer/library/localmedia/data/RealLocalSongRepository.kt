@@ -5,11 +5,8 @@ import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
-import com.flammky.android.medialib.MediaLib
 import com.flammky.android.medialib.common.mediaitem.AudioFileMetadata
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
-import com.flammky.android.medialib.common.mediaitem.MediaItem
-import com.flammky.android.medialib.common.mediaitem.MediaItem.Companion.buildMediaItem
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider
 import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider.ContentObserver.Flag.Companion.isDelete
@@ -42,7 +39,6 @@ internal class RealLocalSongRepository(
 	private val mediaStoreProvider: MediaStoreProvider,
 ) : LocalSongRepository {
 
-	private val mediaLib = MediaLib.singleton(context)
 	private val audioProvider = mediaStoreProvider.audio
 
 	private val ioScope = CoroutineScope(dispatchers.io)
@@ -82,7 +78,7 @@ internal class RealLocalSongRepository(
 
 	override fun refreshMetadata(model: LocalSongModel): Job {
 		return ioScope.launch {
-			val afm = model.mediaItem.metadata as? AudioFileMetadata
+			val afm = model.metadata as? AudioFileMetadata
 				?: return@launch
 			(afm.file as? VirtualFileMetadata)?.uri
 				?.let { uri -> refreshMetadata(model.id, uri).join() }
@@ -105,7 +101,7 @@ internal class RealLocalSongRepository(
 
 	override fun refreshArtwork(model: LocalSongModel): Job {
 		return ioScope.launch {
-			val afm = model.mediaItem.metadata as? AudioFileMetadata
+			val afm = model.metadata as? AudioFileMetadata
 				?: return@launch
 			(afm.file as? VirtualFileMetadata)?.uri
 				?.let { uri -> refreshArtwork(model.id, uri).join() }
@@ -157,26 +153,7 @@ internal class RealLocalSongRepository(
 		}
 
 		val metadata = AudioFileMetadata(audioMetadata, fileMetadata, MediaMetadata.Extra())
-
-		val mediaItem = mediaLib.context.buildMediaItem {
-			setMediaId(from.uid)
-			setMediaUri(from.uri)
-			setExtra(MediaItem.Extra())
-			setMetadata(metadata)
-		}
-
-		return LocalSongModel(from.uid, metadata.title ?: metadata.file.fileName, mediaItem)
-	}
-
-	private fun toLocalSongModel(from: Uri, id: String): LocalSongModel {
-		val metadata = fillAudioMetadata(from)
-		val mediaItem = mediaLib.context.buildMediaItem {
-			setMediaId(id)
-			setMediaUri(from)
-			setExtra(MediaItem.Extra())
-			setMetadata(metadata)
-		}
-		return LocalSongModel(id, metadata.title, mediaItem)
+		return LocalSongModel(from.uid, metadata.title ?: metadata.file.fileName, from.uri, metadata)
 	}
 
 	override suspend fun collectArtwork(model: LocalSongModel): Flow<Bitmap?> {
@@ -305,20 +282,20 @@ internal class RealLocalSongRepository(
 
 		withContext(dispatchers.io) {
 			sendUpdate(loading = true)
-			val current = mediaLib.mediaProviders.mediaStore.audio.query()
+			val current = mediaStoreProvider.audio.query()
 				.map { toLocalSongModel(it) }
 				.toPersistentList()
 			sendUpdate(loading = false, list = current)
 		}
 
-		mediaLib.mediaProviders.mediaStore.audio.observe(observer)
+		mediaStoreProvider.audio.observe(observer)
 		awaitClose {
-			mediaLib.mediaProviders.mediaStore.audio.removeObserver(observer)
+			mediaStoreProvider.audio.removeObserver(observer)
 		}
 	}
 
 	private suspend fun fillMetadata(uri: Uri): MediaMetadata {
-		mediaLib.mediaProviders.mediaStore.audio.queryByUri(uri)?.let { from ->
+		mediaStoreProvider.audio.queryByUri(uri)?.let { from ->
 			val audioMetadata = fillAudioMetadata(uri)
 			val fileMetadata = VirtualFileMetadata.build {
 				setUri(from.uri)

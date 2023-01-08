@@ -8,8 +8,7 @@ import androidx.media3.session.MediaLibraryService.MediaLibrarySession
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSession.ControllerInfo
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
-import com.flammky.android.medialib.MediaLib
-import com.flammky.android.medialib.core.MediaLibrary
+import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider
 import com.flammky.common.kotlin.generic.ChangedNotNull
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemPropertyHelper
 import com.flammky.musicplayer.domain.musiclib.service.MusicLibraryService
@@ -28,7 +27,7 @@ class SessionManager(
 	private val sessionProvider: SessionProvider
 ) : MusicLibraryService.ServiceComponent() {
 
-	private lateinit var mediaLib: MediaLibrary
+	private lateinit var mediaStoreProvider: MediaStoreProvider
 
 	private var sessionManagerJob: Job = Job().apply { complete() }
 
@@ -41,11 +40,11 @@ class SessionManager(
 		super.create(serviceDelegate)
 		val serviceJob = serviceDelegate.property.serviceMainJob
 		sessionManagerJob = SupervisorJob(serviceJob)
+		mediaStoreProvider = serviceDelegate.property.mediaStoreProvider
 	}
 
 	override fun serviceContextAttached(context: Context) {
 		super.serviceContextAttached(context)
-		mediaLib = MediaLib.singleton(context.applicationContext)
 	}
 
 	override fun serviceDependencyInjected() {
@@ -270,7 +269,7 @@ class SessionManager(
 					with(MediaItemPropertyHelper) {
 						val uri = it.mediaUri
 							?: it.mediaId.takeIf { it.startsWith("content://") }?.toUri()
-							?: mediaLib.mediaProviders.mediaStore.audio.uriFromId(it.mediaId)
+							?: mediaStoreProvider.audio.uriFromId(it.mediaId)
 							?: return@forEach
 						val filled = com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory.fillInLocalConfig(it, uri)
 						toReturn.add(filled)

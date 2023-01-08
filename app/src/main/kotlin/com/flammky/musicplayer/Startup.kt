@@ -2,19 +2,12 @@ package com.flammky.musicplayer
 
 import android.content.Context
 import androidx.startup.Initializer
-import com.flammky.android.app.AppDelegate
 import com.flammky.musicplayer.base.BaseModuleInitializer
-import com.flammky.musicplayer.core.app.startup.AppDelegateInitializer
-import com.flammky.musicplayer.core.app.startup.medialib.MediaLibraryInitializer
 import com.flammky.musicplayer.core.common.atomic
 
 /**
- * Initializer Interface from [Initializer], specified in AndroidManifest.xml
- * @see [AppDelegate]
- * @author Flammky
- * @since 2022/04/30
+ * [Initializer] specified in AndroidManifest.xml
  */
-
 class AppInitializer : Initializer<Unit> {
 
 	override fun create(context: Context) {
@@ -30,8 +23,6 @@ class AppInitializer : Initializer<Unit> {
 					add(AppDebugInitializer::class.java)
 				}
 				add(BaseModuleInitializer::class.java)
-				add(AppDelegateInitializer::class.java)
-				add(MediaLibraryInitializer::class.java)
 			}
 	}
 

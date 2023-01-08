@@ -8,8 +8,10 @@ import com.flammky.android.medialib.providers.ProvidersContext
 import com.flammky.android.medialib.providers.mediastore.MediaStoreContext
 import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider
 import com.flammky.android.medialib.providers.mediastore.internal.RealMediaStoreProvider
+import com.flammky.musicplayer.base.Playback
 import com.flammky.musicplayer.base.auth.AuthService
 import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConnection
+import com.flammky.musicplayer.base.media.mediaconnection.playback.real.RealPlaybackConnection
 import com.flammky.musicplayer.base.media.r.MediaContentWatcher
 import com.flammky.musicplayer.base.media.r.MediaMetadataCacheRepository
 import com.flammky.musicplayer.base.media.r.RealMediaMetadataCacheRepository
@@ -23,6 +25,19 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object MediaModule {
+
+	@Provides
+	@Singleton
+	fun providePlaybackConnection(
+		@ApplicationContext context: Context,
+		authService: AuthService
+	): PlaybackConnection {
+		return RealPlaybackConnection(
+			context = context,
+			authService = authService,
+			looper = Playback.LOOPER,
+		)
+	}
 
 	@Provides
 	@Singleton

@@ -201,7 +201,7 @@ internal class RealPlaybackControlPresenter (
 				if (_disposed) {
 					return@sync controller.dispose()
 				}
-				_controllersMap.getOrPut(user.uid + user.verify) { mutableListOf() }.add(controller)
+				_controllersMap.getOrPut(user.uid + "_" + user.verify) { mutableListOf() }.add(controller)
 			}
 		}
 	}
@@ -210,7 +210,7 @@ internal class RealPlaybackControlPresenter (
 		controller: RealPlaybackController
 	) {
 		sync(_stateLock) {
-			_controllersMap[controller.user.uid + controller.user.verify]?.remove(controller)
+			_controllersMap[controller.user.uid + "_" + controller.user.verify]?.remove(controller)
 		}
 	}
 

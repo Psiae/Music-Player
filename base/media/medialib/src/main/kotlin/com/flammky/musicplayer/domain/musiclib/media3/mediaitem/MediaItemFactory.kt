@@ -2,15 +2,11 @@ package com.flammky.musicplayer.domain.musiclib.media3.mediaitem
 
 import android.content.ContentResolver
 import android.content.Context
-import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Bundle
-import android.provider.OpenableColumns
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
-import androidx.media3.common.MediaItem.RequestMetadata
 import androidx.media3.common.MediaMetadata
-import com.flammky.android.app.AppDelegate
 import com.flammky.common.kotlin.string.setPrefix
 import com.flammky.common.media.audio.AudioFile
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.mp3.MP3File
@@ -28,57 +24,6 @@ object MediaItemFactory {
 		get() = MediaItem.EMPTY
 
 	fun newBuilder(): MediaItem.Builder = MediaItem.Builder()
-
-	fun fromMetaData(context: Context, uri: Uri): MediaItem {
-		val mtr = MediaMetadataRetriever()
-		return try {
-			mtr.setDataSource(context, uri)
-			val artist =
-				mtr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
-			val album =
-				mtr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
-			val albumArtist =
-				mtr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST)
-			val title = mtr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
-				?: if (uri.scheme == "content") {
-					context.contentResolver.query(uri, null, null, null, null)
-						?.use { cursor ->
-							cursor.moveToFirst()
-							cursor.getString(cursor.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME))
-						}
-				} else {
-					null
-				}
-
-			val mediaId = "${uri.authority}" + "_" + MediaItem.fromUri(uri).hashCode().toString()
-			MediaItem.Builder().apply {
-
-				val internalBundle = Bundle()
-				val type = StringBuilder()
-
-				type.append("audio;")
-				type.append("playback;")
-				type.append("base;")
-
-				internalBundle.putString("mediaMetadataType", type.toString())
-
-				setMediaId(mediaId)
-				setUri(uri)
-				setRequestMetadata(RequestMetadata.Builder().setMediaUri(uri).setExtras(internalBundle).build())
-				setMediaMetadata(androidx.media3.common.MediaMetadata.Builder().apply {
-					setTitle(title)
-					setArtist(artist)
-					setAlbumArtist(albumArtist)
-					setAlbumTitle(album)
-				}.build())
-			}.build()
-		} catch (e: Exception) {
-			Timber.w("Failed To Build MediaItem from Uri: $uri \n${e}")
-			EMPTY
-		} finally {
-			mtr.release()
-		}
-	}
 
 	fun fillInLocalConfig(item: MediaItem, itemUri: Uri) = fillInLocalConfig(item, itemUri.toString())
 

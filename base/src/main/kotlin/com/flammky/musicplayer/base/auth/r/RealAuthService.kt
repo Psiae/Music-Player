@@ -7,13 +7,13 @@ import androidx.datastore.dataStore
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.kotlin.common.lazy.LazyConstructor
 import com.flammky.kotlin.common.lazy.LazyConstructor.Companion.valueOrNull
-import com.flammky.musicplayer.core.common.atomic
 import com.flammky.musicplayer.base.auth.AuthData
 import com.flammky.musicplayer.base.auth.AuthService
 import com.flammky.musicplayer.base.auth.ProviderNotFoundException
 import com.flammky.musicplayer.base.auth.r.user.AuthUser
 import com.flammky.musicplayer.base.coroutine.NonBlockingDispatcherPool
 import com.flammky.musicplayer.base.user.User
+import com.flammky.musicplayer.core.common.atomic
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import timber.log.Timber
@@ -209,12 +209,12 @@ internal class RealAuthService(
 
 	companion object {
 		private val INSTANCE = LazyConstructor<RealAuthService>()
-		infix fun provides(app: Application) = INSTANCE.constructOrThrow(
+		internal infix fun provides(app: Application) = INSTANCE.constructOrThrow(
 			lazyValue = { RealAuthService(app) },
 			lazyThrow = { error("RealAuthService was already provided") }
 		)
 		fun registerProvider(provider: AuthProvider) = INSTANCE.valueOrNull()
-			?.registerProvider(provider)
+			?.apply { registerProvider(provider) }
 			?: error("RealAuthService was not provided")
 	}
 }

@@ -95,7 +95,7 @@ internal class LocalSongViewModel @Inject constructor(
 		val cut = queue
 		mediaConnection.play(
 			user = user,
-			cut.map { it.id to it.mediaItem.mediaUri },
+			cut.map { it.id to it.uri },
 			index
 		)
 	}

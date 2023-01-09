@@ -1,24 +1,30 @@
 package com.flammky.musicplayer.main.ui.compose.entry
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.flammky.musicplayer.base.compose.rememberLocalContextHelper
 import com.flammky.android.manifest.permission.AndroidPermission
+import com.flammky.musicplayer.base.compose.NoInline
+import com.flammky.musicplayer.base.compose.rememberLocalContextHelper
+import com.flammky.musicplayer.base.theme.Theme
+import com.flammky.musicplayer.base.theme.compose.backgroundColorAsState
+import com.flammky.musicplayer.main.ext.IntentHandler
 import com.flammky.musicplayer.main.ui.MainViewModel
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 
 // should we do scoping ?
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
-internal fun permGuard(
+internal fun PermGuard(
+	mainVM: MainViewModel,
+	entryVM: EntryGuardViewModel,
 	allowShowContentState: State<Boolean>
-): State<Boolean?> {
+) {
 	val contextHelper = rememberLocalContextHelper()
-	val mainVM: MainViewModel = viewModel()
 	val vm: AndroidPermissionViewModel = viewModel()
 
 	val permissionGrantedState = remember {
@@ -31,14 +37,11 @@ internal fun permGuard(
 		mutableStateOf(!vm.persistPager && permissionGrantedState.value)
 	}
 
-	val showPagerState = remember {
-		mutableStateOf(!allow.value)
-	}
-
 	if (!allow.value) {
-		val interceptor = remember {
+		vm.persistPager = true
+		if (vm.intentInterceptor == null) {
 			val intentHandler = mainVM.intentHandler
-			intentHandler.createInterceptor()
+			vm.intentInterceptor = intentHandler.createInterceptor()
 				.apply {
 					setFilter { target ->
 						intentHandler.intentRequireAndroidPermission(
@@ -48,35 +51,69 @@ internal fun permGuard(
 					}
 					start()
 				}
+				.also {
+					vm.intentInterceptor = it
+				}
 		}
 		DisposableEffect(
 			// wait to be removed from composition tree
 			key1 = null
 		) {
 			onDispose {
-				if (!allow.value) {
-					// should we tho ?
-					interceptor.dropAllInterceptedIntent()
+				if (allow.value) {
+					vm.intentInterceptor!!
+						.apply {
+							dispatchAllInterceptedIntent()
+							dispose()
+						}
+					vm.persistPager = false
+				} else {
+					// Probably config change
 				}
-				interceptor.dispose()
 			}
 		}
 	}
 
 	if (!allow.value && allowShowContentState.value) {
-		Box(modifier = Modifier.fillMaxSize()) {
+		Box(modifier = Modifier
+			.fillMaxSize()
+			.background(Theme.backgroundColorAsState().value)) {
 			EntryPermissionPager(
 				contextHelper = contextHelper,
-				onGranted = { allow.value = true ; showPagerState.value = false }
+				onGranted = { allow.value = true }
 			)
 		}
 	}
 
-	return allow
+	NoInline {
+		mainVM.permGuardWaiter
+			.apply {
+				// check for size, because `clear` will count as modification regardless of content
+				if (!isEmpty()) {
+					forEach(::invoke)
+					clear()
+				}
+			}
+	}
+
+	LaunchedEffect(key1 = allow.value, block = {
+		entryVM.permGuardAllow.value = allow.value
+	})
 }
+
+private inline fun invoke(block: () -> Unit) = block.invoke()
 
 internal class AndroidPermissionViewModel() : ViewModel() {
 	var persistPager = false
+	var intentInterceptor: IntentHandler.Interceptor? = null
+
+	override fun onCleared() {
+		intentInterceptor
+			?.apply {
+				dropAllInterceptedIntent()
+				dispose()
+			}
+	}
 }
 
 @Composable

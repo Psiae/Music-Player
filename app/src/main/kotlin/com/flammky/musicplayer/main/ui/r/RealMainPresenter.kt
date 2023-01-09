@@ -56,6 +56,11 @@ class RealMainPresenter @Inject constructor(
 				}
 		}
 
+	/**
+	 * Initialize the instance
+	 *
+	 * @param viewModel the ViewModel
+	 */
 	override fun initialize(
 		viewModel: MainPresenter.ViewModel,
 		coroutineContext: CoroutineContext

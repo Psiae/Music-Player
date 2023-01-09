@@ -11,25 +11,41 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.flammky.musicplayer.base.auth.AuthService
+import com.flammky.musicplayer.base.auth.LocalAuth
+import com.flammky.musicplayer.base.compose.NoInline
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.absoluteBackgroundContentColorAsState
+import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.main.ui.MainViewModel
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
+import timber.log.Timber
+import javax.inject.Inject
 
 // TODO
 @Composable
-internal fun authGuard(
-	allowShowContentState: State<Boolean>
-): State<Boolean?> {
-	val vm: MainViewModel = viewModel()
+internal fun AuthGuard(
+	mainVM: MainViewModel,
+	entryVM: EntryGuardViewModel,
+	allowShowContentState: State<Boolean>,
+	modifier: Modifier = Modifier,
+) {
+	val vm: AuthGuardViewModel = viewModel()
 	val allow = remember { mutableStateOf<Boolean?>(vm.currentUser != null) }
-	val showLoading = remember { mutableStateOf(vm.currentUser == null) }
+	val showLoading = remember { mutableStateOf(false) }
 
 	LaunchedEffect(
 		key1 = null,
 		block = {
 			if (vm.currentUser == null) {
-				if (vm.rememberAuthAsync().await() == null) {
+				val remember = vm.loginRememberAsync()
+				showLoading.value = true
+				if (remember.await() == null) {
 					vm.loginLocalAsync().await()
 				}
 			}
@@ -42,7 +58,7 @@ internal fun authGuard(
 
 	if (allow.value != true) {
 		val interceptor = remember {
-			val intentHandler = vm.intentHandler
+			val intentHandler = mainVM.intentHandler
 			intentHandler.createInterceptor()
 				.apply {
 					setFilter { target ->
@@ -67,7 +83,7 @@ internal fun authGuard(
 
 	if (showLoading.value && allowShowContentState.value) {
 		Box(
-			modifier = Modifier
+			modifier = modifier
 				.fillMaxSize()
 				.background(Theme.absoluteBackgroundContentColorAsState().value.copy(alpha = 0.94f))
 				.clickable(
@@ -85,6 +101,47 @@ internal fun authGuard(
 		}
 	}
 
+	NoInline {
+		mainVM.authGuardWaiter
+			.apply {
+				// check for size, because `clear` will count as modification regardless of content
+				if (!isEmpty()) {
+					forEach(::invoke)
+					clear()
+				}
+			}
+	}
 
-	return allow
+	LaunchedEffect(key1 = allow.value, block = {
+		entryVM.authGuardAllow.value = allow.value
+	})
+}
+
+private inline fun invoke(block: () -> Unit) = block.invoke()
+
+@HiltViewModel
+private class AuthGuardViewModel @Inject constructor(
+	private val auth: AuthService
+) : ViewModel() {
+
+	val currentUser
+		get() = auth.currentUser
+
+	val currentUserFlow
+		get() = auth.observeCurrentUser()
+
+	fun loginRememberAsync(): Deferred<User?> = viewModelScope.async {
+		auth.initialize().join()
+		(auth.state as? AuthService.AuthState.LoggedIn)?.user
+	}
+
+	fun loginLocalAsync(): Deferred<User?> = viewModelScope.async {
+		val data = LocalAuth.buildAuthData()
+		when (val result = auth.loginAsync(LocalAuth.ProviderID, data).await()) {
+			is AuthService.LoginResult.Success -> result.user
+			is AuthService.LoginResult.Error -> error("LoginLocal was failed, ex=${result.ex}")
+		}.also {
+			Timber.d("LoginLocalAsync completed: $it")
+		}
+	}
 }

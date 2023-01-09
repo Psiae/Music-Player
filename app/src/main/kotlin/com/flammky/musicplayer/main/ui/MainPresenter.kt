@@ -7,8 +7,10 @@ import com.flammky.musicplayer.main.ext.IntentHandler
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.flow.Flow
 import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.EmptyCoroutineContext
 
+/**
+ * Presenter of our main interface
+ */
 interface MainPresenter {
 
 	val auth: Auth
@@ -31,7 +33,7 @@ interface MainPresenter {
 	@kotlin.jvm.Throws(IllegalStateException::class)
 	fun initialize(
 		viewModel: ViewModel,
-		coroutineContext: CoroutineContext = EmptyCoroutineContext
+		coroutineContext: CoroutineContext = viewModel.coroutineContext
 	)
 
 	fun dispose()
@@ -42,6 +44,7 @@ interface MainPresenter {
 	 * general that is platform SDK dependent
 	 */
 	interface ViewModel {
+		val coroutineContext: CoroutineContext
 		fun showIntentRequestErrorMessage(message: String)
 		fun showPlaybackErrorMessage(message: String)
 		fun loadSaver(): Bundle?

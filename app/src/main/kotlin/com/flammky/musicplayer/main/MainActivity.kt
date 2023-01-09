@@ -10,7 +10,6 @@ import androidx.activity.viewModels
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
 import com.flammky.android.activity.disableWindowFitSystemInsets
-import com.flammky.android.content.context.ContextHelper
 import com.flammky.android.content.intent.isActionMain
 import com.flammky.musicplayer.activity.ActivityCompanion
 import com.flammky.musicplayer.activity.RequireLauncher
@@ -24,12 +23,7 @@ import kotlin.random.Random
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
-	private val contextHelper = ContextHelper(this)
-	private val innerIntentHandler = InnerIntentHandler()
 	private val mainVM: MainViewModel by viewModels()
-
-	init {
-	}
 
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
@@ -64,9 +58,12 @@ class MainActivity : ComponentActivity() {
 		check(intent.getStringExtra(LauncherSignatureKey) == LauncherSignatureCode) {
 			"New Intent must have Launcher Signature, possible uncaught condition"
 		}
-		innerIntentHandler.handleIntent(intent)
+		mainVM.allEntryGuardWaiter.add { mainVM.intentHandler.handleIntent(intent) }
 	}
 
+	/**
+	 * Check the validity of the launcher intent of this Activity
+	 */
 	private fun checkLauncherIntent() = check(
 		value = intent.isActionMain(),
 		lazyMessage = {
@@ -83,26 +80,20 @@ class MainActivity : ComponentActivity() {
 	}
 
 	private fun setupSplashScreen() {
-		mainVM.splashHolders.apply {
-			if (contains(EntrySplashHolder)) {
-				return@apply
+		mainVM.splashHolders
+			.apply {
+				if (contains(EntrySplashHolder)) {
+					return@apply
+				}
+				add(EntrySplashHolder)
+				mainVM.firstEntryGuardWaiter.add { mainVM.splashHolders.remove(EntrySplashHolder) }
 			}
-			add(EntrySplashHolder)
-			mainVM.authGuardWaiter.add { mainVM.splashHolders.remove(EntrySplashHolder) }
-		}
 		installSplashScreen().setKeepOnScreenCondition {
 			run {
 				mainVM.splashHolders.isNotEmpty()
 			}.also { keep ->
 				Timber.d("MainActivity_DEBUG_onPreDraw: SplashCheckKeepOnScreenCondition=$keep")
 			}
-		}
-	}
-
-	private inner class InnerIntentHandler {
-		fun handleIntent(intent: Intent) {
-			// wait for intent interceptor
-			mainVM.entryGuardWaiter.add { mainVM.intentHandler.handleIntent(intent) }
 		}
 	}
 

@@ -83,7 +83,7 @@ internal class RealPlaybackProgressionCollector(
 	}
 
 	override fun startCollectPosition(): Job {
-		scope.launch {
+		val start = scope.launch {
 			if (progressCollectorJob?.isActive == true) {
 				return@launch
 			}
@@ -93,6 +93,7 @@ internal class RealPlaybackProgressionCollector(
 			startCollectEvent()
 		}
 		return scope.launch(start = CoroutineStart.LAZY) {
+			start.join()
 			_progressStateFlow.first { it != null }
 			_bufferedProgressStateFlow.first { it != null }
 		}

@@ -7,22 +7,17 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.material.Icon
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -31,8 +26,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.flammky.musicplayer.base.compose.LocalLayoutVisibility
-import com.flammky.musicplayer.base.compose.NoInlineBox
 import com.flammky.musicplayer.base.compose.NoInlineColumn
+import com.flammky.musicplayer.base.compose.rewrite
 import com.flammky.musicplayer.base.nav.compose.ComposeRootDestination
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.*
@@ -67,14 +62,16 @@ private fun MainActivity.RootScaffold(
 		}
 		val topBarVisibility = remember {
 			mutableStateOf(0.dp)
-		}.apply {
+		}.rewrite {
 			contentPadding.calculateTopPadding()
 		}
 		val bottomBarVisibility = remember {
 			mutableStateOf(0.dp)
-		}.apply {
-			value = maxOf(contentPadding.calculateBottomPadding(),
-				playbackControlVisibilityOffset.value.unaryMinus())
+		}.rewrite {
+			maxOf(
+				contentPadding.calculateBottomPadding(),
+				playbackControlVisibilityOffset.value.unaryMinus()
+			)
 		}
 		CompositionLocalProvider(
 			LocalLayoutVisibility.LocalTopBar provides contentPadding.calculateTopPadding(),
@@ -123,7 +120,7 @@ private fun MainActivity.BottomNavigation(
 	NoRippleColor {
 
 		val absBackgroundColor = Theme.backgroundColorAsState().value
-		val alpha = (/* preference */ 0.97f).coerceAtLeast(0.3f)
+		val alpha = (/* preference */ 1f).coerceAtLeast(0.3f)
 		val backgroundColor = Theme
 			.elevatedTonalPrimarySurfaceAsState(elevation = 5.dp).value
 			.copy(alpha = alpha)
@@ -145,76 +142,74 @@ private fun MainActivity.BottomNavigation(
 			}
 		}
 
-		NoInlineBox(
-			modifier = backgroundModifier.navigationBarsPadding(),
-			contentAlignment = Alignment.BottomCenter
+		val navigationBarInsetHeight = with(LocalDensity.current) {
+			WindowInsets.navigationBars.getBottom(this).toDp()
+		}
+
+		NoInlineColumn(
+			modifier = backgroundModifier.navigationBarsPadding()
 		) {
-			androidx.compose.material.BottomNavigation(
+			Surface(
+				color = /* already set above by column */ Color.Transparent,
 				contentColor = Theme.secondaryContainerContentColorAsState().value,
-				backgroundColor = /* already set above by column */ Color.Transparent,
-				elevation = /* already set above by elevated backgroundColor */ 0.dp
+				tonalElevation = 0.dp,
 			) {
-				val startRouteID = navigators[0].getRootDestination().routeID
-				navigators.forEach { rootNavigator ->
-					val destination = rootNavigator.getRootDestination()
-					val selected = destination.routeID == currentRoute
-					val interactionSource = remember { MutableInteractionSource() }
-					NoInlineColumn(
-						modifier = Modifier
-							.align(Alignment.Bottom)
-							.weight(1f)
-							.selectable(
-								selected = selected,
-								onClick = {
-									if (destination.routeID != backstackEntryState.value?.destination?.route) {
-										rootNavigator.navigateToRoot(navController) {
-											launchSingleTop = true
-											restoreState = destination.routeID != startRouteID
-											popUpTo(startRouteID) {
-												saveState = true
-											}
-										}
-									}
-								},
-								enabled = true,
-								role = Role.Tab,
-								interactionSource = interactionSource,
-								indication = /* TODO: Customizable */ null,
-							),
-						verticalArrangement = Arrangement.Bottom,
-						horizontalAlignment = Alignment.CenterHorizontally
-					) {
-						// TODO: Customizable indicator
+				Row(
+					modifier = Modifier.fillMaxWidth().height(56.dp + 16.dp + 2.dp).selectableGroup(),
+					horizontalArrangement = Arrangement.spacedBy(2.dp),
+				) {
+					val startRouteID = navigators[0].getRootDestination().routeID
+					navigators.forEach { rootNavigator ->
+						val destination = rootNavigator.getRootDestination()
+						val selected = destination.routeID == currentRoute
+						val interactionSource = remember { MutableInteractionSource() }
 						val pressed by interactionSource.collectIsPressedAsState()
 						val sizeFactor by animateFloatAsState(targetValue = if (pressed) 0.94f else 1f)
-
-						val painter = when (
-							val res = if (selected) destination.selectedIconResource else destination.iconResource
-						) {
-							is ComposeRootDestination.IconResource.ResID -> {
-								painterResource(id = res.id)
-							}
-							is ComposeRootDestination.IconResource.ComposeImageVector -> {
-								rememberVectorPainter(image = res.getVector())
-							}
-						}
-
-						Icon(
-							modifier = Modifier.size(27.dp * sizeFactor),
-							painter = painter,
-							contentDescription = null
-						)
-
-						Spacer(modifier = Modifier.height(3.dp))
-
-						Text(
-							color = Theme.backgroundContentColorAsState().value,
-							fontWeight = MaterialTheme.typography.labelMedium.fontWeight,
-							fontSize = (MaterialTheme.typography.labelMedium.fontSize.value * sizeFactor).sp,
-							fontStyle = MaterialTheme.typography.labelMedium.fontStyle,
-							lineHeight = MaterialTheme.typography.labelMedium.lineHeight,
-							letterSpacing = MaterialTheme.typography.labelMedium.letterSpacing,
-							text = destination.label
+						NavigationBarItem(
+							modifier = Modifier.fillMaxHeight(),
+							selected = selected,
+							onClick = {
+								if (destination.routeID != backstackEntryState.value?.destination?.route) {
+									rootNavigator.navigateToRoot(navController) {
+										launchSingleTop = true
+										restoreState = destination.routeID != startRouteID
+										popUpTo(startRouteID) {
+											saveState = true
+										}
+									}
+								}
+							},
+							icon = {
+								val painter = when (
+									val res =
+										if (selected) destination.selectedIconResource else destination.iconResource
+								) {
+									is ComposeRootDestination.IconResource.ResID -> {
+										painterResource(id = res.id)
+									}
+									is ComposeRootDestination.IconResource.ComposeImageVector -> {
+										rememberVectorPainter(image = res.getVector())
+									}
+								}
+								Icon(
+									modifier = Modifier.size(24.dp),
+									painter = painter,
+									tint = Theme.secondaryContainerContentColorAsState().value,
+									contentDescription = null
+								)
+							},
+							label = {
+								Text(
+									color = Theme.backgroundContentColorAsState().value,
+									fontWeight = MaterialTheme.typography.labelMedium.fontWeight,
+									fontSize = (MaterialTheme.typography.labelMedium.fontSize.value).sp,
+									fontStyle = MaterialTheme.typography.labelMedium.fontStyle,
+									lineHeight = MaterialTheme.typography.labelMedium.lineHeight,
+									letterSpacing = MaterialTheme.typography.labelMedium.letterSpacing,
+									text = destination.label
+								)
+							},
+							interactionSource = interactionSource,
 						)
 					}
 				}

@@ -826,7 +826,6 @@ private fun AnimatedProgressBar(
 					}
 				}
 
-
 			onDispose { supervisor.cancel() ; observer.dispose() }
 		})
 
@@ -873,7 +872,9 @@ private fun AnimatedProgressBar(
 			}
 			val progress by animateFloatAsState(
 				targetValue = when {
-					position == PlaybackConstants.POSITION_UNSET || duration == PlaybackConstants.DURATION_UNSET || position > duration -> 0f
+					position == PlaybackConstants.POSITION_UNSET ||
+						duration == PlaybackConstants.DURATION_UNSET ||
+						position > duration -> 0f
 					else -> position.inWholeMilliseconds.toFloat() / duration.inWholeMilliseconds
 				},
 				animationSpec = tween(150)

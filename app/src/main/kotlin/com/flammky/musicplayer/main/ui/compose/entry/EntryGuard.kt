@@ -4,29 +4,31 @@ import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.flammky.musicplayer.base.compose.NoInline
 import com.flammky.musicplayer.main.ui.MainViewModel
-import timber.log.Timber
 
 @Composable
 internal fun EntryGuard(
 	content: @Composable () -> Unit
 ) {
-	Timber.d("Nav EntryGuard")
-	if (guard().value == true) {
+	if (entryGuardState().value == true) {
 		content()
 	}
 }
 
 @Composable
-private fun guard(): State<Boolean?> {
-	val allowState = remember { mutableStateOf<Boolean?>(null) }
-	val vm: MainViewModel = viewModel()
+private fun entryGuardState(): State<Boolean?> {
+	val entryVM: EntryGuardViewModel = viewModel()
+	val mainVM: MainViewModel = viewModel()
+	val authAllowState = entryVM.authGuardAllow.collectAsState()
+	val permAllowState = entryVM.permGuardAllow.collectAsState()
 
-	val authGuard = authGuard(
+	AuthGuard(
+		mainVM = mainVM,
+		entryVM = entryVM,
 		allowShowContentState = remember { mutableStateOf(true) }
 	)
 
 	NoInline {
-		vm.authGuardWaiter
+		mainVM.firstEntryGuardWaiter
 			.apply {
 				// check for size, because `clear` will count as modification regardless of content
 				if (!isEmpty()) {
@@ -36,12 +38,14 @@ private fun guard(): State<Boolean?> {
 			}
 	}
 
-	val permGuard = permGuard(
-		allowShowContentState = remember { derivedStateOf { authGuard.value == true } }
+	PermGuard(
+		mainVM = mainVM,
+		entryVM = entryVM,
+		allowShowContentState = remember { derivedStateOf { authAllowState.value == true } }
 	)
 
 	NoInline {
-		vm.permGuardWaiter
+		mainVM.allEntryGuardWaiter
 			.apply {
 				// check for size, because `clear` will count as modification regardless of content
 				if (!isEmpty()) {
@@ -51,22 +55,13 @@ private fun guard(): State<Boolean?> {
 			}
 	}
 
-	val auth = authGuard.value
-	val perm = permGuard.value
-	allowState.value = if (auth == null || perm == null ) null else auth && perm
-
-	NoInline {
-		vm.entryGuardWaiter
-			.apply {
-				// check for size, because `clear` will count as modification regardless of content
-				if (!isEmpty()) {
-					forEach(::invoke)
-					clear()
-				}
-			}
+	return remember {
+		derivedStateOf {
+			val auth = authAllowState.value
+			val perm = permAllowState.value
+			if (auth == null || perm == null ) null else auth && perm
+		}
 	}
-
-	return allowState
 }
 
 private inline fun invoke(block: () -> Unit) = block.invoke()

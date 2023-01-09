@@ -25,9 +25,9 @@ import androidx.core.content.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.flammky.android.content.context.ContextHelper
+import com.flammky.android.manifest.permission.AndroidPermission
 import com.flammky.androidx.content.context.findActivity
 import com.flammky.musicplayer.R
-import com.flammky.android.manifest.permission.AndroidPermission
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.backgroundContentColorAsState
 import com.flammky.musicplayer.base.theme.compose.surfaceContentColorAsState
@@ -42,11 +42,11 @@ import com.google.accompanist.permissions.rememberPermissionState
 
 // Tech-Debt from old package
 
-class EntryViewModel() : ViewModel() {
+class EntryPermViewModel() : ViewModel() {
 	var shouldPersistPager: Boolean? = null
 }
 
-private val entryViewModel: EntryViewModel
+private val entryPermViewModel: EntryPermViewModel
 	@Composable
 	get() = viewModel()
 
@@ -73,7 +73,7 @@ fun EntryPermissionPager(contextHelper: ContextHelper, onGranted: () -> Unit) {
 		mutableStateOf(false)
 	}
 
-	entryViewModel.shouldPersistPager = !granted.value
+	entryPermViewModel.shouldPersistPager = !granted.value
 
 	if (granted.value) {
 		return onGranted()

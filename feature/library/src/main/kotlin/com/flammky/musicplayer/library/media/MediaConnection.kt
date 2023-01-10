@@ -25,5 +25,6 @@ import kotlinx.coroutines.flow.Flow
 		suspend fun getMetadata(id: String): MediaMetadata?
 		suspend fun provideMetadata(id: String, metadata: MediaMetadata)
 		suspend fun observeMetadata(id: String): Flow<MediaMetadata?>
+		suspend fun evictMetadata(id: String, silent: Boolean)
 	}
 }

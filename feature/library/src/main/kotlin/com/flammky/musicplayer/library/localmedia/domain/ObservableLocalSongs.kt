@@ -145,7 +145,12 @@ class RealObservableLocalSongs(
 		}
 	}
 
-	override suspend fun refreshMetadata(model: LocalSongModel): Job = repository.refreshMetadata(model)
+	override suspend fun refreshMetadata(model: LocalSongModel): Job = ioScope.launch(Dispatchers.Main) {
+		val m = repository.refreshMetadata(model)
+		val a = repository.refreshArtwork(model)
+		m.join()
+		a.join()
+	}
 
 	init {
 		ioScope.launch {

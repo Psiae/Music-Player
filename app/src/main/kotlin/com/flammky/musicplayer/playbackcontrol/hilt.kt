@@ -2,9 +2,9 @@ package com.flammky.musicplayer.playbackcontrol
 
 import android.content.Context
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
-import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider
 import com.flammky.android.medialib.temp.image.ArtworkProvider
 import com.flammky.musicplayer.base.auth.AuthService
+import com.flammky.musicplayer.base.media.MetadataProvider
 import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConnection
 import com.flammky.musicplayer.base.media.r.MediaMetadataCacheRepository
 import com.flammky.musicplayer.playbackcontrol.presentation.presenter.ExpectPlaybackControlPresenter
@@ -16,7 +16,6 @@ import dagger.hilt.components.SingletonComponent
 @dagger.Module
 @dagger.hilt.InstallIn(SingletonComponent::class)
 object Module {
-
 	@Provides
 	internal fun providePlaybackControlPresenter(
 		@ApplicationContext context: Context,
@@ -25,7 +24,7 @@ object Module {
 		authService: AuthService,
 		metadataCacheRepository: MediaMetadataCacheRepository,
 		artworkProvider: ArtworkProvider,
-		mediaStoreProvider: MediaStoreProvider
+		metadataProvider: MetadataProvider
 	): PlaybackControlPresenter {
 		return ExpectPlaybackControlPresenter(
 			context,
@@ -34,7 +33,7 @@ object Module {
 			authService,
 			metadataCacheRepository,
 			artworkProvider,
-			mediaStoreProvider
+			metadataProvider
 		)
 	}
 }

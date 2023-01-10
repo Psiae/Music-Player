@@ -4,6 +4,7 @@ import android.content.Context
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider
 import com.flammky.android.medialib.temp.image.ArtworkProvider
+import com.flammky.musicplayer.base.media.MetadataProvider
 import com.flammky.musicplayer.library.localmedia.data.LocalSongRepository
 import com.flammky.musicplayer.library.localmedia.data.RealLocalSongRepository
 import com.flammky.musicplayer.library.media.MediaConnection
@@ -24,7 +25,8 @@ internal object Module {
 		mediaConnection: MediaConnection,
 		testArtworkProvider: ArtworkProvider,
 		mediaStoreProvider: MediaStoreProvider,
+		metadataProvider: MetadataProvider
 	): LocalSongRepository {
-		return RealLocalSongRepository(context, dispatchers, testArtworkProvider, mediaConnection, mediaStoreProvider)
+		return RealLocalSongRepository(context, dispatchers, testArtworkProvider, metadataProvider, mediaConnection, mediaStoreProvider)
 	}
 }

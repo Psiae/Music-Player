@@ -2,7 +2,6 @@ package com.flammky.musicplayer.library.localmedia.data
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.media.MediaMetadataRetriever
 import android.net.Uri
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.medialib.common.mediaitem.AudioFileMetadata
@@ -15,6 +14,7 @@ import com.flammky.android.medialib.providers.metadata.VirtualFileMetadata
 import com.flammky.android.medialib.temp.image.ArtworkProvider
 import com.flammky.android.medialib.temp.image.internal.TestArtworkProvider
 import com.flammky.common.kotlin.coroutines.safeCollect
+import com.flammky.musicplayer.base.media.MetadataProvider
 import com.flammky.musicplayer.library.media.MediaConnection
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -36,6 +36,7 @@ internal class RealLocalSongRepository(
 	private val context: Context,
 	private val dispatchers: AndroidCoroutineDispatchers,
 	private val artworkProvider: ArtworkProvider,
+	private val metadataProvider: MetadataProvider,
 	private val mediaConnection: MediaConnection,
 	private val mediaStoreProvider: MediaStoreProvider,
 ) : LocalSongRepository {
@@ -96,7 +97,10 @@ internal class RealLocalSongRepository(
 
 	override fun refreshMetadata(id: String, uri: Uri): Job {
 		return ioScope.launch {
-			mediaConnection.repository.provideMetadata(id, fillMetadata(uri))
+			if (mediaConnection.repository.getMetadata(id) != null) {
+				mediaConnection.repository.evictMetadata(id, true)
+				metadataProvider.requestAsync(id).join()
+			}
 		}
 	}
 
@@ -106,7 +110,7 @@ internal class RealLocalSongRepository(
 				?: return@launch
 			(afm.file as? VirtualFileMetadata)?.uri
 				?.let { uri -> refreshArtwork(model.id, uri).join() }
-				?: refreshMetadata(model.id).join()
+				?: refreshArtwork(model.id, model.uri)
 		}
 	}
 
@@ -118,19 +122,19 @@ internal class RealLocalSongRepository(
 	}
 
 	override fun refreshArtwork(id: String, uri: Uri): Job {
-		Timber.d("refreshArtwork: $id, $uri")
-
 		return ioScope.launch {
-			val artReq = ArtworkProvider.Request.Builder(id, Bitmap::class.java)
-				.setDiskCacheAllowed(false)
-				.setMemoryCacheAllowed(false)
-				.setStoreDiskCacheAllowed(false)
-				.setStoreMemoryCacheAllowed(true)
-				.setUri(uri)
-				.build()
-			val artReqResult = artworkProvider.request(artReq).await()
-			if (artReqResult.isSuccessful()) {
-				mediaConnection.repository.provideArtwork(id, artReqResult.get(), false)
+			Timber.d("refresh $id $uri")
+			if (mediaConnection.repository.getArtwork(id + "_raw") != null) {
+				Timber.d("refresh evicting $id $uri")
+				mediaConnection.repository.evictArtwork(id + "_raw", true)
+				val artReq = ArtworkProvider.Request.Builder(id, Bitmap::class.java)
+					.setDiskCacheAllowed(false)
+					.setMemoryCacheAllowed(false)
+					.setStoreDiskCacheAllowed(false)
+					.setStoreMemoryCacheAllowed(true)
+					.setUri(uri)
+					.build()
+				artworkProvider.request(artReq).await()
 			}
 		}
 	}
@@ -193,22 +197,17 @@ internal class RealLocalSongRepository(
 						if (flag.isDelete) {
 							removeCache()
 						} else {
-							mediaConnection.repository.provideArtwork(
-								id = id,
-								artwork = requestBitmap(cache = false, storeToCache = true),
-								silent = false
-							)
+							mediaConnection.repository.evictArtwork(id, true)
+							requestBitmap(cache = false, storeToCache = true)
 						}
 					}
 				}
 			}
 
 			val get = mediaConnection.repository.getArtwork(id)
-			if (get == null) mediaConnection.repository.provideArtwork(
-				id = id,
-				artwork = requestBitmap(cache = true, storeToCache = true),
-				silent = false
-			)
+			if (get == null) {
+				requestBitmap(cache = true, storeToCache = true)
+			}
 
 			mediaConnection.repository.observeArtwork(id + "_raw").safeCollect {
 				send(it as? Bitmap)
@@ -223,11 +222,7 @@ internal class RealLocalSongRepository(
 
 	override suspend fun collectMetadata(id: String): Flow<AudioMetadata?> {
 		return flow {
-			if (mediaConnection.repository.getMetadata(id) == null) {
-				mediaStoreProvider.audio.uriFromId(id)?.let {
-					ioScope.launch { mediaConnection.repository.provideMetadata(id, fillMetadata(it)) }
-				}
-			}
+			metadataProvider.requestAsync(id)
 			mediaConnection.repository.observeMetadata(id).map { it as? AudioMetadata }.collect(this)
 		}
 	}
@@ -300,79 +295,5 @@ internal class RealLocalSongRepository(
 		awaitClose {
 			mediaStoreProvider.audio.removeObserver(observer)
 		}
-	}
-
-	private suspend fun fillMetadata(uri: Uri): MediaMetadata {
-		mediaStoreProvider.audio.queryByUri(uri)?.let { from ->
-			val audioMetadata = fillAudioMetadata(uri)
-			val fileMetadata = VirtualFileMetadata.build {
-				setUri(from.uri)
-				setScheme(from.uri.scheme)
-				setAbsolutePath(from.file.absolutePath)
-				setFileName(from.file.fileName)
-				setDateAdded(from.file.dateAdded?.seconds)
-				setLastModified(from.file.dateModified?.seconds)
-				setSize(from.file.size)
-			}
-			return AudioFileMetadata(audioMetadata, fileMetadata)
-		}
-
-		return fillAudioMetadata(uri)
-	}
-
-	private fun fillAudioMetadata(uri: Uri): AudioMetadata {
-		return AudioMetadata.build {
-			try {
-				MediaMetadataRetriever().applyUse {
-					setDataSource(context, uri)
-					setArtist(extractArtist())
-					setAlbumArtist(extractAlbumArtist())
-					setAlbumTitle(extractAlbum())
-					setBitrate(extractBitrate())
-					setDuration(extractDuration()?.milliseconds)
-					setTitle(extractTitle())
-					setPlayable(duration != null)
-					setExtra(MediaMetadata.Extra())
-				}
-			} catch (_: Exception) {}
-		}
-	}
-
-	private fun MediaMetadataRetriever.applyUse(apply: MediaMetadataRetriever.() -> Unit) {
-		try {
-			apply(this)
-		} finally {
-			release()
-		}
-	}
-
-	private fun MediaMetadataRetriever.extractArtist(): String? {
-		return tryOrNull { extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST) }
-	}
-
-	private fun MediaMetadataRetriever.extractAlbumArtist(): String? {
-		return tryOrNull { extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST) }
-	}
-
-	private fun MediaMetadataRetriever.extractAlbum(): String? {
-		return tryOrNull { extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM) }
-	}
-
-	private fun MediaMetadataRetriever.extractBitrate(): Long? {
-		return tryOrNull { extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE) }?.toLong()
-	}
-
-	private fun MediaMetadataRetriever.extractDuration(): Long? {
-		return tryOrNull { extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION) }?.toLong()
-	}
-
-	private fun MediaMetadataRetriever.extractTitle(): String? {
-		return tryOrNull { extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE) }
-	}
-
-	private inline fun <R> tryOrNull(block: () -> R): R? {
-		return try {
-			block()
-		} catch (e: Exception) { null }
 	}
 }

@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import timber.log.Timber
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.write
 
@@ -24,7 +25,8 @@ class RealMediaMetadataCacheRepository(
 
 	private val rwl = ReentrantReadWriteLock()
 
-	private val metadataLRU = DefaultLruCache<String, MediaMetadata>(100)
+	// we should confine between `observed` and not
+	private val metadataLRU = DefaultLruCache<String, MediaMetadata>(150)
 	private val metadataObservers = mutableMapOf<String, MutableList<MapObserver<String, MediaMetadata>>>()
 
 	// should define abstract class instead
@@ -165,6 +167,7 @@ class RealMediaMetadataCacheRepository(
 		if (id == "" || id[0] == '_') {
 			return
 		}
+		Timber.d("provideArtwork: $id $artwork")
 		rwl.write {
 			artworkLRU.put(id, artwork)
 			dispatchArtworkChange(id, artwork)
@@ -176,7 +179,12 @@ class RealMediaMetadataCacheRepository(
 			return
 		}
 		rwl.write {
-			artworkLRU.remove(id)?.let { dispatchArtworkChange(id, null) }
+			artworkLRU.remove(id)
+				?.let { dispatchArtworkChange(id, null) }
+			// temporary
+			val n = id.removeSuffix("_raw") + "_notification"
+			artworkLRU.remove(n)
+				?.let { dispatchArtworkChange(n, null) }
 		}
 	}
 
@@ -195,6 +203,8 @@ class RealMediaMetadataCacheRepository(
 		}
 		rwl.write {
 			artworkLRU.remove(id)
+			// temporary
+			artworkLRU.remove(id.removeSuffix("_raw") + "_notification")
 		}
 	}
 

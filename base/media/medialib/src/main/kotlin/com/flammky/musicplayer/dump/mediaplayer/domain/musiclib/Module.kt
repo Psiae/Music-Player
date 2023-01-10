@@ -2,7 +2,11 @@ package com.flammky.musicplayer.dump.mediaplayer.domain.musiclib
 
 import android.content.Context
 import androidx.media3.exoplayer.ExoPlayer
+import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
+import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider
+import com.flammky.musicplayer.base.media.MetadataProvider
 import com.flammky.musicplayer.base.media.r.MediaMetadataCacheRepository
+import com.flammky.musicplayer.base.media.r.TestMetadataProvider
 import com.flammky.musicplayer.domain.musiclib.player.exoplayer.ExoPlayerFactory
 import dagger.Module
 import dagger.Provides
@@ -27,6 +31,17 @@ object MusicLibraryModule {
 			context,
 			repository
 		)
+	}
+
+	@Provides
+	@Singleton
+	fun provideTestMetadataProvider(
+		@ApplicationContext context: Context,
+		coroutineDispatchers: AndroidCoroutineDispatchers,
+		cacheRepository: MediaMetadataCacheRepository,
+		mediaStoreProvider: MediaStoreProvider
+	): MetadataProvider {
+		return TestMetadataProvider(context, coroutineDispatchers, cacheRepository, mediaStoreProvider)
 	}
 }
 

@@ -12,6 +12,7 @@ import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.medialib.temp.image.ArtworkProvider
 import com.flammky.android.medialib.temp.provider.mediastore.api28.MediaStore28
 import com.flammky.common.media.audio.AudioFile
+import com.flammky.musicplayer.base.media.MediaConstants
 import com.flammky.musicplayer.base.media.r.MediaMetadataCacheRepository
 import com.flammky.musicplayer.core.common.sync
 import kotlinx.coroutines.*
@@ -44,17 +45,16 @@ class TestArtworkProvider(
 			listenable.addException(ex)
 			listenable.setResult(null)
 		}
-		scope.launch {
-			if (request.memoryCacheAllowed) {
-				repo.getArtwork(
-					request.id + "_raw"
-				)?.let {
-					listenable.setResult(it as? R)
-					// maybe check restore cache?
-					return@launch
-				}
+		if (request.memoryCacheAllowed) {
+			repo.getArtwork(
+				request.id + "_raw"
+			)?.let {
+				listenable.setResult(it as? R)
+				// maybe check restore cache?
+				return
 			}
-
+		}
+		scope.launch {
 			val resolvedUri = when {
 				request.id.startsWith("MediaStore") || request.id.startsWith("MEDIASTORE") -> {
 					ContentUris.withAppendedId(MediaStore28.Audio.EXTERNAL_CONTENT_URI, request.id.takeLastWhile { it.isDigit() }.toLong())
@@ -75,10 +75,10 @@ class TestArtworkProvider(
 								Timber.d("AF($resolvedUri) data: ${data?.size}")
 								if (data != null && data.isNotEmpty()) {
 									BitmapSampler.ByteArray.toSampledBitmap(data, 0, data.size, 500, 500)
-										?.let { bitmap ->
+										.let { bitmap ->
 											bitmap.also {
 												if (request.storeMemoryCacheAllowed) {
-													repo.provideArtwork(request.id + "_raw", it)
+													repo.provideArtwork(request.id + "_raw", it ?: MediaConstants.NO_ARTWORK)
 												}
 											}
 										}

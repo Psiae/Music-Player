@@ -1,7 +1,7 @@
 package com.flammky.musicplayer.main
 
 import com.flammky.musicplayer.main.ui.MainPresenter
-import com.flammky.musicplayer.main.ui.r.RealMainPresenter
+import com.flammky.musicplayer.main.ui.r.ExpectMainPresenter
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -13,7 +13,7 @@ object HiltModule {
 
 	@Provides
 	fun provideMainPresenter(
-		r: RealMainPresenter
+		r: ExpectMainPresenter
 	): MainPresenter {
 		return r
 	}

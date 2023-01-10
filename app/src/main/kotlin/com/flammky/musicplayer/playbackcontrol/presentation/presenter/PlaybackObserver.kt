@@ -1,4 +1,4 @@
-package com.flammky.musicplayer.playbackcontrol.ui.presenter
+package com.flammky.musicplayer.playbackcontrol.presentation.presenter
 
 import com.flammky.musicplayer.base.media.playback.PlaybackProperties
 import com.flammky.musicplayer.base.media.playback.PlaybackQueue

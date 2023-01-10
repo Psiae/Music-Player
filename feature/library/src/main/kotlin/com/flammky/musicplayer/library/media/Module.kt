@@ -34,4 +34,8 @@ internal object Module {
 			playbackConnection
 		)
 	}
+
+	@Provides
+	@Singleton
+	fun provideMediaConnectionRepository(mc: MediaConnection) = mc.repository
 }

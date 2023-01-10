@@ -16,7 +16,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,8 +31,8 @@ import com.flammky.musicplayer.base.nav.compose.ComposeRootDestination
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.*
 import com.flammky.musicplayer.main.MainActivity
-import com.flammky.musicplayer.playbackcontrol.ui.compose.TransitioningPlaybackControl
-import com.flammky.musicplayer.playbackcontrol.ui.compose.compact.TransitioningCompactPlaybackControl
+import com.flammky.musicplayer.playbackcontrol.presentation.compose.TransitioningPlaybackControl
+import com.flammky.musicplayer.playbackcontrol.presentation.compose.compact.TransitioningCompactPlaybackControl
 
 @Composable
 internal fun MainActivity.RootNavigation() {
@@ -142,10 +141,6 @@ private fun MainActivity.BottomNavigation(
 			}
 		}
 
-		val navigationBarInsetHeight = with(LocalDensity.current) {
-			WindowInsets.navigationBars.getBottom(this).toDp()
-		}
-
 		NoInlineColumn(
 			modifier = backgroundModifier.navigationBarsPadding()
 		) {
@@ -155,7 +150,10 @@ private fun MainActivity.BottomNavigation(
 				tonalElevation = 0.dp,
 			) {
 				Row(
-					modifier = Modifier.fillMaxWidth().height(56.dp + 16.dp + 2.dp).selectableGroup(),
+					modifier = Modifier
+						.fillMaxWidth()
+						.height(56.dp + 16.dp + 2.dp)
+						.selectableGroup(),
 					horizontalArrangement = Arrangement.spacedBy(2.dp),
 				) {
 					val startRouteID = navigators[0].getRootDestination().routeID
@@ -172,7 +170,7 @@ private fun MainActivity.BottomNavigation(
 								if (destination.routeID != backstackEntryState.value?.destination?.route) {
 									rootNavigator.navigateToRoot(navController) {
 										launchSingleTop = true
-										restoreState = destination.routeID != startRouteID
+										restoreState = true
 										popUpTo(startRouteID) {
 											saveState = true
 										}
@@ -194,7 +192,11 @@ private fun MainActivity.BottomNavigation(
 								Icon(
 									modifier = Modifier.size(24.dp),
 									painter = painter,
-									tint = Theme.secondaryContainerContentColorAsState().value,
+									tint = if (selected) {
+										Theme.secondaryContainerContentColorAsState().value
+									} else {
+										Theme.surfaceVariantContentColorAsState().value
+									},
 									contentDescription = null
 								)
 							},

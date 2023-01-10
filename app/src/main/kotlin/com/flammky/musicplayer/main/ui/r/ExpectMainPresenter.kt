@@ -22,7 +22,7 @@ import timber.log.Timber
 import javax.inject.Inject
 import kotlin.coroutines.CoroutineContext
 
-class RealMainPresenter @Inject constructor(
+class ExpectMainPresenter @Inject constructor(
 	private val authService: AuthService,
 	@ApplicationContext private val androidContext: Context,
 	private val androidCoroutineDispatchers: AndroidCoroutineDispatchers,

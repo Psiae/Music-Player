@@ -289,7 +289,7 @@ private fun ItemTextDescription(
 		Text(
 			text = formattedDuration + " " +
 				separator + " " +
-				(metadata.read()?.albumArtistName ?: metadata.read()?.artistName ?: model.displayName ?: ""),
+				(metadata.read()?.albumArtistName ?: metadata.read()?.artistName ?: ""),
 			style = style2,
 			maxLines = 1,
 			overflow = TextOverflow.Ellipsis,

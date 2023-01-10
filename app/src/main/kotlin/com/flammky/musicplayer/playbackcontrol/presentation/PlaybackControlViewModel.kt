@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalStdlibApi::class)
 
-package com.flammky.musicplayer.playbackcontrol.ui
+package com.flammky.musicplayer.playbackcontrol.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -8,13 +8,10 @@ import com.flammky.android.medialib.common.mediaitem.AudioFileMetadata
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.android.medialib.providers.metadata.VirtualFileMetadata
-import com.flammky.musicplayer.base.auth.AuthService
-import com.flammky.musicplayer.base.media.r.MediaMetadataCacheRepository
 import com.flammky.musicplayer.base.user.User
-import com.flammky.musicplayer.dump.mediaplayer.helper.Preconditions.checkMainThread
-import com.flammky.musicplayer.playbackcontrol.ui.controller.PlaybackController
-import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackControlPresenter
-import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
+import com.flammky.musicplayer.playbackcontrol.presentation.controller.PlaybackController
+import com.flammky.musicplayer.playbackcontrol.presentation.presenter.PlaybackControlPresenter
+import com.flammky.musicplayer.playbackcontrol.presentation.presenter.PlaybackObserver
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
@@ -27,29 +24,26 @@ import kotlin.coroutines.EmptyCoroutineContext
 
 @HiltViewModel
 internal class PlaybackControlViewModel @Inject constructor(
-	// should probably handled by presenter
-	private val authService: AuthService,
-	private val mediaRepo: MediaMetadataCacheRepository,
 	private val presenter: PlaybackControlPresenter,
-) : ViewModel(), PlaybackControlPresenter.ViewModel {
+) : ViewModel() {
+
+	private val presenterDelegate = object : PlaybackControlPresenter.ViewModel {
+		override val mainCoroutineContext: CoroutineContext = viewModelScope.coroutineContext
+	}
 
 	init {
-		presenter.initialize(viewModelScope.coroutineContext, this)
+		presenter.initialize(presenterDelegate)
 	}
 
 	/**
 	 * get the currently active user
 	 */
-	fun currentAuth(): User? {
-		return authService.currentUser
-	}
+	fun currentAuth(): User? = presenter.auth.currentUser
 
 	/**
 	 * observe the currently active User as a flow,
 	 */
-	fun observeCurrentAuth(): Flow<User?> {
-		return authService.observeCurrentUser()
-	}
+	fun observeCurrentAuth(): Flow<User?> = presenter.auth.observeCurrentUser()
 
 	/**
 	 * create a playback controller for the given [user]
@@ -61,11 +55,11 @@ internal class PlaybackControlViewModel @Inject constructor(
 	 * controller, defaults to the ViewModel job
 	 * **
 	 */
-	fun createController(
+	fun createUserPlaybackController(
 		user: User,
 		coroutineContext: CoroutineContext = EmptyCoroutineContext
 	): PlaybackController {
-		return presenter.createController(
+		return presenter.createUserPlaybackController(
 			user = user,
 			coroutineContext = viewModelScope.coroutineContext + coroutineContext.minusKey(CoroutineDispatcher)
 		)
@@ -74,8 +68,6 @@ internal class PlaybackControlViewModel @Inject constructor(
 	override fun onCleared() {
 		presenter.dispose()
 	}
-
-	private val _metadataStateMap = mutableMapOf<String, StateFlow<PlaybackControlTrackMetadata>>()
 
 	@OptIn(ExperimentalCoroutinesApi::class)
 	val currentMetadataStateFlow = flow<PlaybackControlTrackMetadata> {
@@ -89,7 +81,7 @@ internal class PlaybackControlViewModel @Inject constructor(
 				}
 				val channel = Channel<PlaybackObserver?>(Channel.CONFLATED)
 				job = viewModelScope.launch {
-					val controller = presenter.createController(user, viewModelScope.coroutineContext)
+					val controller = presenter.createUserPlaybackController(user, viewModelScope.coroutineContext)
 					channel.send(controller.createPlaybackObserver())
 					try {
 						awaitCancellation()
@@ -119,34 +111,34 @@ internal class PlaybackControlViewModel @Inject constructor(
 			}
 	}.stateIn(viewModelScope, SharingStarted.Lazily, PlaybackControlTrackMetadata())
 
-	// Inject as Dependency
-	fun observeMetadata(id: String): StateFlow<PlaybackControlTrackMetadata> {
-		checkMainThread()
-		if (!_metadataStateMap.containsKey(id)) {
-			_metadataStateMap[id] = createMetadataStateFlowForId(id)
+	fun getCachedMetadata(id: String): PlaybackControlTrackMetadata {
+		val metadata = presenter.mediaRepo.getCachedMetadata(id)
+		return PlaybackControlTrackMetadata(
+			id = id,
+			artwork = presenter.mediaRepo.getCachedArtwork(id),
+			title = metadata?.findTitle(),
+			subtitle = metadata?.findSubtitle()
+		)
+	}
+	fun observeMetadata(id: String): Flow<PlaybackControlTrackMetadata> {
+		return combine(
+			flow = presenter.mediaRepo.observeArtwork(id),
+			flow2 = presenter.mediaRepo.observeMetadata(id)
+		) { art: Any?, metadata: MediaMetadata? ->
+			PlaybackControlTrackMetadata(id, art, metadata?.findTitle(), metadata?.findSubtitle())
 		}
-		return _metadataStateMap[id]!!
 	}
-
-	private fun createMetadataStateFlowForId(id: String): StateFlow<PlaybackControlTrackMetadata> {
-		return flow {
-			if (id == "") return@flow
-			combine(
-				flow = mediaRepo.observeArtwork(id + "_raw"),
-				flow2 = mediaRepo.observeMetadata(id)
-			) { art: Any?, metadata: MediaMetadata? ->
-				val title = metadata?.title?.ifBlank { null }
-					?: (metadata as? AudioFileMetadata)?.file
-						?.let { fileMetadata ->
-							fileMetadata.fileName?.ifBlank { null }
-								?: (fileMetadata as? VirtualFileMetadata)?.uri?.toString()
-						}
-				val subtitle = (metadata as? AudioMetadata)
-					?.let { it.albumArtistName ?: it.artistName }
-				PlaybackControlTrackMetadata(id, art, title, subtitle)
-			}.collect(this)
-		}.stateIn(viewModelScope, SharingStarted.Lazily, PlaybackControlTrackMetadata(id))
-	}
+	private fun MediaMetadata.findTitle(): String? = title?.ifBlank { null }
+	private fun MediaMetadata.findSubtitle(): String? = (this as? AudioMetadata)
+		?.let {
+			it.albumArtistName ?: it.artistName
+		}
+		?: (this as? AudioFileMetadata)?.file
+			?.let { fileMetadata ->
+				fileMetadata.fileName?.ifBlank { null }
+					?: (fileMetadata as? VirtualFileMetadata)?.uri?.toString()
+			}
+			?.ifBlank { null }
 }
 
 // TODO: Rewrite

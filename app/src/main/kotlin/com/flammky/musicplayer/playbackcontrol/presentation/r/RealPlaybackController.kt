@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalStdlibApi::class, ExperimentalStdlibApi::class)
 
-package com.flammky.musicplayer.playbackcontrol.ui.r
+package com.flammky.musicplayer.playbackcontrol.presentation.r
 
 import androidx.annotation.GuardedBy
 import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConnection
@@ -8,9 +8,9 @@ import com.flammky.musicplayer.base.media.playback.RepeatMode
 import com.flammky.musicplayer.base.media.playback.ShuffleMode
 import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.core.common.sync
-import com.flammky.musicplayer.playbackcontrol.ui.controller.PlaybackController
-import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
-import com.flammky.musicplayer.playbackcontrol.ui.presenter.RealPlaybackControlPresenter
+import com.flammky.musicplayer.playbackcontrol.presentation.controller.PlaybackController
+import com.flammky.musicplayer.playbackcontrol.presentation.presenter.PlaybackObserver
+import com.flammky.musicplayer.playbackcontrol.presentation.presenter.ExpectPlaybackControlPresenter
 import kotlinx.coroutines.*
 import kotlin.coroutines.CoroutineContext
 import kotlin.time.Duration
@@ -19,7 +19,7 @@ internal class RealPlaybackController(
 	user: User,
 	/* commandScope: CoroutineScope */
 	private val scope: CoroutineScope,
-	private val presenter: RealPlaybackControlPresenter,
+	private val presenter: ExpectPlaybackControlPresenter,
 	private val playbackConnection: PlaybackConnection,
 ) : PlaybackController(user) {
 

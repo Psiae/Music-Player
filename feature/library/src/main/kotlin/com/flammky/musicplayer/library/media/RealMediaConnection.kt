@@ -89,6 +89,10 @@ internal class RealMediaConnection(
 			}
 		}
 
+		override suspend fun getMetadata(id: String): MediaMetadata? {
+			return mediaRepo.getMetadata(id)
+		}
+
 		override suspend fun observeMetadata(id: String): Flow<MediaMetadata?> {
 			return mediaRepo.observeMetadata(id)
 		}

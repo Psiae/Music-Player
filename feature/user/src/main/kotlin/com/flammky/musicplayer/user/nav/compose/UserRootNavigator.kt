@@ -36,13 +36,13 @@ object UserRootNavigator : ComposeRootNavigator() {
 		navGraphBuilder.composable(rootDestination.routeID) {
 			User {
 				controller.navigate(it) {
-					val isCurrentStart = controller.graph.findStartDestination().route == rootDestination.routeID
-					if (isCurrentStart) {
-						restoreState = true
-						launchSingleTop = true
-					}
+					val isCurrentStart =
+						controller.graph.findStartDestination().route == rootDestination.routeID
+					launchSingleTop = true
+					restoreState = true
 					popUpTo(rootDestination.routeID) {
 						inclusive = !isCurrentStart
+						saveState = true
 					}
 				}
 			}

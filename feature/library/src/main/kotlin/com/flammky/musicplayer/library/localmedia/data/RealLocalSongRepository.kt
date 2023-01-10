@@ -23,6 +23,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -221,7 +222,14 @@ internal class RealLocalSongRepository(
 	}
 
 	override suspend fun collectMetadata(id: String): Flow<AudioMetadata?> {
-		return mediaConnection.repository.observeMetadata(id).map { it as? AudioMetadata }
+		return flow {
+			if (mediaConnection.repository.getMetadata(id) == null) {
+				mediaStoreProvider.audio.uriFromId(id)?.let {
+					ioScope.launch { mediaConnection.repository.provideMetadata(id, fillMetadata(it)) }
+				}
+			}
+			mediaConnection.repository.observeMetadata(id).map { it as? AudioMetadata }.collect(this)
+		}
 	}
 
 	override fun observeAvailable(): Flow<LocalSongRepository.AvailabilityState> = callbackFlow {

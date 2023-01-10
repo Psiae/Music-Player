@@ -4,6 +4,7 @@ import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.Context
 import android.graphics.Bitmap
+import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import com.flammky.android.common.BitmapSampler
@@ -16,12 +17,14 @@ import com.flammky.musicplayer.core.common.sync
 import kotlinx.coroutines.*
 import timber.log.Timber
 
+// rewrite
 class TestArtworkProvider(
 	private val context: Context,
 	private val repo: MediaMetadataCacheRepository
 ) : ArtworkProvider {
 	private val dispatcher = AndroidCoroutineDispatchers.DEFAULT
 	private val scope = CoroutineScope(dispatcher.io + SupervisorJob())
+	private val rawJobMap = mutableMapOf<Uri, Deferred<Bitmap?>>()
 
 	suspend fun removeCacheForId(id: String, mem: Boolean, disk: Boolean) {
 		if (mem) repo.evictArtwork(id + "_raw")
@@ -52,18 +55,6 @@ class TestArtworkProvider(
 				}
 			}
 
-			/*if (request.diskCacheAllowed) {
-				cacheManager.retrieveImageCacheFile(request.id, "TestArtworkProvider")?.let { file ->
-					BitmapFactory.decodeFile(file.absolutePath)?.let { bitmap ->
-						listenable.setResult(bitmap as? R)
-						return@launch
-					} ?: run {
-						// corrupt
-						file.delete()
-					}
-				}
-			}*/
-
 			val resolvedUri = when {
 				request.id.startsWith("MediaStore") || request.id.startsWith("MEDIASTORE") -> {
 					ContentUris.withAppendedId(MediaStore28.Audio.EXTERNAL_CONTENT_URI, request.id.takeLastWhile { it.isDigit() }.toLong())
@@ -75,23 +66,29 @@ class TestArtworkProvider(
 			Timber.d("TestArtworkProvider, resolvedUri: $resolvedUri")
 
 			val embed = resolvedUri?.let { uri ->
-				AudioFile.Builder(context, uri).build().let { af ->
-					af.file?.delete()
-					val data = af.imageData
-					Timber.d("AF($resolvedUri) data: ${data?.size}")
-					if (data != null && data.isNotEmpty()) {
-						BitmapSampler.ByteArray.toSampledBitmap(data, 0, data.size, 500, 500)
-							?.let { bitmap ->
-								bitmap.also {
-									if (request.storeMemoryCacheAllowed) {
-										repo.provideArtwork(request.id + "_raw", it)
-									}
+				rawJobMap.sync {
+					getOrPut(uri) {
+						async {
+							AudioFile.Builder(context, uri).build().let { af ->
+								af.file?.delete()
+								val data = af.imageData
+								Timber.d("AF($resolvedUri) data: ${data?.size}")
+								if (data != null && data.isNotEmpty()) {
+									BitmapSampler.ByteArray.toSampledBitmap(data, 0, data.size, 500, 500)
+										?.let { bitmap ->
+											bitmap.also {
+												if (request.storeMemoryCacheAllowed) {
+													repo.provideArtwork(request.id + "_raw", it)
+												}
+											}
+										}
+								} else {
+									null
 								}
 							}
-					} else {
-						null
+						}
 					}
-				}
+				}.await().also { rawJobMap.sync { remove(uri) } }
 			}
 			Timber.d("TestArtworkProvider, result: $embed")
 			listenable.setResult(embed as R?)

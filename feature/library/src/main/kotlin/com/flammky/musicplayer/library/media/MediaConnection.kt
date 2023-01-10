@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.Flow
 /**
  * Media Connection Interface for this library module
  */
-internal interface MediaConnection {
+/*internal*/ interface MediaConnection {
 	fun play(
 		user: User,
 		queue: List<Pair<String, Uri>>,
@@ -22,7 +22,7 @@ internal interface MediaConnection {
 		suspend fun observeArtwork(id: String): Flow<Any?>
 		suspend fun provideArtwork(id: String, artwork: Any?, silent: Boolean)
 		suspend fun evictArtwork(id: String, silent: Boolean)
-
+		suspend fun getMetadata(id: String): MediaMetadata?
 		suspend fun provideMetadata(id: String, metadata: MediaMetadata)
 		suspend fun observeMetadata(id: String): Flow<MediaMetadata?>
 	}

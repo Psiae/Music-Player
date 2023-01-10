@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalSnapperApi::class, ExperimentalSnapperApi::class)
 
-package com.flammky.musicplayer.playbackcontrol.ui.compose
+package com.flammky.musicplayer.playbackcontrol.presentation.compose
 
 import android.annotation.SuppressLint
 import android.content.pm.ActivityInfo
@@ -54,13 +54,15 @@ import com.flammky.musicplayer.base.media.playback.RepeatMode
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.*
 import com.flammky.musicplayer.base.user.User
-import com.flammky.musicplayer.playbackcontrol.ui.PlaybackControlTrackMetadata
-import com.flammky.musicplayer.playbackcontrol.ui.PlaybackControlViewModel
-import com.flammky.musicplayer.playbackcontrol.ui.controller.PlaybackController
-import com.flammky.musicplayer.playbackcontrol.ui.presenter.PlaybackObserver
+import com.flammky.musicplayer.playbackcontrol.presentation.PlaybackControlTrackMetadata
+import com.flammky.musicplayer.playbackcontrol.presentation.PlaybackControlViewModel
+import com.flammky.musicplayer.playbackcontrol.presentation.controller.PlaybackController
+import com.flammky.musicplayer.playbackcontrol.presentation.presenter.PlaybackObserver
 import com.google.accompanist.pager.*
 import dev.chrisbanes.snapper.ExperimentalSnapperApi
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
 import timber.log.Timber
 import kotlin.math.abs
 import kotlin.reflect.KProperty
@@ -257,7 +259,7 @@ private fun playbackControllerAsState(
 	}
 	val controllerState = remember {
 		mutableStateOf<PlaybackController?>(userState.value?.let { id ->
-			viewModel.createController(id, coroutineScope.coroutineContext)
+			viewModel.createUserPlaybackController(id, coroutineScope.coroutineContext)
 		})
 	}
 	val user = userState.value
@@ -272,7 +274,7 @@ private fun playbackControllerAsState(
 		if (user == controller?.user) {
 			return@DisposableEffect onDispose { controller.dispose() }
 		}
-		val newController = viewModel.createController(user, coroutineScope.coroutineContext)
+		val newController = viewModel.createUserPlaybackController(user, coroutineScope.coroutineContext)
 		controllerState.value = newController
 		onDispose {
 			newController.dispose()
@@ -409,7 +411,11 @@ private fun TracksPagerDisplay(
 		TracksPager(
 			queueState = queueState,
 			metadataStateForId = { id ->
-				viewModel.observeMetadata(id).collectAsState()
+				val scope = rememberCoroutineScope()
+				remember(id) {
+					viewModel.observeMetadata(id)
+						.stateIn(scope, SharingStarted.Lazily, viewModel.getCachedMetadata(id))
+				}.collectAsState()
 			},
 			seekIndex = { q, index ->
 				val result: PlaybackController.RequestResult = when (index) {
@@ -516,6 +522,7 @@ private fun RadialPlaybackPaletteBackground(
 	val id = idState.value
 	val metadataStateFlow = remember(id) {
 		viewModel.observeMetadata(id)
+			.stateIn(coroutineScope, started = SharingStarted.Lazily, viewModel.getCachedMetadata(id))
 	}
 	RadialPlaybackPaletteBackground(
 		modifier,

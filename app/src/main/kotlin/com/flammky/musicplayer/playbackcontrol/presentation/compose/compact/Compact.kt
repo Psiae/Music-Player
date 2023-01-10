@@ -4,7 +4,7 @@
 	ExperimentalSnapperApi::class
 )
 
-package com.flammky.musicplayer.playbackcontrol.ui.compose.compact
+package com.flammky.musicplayer.playbackcontrol.presentation.compose.compact
 
 import android.graphics.Bitmap
 import androidx.compose.animation.animateColorAsState
@@ -48,9 +48,9 @@ import com.flammky.musicplayer.base.media.playback.PlaybackProperties
 import com.flammky.musicplayer.base.media.playback.PlaybackQueue
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.*
-import com.flammky.musicplayer.playbackcontrol.ui.PlaybackControlTrackMetadata
-import com.flammky.musicplayer.playbackcontrol.ui.PlaybackControlViewModel
-import com.flammky.musicplayer.playbackcontrol.ui.controller.PlaybackController
+import com.flammky.musicplayer.playbackcontrol.presentation.PlaybackControlTrackMetadata
+import com.flammky.musicplayer.playbackcontrol.presentation.PlaybackControlViewModel
+import com.flammky.musicplayer.playbackcontrol.presentation.controller.PlaybackController
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.PagerDefaults
@@ -116,7 +116,7 @@ internal fun TransitioningCompactPlaybackControl(
 				return@DisposableEffect onDispose {  }
 			}
 			val supervisor = SupervisorJob()
-			val newController = vm.createController(sessionAuth, coroutineScope.coroutineContext)
+			val newController = vm.createUserPlaybackController(sessionAuth, coroutineScope.coroutineContext)
 			controllerState.value = newController
 			showSelfState.value = false
 			newController.createPlaybackObserver(coroutineScope.coroutineContext)

@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.annotation.IntRange
 import androidx.annotation.Px
 
+// rewrite ?
 interface ArtworkProvider {
 
 	fun <R> request(request: Request<R>): ListenableResult<R>

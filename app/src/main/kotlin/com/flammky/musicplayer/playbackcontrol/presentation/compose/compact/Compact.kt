@@ -203,7 +203,8 @@ private fun CardLayout(
 			.fillMaxWidth()
 			.padding(horizontal = 5.dp),
 		shape = RoundedCornerShape(5.dp),
-		colors = CardDefaults.cardColors(surface),
+		colors = CardDefaults.outlinedCardColors(surface),
+		elevation = CardDefaults.outlinedCardElevation(2.dp)
 	) {
 		Column(
 			modifier = Modifier

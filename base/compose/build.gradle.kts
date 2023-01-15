@@ -1,6 +1,7 @@
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
+    id("kotlin-kapt")
 }
 
 android {
@@ -51,6 +52,12 @@ dependencies {
         api("androidx.compose.material3:material3:$vMaterial3")
     }
 
+    /* Androidx.hilt */
+    dependencies {
+        val v = "1.0.0"
+        api("androidx.hilt:hilt-navigation-compose:$v")
+    }
+
     /* androidx.navigation */
     dependencies {
 
@@ -70,5 +77,14 @@ dependencies {
         val v = "5.2.0"
         api("com.airbnb.android:lottie:$v")
         api("com.airbnb.android:lottie-compose:$v")
+    }
+
+    /* google.dagger */
+    dependencies {
+
+        // Hilt-Android
+        val vHiltAndroid = "2.44"
+        api("com.google.dagger:hilt-android:$vHiltAndroid")
+        kapt("com.google.dagger:hilt-android-compiler:$vHiltAndroid")
     }
 }

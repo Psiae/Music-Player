@@ -169,7 +169,6 @@ private fun MainActivity.BottomNavigation(
 							onClick = {
 								if (destination.routeID != backstackEntryState.value?.destination?.route) {
 									rootNavigator.navigateToRoot(navController) {
-										launchSingleTop = true
 										restoreState = true
 										popUpTo(startRouteID) {
 											saveState = true

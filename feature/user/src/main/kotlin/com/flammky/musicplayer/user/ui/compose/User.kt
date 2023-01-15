@@ -17,6 +17,7 @@ internal fun User(
 		modifier = Modifier.fillMaxSize(),
 		contentAlignment = Alignment.TopCenter
 	) {
+		UserScreen()
 		Button(
 			modifier = Modifier.offset(y = (maxHeight.value * 0.7f).dp),
 			onClick = { navigate("root_library") }) {

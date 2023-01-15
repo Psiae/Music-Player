@@ -6,7 +6,7 @@ object RootNavigator {
 	val navigators: List<ComposeRootNavigator> = listOf(
 		com.flammky.musicplayer.home.nav.compose.HomeRootNavigator,
 		com.flammky.musicplayer.search.nav.compose.SearchRootNavigator,
-		com.flammky.musicplayer.library.nav.compose.LibraryRootNavigator,
+		com.flammky.musicplayer.library.dump.nav.compose.LibraryRootNavigator,
 		com.flammky.musicplayer.user.nav.compose.UserRootNavigator
 	)
 }

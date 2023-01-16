@@ -2,9 +2,9 @@ App Name Coming Soon
 
 Simple Music Player `100% Made in Kotlin` with Jetpack Compose & AndroidX Media3.
 
-> As of 2023-01-01 this app has somewhat basic playback control both in app and notification and should be able to play any format supported by [ExoPlayer](https://github.com/google/ExoPlayer) corresponds to the current [Media3](https://github.com/androidx/media/) version 
->
-> it filters incoming Intent with scheme:"content://" ; action:"android.intent.action.VIEW" ; mimeType:"audio/*"
+> This app has somewhat basic playback control both in app and notification and should be able to play any format supported by [ExoPlayer](https://github.com/google/ExoPlayer) corresponds to the current [Media3](https://github.com/androidx/media/) version 
+
+> it filters incoming Intent with scheme: "content://" ; action: "android.intent.action.VIEW" ; mimeType: "audio/*"
 
 > I'm usually active helping mobile-devs in https://discord.gg/programming for self-learning
 
@@ -18,11 +18,11 @@ Feel free to open an [issue](https://github.com/flammky/Music-Player/issues) for
 
 > Resolve Audio scan-able by [MediaStore](https://developer.android.com/reference/android/provider/MediaStore)
 >
-> (if insufficiemt a Full scanner will be implemented to for manual insert to MediaStore with User permission)
+> (if insufficient a Full scanner will be implemented to for manual insert to MediaStore with User permission)
 
 > Audio Metadata Extraction backed by [JAudioTagger](https://www.jthink.net/jaudiotagger/) 
 >
-> because of SAF artwork currently only read to [MP3, FLAC, MP4-AAC, OGG-Vorbis, OGG-Opus, WAV], writes in not tested, file specification will be routed to use `InputStream` directly `( TODO )`
+> artwork currently only read to [MP3, FLAC, MP4-AAC, OGG-Vorbis, OGG-Opus, WAV], write is not tested.
 
 > Artwork color generated Playback background on PlaybackController UI backed by [Palette API](https://developer.android.com/develop/ui/views/graphics/palette-colors) 
 >
@@ -60,13 +60,13 @@ Feel free to open an [issue](https://github.com/flammky/Music-Player/issues) for
 
 > Currently only [Library] and [User] screen are in consideration
 
-| Library Screen on Dark Mode (other destinations are not yet implemented, Playback services aren't shaped yet) |
+| Library Screen |
 | -------------- |
-| <img src="https://user-images.githubusercontent.com/94031495/199476765-6ae296fd-24dc-4e2f-b26a-c362b009fc5f.png" width="390"> <img src="https://user-images.githubusercontent.com/94031495/199476803-a413d9e9-acb8-4123-9d81-027920d22928.png" width="390"> |
+| <img src="https://user-images.githubusercontent.com/94031495/212595987-07a46e4f-535a-4e89-996a-ee4fcf8155cf.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/212595992-5a24d0c0-c250-4d64-b595-6445022c5d3d.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/212595996-2f4ebb8a-ae55-4cb6-a096-776032662325.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/212596000-9d2cf692-61a1-4a7b-a1df-280867107b3b.png" width="195"> |
 
 | Playback Control on Dark Mode |
 | -------------- |
-| <img src="https://user-images.githubusercontent.com/94031495/199474607-5a383a6b-9872-4829-9000-8427f622704b.png" width="390"> <img src="https://user-images.githubusercontent.com/94031495/199474916-4a96eff2-aff8-4c1f-af11-7d889de56cb6.png" width="390"> |
+| <img src="https://user-images.githubusercontent.com/94031495/199474607-5a383a6b-9872-4829-9000-8427f622704b.png" width="260"> <img src="https://user-images.githubusercontent.com/94031495/199474916-4a96eff2-aff8-4c1f-af11-7d889de56cb6.png" width="260"> <img src="https://user-images.githubusercontent.com/94031495/212596001-4453726c-367f-4d0f-99ac-6be0f51ac235.png" width="260"> |
 
 | Permission Pager + Light Mode|
 | -------------- |

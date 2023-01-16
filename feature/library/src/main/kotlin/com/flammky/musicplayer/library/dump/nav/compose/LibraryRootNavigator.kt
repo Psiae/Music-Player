@@ -9,7 +9,7 @@ import com.flammky.musicplayer.base.nav.compose.ComposeRootNavigator
 import com.flammky.musicplayer.library.R
 import com.flammky.musicplayer.library.presentation.Library
 
-object LibraryRootNavigator : ComposeRootNavigator() {
+object LibraryRootNavigator : ComposeRootNavigator("library") {
 
 	private val rootDestination = ComposeRootDestination(
 		routeID = "root_library",

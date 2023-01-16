@@ -69,17 +69,6 @@ private fun ShimmerDisplay(
 	modifier: Modifier = Modifier,
 ) {
 	Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-		Box(
-			modifier = Modifier
-				.fillMaxWidth(0.3f)
-				.height(20.dp)
-				.placeholder(
-					visible = true,
-					color = Theme.localShimmerSurface(),
-					shape = RoundedCornerShape(10.dp),
-					highlight = PlaceholderHighlight.shimmer(highlightColor = Theme.localShimmerColor())
-				)
-		)
 		Column(
 			modifier = Modifier
 				.fillMaxWidth(),
@@ -115,7 +104,6 @@ private fun DisplayColumn(
 			.then(modifier),
 		verticalArrangement = Arrangement.spacedBy(8.dp)
 	) {
-		DisplayHeader()
 		DisplayContent(
 			list = viewModel.listState.read(),
 			// child should report their index

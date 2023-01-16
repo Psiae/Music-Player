@@ -34,6 +34,7 @@ dependencies {
     api(project(":base"))
     api(project(":base:compose"))
     api(project(":base:media"))
+    api(project(":feature:base"))
 
     /* google.dagger */
     dependencies {

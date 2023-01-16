@@ -28,6 +28,7 @@ import com.flammky.musicplayer.base.compose.LocalLayoutVisibility
 import com.flammky.musicplayer.base.compose.NoInlineColumn
 import com.flammky.musicplayer.base.compose.rewrite
 import com.flammky.musicplayer.base.nav.compose.ComposeRootDestination
+import com.flammky.musicplayer.base.nav.compose.ComposeRootNavigation
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.*
 import com.flammky.musicplayer.main.MainActivity
@@ -81,9 +82,9 @@ private fun MainActivity.RootScaffold(
 					// will also consume insets for children
 					.statusBarsPadding(),
 				navController = navController,
-				startDestination = RootNavigator.navigators[0].getRootDestination().routeID,
+				startDestination = ComposeRootNavigation.navigators[0].getRootDestination().routeID,
 			) {
-				RootNavigator.navigators.forEach { it.addRootDestination(this, navController) }
+				ComposeRootNavigation.navigators.forEach { it.addRootDestination(this, navController) }
 			}.also {
 				topLevelNavigationRegisteredState.value = true
 			}
@@ -108,7 +109,7 @@ private fun MainActivity.BottomNavigation(
 	navController: NavController
 ) {
 	val backstackEntryState = navController.currentBackStackEntryAsState()
-	val navigators = RootNavigator.navigators
+	val navigators = ComposeRootNavigation.navigators
 	val currentRoute = backstackEntryState.value?.destination?.route
 
 	if (navigators.find { it.getRootDestination().routeID == currentRoute } == null) {
@@ -169,6 +170,7 @@ private fun MainActivity.BottomNavigation(
 							onClick = {
 								if (destination.routeID != backstackEntryState.value?.destination?.route) {
 									rootNavigator.navigateToRoot(navController) {
+										launchSingleTop = true
 										restoreState = true
 										popUpTo(startRouteID) {
 											saveState = true

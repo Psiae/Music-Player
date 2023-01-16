@@ -16,11 +16,11 @@ import javax.inject.Inject
 internal fun AuthGuard(
 	onAuthChanged: (Boolean?) -> Unit
 ) {
+	val vm = hiltViewModel<AuthGuardViewModel>()
 	val authState = remember {
 		mutableStateOf<Boolean?>(null)
 	}
 
-	val vm = hiltViewModel<AuthGuardViewModel>()
 	LaunchedEffect(key1 = Unit, block = {
 		vm.observeCurrentUser().collect {
 			authState.value = it != null

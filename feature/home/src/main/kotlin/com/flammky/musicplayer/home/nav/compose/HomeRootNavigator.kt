@@ -10,7 +10,7 @@ import com.flammky.musicplayer.base.nav.compose.ComposeRootNavigator
 import com.flammky.musicplayer.home.Home
 import com.flammky.musicplayer.home.R
 
-object HomeRootNavigator : ComposeRootNavigator() {
+object HomeRootNavigator : ComposeRootNavigator("home") {
 
 	private val rootDestination = ComposeRootDestination(
 		routeID = "root_home",

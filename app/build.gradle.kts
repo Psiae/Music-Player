@@ -94,6 +94,7 @@ dependencies {
     implementation(project(":base:compose"))
     implementation(project(":base:lifecycle"))
     implementation(project(":base:media:medialib"))
+    implementation(project(":feature:base"))
     implementation(project(":feature:home"))
     implementation(project(":feature:search"))
     implementation(project(":feature:library"))

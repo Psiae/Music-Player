@@ -4,7 +4,7 @@ import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavOptionsBuilder
 
-abstract class ComposeRootNavigator {
+abstract class ComposeRootNavigator(val id: String) {
 	abstract fun getRootDestination(): ComposeRootDestination
 
 	abstract fun navigateToRoot(

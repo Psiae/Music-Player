@@ -18,7 +18,7 @@ internal fun PermGuard(
 	val vm = hiltViewModel<PermGuardViewModel>()
 
 	val allowState = remember {
-		mutableStateOf<Boolean?>(null)
+		mutableStateOf<Boolean?>(contextHelper.permissions.common.hasReadExternalStorage)
 	}
 
 	val lo = LocalLifecycleOwner.current

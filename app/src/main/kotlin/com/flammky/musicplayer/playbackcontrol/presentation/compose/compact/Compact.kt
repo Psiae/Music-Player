@@ -846,8 +846,8 @@ private fun AnimatedProgressBar(
 			val bufferedProgress by animateFloatAsState(
 				targetValue = when {
 					bufferedPosition == PlaybackConstants.POSITION_UNSET ||
-						duration == PlaybackConstants.DURATION_UNSET -> 0f
-					bufferedPosition > duration -> 1f
+						duration == PlaybackConstants.DURATION_UNSET ||
+					bufferedPosition > duration -> 0f
 					else -> bufferedPosition.inWholeMilliseconds.toFloat() / duration.inWholeMilliseconds
 				},
 				animationSpec = tween(150)
@@ -855,7 +855,7 @@ private fun AnimatedProgressBar(
 			LinearProgressIndicator(
 				modifier = Modifier.fillMaxSize(),
 				progress = bufferedProgress,
-				color = Theme.surfaceVariantColorAsState().value.copy(alpha = 0.5f),
+				color = Theme.backgroundContentColorAsState().value.copy(alpha = 0.25f),
 				trackColor = Color.Transparent
 			)
 		}
@@ -874,8 +874,8 @@ private fun AnimatedProgressBar(
 			val progress by animateFloatAsState(
 				targetValue = when {
 					position == PlaybackConstants.POSITION_UNSET ||
-						duration == PlaybackConstants.DURATION_UNSET ||
-						position > duration -> 0f
+						duration == PlaybackConstants.DURATION_UNSET -> 0f
+					position > duration -> 0f
 					else -> position.inWholeMilliseconds.toFloat() / duration.inWholeMilliseconds
 				},
 				animationSpec = tween(150)

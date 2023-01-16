@@ -10,7 +10,7 @@ import com.flammky.musicplayer.base.nav.compose.ComposeRootNavigator
 import com.flammky.musicplayer.search.R
 import com.flammky.musicplayer.search.Search
 
-object SearchRootNavigator : ComposeRootNavigator() {
+object SearchRootNavigator : ComposeRootNavigator("search") {
 
 	private val rootDestination = ComposeRootDestination(
 		routeID = "root_search",

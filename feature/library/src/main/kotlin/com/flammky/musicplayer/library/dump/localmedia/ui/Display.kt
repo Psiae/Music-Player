@@ -2,24 +2,30 @@ package com.flammky.musicplayer.library.dump.localmedia.ui
 
 import android.content.res.Configuration.UI_MODE_NIGHT_YES
 import android.graphics.Bitmap
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -33,6 +39,7 @@ import coil.request.CachePolicy
 import coil.request.ImageRequest
 import com.flammky.androidx.viewmodel.compose.activityViewModel
 import com.flammky.common.kotlin.coroutines.safeCollect
+import com.flammky.musicplayer.base.compose.NoInlineBox
 import com.flammky.musicplayer.base.theme.compose.backgroundColorAsState
 import com.flammky.musicplayer.base.theme.compose.backgroundContentColorAsState
 import com.flammky.musicplayer.base.theme.compose.elevatedTonalSurfaceColorAsState
@@ -104,9 +111,10 @@ private fun DisplayColumn(
 			.then(modifier),
 		verticalArrangement = Arrangement.spacedBy(8.dp)
 	) {
+		DisplayHeader(viewModel = viewModel)
 		DisplayContent(
 			list = viewModel.listState.read(),
-			// child should report their index
+			// request by index is bad, we should generate `ID` instead
 			onItemClicked = { list, item -> viewModel.play(list, list.indexOf(item)) },
 			navigate = navigate
 		)
@@ -116,12 +124,93 @@ private fun DisplayColumn(
 @Composable
 private fun DisplayHeader(
 	modifier: Modifier = Modifier,
-	textStyle: TextStyle = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Medium),
+	viewModel: LocalSongViewModel
 ) {
-	Text(
-		modifier = modifier,
-		text = "Device Songs", style = textStyle
-	)
+	Row(
+		modifier = Modifier.fillMaxWidth().height(30.dp),
+		horizontalArrangement = Arrangement.SpaceBetween,
+		verticalAlignment = Alignment.CenterVertically
+	) {
+		Text(
+			text = "Device Songs",
+			style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+			color = com.flammky.musicplayer.base.theme.Theme.backgroundContentColorAsState().value
+		)
+		Box(modifier = modifier
+			.size(26.dp)
+			.clickable {
+				viewModel.refresh()
+			}
+		) {
+			NoInlineBox(
+				modifier = Modifier
+					.size(18.dp)
+					.align(Alignment.Center)
+			) {
+				val indicatorColor =
+					com.flammky.musicplayer.base.theme.Theme.backgroundContentColorAsState().value
+				if (viewModel.refreshing.value) {
+					CircularProgressIndicator(
+						modifier = Modifier.fillMaxSize(),
+						color = indicatorColor,
+						strokeWidth = 2.dp
+					)
+					return@NoInlineBox
+				}
+				val strokeWidth = 2.dp
+				val strokeWidthPx = with(LocalDensity.current) { strokeWidth.toPx() }
+				val progress = 0.8f
+				val pathWidthPx = 10f
+				val strokeWidthRadius = strokeWidthPx / 2
+
+				val arrow = Path()
+					.apply {
+						moveTo(
+							0f,
+							-pathWidthPx
+						)
+						lineTo(
+							pathWidthPx,
+							0f
+						)
+						lineTo(
+							0f,
+							pathWidthPx
+						)
+						close()
+					}
+
+				Canvas(
+					modifier = Modifier
+						.rotate(progress * 0.5f * 2f * 360)
+						.fillMaxSize(),
+				) {
+					drawArc(
+						color = indicatorColor,
+						startAngle = -90f,
+						sweepAngle = 360 * progress,
+						useCenter = false,
+						size = Size(width = size.width - strokeWidthPx, height = size.width - strokeWidthPx),
+						style = Stroke(width = strokeWidthPx)
+					)
+					withTransform(
+						transformBlock = {
+							translate(top = strokeWidthPx / 4, left = size.width / 2)
+							rotate(
+								degrees = progress * 360,
+								pivot = Offset(x = 0f, y = size.height / 2 - strokeWidthRadius / 2)
+							)
+						}
+					) {
+						drawPath(
+							path = arrow,
+							color = indicatorColor,
+						)
+					}
+				}
+			}
+		}
+	}
 }
 
 @Composable

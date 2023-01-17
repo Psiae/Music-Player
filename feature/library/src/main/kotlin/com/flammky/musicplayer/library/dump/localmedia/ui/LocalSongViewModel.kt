@@ -23,7 +23,10 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -50,20 +53,15 @@ internal class LocalSongViewModel @Inject constructor(
 
 	init {
 		viewModelScope.launch {
+			observableLocalSongs.collectRefresh().safeCollect {
+				_repoRefresh.overwrite(it)
+			}
+		}
+		viewModelScope.launch {
 			observableLocalSongs.refresh().join()
 			_loaded.overwrite(true)
-			observableLocalSongs.collectLocalSongs().first().let {
+			observableLocalSongs.collectLocalSongs().safeCollect {
 				_listState.overwrite(it)
-			}
-			viewModelScope.launch {
-				observableLocalSongs.collectLocalSongs().safeCollect {
-					_listState.overwrite(it)
-				}
-			}
-			viewModelScope.launch {
-				observableLocalSongs.collectRefresh().safeCollect {
-					_repoRefresh.overwrite(it)
-				}
 			}
 		}
 	}

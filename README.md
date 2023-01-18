@@ -20,11 +20,11 @@ Feel free to open an [issue](https://github.com/flammky/Music-Player/issues) for
 >
 > (if insufficient a Full scanner will be implemented to for manual insert to MediaStore with User permission)
 
-> Audio Metadata Extraction backed by [JAudioTagger](https://www.jthink.net/jaudiotagger/) 
+> Audio Metadata Extraction with [JAudioTagger](https://www.jthink.net/jaudiotagger/) 
 >
 > artwork currently only read to [MP3, FLAC, MP4-AAC, OGG-Vorbis, OGG-Opus, WAV], write is not tested.
 
-> Artwork color generated Playback background on PlaybackController UI backed by [Palette API](https://developer.android.com/develop/ui/views/graphics/palette-colors) 
+> Artwork color generated Playback background on PlaybackController UI with [Palette API](https://developer.android.com/develop/ui/views/graphics/palette-colors) 
 >
 > (considering to also mix it with the theme accent)
 
@@ -66,7 +66,7 @@ Feel free to open an [issue](https://github.com/flammky/Music-Player/issues) for
 
 | Playback Control on Dark Mode |
 | -------------- |
-| <img src="https://user-images.githubusercontent.com/94031495/199474607-5a383a6b-9872-4829-9000-8427f622704b.png" width="260"> <img src="https://user-images.githubusercontent.com/94031495/199474916-4a96eff2-aff8-4c1f-af11-7d889de56cb6.png" width="260"> <img src="https://user-images.githubusercontent.com/94031495/212596001-4453726c-367f-4d0f-99ac-6be0f51ac235.png" width="260"> |
+| <img src="https://user-images.githubusercontent.com/94031495/199474607-5a383a6b-9872-4829-9000-8427f622704b.png" width="260"> <img src="https://user-images.githubusercontent.com/94031495/212596001-4453726c-367f-4d0f-99ac-6be0f51ac235.png" width="260"> |
 
 | Permission Pager + Light Mode|
 | -------------- |

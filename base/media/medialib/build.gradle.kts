@@ -64,6 +64,14 @@ dependencies {
         api("androidx.annotation:annotation:$v")
     }
 
+    /* google.android */
+    dependencies {
+
+        // Exoplayer
+        val vExoPlayer = "2.18.2"
+        api("com.google.android.exoplayer:extension-mediasession:$vExoPlayer")
+    }
+
     /* google.guava */
     dependencies {
         val v = "31.1-android"

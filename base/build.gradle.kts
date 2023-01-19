@@ -29,6 +29,37 @@ dependencies {
     api(project("common:androidx"))
 
     //
+    // UI
+    //
+
+    /* android.material */
+    dependencies {
+        val v = "1.7.0"
+        api("com.google.android.material:material:$v")
+    }
+
+    /* androidx.core */
+    dependencies {
+        val vKTX = "1.9.0"
+        val vSplashScreen = "1.0.0"
+
+        api("androidx.core:core-ktx:$vKTX")
+        api("androidx.core:core-splashscreen:$vSplashScreen")
+    }
+
+    /* androidx.lifecycle */
+    dependencies {
+        val v = "2.6.0-alpha03"
+        api("androidx.lifecycle:lifecycle-runtime-ktx:$v")
+    }
+
+    /* androidx.palette */
+    dependencies {
+        val v = "1.0.0"
+        api("androidx.palette:palette:$v")
+    }
+
+    //
     // Graphics
     //
 
@@ -37,6 +68,13 @@ dependencies {
         val v = "2.2.2"
         api("io.coil-kt:coil:$v")
         api("io.coil-kt:coil-gif:$v")
+    }
+
+    /* wasabeef.transformers*/
+    dependencies {
+        val vCoil = "1.0.6"
+        api("jp.wasabeef.transformers:coil:$vCoil")
+        api("jp.wasabeef.transformers:coil-gpu:$vCoil")
     }
 
     //
@@ -59,6 +97,31 @@ dependencies {
     }
 
     //
+    // Java-common
+    //
+
+    /* google.guava */
+    dependencies {
+
+        // android
+        val vAndroid = "31.1-android"
+        api("com.google.guava:guava:$vAndroid")
+    }
+
+    //
+    // Concurrency
+    //
+
+    /* Androidx.concurrent */
+    dependencies {
+
+        // Futures
+        val vFutures = "1.1.0"
+        api("androidx.concurrent:concurrent-futures:$vFutures")
+        api("androidx.concurrent:concurrent-futures-ktx:$vFutures")
+    }
+
+    //
     // DI
     //
 
@@ -69,18 +132,6 @@ dependencies {
         val vHiltAndroid = "2.44"
         api("com.google.dagger:hilt-android:$vHiltAndroid")
         kapt("com.google.dagger:hilt-android-compiler:$vHiltAndroid")
-    }
-
-    //
-    // Java-common
-    //
-
-    /* google.guava */
-    dependencies {
-
-        // android
-        val vAndroid = "31.1-android"
-        api("com.google.guava:guava:$vAndroid")
     }
 
     //
@@ -113,6 +164,12 @@ dependencies {
         ksp("androidx.room:room-compiler:$v")
     }
 
+    /* google.firebase */
+    dependencies {
+        val vAuth = "21.0.8"
+        api("com.google.firebase:firebase-auth-ktx:$vAuth")
+    }
+
     //
     // Secure
     //
@@ -130,6 +187,14 @@ dependencies {
     dependencies {
         val v = "1.1.1"
         api("androidx.startup:startup-runtime:$v")
+    }
+
+    /* jetbrains.kotlin */
+    dependencies {
+
+        // reflect
+        val vReflect = "1.7.10"
+        api("org.jetbrains.kotlin:kotlin-reflect:$vReflect")
     }
 }
 

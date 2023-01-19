@@ -79,7 +79,7 @@ internal fun TransitioningCompactPlaybackControl(
 	val coroutineScope = rememberCoroutineScope()
 
 	val sessionAuthState = remember {
-		mutableStateOf(vm.currentAuth())
+		mutableStateOf(vm.currentAuth)
 	}
 
 	val controllerState = remember {

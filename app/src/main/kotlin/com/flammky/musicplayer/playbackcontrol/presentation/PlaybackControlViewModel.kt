@@ -13,9 +13,12 @@ import com.flammky.musicplayer.playbackcontrol.presentation.controller.PlaybackC
 import com.flammky.musicplayer.playbackcontrol.presentation.presenter.PlaybackControlPresenter
 import com.flammky.musicplayer.playbackcontrol.presentation.presenter.PlaybackObserver
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.*
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.annotation.concurrent.Immutable
 import javax.inject.Inject
@@ -36,9 +39,10 @@ internal class PlaybackControlViewModel @Inject constructor(
 	}
 
 	/**
-	 * get the currently active user
+	 * the currently active user
 	 */
-	fun currentAuth(): User? = presenter.auth.currentUser
+	val currentAuth: User?
+		get() = presenter.auth.currentUser
 
 	/**
 	 * observe the currently active User as a flow,
@@ -52,7 +56,7 @@ internal class PlaybackControlViewModel @Inject constructor(
 	 *
 	 * **
 	 * providing a Job means that cancelling the said Job will also cancel all the Job within the
-	 * controller, defaults to the ViewModel job
+	 * controller
 	 * **
 	 */
 	fun createUserPlaybackController(
@@ -61,7 +65,7 @@ internal class PlaybackControlViewModel @Inject constructor(
 	): PlaybackController {
 		return presenter.createUserPlaybackController(
 			user = user,
-			coroutineContext = viewModelScope.coroutineContext + coroutineContext.minusKey(CoroutineDispatcher)
+			coroutineContext = coroutineContext
 		)
 	}
 

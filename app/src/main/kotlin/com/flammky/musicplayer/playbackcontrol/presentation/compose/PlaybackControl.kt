@@ -255,7 +255,7 @@ private fun playbackControllerAsState(
 ): State<PlaybackController?> {
 	val coroutineScope = rememberCoroutineScope()
 	val userState = remember {
-		mutableStateOf<User?>(viewModel.currentAuth())
+		mutableStateOf<User?>(viewModel.currentAuth)
 	}
 	val controllerState = remember {
 		mutableStateOf<PlaybackController?>(userState.value?.let { id ->

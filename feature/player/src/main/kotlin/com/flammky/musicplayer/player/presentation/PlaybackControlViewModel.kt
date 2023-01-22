@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalStdlibApi::class)
 
-package com.flammky.musicplayer.playbackcontrol.presentation
+package com.flammky.musicplayer.player.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -9,9 +9,9 @@ import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.android.medialib.providers.metadata.VirtualFileMetadata
 import com.flammky.musicplayer.base.user.User
-import com.flammky.musicplayer.playbackcontrol.presentation.controller.PlaybackController
-import com.flammky.musicplayer.playbackcontrol.presentation.presenter.PlaybackControlPresenter
-import com.flammky.musicplayer.playbackcontrol.presentation.presenter.PlaybackObserver
+import com.flammky.musicplayer.player.presentation.controller.PlaybackController
+import com.flammky.musicplayer.player.presentation.presenter.PlaybackControlPresenter
+import com.flammky.musicplayer.player.presentation.presenter.PlaybackObserver
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job

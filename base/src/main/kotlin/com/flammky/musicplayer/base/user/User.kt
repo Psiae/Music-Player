@@ -1,5 +1,7 @@
 package com.flammky.musicplayer.base.user
 
+import java.util.*
+
 /**
  * Abstract class that represent a USER instance
  *
@@ -15,5 +17,18 @@ abstract class User(
 		require(uid.isNotEmpty()) {
 			"User ID=$uid cannot be empty"
 		}
+		require(verify.isNotEmpty()) {
+			"User Verify=$verify cannot be empty"
+		}
+	}
+
+	override fun equals(other: Any?): Boolean {
+		return other is User &&
+			other.uid == this.uid &&
+			other.verify == this.verify
+	}
+
+	override fun hashCode(): Int {
+		return Objects.hash(uid, verify)
 	}
 }

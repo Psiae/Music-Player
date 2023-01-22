@@ -2,11 +2,11 @@ package com.flammky.musicplayer.playbackcontrol.presentation.r
 
 import androidx.annotation.GuardedBy
 import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConnection
+import com.flammky.musicplayer.base.media.playback.OldPlaybackQueue
 import com.flammky.musicplayer.base.media.playback.PlaybackConstants
-import com.flammky.musicplayer.base.media.playback.PlaybackQueue
 import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.core.common.sync
-import com.flammky.musicplayer.playbackcontrol.presentation.presenter.PlaybackObserver
+import com.flammky.musicplayer.player.presentation.presenter.PlaybackObserver
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import timber.log.Timber
@@ -21,11 +21,11 @@ internal class RealPlaybackQueueCollector(
 
 	private val _lock = Any()
 
-	private val localUNSET = PlaybackQueue.UNSET.copy()
+	private val localUNSET = OldPlaybackQueue.UNSET.copy()
 
 	private val _queueStateFlow = MutableStateFlow(localUNSET)
 
-	override val queueStateFlow: StateFlow<PlaybackQueue> =
+	override val queueStateFlow: StateFlow<OldPlaybackQueue> =
 		_queueStateFlow.mapLatest { if (it === localUNSET) PlaybackConstants.QUEUE_UNSET else it }
 			.stateIn(scope, SharingStarted.Lazily, PlaybackConstants.QUEUE_UNSET)
 
@@ -49,7 +49,7 @@ internal class RealPlaybackQueueCollector(
 			val s = playbackConnection.requestUserSessionAsync(user).await()
 			_queueStateFlow.update {
 				(s.controller.getQueue()
-					.takeIf { it != PlaybackQueue.UNSET } ?: localUNSET).also { new ->
+					.takeIf { it != OldPlaybackQueue.UNSET } ?: localUNSET).also { new ->
 					Timber.d(
 						"""
 						QueueCollector updateQueue
@@ -92,7 +92,7 @@ internal class RealPlaybackQueueCollector(
 		if (queueCollectorJob?.isActive == true) {
 			return
 		}
-		_queueStateFlow.emit(PlaybackQueue.UNSET)
+		_queueStateFlow.emit(OldPlaybackQueue.UNSET)
 		queueCollectorJob = scope.launch {
 			val owner = Any()
 			playbackConnection.requestUserSessionAsync(user).await().controller

@@ -14,9 +14,9 @@ object PlaybackConstants {
 	/**
 	 * Unset value of a PlaybackQueue
 	 */
-	val QUEUE_UNSET: PlaybackQueue
+	val QUEUE_UNSET: OldPlaybackQueue
 		// avoid circular reference on `INDEX_UNSET`
-		get() = PlaybackQueue.UNSET
+		get() = OldPlaybackQueue.UNSET
 
 	/**
 	 * Unset value of PlaybackProperties

@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalSnapperApi::class, ExperimentalSnapperApi::class)
 
-package com.flammky.musicplayer.playbackcontrol.presentation.compose
+package com.flammky.musicplayer.player.presentation.compose
 
 import android.annotation.SuppressLint
 import android.content.pm.ActivityInfo
@@ -46,7 +46,6 @@ import coil.request.ImageRequest
 import com.flammky.androidx.content.context.findActivity
 import com.flammky.common.kotlin.comparable.clamp
 import com.flammky.common.kotlin.comparable.clampPositive
-import com.flammky.musicplayer.R
 import com.flammky.musicplayer.base.compose.NoInline
 import com.flammky.musicplayer.base.compose.rememberLocalContextHelper
 import com.flammky.musicplayer.base.media.playback.*
@@ -54,10 +53,12 @@ import com.flammky.musicplayer.base.media.playback.RepeatMode
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.*
 import com.flammky.musicplayer.base.user.User
-import com.flammky.musicplayer.playbackcontrol.presentation.PlaybackControlTrackMetadata
-import com.flammky.musicplayer.playbackcontrol.presentation.PlaybackControlViewModel
-import com.flammky.musicplayer.playbackcontrol.presentation.controller.PlaybackController
-import com.flammky.musicplayer.playbackcontrol.presentation.presenter.PlaybackObserver
+import com.flammky.musicplayer.player.R
+import com.flammky.musicplayer.player.presentation.PlaybackControlTrackMetadata
+import com.flammky.musicplayer.player.presentation.PlaybackControlViewModel
+import com.flammky.musicplayer.player.presentation.controller.PlaybackController
+import com.flammky.musicplayer.player.presentation.presenter.PlaybackObserver
+import com.flammky.musicplayer.player.presentation.queue.MainCurrentPlaybackQueueScreen
 import com.google.accompanist.pager.*
 import dev.chrisbanes.snapper.ExperimentalSnapperApi
 import kotlinx.coroutines.*
@@ -74,7 +75,7 @@ import kotlin.time.Duration.Companion.milliseconds
  * @param showSelfState whether to show this composable
  */
 @Composable
-internal fun TransitioningPlaybackControl(
+fun TransitioningPlaybackControl(
 	modifier: Modifier = Modifier,
 	showSelfState: State<Boolean>,
 	dismiss: () -> Unit
@@ -183,6 +184,10 @@ private fun ContentTransition(
 			// else keep whatever it was
 		}
 
+		val showQueueScreen = rememberSaveable {
+			mutableStateOf<Boolean>(false)
+		}
+
 		Content(
 			modifier = modifier
 				.fillMaxWidth()
@@ -195,7 +200,137 @@ private fun ContentTransition(
 				),
 			viewModel = viewModel,
 			transitionedState = transitionedState,
-			dismiss = dismiss
+			dismiss = dismiss,
+			openQueueScreen = { showQueueScreen.value = true }
+		)
+
+		TransitioningQueueScreen(
+			showSelfState = showQueueScreen,
+			dismiss = { showQueueScreen.value = false }
+		)
+	}
+}
+
+@Composable
+private fun TransitioningQueueScreen(
+	modifier: Modifier = Modifier,
+	showSelfState: State<Boolean>,
+	dismiss: () -> Unit
+) {
+	val showSelf = showSelfState.value
+	val savedTransitionedState = rememberSaveable { mutableStateOf(false) }
+	// remember the first value we got from the saver
+	val savedWasTransitionedState = remember { mutableStateOf(savedTransitionedState.value) }
+
+	val localDismiss = remember(dismiss) {
+		{
+			savedTransitionedState.value = false
+			dismiss()
+		}
+	}
+
+	if (showSelf) {
+		BackHandler(onBack = localDismiss)
+		LockScreenOrientation(landscape = false)
+	}
+
+	BoxWithConstraints(modifier = modifier) {
+
+		Box(
+			modifier = Modifier
+				.fillMaxSize(fraction = if (showSelf) 1f else 0f)
+				// Ensure that background contents are not clickable during transition
+				.clickable(
+					interactionSource = remember { MutableInteractionSource() },
+					indication = null,
+					onClick = {}
+				),
+		)
+
+		// Think if there is somewhat better way to do this
+		val transitionHeightState = updateTransition(targetState = showSelf, label = "")
+			.animateDp(
+				label = "Playback Control Transition",
+				targetValueByState = { targetShowSelf ->
+					if (targetShowSelf) maxHeight else 0.dp
+				},
+				transitionSpec = {
+					remember(targetState) {
+						tween(
+							durationMillis = when {
+								savedWasTransitionedState.value -> {
+									savedWasTransitionedState.value = false
+									0
+								}
+								targetState -> 250
+								else -> 150
+							},
+							easing = if (targetState) FastOutSlowInEasing else LinearOutSlowInEasing
+						)
+					}
+				}
+			)
+
+		NoInline {
+
+			if (transitionHeightState.value == maxHeight) {
+				savedTransitionedState.value = true
+			}
+
+			QueueContentTransition(
+				heightTargetDp = maxHeight,
+				heightDpState = transitionHeightState,
+				dismiss = localDismiss
+			)
+		}
+	}
+}
+
+@Composable
+private fun QueueContentTransition(
+	modifier: Modifier = Modifier,
+	heightTargetDp: Dp,
+	heightDpState: State<Dp>,
+	dismiss: () -> Unit
+) {
+	val transitionedState = remember { mutableStateOf(false) }
+
+	val yOffsetState = heightDpState.derive { heightDp ->
+		heightTargetDp - heightDp
+	}
+
+	// allows early return
+	NoInlineBox(modifier) {
+
+		// switch the state
+		when (yOffsetState.value) {
+			0.dp -> {
+				// no offset, fully visible, transitioned
+				transitionedState.value = true
+			}
+			heightTargetDp -> {
+				// yOffset == heightTargetDp means that the layout is fully hidden,
+				transitionedState.value = false
+				// in that case remove content from the composition tree
+				return@NoInlineBox
+			}
+			// else keep whatever it was
+		}
+
+		MainCurrentPlaybackQueueScreen(
+			modifier = modifier
+				.fillMaxWidth()
+				.height(heightTargetDp)
+				.offset(0.dp, yOffsetState.value)
+				.background(
+					if (transitionedState.value) {
+						Theme.backgroundColorAsState().value
+					} else {
+						Theme
+							.absoluteBackgroundColorAsState().value
+							.copy(alpha = 0.94f)
+					}
+				)
 		)
 	}
 }
@@ -205,7 +340,8 @@ private fun Content(
 	modifier: Modifier,
 	viewModel: PlaybackControlViewModel,
 	transitionedState: State<Boolean>,
-	dismiss: () -> Unit
+	dismiss: () -> Unit,
+	openQueueScreen: () -> Unit
 ) {
 	val sessionController = playbackControllerAsState(viewModel = viewModel).value
 
@@ -242,7 +378,8 @@ private fun Content(
 						.padding(top = 20.dp)
 						.alpha(animatedAlphaState.value),
 					viewModel,
-					sessionController
+					sessionController,
+					openQueueScreen = openQueueScreen
 				)
 			}
 		}
@@ -285,9 +422,9 @@ private fun playbackControllerAsState(
 
 @Composable
 private fun DetailToolbar(
-	modifier: Modifier,
-	controller: PlaybackController?,
-	dismiss: () -> Unit
+    modifier: Modifier,
+    controller: PlaybackController?,
+    dismiss: () -> Unit
 ) {
 	Box(modifier = modifier) {
 		Column(
@@ -306,7 +443,7 @@ private fun DetailToolbar(
 				if (controller != null) {
 					Icon(
 						modifier = Modifier.size(26.dp),
-						painter = painterResource(id = R.drawable.more_vert_48px),
+						painter = painterResource(id = com.flammky.musicplayer.base.R.drawable.more_vert_48px),
 						contentDescription = "more",
 						tint = Theme.backgroundContentColorAsState().value
 					)
@@ -346,6 +483,7 @@ private fun DetailsContent(
 	modifier: Modifier,
 	viewModel: PlaybackControlViewModel,
 	playbackController: PlaybackController,
+	openQueueScreen: () -> Unit
 ) {
 	BoxWithConstraints(modifier = modifier) {
 		val maxHeight = maxHeight
@@ -372,6 +510,13 @@ private fun DetailsContent(
 				modifier = Modifier.padding(top = 5.dp),
 				controller = playbackController
 			)
+
+			Spacer(modifier = Modifier.height(5.dp))
+
+			TimelineRow(
+				modifier = Modifier.fillMaxWidth(0.8f),
+				openQueueScreen = openQueueScreen
+			)
 		}
 	}
 }
@@ -383,10 +528,10 @@ private fun TracksPagerDisplay(
 ) {
 	val coroutineScope = rememberCoroutineScope()
 	val observerState = remember { mutableStateOf<PlaybackObserver?>(null) }
-	val queueState = remember { mutableStateOf(PlaybackQueue.UNSET) }
+	val queueState = remember { mutableStateOf(OldPlaybackQueue.UNSET) }
 
 	DisposableEffect(key1 = controller) {
-		queueState.value = PlaybackQueue.UNSET
+		queueState.value = OldPlaybackQueue.UNSET
 		val supervisor = SupervisorJob()
 		val observer = controller.createPlaybackObserver()
 			.apply {
@@ -551,12 +696,12 @@ private fun RadialPlaybackPaletteBackground(
 @OptIn(ExperimentalPagerApi::class)
 @Composable
 private fun TracksPager(
-	queueState: State<PlaybackQueue>,
+	queueState: State<OldPlaybackQueue>,
 	metadataStateForId: @Composable (String) -> State<PlaybackControlTrackMetadata>,
-	seekIndex: suspend (PlaybackQueue, Int) -> Boolean,
+	seekIndex: suspend (OldPlaybackQueue, Int) -> Boolean,
 ) {
 	val queueOverrideAmountState = remember { mutableStateOf(0) }
-	val queueOverrideState = remember { mutableStateOf<PlaybackQueue?>(null) }
+	val queueOverrideState = remember { mutableStateOf<OldPlaybackQueue?>(null) }
 	val maskedQueueState = queueState.rememberDerive(calculation = { queueOverrideState.value ?: it })
 	val queue = maskedQueueState.value
 	val queueIndex = queue.currentIndex
@@ -719,11 +864,11 @@ private fun PagerListenUserDrag(
 @OptIn(ExperimentalPagerApi::class)
 @Composable
 private fun PagerListenPageState(
-	pagerState: PagerState,
-	queueState: State<PlaybackQueue>,
-	touchedState: State<Boolean>,
-	shouldSeekIndex: (Int) -> Boolean,
-	seekIndex: suspend (Int) -> Boolean
+    pagerState: PagerState,
+    queueState: State<OldPlaybackQueue>,
+    touchedState: State<Boolean>,
+    shouldSeekIndex: (Int) -> Boolean,
+    seekIndex: suspend (Int) -> Boolean
 ) {
 	val dragging by pagerState.interactionSource.collectIsDraggedAsState()
 	val touched by touchedState
@@ -869,7 +1014,7 @@ private fun PlaybackControls(
 
 		@Suppress("DeferredResultUnused")
 		PlaybackControlButtons(
-			propertiesState,
+			playbackPropertiesState = propertiesState,
 			play = {
 				rememberUpdatedController.value.requestPlayAsync()
 			},
@@ -877,10 +1022,10 @@ private fun PlaybackControls(
 				rememberUpdatedController.value.requestSetPlayWhenReadyAsync(false)
 			},
 			next = {
-				rememberUpdatedController.value.requestSeekNextAsync(Duration.ZERO)
+				rememberUpdatedController.value.requestSeekNextAsync(ZERO)
 			},
 			previous = {
-				rememberUpdatedController.value.requestSeekPreviousAsync(Duration.ZERO)
+				rememberUpdatedController.value.requestSeekPreviousAsync(ZERO)
 			},
 			enableRepeat = {
 				rememberUpdatedController.value.requestSetRepeatModeAsync(RepeatMode.ONE)
@@ -1287,6 +1432,37 @@ private fun PlaybackControlProgressSeekbar(
 				)
 			}
 		}
+	}
+}
+
+@Composable
+private fun TimelineRow(
+	modifier: Modifier,
+	openQueueScreen: () -> Unit
+) = Row(
+	modifier = modifier
+		.fillMaxWidth()
+		.height(30.dp), 
+	horizontalArrangement = Arrangement.SpaceBetween
+) {
+	Box(modifier = Modifier
+		.fillMaxWidth()
+		.weight(1f))
+	Box(
+		modifier = Modifier
+			.size(30.dp)
+			.clickable {
+				openQueueScreen()
+			}
+	) {
+		Icon(
+			modifier = Modifier
+				.size(24.dp)
+				.align(Alignment.Center),
+			painter = painterResource(id = R.drawable.glyph_playlist_100px),
+			contentDescription = "queue",
+			tint = Theme.backgroundContentColorAsState().value
+		)
 	}
 }
 

@@ -122,7 +122,7 @@ class RealPlaybackController(
 	private var _playWhenReady: Boolean = false
 	private var _repeatMode: RepeatMode = RepeatMode.OFF
 	private var _shuffleMode: ShuffleMode = ShuffleMode.OFF
-	private var _queue: PlaybackQueue = PlaybackQueue.UNSET
+	private var _queue: OldPlaybackQueue = OldPlaybackQueue.UNSET
 
 	override val looper: Looper
 		get() = TODO("Not yet implemented")
@@ -151,7 +151,7 @@ class RealPlaybackController(
 		TODO("Not yet implemented")
 	}
 
-	override suspend fun getQueue(): PlaybackQueue {
+	override suspend fun getQueue(): OldPlaybackQueue {
 		TODO("Not yet implemented")
 	}
 
@@ -203,7 +203,7 @@ class RealPlaybackController(
 		TODO("Not yet implemented")
 	}
 
-	override suspend fun setQueue(queue: PlaybackQueue): Boolean {
+	override suspend fun setQueue(queue: OldPlaybackQueue): Boolean {
 		TODO("Not yet implemented")
 	}
 

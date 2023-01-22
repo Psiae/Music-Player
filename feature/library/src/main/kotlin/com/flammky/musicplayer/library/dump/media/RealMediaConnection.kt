@@ -9,7 +9,7 @@ import com.flammky.android.medialib.temp.image.ArtworkProvider
 import com.flammky.musicplayer.base.Playback
 import com.flammky.musicplayer.base.media.MediaConstants
 import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConnection
-import com.flammky.musicplayer.base.media.playback.PlaybackQueue
+import com.flammky.musicplayer.base.media.playback.OldPlaybackQueue
 import com.flammky.musicplayer.base.media.r.MediaMetadataCacheRepository
 import com.flammky.musicplayer.base.user.User
 import kotlinx.collections.immutable.toPersistentList
@@ -45,7 +45,7 @@ internal class RealMediaConnection(
 		coroutineScope.launch(Playback.DISPATCHER) {
 			playbackConnection.requestUserSessionAsync(user).await().controller.withLooperContext {
 				val mappedQueue = queue.map { it.first }.toPersistentList()
-				setQueue(PlaybackQueue(mappedQueue, index))
+				setQueue(OldPlaybackQueue(mappedQueue, index))
 				play()
 			}
 		}

@@ -1,4 +1,4 @@
-package com.flammky.musicplayer.playbackcontrol.presentation.presenter
+package com.flammky.musicplayer.player.presentation.presenter
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -10,15 +10,15 @@ import com.flammky.android.medialib.temp.image.ArtworkProvider
 import com.flammky.musicplayer.base.auth.AuthService
 import com.flammky.musicplayer.base.media.MetadataProvider
 import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConnection
+import com.flammky.musicplayer.base.media.playback.OldPlaybackQueue
 import com.flammky.musicplayer.base.media.playback.PlaybackConstants
-import com.flammky.musicplayer.base.media.playback.PlaybackQueue
 import com.flammky.musicplayer.base.media.playback.RepeatMode
 import com.flammky.musicplayer.base.media.playback.ShuffleMode
 import com.flammky.musicplayer.base.media.r.MediaMetadataCacheRepository
 import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.core.common.sync
-import com.flammky.musicplayer.playbackcontrol.presentation.controller.PlaybackController
-import com.flammky.musicplayer.playbackcontrol.presentation.r.RealPlaybackController
+import com.flammky.musicplayer.player.presentation.controller.PlaybackController
+import com.flammky.musicplayer.player.presentation.r.RealPlaybackController
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
@@ -324,8 +324,10 @@ internal class ExpectPlaybackControlPresenter(
 		return RealPlaybackController(
 			user = user,
 			scope = CoroutineScope(context = supervisor + scopeDispatcher),
-			presenter = this,
-			playbackConnection
+			playbackConnection = playbackConnection,
+			disposeHandle = {
+				notifyControllerDisposed(it)
+			}
 		).also { controller ->
 			sync(_stateLock) {
 				if (_disposed) {
@@ -459,7 +461,7 @@ internal class ExpectPlaybackControlPresenter(
 
 			object QueueCollector : PlaybackObserver.QueueCollector {
 				override val disposed: Boolean = true
-				override val queueStateFlow: StateFlow<PlaybackQueue> = MutableStateFlow(PlaybackConstants.QUEUE_UNSET)
+				override val queueStateFlow: StateFlow<OldPlaybackQueue> = MutableStateFlow(PlaybackConstants.QUEUE_UNSET)
 				override fun startCollect(): Job = Job().apply { cancel() }
 				override fun stopCollect(): Job = Job().apply { cancel() }
 				override fun dispose() = Unit

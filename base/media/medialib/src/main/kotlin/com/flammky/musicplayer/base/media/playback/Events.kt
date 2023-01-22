@@ -55,9 +55,9 @@ sealed interface PlaybackEvent {
 	) : PlaybackEvent
 
 	data class QueueChange(
-		val old: PlaybackQueue,
-		val new: PlaybackQueue,
-		val reason: PlaybackQueueChangeReason
+        val old: OldPlaybackQueue,
+        val new: OldPlaybackQueue,
+        val reason: PlaybackQueueChangeReason
 	) : PlaybackEvent
 
 	data class PlaybackSpeedChange(

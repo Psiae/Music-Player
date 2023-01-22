@@ -11,7 +11,7 @@ import com.flammky.android.medialib.temp.image.ArtworkProvider
 import com.flammky.common.kotlin.coroutines.AutoCancelJob
 import com.flammky.musicplayer.base.auth.AuthService
 import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConnection
-import com.flammky.musicplayer.base.media.playback.PlaybackQueue
+import com.flammky.musicplayer.base.media.playback.OldPlaybackQueue
 import com.flammky.musicplayer.base.media.r.MediaMetadataCacheRepository
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.CoroutineScope
@@ -61,7 +61,7 @@ class MediaIntentHandler constructor(
 				.requestUserSessionAsync(presenter.authService.currentUser ?: return@launch).await()
 				.controller.withLooperContext {
 					ensureActive()
-					setQueue(PlaybackQueue(persistentListOf(id), 0))
+					setQueue(OldPlaybackQueue(persistentListOf(id), 0))
 					play()
 				}
 		}

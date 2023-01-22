@@ -53,15 +53,11 @@ android {
 
     buildFeatures {
         compose = true
+        composeOptions.kotlinCompilerExtensionVersion = "1.4.0"
     }
-
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
-    }
-
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.4.0"
     }
 
     @Suppress("SpellCheckingInspection")
@@ -99,6 +95,7 @@ dependencies {
     implementation(project(":feature:search"))
     implementation(project(":feature:library"))
     implementation(project(":feature:user"))
+    implementation(project(":feature:player"))
 
     /* google.dagger */
     dependencies {

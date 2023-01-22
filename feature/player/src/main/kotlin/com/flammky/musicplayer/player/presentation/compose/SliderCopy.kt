@@ -1,4 +1,4 @@
-package com.flammky.musicplayer.playbackcontrol.presentation.compose
+package com.flammky.musicplayer.player.presentation.compose
 
 /*
  * Copyright 2022 The Android Open Source Project

@@ -1,7 +1,7 @@
-package com.flammky.musicplayer.playbackcontrol.presentation.presenter
+package com.flammky.musicplayer.player.presentation.presenter
 
+import com.flammky.musicplayer.base.media.playback.OldPlaybackQueue
 import com.flammky.musicplayer.base.media.playback.PlaybackProperties
-import com.flammky.musicplayer.base.media.playback.PlaybackQueue
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.StateFlow
 import kotlin.coroutines.CoroutineContext
@@ -95,9 +95,9 @@ interface PlaybackObserver {
 	interface QueueCollector : Collector {
 		/**
 		 * The current PlaybackQueue,
-		 * [PlaybackQueue.UNSET] if invalid
+		 * [OldPlaybackQueue.UNSET] if invalid
 		 */
-		val queueStateFlow: StateFlow<PlaybackQueue>
+		val queueStateFlow: StateFlow<OldPlaybackQueue>
 
 		/**
 		 * start observing

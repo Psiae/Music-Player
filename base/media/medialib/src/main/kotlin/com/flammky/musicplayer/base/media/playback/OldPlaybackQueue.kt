@@ -4,7 +4,8 @@ import android.net.Uri
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 
-data class PlaybackQueue(
+@Deprecated("Slowly integrate snapshot_id and queue-based identifier")
+data class OldPlaybackQueue(
 	val list: ImmutableList<String>,
 	val currentIndex: Int
 ) {
@@ -28,8 +29,13 @@ data class PlaybackQueue(
 		val uri: Uri
 	)
 
+	data class List(
+		val snapshotId: String,
+		val items: ImmutableList<String>
+	)
+
 	companion object {
-		val UNSET = PlaybackQueue(
+		val UNSET = OldPlaybackQueue(
 			list = persistentListOf(),
 			currentIndex = PlaybackConstants.INDEX_UNSET
 		)

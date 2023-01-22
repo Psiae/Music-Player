@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalStdlibApi::class, ExperimentalStdlibApi::class)
 
-package com.flammky.musicplayer.playbackcontrol.presentation.r
+package com.flammky.musicplayer.player.presentation.r
 
 import androidx.annotation.GuardedBy
 import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConnection
@@ -8,19 +8,18 @@ import com.flammky.musicplayer.base.media.playback.RepeatMode
 import com.flammky.musicplayer.base.media.playback.ShuffleMode
 import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.core.common.sync
-import com.flammky.musicplayer.playbackcontrol.presentation.controller.PlaybackController
-import com.flammky.musicplayer.playbackcontrol.presentation.presenter.PlaybackObserver
-import com.flammky.musicplayer.playbackcontrol.presentation.presenter.ExpectPlaybackControlPresenter
+import com.flammky.musicplayer.player.presentation.presenter.PlaybackObserver
+import com.flammky.musicplayer.playbackcontrol.presentation.r.RealPlaybackObserver
+import com.flammky.musicplayer.player.presentation.controller.PlaybackController
 import kotlinx.coroutines.*
 import kotlin.coroutines.CoroutineContext
 import kotlin.time.Duration
 
 internal class RealPlaybackController(
 	user: User,
-	/* commandScope: CoroutineScope */
 	private val scope: CoroutineScope,
-	private val presenter: ExpectPlaybackControlPresenter,
 	private val playbackConnection: PlaybackConnection,
+	private val disposeHandle: (RealPlaybackController) -> Unit
 ) : PlaybackController(user) {
 
 	private val _stateLock = Any()
@@ -30,9 +29,8 @@ internal class RealPlaybackController(
 
 	private val _observers = mutableListOf<RealPlaybackObserver>()
 
-
 	override val disposed: Boolean
-		get() = sync(_stateLock) { _disposed }
+		get() = _disposed
 
 	override fun dispose() {
 		sync(_stateLock) {
@@ -44,7 +42,7 @@ internal class RealPlaybackController(
 			disposeObservers()
 			checkDisposedState()
 		}
-		presenter.notifyControllerDisposed(this)
+		disposeHandle.invoke(this)
 	}
 
 	override fun createPlaybackObserver(

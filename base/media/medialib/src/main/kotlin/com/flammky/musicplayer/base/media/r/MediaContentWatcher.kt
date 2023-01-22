@@ -6,7 +6,7 @@ import com.flammky.musicplayer.base.Playback
 import com.flammky.musicplayer.base.auth.AuthService
 import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConnection
 import com.flammky.musicplayer.base.media.playback.PlaybackConstants
-import com.flammky.musicplayer.base.media.playback.PlaybackQueue
+import com.flammky.musicplayer.base.media.playback.OldPlaybackQueue
 import com.flammky.musicplayer.core.common.sync
 import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.CoroutineScope
@@ -56,7 +56,7 @@ class MediaContentWatcher(
 						gq.list.forEachIndexed { i, item ->
 							if (item != id) filtered.add(item) else if (gq.currentIndex >= i) removed++
 						}
-						val q = PlaybackQueue(
+						val q = OldPlaybackQueue(
 							list = filtered.toPersistentList(),
 							currentIndex = (gq.currentIndex - removed).takeIf { it >= 0 }
 								?: PlaybackConstants.INDEX_UNSET

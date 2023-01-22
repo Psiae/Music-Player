@@ -4,7 +4,7 @@
 	ExperimentalSnapperApi::class
 )
 
-package com.flammky.musicplayer.playbackcontrol.presentation.compose.compact
+package com.flammky.musicplayer.player.presentation.compose
 
 import android.graphics.Bitmap
 import androidx.compose.animation.animateColorAsState
@@ -41,16 +41,16 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.flammky.musicplayer.R
 import com.flammky.musicplayer.base.compose.NoInline
+import com.flammky.musicplayer.base.media.playback.OldPlaybackQueue
 import com.flammky.musicplayer.base.media.playback.PlaybackConstants
 import com.flammky.musicplayer.base.media.playback.PlaybackProperties
-import com.flammky.musicplayer.base.media.playback.PlaybackQueue
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.*
-import com.flammky.musicplayer.playbackcontrol.presentation.PlaybackControlTrackMetadata
-import com.flammky.musicplayer.playbackcontrol.presentation.PlaybackControlViewModel
-import com.flammky.musicplayer.playbackcontrol.presentation.controller.PlaybackController
+import com.flammky.musicplayer.player.presentation.PlaybackControlTrackMetadata
+import com.flammky.musicplayer.player.presentation.PlaybackControlViewModel
+import com.flammky.musicplayer.player.R
+import com.flammky.musicplayer.player.presentation.controller.PlaybackController
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.PagerDefaults
@@ -69,7 +69,7 @@ import kotlin.time.Duration.Companion.milliseconds
 private val CompactHeight = 55.dp
 
 @Composable
-internal fun TransitioningCompactPlaybackControl(
+fun TransitioningCompactPlaybackControl(
 	bottomVisibilityVerticalPadding: Dp,
 	onArtworkClicked: () -> Unit,
 	onBaseClicked: () -> Unit,
@@ -345,11 +345,11 @@ private fun cardSurfacePaletteColor(
 
 @Composable
 private fun animatedCompositeCardSurfacePaletteColorAsState(
-	dark: Boolean,
-	compositeFactor: Float,
-	compositeOver: Color,
-	controller: PlaybackController,
-	viewModel: PlaybackControlViewModel
+    dark: Boolean,
+    compositeFactor: Float,
+    compositeOver: Color,
+    controller: PlaybackController,
+    viewModel: PlaybackControlViewModel
 ): State<Color> {
 	val paletteColor = cardSurfacePaletteColor(dark, controller, viewModel)
 		.takeIf { it != Color.Unspecified }
@@ -403,7 +403,7 @@ private fun ArtworkCard(
 		key1 = controller,
 		effect = {
 			val supervisor = SupervisorJob()
-			val channel = Channel<PlaybackQueue>(capacity = Channel.CONFLATED) {
+			val channel = Channel<OldPlaybackQueue>(capacity = Channel.CONFLATED) {
 				error("PlaybackControlCompact, undelivered element=$it on CONFLATED Channel")
 			}
 			val observer = controller.createPlaybackObserver()
@@ -443,17 +443,17 @@ private fun ArtworkCard(
 
 @Composable
 private fun DescriptionPager(
-	modifier: Modifier = Modifier,
-	isBackgroundDarkState: State<Boolean>,
-	controller: PlaybackController,
-	viewModel: PlaybackControlViewModel
+    modifier: Modifier = Modifier,
+    isBackgroundDarkState: State<Boolean>,
+    controller: PlaybackController,
+    viewModel: PlaybackControlViewModel
 ) {
 	val coroutineScope = rememberCoroutineScope()
 	val queueState = remember {
 		mutableStateOf(PlaybackConstants.QUEUE_UNSET)
 	}
 	val queueOverrideState = remember(controller) {
-		mutableStateOf<PlaybackQueue?>(null)
+		mutableStateOf<OldPlaybackQueue?>(null)
 	}
 	val queueOverrideAmountState = remember(controller) {
 		mutableStateOf(0)
@@ -655,9 +655,9 @@ private fun DescriptionPagerItem(
 
 @Composable
 private fun PlaybackButtons(
-	modifier: Modifier = Modifier,
-	dark: Boolean,
-	controller: PlaybackController,
+    modifier: Modifier = Modifier,
+    dark: Boolean,
+    controller: PlaybackController,
 ) {
 	val coroutineScope = rememberCoroutineScope()
 

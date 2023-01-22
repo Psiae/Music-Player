@@ -1,10 +1,11 @@
-package com.flammky.musicplayer.playbackcontrol.presentation.controller
+package com.flammky.musicplayer.player.presentation.controller
 
-import com.flammky.musicplayer.base.media.playback.PlaybackQueue
+import androidx.annotation.MainThread
+import com.flammky.musicplayer.base.media.playback.OldPlaybackQueue
 import com.flammky.musicplayer.base.media.playback.RepeatMode
 import com.flammky.musicplayer.base.media.playback.ShuffleMode
 import com.flammky.musicplayer.base.user.User
-import com.flammky.musicplayer.playbackcontrol.presentation.presenter.PlaybackObserver
+import com.flammky.musicplayer.player.presentation.presenter.PlaybackObserver
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
 import kotlin.coroutines.CoroutineContext
@@ -30,6 +31,8 @@ internal abstract class PlaybackController(
 	 * will be ignored / return an invalid value
 	 */
 	abstract val disposed: Boolean
+		@MainThread
+		get
 
 	/**
 	 * create a disposable Playback Observer to observe the session playback info
@@ -53,6 +56,7 @@ internal abstract class PlaybackController(
 	): Deferred<RequestResult>
 
 	abstract fun requestSeekAsync(
+		/* TODO: snapshot */
 		index: Int,
 		startPosition: Duration,
 		coroutineContext: CoroutineContext = EmptyCoroutineContext
@@ -123,7 +127,7 @@ internal abstract class PlaybackController(
 
 	// TODO
 	interface CompareAndSetScope {
-		fun getQueue(): PlaybackQueue
-		fun setQueue(expect: PlaybackQueue, set: PlaybackQueue)
+		fun getQueue(): OldPlaybackQueue
+		fun setQueue(expect: OldPlaybackQueue, set: OldPlaybackQueue)
 	}
 }

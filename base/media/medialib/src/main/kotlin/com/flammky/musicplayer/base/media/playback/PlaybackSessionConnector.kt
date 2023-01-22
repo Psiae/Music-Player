@@ -54,7 +54,7 @@ class PlaybackSessionConnector internal constructor(
 	private val _shuffleModeSharedFlow =
 		MutableSharedFlow<ShuffleMode>(1, 64)
 	private val _queueSharedFlow =
-		MutableSharedFlow<PlaybackQueue>(1, 64)
+		MutableSharedFlow<OldPlaybackQueue>(1, 64)
 	private val _isPlayingSharedFlow =
 		MutableSharedFlow<Boolean>(1, 64)
 	private val _playbackSpeedSharedFlow =
@@ -278,7 +278,7 @@ class PlaybackSessionConnector internal constructor(
 			}
 		}
 
-		override suspend fun getQueue(): PlaybackQueue {
+		override suspend fun getQueue(): OldPlaybackQueue {
 			if (Looper.myLooper() != looper) {
 				return withLooperContext { getQueue() }
 			}
@@ -292,7 +292,7 @@ class PlaybackSessionConnector internal constructor(
 								}
 							}
 						val list = mtb.map { it.mediaId }.toPersistentList()
-						PlaybackQueue(
+						OldPlaybackQueue(
 							list = list,
 							currentIndex = if (list.isEmpty()) {
 								return@let null
@@ -339,7 +339,7 @@ class PlaybackSessionConnector internal constructor(
 			}
 		}
 
-		override suspend fun setQueue(queue: PlaybackQueue): Boolean {
+		override suspend fun setQueue(queue: OldPlaybackQueue): Boolean {
 			return runCatching {
 				_deferredController?.await()
 					?.let { controller ->
@@ -636,7 +636,7 @@ class PlaybackSessionConnector internal constructor(
 		override fun observeShuffleMode(): Flow<ShuffleMode> =
 			_shuffleModeSharedFlow.asSharedFlow()
 
-		override fun observeQueue(): Flow<PlaybackQueue> =
+		override fun observeQueue(): Flow<OldPlaybackQueue> =
 			_queueSharedFlow.asSharedFlow()
 
 		override fun observeIsPlaying(): Flow<Boolean> =

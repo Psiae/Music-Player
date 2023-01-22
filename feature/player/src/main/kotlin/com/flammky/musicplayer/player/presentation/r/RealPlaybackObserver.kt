@@ -5,7 +5,8 @@ import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConne
 import com.flammky.musicplayer.base.media.playback.PlaybackEvent
 import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.core.common.sync
-import com.flammky.musicplayer.playbackcontrol.presentation.presenter.PlaybackObserver
+import com.flammky.musicplayer.player.presentation.presenter.PlaybackObserver
+import com.flammky.musicplayer.player.presentation.r.RealPlaybackController
 import kotlinx.coroutines.*
 import kotlin.coroutines.CoroutineContext
 
@@ -14,10 +15,10 @@ typealias IsPlayingListener = suspend (Boolean) -> Unit
 
 @OptIn(ExperimentalStdlibApi::class, ExperimentalCoroutinesApi::class)
 internal class /* Debug */ RealPlaybackObserver(
-	private val user: User,
-	private val controller: RealPlaybackController,
-	private val parentScope: CoroutineScope,
-	private val connection: PlaybackConnection,
+    private val user: User,
+    private val controller: RealPlaybackController,
+    private val parentScope: CoroutineScope,
+    private val connection: PlaybackConnection,
 ) : PlaybackObserver {
 
 	private val _stateLock = Any()

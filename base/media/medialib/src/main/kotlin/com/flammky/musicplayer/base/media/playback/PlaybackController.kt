@@ -12,11 +12,11 @@ interface PlaybackController {
 	suspend fun getPosition(): Duration
 	suspend fun getShuffleMode(): ShuffleMode
 	suspend fun getRepeatMode(): RepeatMode
-	suspend fun getQueue(): PlaybackQueue
+	suspend fun getQueue(): OldPlaybackQueue
 	suspend fun isPlayWhenReady(): Boolean
 	suspend fun isPlaying(): Boolean
 	suspend fun setPlayWhenReady(playWhenReady: Boolean): Boolean
-	suspend fun setQueue(queue: PlaybackQueue): Boolean
+	suspend fun setQueue(queue: OldPlaybackQueue): Boolean
 	suspend fun setRepeatMode(mode: RepeatMode): Boolean
 	suspend fun setShuffleMode(mode: ShuffleMode): Boolean
 	suspend fun seekPosition(progress: Duration): Boolean
@@ -46,7 +46,7 @@ interface PlaybackController {
 	interface Observer {
 		fun observeRepeatMode(): Flow<RepeatMode>
 		fun observeShuffleMode(): Flow<ShuffleMode>
-		fun observeQueue(): Flow<PlaybackQueue>
+		fun observeQueue(): Flow<OldPlaybackQueue>
 		fun observeIsPlaying(): Flow<Boolean>
 		fun observePlaybackSpeed(): Flow<Float>
 		fun observePositionDiscontinuityEvent(): Flow<PlaybackEvent.PositionDiscontinuity>

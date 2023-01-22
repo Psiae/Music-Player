@@ -1,4 +1,4 @@
-package com.flammky.musicplayer.playbackcontrol.presentation.model
+package com.flammky.musicplayer.player.presentation.model
 
 import androidx.compose.runtime.Immutable
 import com.flammky.musicplayer.base.media.playback.PlaybackConstants

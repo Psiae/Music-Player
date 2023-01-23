@@ -1,4 +1,4 @@
-package com.flammky.musicplayer.player.presentation.compose
+package com.flammky.musicplayer.player.presentation.main.compose
 
 /*
  * Copyright 2022 The Android Open Source Project
@@ -97,17 +97,17 @@ import kotlin.math.*
  */
 @Composable
 fun Slider(
-	value: Float,
-	onValueChange: (Float) -> Unit,
-	modifier: Modifier = Modifier,
-	enabled: Boolean = true,
-	valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
-	steps: Int = 0,
-	onValueChangeFinished: (() -> Unit)? = null,
-	interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
-	colors: SliderColors = SliderDefaults.colors(),
-	trackHeight: Dp,
-	thumbSize: Dp,
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
+    steps: Int = 0,
+    onValueChangeFinished: (() -> Unit)? = null,
+    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    colors: SliderColors = SliderDefaults.colors(),
+    trackHeight: Dp,
+    thumbSize: Dp,
 ) {
 	require(steps >= 0) { "steps should be >= 0" }
 	val onValueChangeState = rememberUpdatedState<(Float) -> Unit> {
@@ -315,15 +315,15 @@ interface SliderColors {
 
 @Composable
 private fun SliderImpl(
-	enabled: Boolean,
-	positionFraction: Float,
-	tickFractions: List<Float>,
-	colors: SliderColors,
-	width: Float,
-	interactionSource: MutableInteractionSource,
-	modifier: Modifier,
-	trackHeight: Dp,
-	thumbDrawSize: Dp,
+    enabled: Boolean,
+    positionFraction: Float,
+    tickFractions: List<Float>,
+    colors: SliderColors,
+    width: Float,
+    interactionSource: MutableInteractionSource,
+    modifier: Modifier,
+    trackHeight: Dp,
+    thumbDrawSize: Dp,
 ) {
 	Box(modifier.then(DefaultSliderConstraints)) {
 		val trackStrokeWidth: Float
@@ -359,12 +359,12 @@ private fun SliderImpl(
 
 @Composable
 private fun BoxScope.SliderThumb(
-	modifier: Modifier,
-	offset: Dp,
-	interactionSource: MutableInteractionSource,
-	colors: SliderColors,
-	enabled: Boolean,
-	thumbSize: DpSize,
+    modifier: Modifier,
+    offset: Dp,
+    interactionSource: MutableInteractionSource,
+    colors: SliderColors,
+    enabled: Boolean,
+    thumbSize: DpSize,
 ) {
 	Box(
 		Modifier
@@ -409,14 +409,14 @@ private fun BoxScope.SliderThumb(
 
 @Composable
 private fun Track(
-	modifier: Modifier,
-	colors: SliderColors,
-	enabled: Boolean,
-	positionFractionStart: Float,
-	positionFractionEnd: Float,
-	tickFractions: List<Float>,
-	thumbWidth: Dp,
-	trackStrokeWidth: Float
+    modifier: Modifier,
+    colors: SliderColors,
+    enabled: Boolean,
+    positionFractionStart: Float,
+    positionFractionEnd: Float,
+    tickFractions: List<Float>,
+    thumbWidth: Dp,
+    trackStrokeWidth: Float
 ) {
 	val thumbRadiusPx = with(LocalDensity.current) {
 		thumbWidth.toPx() / 2

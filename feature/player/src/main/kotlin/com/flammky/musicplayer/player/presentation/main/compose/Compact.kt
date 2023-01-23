@@ -4,7 +4,7 @@
 	ExperimentalSnapperApi::class
 )
 
-package com.flammky.musicplayer.player.presentation.compose
+package com.flammky.musicplayer.player.presentation.main.compose
 
 import android.graphics.Bitmap
 import androidx.compose.animation.animateColorAsState
@@ -47,10 +47,10 @@ import com.flammky.musicplayer.base.media.playback.PlaybackConstants
 import com.flammky.musicplayer.base.media.playback.PlaybackProperties
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.*
-import com.flammky.musicplayer.player.presentation.PlaybackControlTrackMetadata
-import com.flammky.musicplayer.player.presentation.PlaybackControlViewModel
 import com.flammky.musicplayer.player.R
 import com.flammky.musicplayer.player.presentation.controller.PlaybackController
+import com.flammky.musicplayer.player.presentation.main.PlaybackControlTrackMetadata
+import com.flammky.musicplayer.player.presentation.main.PlaybackControlViewModel
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.PagerDefaults
@@ -71,9 +71,9 @@ private val CompactHeight = 55.dp
 @Composable
 fun TransitioningCompactPlaybackControl(
 	bottomVisibilityVerticalPadding: Dp,
-	onArtworkClicked: () -> Unit,
-	onBaseClicked: () -> Unit,
-	onVerticalVisibilityChanged: (Dp) -> Unit
+	onArtworkClicked: () -> Unit = {},
+	onBaseClicked: () -> Unit = {},
+	onVerticalVisibilityChanged: (Dp) -> Unit = {}
 ) {
 	val vm = viewModel<PlaybackControlViewModel>()
 	val coroutineScope = rememberCoroutineScope()
@@ -94,7 +94,10 @@ fun TransitioningCompactPlaybackControl(
 		targetValue = if (showSelfState.value)
 			bottomVisibilityVerticalPadding.unaryMinus()
 		else
-			CompactHeight
+			CompactHeight,
+		animationSpec = remember {
+			tween(200)
+		}
 	)
 
 	val sessionAuth = sessionAuthState.value
@@ -175,11 +178,11 @@ fun TransitioningCompactPlaybackControl(
 // Consider a single observer
 @Composable
 private fun CardLayout(
-	modifier: Modifier = Modifier,
-	viewModel: PlaybackControlViewModel,
-	controller: PlaybackController,
-	onArtworkClicked: () -> Unit,
-	onBaseClicked: () -> Unit
+    modifier: Modifier = Modifier,
+    viewModel: PlaybackControlViewModel,
+    controller: PlaybackController,
+    onArtworkClicked: () -> Unit,
+    onBaseClicked: () -> Unit
 ) {
 	val surface = Theme.surfaceVariantColorAsState().value
 	val absBackgroundColor = Theme.backgroundColorAsState().value
@@ -262,9 +265,9 @@ private fun CardLayout(
 
 @Composable
 private fun cardSurfacePaletteColor(
-	dark: Boolean,
-	controller: PlaybackController,
-	viewModel: PlaybackControlViewModel,
+    dark: Boolean,
+    controller: PlaybackController,
+    viewModel: PlaybackControlViewModel,
 ): Color {
 	val coroutineScope = rememberCoroutineScope()
 
@@ -361,9 +364,9 @@ private fun animatedCompositeCardSurfacePaletteColorAsState(
 
 @Composable
 private fun ArtworkCard(
-	modifier: Modifier,
-	viewModel: PlaybackControlViewModel,
-	controller: PlaybackController,
+    modifier: Modifier,
+    viewModel: PlaybackControlViewModel,
+    controller: PlaybackController,
 ) {
 
 	val rememberControllerState = remember {
@@ -594,10 +597,10 @@ private fun DescriptionPager(
 
 @Composable
 private fun DescriptionPagerItem(
-	modifier: Modifier = Modifier,
-	dark: Boolean,
-	viewModel: PlaybackControlViewModel,
-	mediaID: String
+    modifier: Modifier = Modifier,
+    dark: Boolean,
+    viewModel: PlaybackControlViewModel,
+    mediaID: String
 ) {
 
 	val metadataState = remember {

@@ -1,5 +1,7 @@
 package com.flammky.android.content.context
 
+import android.app.ActivityManager
+import android.app.ActivityManager.MemoryInfo
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
@@ -53,6 +55,13 @@ class ContextHelper(private val context: Context) {
 
 		override val screenHeightDp: Float
 			get() = screenHeightPx / context.resources.displayMetrics.density
+
+		override val memInfo: MemoryInfo
+			get() {
+				val memOut = MemoryInfo()
+				(context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager).getMemoryInfo(memOut)
+				return memOut
+			}
 	}
 
 	val intents = object : Intents {
@@ -93,6 +102,7 @@ class ContextHelper(private val context: Context) {
 		val screenHeightPx: Int
 		val screenWidthDp: Float
 		val screenHeightDp: Float
+		val memInfo: MemoryInfo
 	}
 
 	interface Intents {

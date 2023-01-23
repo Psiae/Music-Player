@@ -23,6 +23,9 @@ class TestMetadataProvider(
 	private val mediaStoreProvider: MediaStoreProvider
 ) : MetadataProvider {
 
+	@OptIn(ExperimentalCoroutinesApi::class)
+	private val limitedIO = coroutineDispatcher.io.limitedParallelism(12)
+
 	private val _lock = Any()
 	private val coroutineScope = CoroutineScope(SupervisorJob())
 	private val requestMap = mutableMapOf<String, Deferred<MediaMetadata?>>()
@@ -30,18 +33,20 @@ class TestMetadataProvider(
 	override fun getCached(id: String): MediaMetadata? = cacheRepository.getMetadata(id)
 
 	override fun requestAsync(id: String): Deferred<MediaMetadata?> {
-		return getCached(id)?.let { CompletableDeferred(it) } ?: requestMap.sync {
-			get(id) ?: coroutineScope.async(coroutineDispatcher.io) {
-				getCached(id)
-					?: run {
-						fillMetadata(id)
-							?.also { cacheRepository.provideMetadata(id, it) }
-							.also { requestMap.sync { remove(id) } }
-					}
-			}.also {
-				put(id, it)
+		return getCached(id)
+			?.let { CompletableDeferred(it) }
+			?: requestMap.sync {
+				get(id) ?: coroutineScope.async(limitedIO) {
+					getCached(id)
+						?: run {
+							fillMetadata(id)
+								?.also { cacheRepository.provideMetadata(id, it) }
+								.also { requestMap.sync { remove(id) } }
+						}
+				}.also { job ->
+					put(id, job)
+				}
 			}
-		}
 	}
 
 	private suspend fun fillMetadata(id: String): MediaMetadata? {

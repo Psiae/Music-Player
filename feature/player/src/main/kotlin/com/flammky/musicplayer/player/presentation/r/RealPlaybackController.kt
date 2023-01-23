@@ -8,9 +8,9 @@ import com.flammky.musicplayer.base.media.playback.RepeatMode
 import com.flammky.musicplayer.base.media.playback.ShuffleMode
 import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.core.common.sync
-import com.flammky.musicplayer.player.presentation.presenter.PlaybackObserver
 import com.flammky.musicplayer.playbackcontrol.presentation.r.RealPlaybackObserver
 import com.flammky.musicplayer.player.presentation.controller.PlaybackController
+import com.flammky.musicplayer.player.presentation.presenter.PlaybackObserver
 import kotlinx.coroutines.*
 import kotlin.coroutines.CoroutineContext
 import kotlin.time.Duration
@@ -136,7 +136,7 @@ internal class RealPlaybackController(
 					scope.launch {
 						val jobs = mutableListOf<Job>()
 						_observers.forEach {
-							jobs.add(it.updateQueue())
+							jobs.add(it.updateProgress())
 						}
 						jobs.joinAll()
 					}

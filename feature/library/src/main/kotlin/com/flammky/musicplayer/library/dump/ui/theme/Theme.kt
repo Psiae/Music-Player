@@ -4,6 +4,11 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import com.flammky.musicplayer.base.theme.Theme
+import com.flammky.musicplayer.base.theme.compose.backgroundContentColorAsState
+import com.flammky.musicplayer.base.theme.compose.surfaceColorAsState
+import com.flammky.musicplayer.base.theme.compose.surfaceVariantColorAsState
 
 internal object Theme : com.flammky.musicplayer.base.theme.Theme() {
 
@@ -35,17 +40,19 @@ internal object Theme : com.flammky.musicplayer.base.theme.Theme() {
 
 	@Composable
 	fun localShimmerSurface(): Color {
-		val darkTheme = isSystemInDarkTheme()
-		return remember(darkTheme) {
-			if (darkTheme) Color(0xFF323232) else Color(0xFFE6E6E6)
+		val svar = Theme.surfaceVariantColorAsState().value
+		val s = Theme.surfaceColorAsState().value
+		return remember(svar, s) {
+			s.copy(alpha = 0.45f).compositeOver(svar)
 		}
 	}
 
 	@Composable
 	fun localShimmerColor(): Color {
-		val darkTheme = isSystemInDarkTheme()
-		return remember(darkTheme) {
-			if (darkTheme) Color(0xFF414141) else Color(0xFFEBEBEB)
+		val sf = localShimmerSurface()
+		val content = Theme.backgroundContentColorAsState().value
+		return remember(sf, content) {
+			content.copy(alpha = 0.6f).compositeOver(sf)
 		}
 	}
 }

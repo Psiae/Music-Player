@@ -32,8 +32,8 @@ import com.flammky.musicplayer.base.nav.compose.ComposeRootNavigation
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.*
 import com.flammky.musicplayer.main.MainActivity
-import com.flammky.musicplayer.player.presentation.compose.TransitioningCompactPlaybackControl
-import com.flammky.musicplayer.player.presentation.compose.TransitioningPlaybackControl
+import com.flammky.musicplayer.player.presentation.main.compose.TransitioningCompactPlaybackControl
+import com.flammky.musicplayer.player.presentation.main.compose.TransitioningPlaybackControl
 
 @Composable
 internal fun MainActivity.RootNavigation() {

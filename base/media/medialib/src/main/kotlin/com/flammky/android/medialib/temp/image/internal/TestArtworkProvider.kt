@@ -24,7 +24,7 @@ class TestArtworkProvider(
 	private val repo: MediaMetadataCacheRepository
 ) : ArtworkProvider {
 	private val dispatcher = AndroidCoroutineDispatchers.DEFAULT
-	private val scope = CoroutineScope(dispatcher.io + SupervisorJob())
+	private val ioScope = CoroutineScope(dispatcher.io.limitedParallelism(12) + SupervisorJob())
 	private val rawJobMap = mutableMapOf<Uri, Deferred<Bitmap?>>()
 
 	suspend fun removeCacheForId(id: String, mem: Boolean, disk: Boolean) {
@@ -54,7 +54,7 @@ class TestArtworkProvider(
 				return
 			}
 		}
-		scope.launch {
+		ioScope.launch {
 			val resolvedUri = when {
 				request.id.startsWith("MediaStore") || request.id.startsWith("MEDIASTORE") -> {
 					ContentUris.withAppendedId(MediaStore28.Audio.EXTERNAL_CONTENT_URI, request.id.takeLastWhile { it.isDigit() }.toLong())

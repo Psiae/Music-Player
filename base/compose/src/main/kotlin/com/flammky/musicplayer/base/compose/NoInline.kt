@@ -27,3 +27,11 @@ fun NoInlineColumn(
 	horizontalAlignment: Alignment.Horizontal = Alignment.Start,
 	content: @Composable ColumnScope.() -> Unit
 ) = Column(modifier, verticalArrangement, horizontalAlignment, content)
+
+@Composable
+fun NoInlineRow(
+	modifier: Modifier,
+	horizontalArrangement: Arrangement.Horizontal = Arrangement.Start,
+	verticalAlignment: Alignment.Vertical = Alignment.Top,
+	content: @Composable RowScope.() -> Unit
+) = Row(modifier, horizontalArrangement, verticalAlignment, content)

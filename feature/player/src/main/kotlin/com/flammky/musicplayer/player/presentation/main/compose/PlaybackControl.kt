@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalSnapperApi::class, ExperimentalSnapperApi::class)
 
-package com.flammky.musicplayer.player.presentation.compose
+package com.flammky.musicplayer.player.presentation.main.compose
 
 import android.annotation.SuppressLint
 import android.content.pm.ActivityInfo
@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -54,9 +55,9 @@ import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.*
 import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.player.R
-import com.flammky.musicplayer.player.presentation.PlaybackControlTrackMetadata
-import com.flammky.musicplayer.player.presentation.PlaybackControlViewModel
 import com.flammky.musicplayer.player.presentation.controller.PlaybackController
+import com.flammky.musicplayer.player.presentation.main.PlaybackControlTrackMetadata
+import com.flammky.musicplayer.player.presentation.main.PlaybackControlViewModel
 import com.flammky.musicplayer.player.presentation.presenter.PlaybackObserver
 import com.flammky.musicplayer.player.presentation.queue.MainCurrentPlaybackQueueScreen
 import com.google.accompanist.pager.*
@@ -154,16 +155,18 @@ fun TransitioningPlaybackControl(
 
 @Composable
 private fun ContentTransition(
-	modifier: Modifier = Modifier,
-	heightTargetDp: Dp,
-	heightDpState: State<Dp>,
-	viewModel: PlaybackControlViewModel,
-	dismiss: () -> Unit
+    modifier: Modifier = Modifier,
+    heightTargetDp: Dp,
+    heightDpState: State<Dp>,
+    viewModel: PlaybackControlViewModel,
+    dismiss: () -> Unit
 ) {
 	val transitionedState = remember { mutableStateOf(false) }
 
-	val yOffsetState = heightDpState.derive { heightDp ->
-		heightTargetDp - heightDp
+	val yOffsetState = remember {
+		heightDpState.derive { heightDp ->
+			heightTargetDp - heightDp
+		}
 	}
 
 	// allows early return
@@ -262,8 +265,8 @@ private fun TransitioningQueueScreen(
 									savedWasTransitionedState.value = false
 									0
 								}
-								targetState -> 250
-								else -> 150
+								targetState -> 175
+								else -> 75
 							},
 							easing = if (targetState) FastOutSlowInEasing else LinearOutSlowInEasing
 						)
@@ -294,9 +297,12 @@ private fun QueueContentTransition(
 	dismiss: () -> Unit
 ) {
 	val transitionedState = remember { mutableStateOf(false) }
+	val transitionedDrawState = remember { mutableStateOf(false) }
 
-	val yOffsetState = heightDpState.derive { heightDp ->
-		heightTargetDp - heightDp
+	val yOffsetState = remember {
+		heightDpState.derive { heightDp ->
+			heightTargetDp - heightDp
+		}
 	}
 
 	// allows early return
@@ -317,7 +323,7 @@ private fun QueueContentTransition(
 			// else keep whatever it was
 		}
 
-		MainCurrentPlaybackQueueScreen(
+		Box(
 			modifier = modifier
 				.fillMaxWidth()
 				.height(heightTargetDp)
@@ -331,17 +337,35 @@ private fun QueueContentTransition(
 							.copy(alpha = 0.94f)
 					}
 				)
-		)
+				.onGloballyPositioned {
+					transitionedDrawState.value = transitionedState.value
+				}
+		) {
+			MainCurrentPlaybackQueueScreen(
+				modifier = modifier
+					.fillMaxSize()
+					.alpha(
+						animateFloatAsState(
+							targetValue = if (transitionedState.value) {
+								1f
+							} else {
+								0f
+							}
+						).value
+					),
+				transitionedState = transitionedDrawState
+			)
+		}
 	}
 }
 
 @Composable
 private fun Content(
-	modifier: Modifier,
-	viewModel: PlaybackControlViewModel,
-	transitionedState: State<Boolean>,
-	dismiss: () -> Unit,
-	openQueueScreen: () -> Unit
+    modifier: Modifier,
+    viewModel: PlaybackControlViewModel,
+    transitionedState: State<Boolean>,
+    dismiss: () -> Unit,
+    openQueueScreen: () -> Unit
 ) {
 	val sessionController = playbackControllerAsState(viewModel = viewModel).value
 
@@ -480,10 +504,10 @@ private fun RowScope.DismissAction(
 
 @Composable
 private fun DetailsContent(
-	modifier: Modifier,
-	viewModel: PlaybackControlViewModel,
-	playbackController: PlaybackController,
-	openQueueScreen: () -> Unit
+    modifier: Modifier,
+    viewModel: PlaybackControlViewModel,
+    playbackController: PlaybackController,
+    openQueueScreen: () -> Unit
 ) {
 	BoxWithConstraints(modifier = modifier) {
 		val maxHeight = maxHeight
@@ -523,8 +547,8 @@ private fun DetailsContent(
 
 @Composable
 private fun TracksPagerDisplay(
-	viewModel: PlaybackControlViewModel,
-	controller: PlaybackController
+    viewModel: PlaybackControlViewModel,
+    controller: PlaybackController
 ) {
 	val coroutineScope = rememberCoroutineScope()
 	val observerState = remember { mutableStateOf<PlaybackObserver?>(null) }
@@ -653,9 +677,9 @@ private fun RadialPlaybackPaletteBackground(
 
 @Composable
 private fun RadialPlaybackPaletteBackground(
-	modifier: Modifier = Modifier,
-	controller: PlaybackController,
-	viewModel: PlaybackControlViewModel,
+    modifier: Modifier = Modifier,
+    controller: PlaybackController,
+    viewModel: PlaybackControlViewModel,
 ) {
 	val coroutineScope = rememberCoroutineScope()
 	val observerState = remember(controller) {
@@ -696,9 +720,9 @@ private fun RadialPlaybackPaletteBackground(
 @OptIn(ExperimentalPagerApi::class)
 @Composable
 private fun TracksPager(
-	queueState: State<OldPlaybackQueue>,
-	metadataStateForId: @Composable (String) -> State<PlaybackControlTrackMetadata>,
-	seekIndex: suspend (OldPlaybackQueue, Int) -> Boolean,
+    queueState: State<OldPlaybackQueue>,
+    metadataStateForId: @Composable (String) -> State<PlaybackControlTrackMetadata>,
+    seekIndex: suspend (OldPlaybackQueue, Int) -> Boolean,
 ) {
 	val queueOverrideAmountState = remember { mutableStateOf(0) }
 	val queueOverrideState = remember { mutableStateOf<OldPlaybackQueue?>(null) }
@@ -1013,36 +1037,36 @@ private fun PlaybackControls(
 	Box(modifier = modifier.height(40.dp)) {
 
 		@Suppress("DeferredResultUnused")
-		PlaybackControlButtons(
-			playbackPropertiesState = propertiesState,
-			play = {
-				rememberUpdatedController.value.requestPlayAsync()
-			},
-			pause = {
-				rememberUpdatedController.value.requestSetPlayWhenReadyAsync(false)
-			},
-			next = {
-				rememberUpdatedController.value.requestSeekNextAsync(ZERO)
-			},
-			previous = {
-				rememberUpdatedController.value.requestSeekPreviousAsync(ZERO)
-			},
-			enableRepeat = {
-				rememberUpdatedController.value.requestSetRepeatModeAsync(RepeatMode.ONE)
-			},
-			enableRepeatAll = {
-				rememberUpdatedController.value.requestSetRepeatModeAsync(RepeatMode.ALL)
-			},
-			disableRepeat = {
-				rememberUpdatedController.value.requestSetRepeatModeAsync(RepeatMode.OFF)
-			},
-			enableShuffle = {
-				rememberUpdatedController.value.requestSetShuffleModeAsync(ShuffleMode.ON)
-			},
-			disableShuffle = {
-				rememberUpdatedController.value.requestSetShuffleModeAsync(ShuffleMode.OFF)
-			}
-		)
+		(PlaybackControlButtons(
+        playbackPropertiesState = propertiesState,
+        play = {
+            rememberUpdatedController.value.requestPlayAsync()
+        },
+        pause = {
+            rememberUpdatedController.value.requestSetPlayWhenReadyAsync(false)
+        },
+        next = {
+            rememberUpdatedController.value.requestSeekNextAsync(ZERO)
+        },
+        previous = {
+            rememberUpdatedController.value.requestSeekPreviousAsync(ZERO)
+        },
+        enableRepeat = {
+            rememberUpdatedController.value.requestSetRepeatModeAsync(RepeatMode.ONE)
+        },
+        enableRepeatAll = {
+            rememberUpdatedController.value.requestSetRepeatModeAsync(RepeatMode.ALL)
+        },
+        disableRepeat = {
+            rememberUpdatedController.value.requestSetRepeatModeAsync(RepeatMode.OFF)
+        },
+        enableShuffle = {
+            rememberUpdatedController.value.requestSetShuffleModeAsync(ShuffleMode.ON)
+        },
+        disableShuffle = {
+            rememberUpdatedController.value.requestSetShuffleModeAsync(ShuffleMode.OFF)
+        }
+    ))
 	}
 }
 

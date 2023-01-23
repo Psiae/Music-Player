@@ -26,12 +26,11 @@ internal class ExpectQueuePresenter(
     private val metadataCacheRepository: MediaMetadataCacheRepository
 ) : QueuePresenter {
 
-    private val slot = Any()
-    private var actual: Any? = slot
+    private var actual: Actual? = null
 
     override fun init(viewModel: QueuePresenter.ViewModel) {
         check(inMainLooper())
-        if (actual == null) {
+        if (actual is Actual) {
             return
         }
         actual = Actual(
@@ -46,26 +45,25 @@ internal class ExpectQueuePresenter(
 
     override fun dispose() {
         check(inMainLooper())
-        (actual as? Actual)?.dispose()
-        actual = null
+        actual?.dispose()
     }
 
     override val disposed: Boolean
         get() {
             check(inMainLooper())
-            return actual == null
+            return actual?.disposed == true
         }
 
     override val auth: QueuePresenter.Auth
-        get() = (actual as? Actual)?.auth
+        get() = actual?.auth
             ?: error("")
 
     override val playback: QueuePresenter.Playback
-        get() = (actual as? Actual)?.playback
+        get() = actual?.playback
             ?: error("")
 
     override val repo: QueuePresenter.Repo
-        get() = (actual as? Actual)?.repo
+        get() = actual?.repo
             ?: error("")
 }
 
@@ -83,7 +81,7 @@ private class Actual(
     private var _disposed = false
 
     override val disposed: Boolean
-        get() = error("")
+        get() = _disposed
 
     override fun init(
         viewModel: QueuePresenter.ViewModel

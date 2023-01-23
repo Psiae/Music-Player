@@ -280,6 +280,14 @@ private fun ItemTextDescription(
 			)
 		}
 		Text(
+			modifier = Modifier
+				.fillMaxWidth()
+				.wrapContentHeight()
+				.placeholder(
+					visible = metadata.value === AudioMetadata.UNSET,
+					color = Theme.localShimmerSurface(),
+					highlight = PlaceholderHighlight.shimmer(Theme.localShimmerColor())
+				),
 			text = metadata.read()?.title ?: model.displayName ?: "",
 			style = style,
 			maxLines = 1,
@@ -287,6 +295,14 @@ private fun ItemTextDescription(
 		)
 		Spacer(modifier = Modifier.height(3.dp))
 		Text(
+			modifier = Modifier
+				.fillMaxWidth()
+				.wrapContentHeight()
+				.placeholder(
+					visible = metadata.value === AudioMetadata.UNSET,
+					color = Theme.localShimmerSurface(),
+					highlight = PlaceholderHighlight.shimmer(Theme.localShimmerColor())
+				),
 			text = formattedDuration + " " +
 				separator + " " +
 				(metadata.read()?.albumArtistName ?: metadata.read()?.artistName ?: ""),

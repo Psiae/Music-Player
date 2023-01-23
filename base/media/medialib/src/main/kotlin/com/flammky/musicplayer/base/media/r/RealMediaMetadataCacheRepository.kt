@@ -2,6 +2,7 @@ package com.flammky.musicplayer.base.media.r
 
 import android.content.Context
 import android.graphics.Bitmap
+import com.flammky.android.content.context.ContextHelper
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.android.medialib.temp.cache.lru.DefaultLruCache
@@ -9,8 +10,8 @@ import com.flammky.kotlin.common.lazy.LazyConstructor
 import com.flammky.kotlin.common.lazy.LazyConstructor.Companion.valueOrNull
 import com.flammky.musicplayer.base.media.r.RealMediaMetadataCacheRepository.MapObserver
 import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -19,18 +20,20 @@ import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.write
 
 class RealMediaMetadataCacheRepository(
-	private val context: Context,
+	private val contextHelper: ContextHelper,
 	private val dispatchers: AndroidCoroutineDispatchers
 ) : MediaMetadataCacheRepository {
 
 	private val rwl = ReentrantReadWriteLock()
 
 	// we should confine between `observed` and not
-	private val metadataLRU = DefaultLruCache<String, MediaMetadata>(150)
+	private val metadataLRU = DefaultLruCache<String, MediaMetadata>(200)
 	private val metadataObservers = mutableMapOf<String, MutableList<MapObserver<String, MediaMetadata>>>()
 
 	// should define abstract class instead
-	private val artworkLRU = DefaultLruCache<String, Any>(150000000) { _, art ->
+	private val artworkLRU = DefaultLruCache<String, Any>(
+		(contextHelper.device.memInfo.totalMem / 10).coerceAtMost(300_000_000)
+	) { _, art ->
 		if (art is Bitmap) {
 			art.allocationByteCount.toLong()
 		} else {
@@ -39,7 +42,7 @@ class RealMediaMetadataCacheRepository(
 	}
 	private val artworkObservers = mutableMapOf<String, MutableList<MapObserver<String, Any>>>()
 
-	private val mainScope = CoroutineScope(dispatchers.main + SupervisorJob())
+	private val mainScope = CoroutineScope(dispatchers.computation.limitedParallelism(1) + SupervisorJob())
 
 	override fun getMetadata(id: String): MediaMetadata? {
 		return metadataLRU[id]
@@ -49,17 +52,19 @@ class RealMediaMetadataCacheRepository(
 		if (id == "") {
 			return@flow
 		}
-		val channel = Channel<MediaMetadata?>()
+		val sf = MutableSharedFlow<MediaMetadata?>(1)
 		val observer = MapObserver<String, MediaMetadata> { key, value ->
 			check(key == id)
-			channel.send(value)
+			sf.emit(value)
 		}
-		addMetadataObserver(id, observer)
-		emit(getMetadata(id))
+		rwl.write {
+			addMetadataObserver(id, observer)
+			getMetadata(id)
+		}.also { cached ->
+			sf.emit(cached)
+		}
 		runCatching {
-			for (metadata in channel) {
-				emit(metadata)
-			}
+			sf.collect(this)
 		}.onFailure { ex ->
 			if (ex !is CancellationException) throw ex
 			removeMetadataObserver(id, observer)
@@ -130,15 +135,19 @@ class RealMediaMetadataCacheRepository(
 		if (id == "" || id[0] == '_') {
 			return@flow
 		}
-		val channel = Channel<Any?>()
+		val sf = MutableSharedFlow<Any?>(1)
 		val observer = MapObserver<String, Any> { key, value ->
 			check(key == id)
-			channel.send(value)
+			sf.emit(value)
 		}
-		addArtworkObserver(id, observer)
-		emit(getArtwork(id))
+		rwl.write {
+			addArtworkObserver(id, observer)
+			getArtwork(id)
+		}.also { cached ->
+			sf.emit(cached)
+		}
 		runCatching {
-			for (art in channel) emit(art)
+			sf.collect(this)
 		}.onFailure { ex ->
 			if (ex !is CancellationException) throw ex
 			removeArtworkObserver(id, observer)
@@ -241,7 +250,7 @@ class RealMediaMetadataCacheRepository(
 	companion object {
 		private val SINGLETON = LazyConstructor<RealMediaMetadataCacheRepository>()
 		fun provide(ctx: Context, dispatchers: AndroidCoroutineDispatchers) = SINGLETON.construct {
-			RealMediaMetadataCacheRepository(ctx, dispatchers)
+			RealMediaMetadataCacheRepository(ContextHelper(ctx), dispatchers)
 		}
 
 		fun get() = SINGLETON.valueOrNull() ?: error("RealMediaConnectionRepository was not provided")

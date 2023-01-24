@@ -108,17 +108,7 @@ internal fun PlaybackControlQueueScreen(
                 .getTop(this)
                 .toDp()
         }
-        Spacer(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(statusBarHeight)
-                .background(Theme.backgroundColorAsState().value)
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Theme.backgroundColorAsState().value)
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
             val navigationBarHeight = with(LocalDensity.current) {
                 WindowInsets.navigationBars
                     .getBottom(this)
@@ -127,12 +117,20 @@ internal fun PlaybackControlQueueScreen(
             val controlHeightState = remember {
                 mutableStateOf(0.dp)
             }
+            Spacer(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(statusBarHeight)
+                    .background(Theme.backgroundColorAsState().value)
+            )
             Box(modifier = Modifier.alpha(contentAlpha)) contentBox@ {
                 val deferLoadState = remember {
                     derivedStateOf { !transitionedDrawState.value }
                 }
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Theme.backgroundColorAsState().value),
                     state = lazyListState,
                 ) content@ {
                     val user = userState.value

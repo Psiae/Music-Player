@@ -91,6 +91,7 @@ private fun MainActivity.RootScaffold(
 		}
 		TransitioningCompactPlaybackControl(
 			bottomVisibilityVerticalPadding = contentPadding.calculateBottomPadding(),
+			freezeState = showFullPlaybackControllerState,
 			onArtworkClicked = { showFullPlaybackControllerState.value = true },
 			onBaseClicked = { showFullPlaybackControllerState.value = true },
 			onVerticalVisibilityChanged = { playbackControlVisibilityOffset.value = it }

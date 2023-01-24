@@ -71,6 +71,9 @@ private val CompactHeight = 55.dp
 @Composable
 fun TransitioningCompactPlaybackControl(
 	bottomVisibilityVerticalPadding: Dp,
+	freezeState: State<Boolean> = remember {
+		mutableStateOf(false)
+	},
 	onArtworkClicked: () -> Unit = {},
 	onBaseClicked: () -> Unit = {},
 	onVerticalVisibilityChanged: (Dp) -> Unit = {}
@@ -105,7 +108,11 @@ fun TransitioningCompactPlaybackControl(
 
 	LaunchedEffect(
 		key1 = null,
+		key2 = freezeState.value,
 		block = {
+			if (freezeState.value) {
+				return@LaunchedEffect
+			}
 			vm.observeCurrentAuth().collect {
 				sessionAuthState.value = it
 			}
@@ -114,8 +121,9 @@ fun TransitioningCompactPlaybackControl(
 
 	DisposableEffect(
 		key1 = sessionAuth,
+		key2 = freezeState.value,
 		effect = {
-			if (sessionAuth == null) {
+			if (sessionAuth == null || freezeState.value) {
 				return@DisposableEffect onDispose {  }
 			}
 			val supervisor = SupervisorJob()
@@ -166,7 +174,8 @@ fun TransitioningCompactPlaybackControl(
 				viewModel = viewModel(),
 				sessionController,
 				onArtworkClicked = { onArtworkClicked() },
-				onBaseClicked = { onBaseClicked() }
+				onBaseClicked = { onBaseClicked() },
+				freezeState = freezeState
 			)
 		}
 		if (animatedOffset < CompactHeight) {
@@ -182,7 +191,8 @@ private fun CardLayout(
     viewModel: PlaybackControlViewModel,
     controller: PlaybackController,
     onArtworkClicked: () -> Unit,
-    onBaseClicked: () -> Unit
+    onBaseClicked: () -> Unit,
+	freezeState: State<Boolean>
 ) {
 	val surface = Theme.surfaceVariantColorAsState().value
 	val absBackgroundColor = Theme.backgroundColorAsState().value
@@ -192,7 +202,8 @@ private fun CardLayout(
 		compositeFactor = 0.7f,
 		compositeOver = surface,
 		controller = controller,
-		viewModel = viewModel
+		viewModel = viewModel,
+		freezeState = freezeState
 	)
 
 	val isBackgroundDarkState = remember {
@@ -229,7 +240,8 @@ private fun CardLayout(
 						.clip(RoundedCornerShape(5.dp))
 						.clickable { onArtworkClicked() },
 					viewModel = viewModel,
-					controller = controller
+					controller = controller,
+					freezeState = freezeState
 				)
 				DescriptionPager(
 					modifier = Modifier
@@ -237,12 +249,14 @@ private fun CardLayout(
 						.padding(horizontal = 5.dp),
 					controller = controller,
 					isBackgroundDarkState = isBackgroundDarkState,
-					viewModel = viewModel
+					viewModel = viewModel,
+					freezeState = freezeState
 				)
 				PlaybackButtons(
 					modifier = Modifier,
 					dark = !isBackgroundDarkState.value,
-					controller = controller
+					controller = controller,
+					freezeState = freezeState
 				)
 			}
 			AnimatedProgressBar(
@@ -254,7 +268,8 @@ private fun CardLayout(
 							.copy(alpha = 0.7f)
 							.compositeOver(absBackgroundColor)
 					),
-				controller = controller
+				controller = controller,
+				freezeState = freezeState
 			)
 		}
 	}
@@ -265,9 +280,10 @@ private fun CardLayout(
 
 @Composable
 private fun cardSurfacePaletteColor(
-    dark: Boolean,
-    controller: PlaybackController,
-    viewModel: PlaybackControlViewModel,
+	dark: Boolean,
+	controller: PlaybackController,
+	viewModel: PlaybackControlViewModel,
+	freezeState: State<Boolean>,
 ): Color {
 	val coroutineScope = rememberCoroutineScope()
 
@@ -287,7 +303,7 @@ private fun cardSurfacePaletteColor(
 	val id = queue.list.getOrNull(queue.currentIndex)
 	val artwork = artworkState.value
 
-	DisposableEffect(key1 = controller, effect = {
+	DisposableEffect(key1 = controller, key2 = freezeState.value, effect = {
 		val supervisor = SupervisorJob()
 		val observer = controller.createPlaybackObserver().apply {
 			createQueueCollector()
@@ -304,7 +320,10 @@ private fun cardSurfacePaletteColor(
 		onDispose { supervisor.cancel() ; observer.dispose() }
 	})
 
-	LaunchedEffect(key1 = id, block = {
+	LaunchedEffect(key1 = id, key2 = freezeState.value, block = {
+		if (freezeState.value) {
+			return@LaunchedEffect
+		}
 		artworkState.value = null
 		if (id == null) {
 			return@LaunchedEffect
@@ -348,13 +367,14 @@ private fun cardSurfacePaletteColor(
 
 @Composable
 private fun animatedCompositeCardSurfacePaletteColorAsState(
-    dark: Boolean,
-    compositeFactor: Float,
-    compositeOver: Color,
-    controller: PlaybackController,
-    viewModel: PlaybackControlViewModel
+	dark: Boolean,
+	compositeFactor: Float,
+	compositeOver: Color,
+	controller: PlaybackController,
+	viewModel: PlaybackControlViewModel,
+	freezeState: State<Boolean>,
 ): State<Color> {
-	val paletteColor = cardSurfacePaletteColor(dark, controller, viewModel)
+	val paletteColor = cardSurfacePaletteColor(dark, controller, viewModel, freezeState)
 		.takeIf { it != Color.Unspecified }
 			?.copy(compositeFactor)
 			?.compositeOver(compositeOver)
@@ -367,13 +387,8 @@ private fun ArtworkCard(
     modifier: Modifier,
     viewModel: PlaybackControlViewModel,
     controller: PlaybackController,
+	freezeState: State<Boolean>
 ) {
-
-	val rememberControllerState = remember {
-		mutableStateOf(controller)
-	}.apply {
-		value = controller
-	}
 
 	val coroutineScope = rememberCoroutineScope()
 
@@ -404,7 +419,11 @@ private fun ArtworkCard(
 
 	DisposableEffect(
 		key1 = controller,
+		key2 = freezeState.value,
 		effect = {
+			if (freezeState.value) {
+				return@DisposableEffect onDispose {  }
+			}
 			val supervisor = SupervisorJob()
 			val channel = Channel<OldPlaybackQueue>(capacity = Channel.CONFLATED) {
 				error("PlaybackControlCompact, undelivered element=$it on CONFLATED Channel")
@@ -449,7 +468,8 @@ private fun DescriptionPager(
     modifier: Modifier = Modifier,
     isBackgroundDarkState: State<Boolean>,
     controller: PlaybackController,
-    viewModel: PlaybackControlViewModel
+    viewModel: PlaybackControlViewModel,
+	freezeState: State<Boolean>
 ) {
 	val coroutineScope = rememberCoroutineScope()
 	val queueState = remember {
@@ -464,7 +484,10 @@ private fun DescriptionPager(
 	val observer = remember(controller) {
 		controller.createPlaybackObserver(coroutineScope.coroutineContext)
 	}
-	DisposableEffect(key1 = observer, effect = {
+	DisposableEffect(key1 = observer, key2 = freezeState.value, effect = {
+		if (freezeState.value) {
+			return@DisposableEffect onDispose {  }
+		}
 		val supervisor = SupervisorJob()
 		observer.createQueueCollector(coroutineScope.coroutineContext)
 			.apply {
@@ -521,7 +544,8 @@ private fun DescriptionPager(
 			DescriptionPagerItem(
 				dark = !isBackgroundDarkState.value,
 				viewModel = viewModel,
-				mediaID = maskedQueue.list[it]
+				mediaID = maskedQueue.list[it],
+				freezeState = freezeState
 			)
 		}
 
@@ -561,6 +585,11 @@ private fun DescriptionPager(
 				key2 = draggingState.value,
 				key3 = touchedState.value,
 				block = {
+					if (freezeState.value) {
+						touchedState.value = false
+						pagerState.scrollToPage(maskedQueueState.value.currentIndex)
+						return@LaunchedEffect
+					}
 					val currentPage = pagerState.currentPage
 					if (touchedState.value && !draggingState.value &&
 						(currentPage != rememberedPageState.value ||
@@ -600,7 +629,8 @@ private fun DescriptionPagerItem(
     modifier: Modifier = Modifier,
     dark: Boolean,
     viewModel: PlaybackControlViewModel,
-    mediaID: String
+    mediaID: String,
+	freezeState: State<Boolean>
 ) {
 
 	val metadataState = remember {
@@ -609,7 +639,8 @@ private fun DescriptionPagerItem(
 
 	val isThemeDark = Theme.isDarkAsState().value
 
-	LaunchedEffect(key1 = mediaID, block = {
+	LaunchedEffect(key1 = mediaID, key2 = freezeState.value, block = {
+		if (freezeState.value) return@LaunchedEffect
 		viewModel.observeMetadata(mediaID).collect { metadataState.value = it }
 	})
 
@@ -661,6 +692,7 @@ private fun PlaybackButtons(
     modifier: Modifier = Modifier,
     dark: Boolean,
     controller: PlaybackController,
+	freezeState: State<Boolean>
 ) {
 	val coroutineScope = rememberCoroutineScope()
 
@@ -668,7 +700,10 @@ private fun PlaybackButtons(
 		mutableStateOf(PlaybackConstants.PROPERTIES_UNSET)
 	}
 
-	DisposableEffect(key1 = controller, effect = {
+	DisposableEffect(key1 = controller, key2 = freezeState.value, effect = {
+		if (freezeState.value) {
+			return@DisposableEffect onDispose {  }
+		}
 		val supervisor = SupervisorJob()
 		val observer = controller.createPlaybackObserver()
 			.apply {
@@ -738,6 +773,9 @@ private fun PlaybackButtons(
 						interactionSource = interactionSource,
 						indication = null,
 					) {
+						if (freezeState.value) {
+							return@clickable
+						}
 						if (showPlay) {
 							controller.requestPlayAsync()
 						} else {
@@ -759,7 +797,8 @@ private fun PlaybackButtons(
 @Composable
 private fun AnimatedProgressBar(
 	modifier: Modifier = Modifier,
-	controller: PlaybackController
+	controller: PlaybackController,
+	freezeState: State<Boolean>
 ) {
 	val coroutineScope = rememberCoroutineScope()
 	BoxWithConstraints(modifier) {
@@ -783,9 +822,11 @@ private fun AnimatedProgressBar(
 			mutableStateOf(false)
 		}
 
-		DisposableEffect(key1 = observer, effect = {
+		DisposableEffect(key1 = observer, key2 = freezeState.value, effect = {
+			if (freezeState.value) {
+				return@DisposableEffect onDispose {  }
+			}
 			val supervisor = SupervisorJob()
-
 			observer.createProgressionCollector(coroutineScope.coroutineContext)
 				.apply {
 					setCollectEvent(true)
@@ -833,20 +874,17 @@ private fun AnimatedProgressBar(
 			onDispose { supervisor.cancel() ; observer.dispose() }
 		})
 
-
 		NoInline {
 			val bufferedPosition = bufferedPositionState.value
 			val duration = durationState.value
 
-			if (bufferedPosition.isNegative()) {
-				require(bufferedPosition == PlaybackConstants.POSITION_UNSET) {
-					"Negative Position ($bufferedPosition) must be equal to " +
-							"PlaybackConstants.POSITION_UNSET (${PlaybackConstants.POSITION_UNSET})"
-				}
-				require(duration == PlaybackConstants.DURATION_UNSET) {
-					"Negative Duration ($duration) must be equal to " +
-							"PlaybackConstants.DURATION_UNSET (${PlaybackConstants.DURATION_UNSET})"
-				}
+			require(!bufferedPosition.isNegative() || bufferedPosition == PlaybackConstants.POSITION_UNSET) {
+				"Negative Position ($bufferedPosition) must be equal to " +
+						"PlaybackConstants.POSITION_UNSET (${PlaybackConstants.POSITION_UNSET})"
+			}
+			require(!duration.isNegative() || duration == PlaybackConstants.DURATION_UNSET) {
+				"Negative Duration ($duration) must be equal to " +
+						"PlaybackConstants.DURATION_UNSET (${PlaybackConstants.DURATION_UNSET})"
 			}
 
 			val bufferedProgress by animateFloatAsState(
@@ -873,7 +911,7 @@ private fun AnimatedProgressBar(
 				"Negative Position ($position) must be equal to " +
 					"PlaybackConstants.POSITION_UNSET (${PlaybackConstants.POSITION_UNSET})"
 			}
-			require(!position.isNegative() || duration == PlaybackConstants.DURATION_UNSET) {
+			require(!duration.isNegative() || duration == PlaybackConstants.DURATION_UNSET) {
 				"Negative Duration ($duration) must be equal to " +
 					"PlaybackConstants.DURATION_UNSET (${PlaybackConstants.DURATION_UNSET})"
 			}

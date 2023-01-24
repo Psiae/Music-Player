@@ -221,7 +221,7 @@ class PlaybackSessionConnector internal constructor(
 
 		override suspend fun getDuration(): Duration {
 			return runCatching {
-				_deferredController?.await()?.duration?.milliseconds
+				_deferredController?.await()?.duration?.milliseconds?.takeIf { !it.isNegative() }
 					?: PlaybackConstants.DURATION_UNSET
 			}.getOrElse { ex ->
 				if (ex !is CancellationException) throw ex

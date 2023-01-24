@@ -16,6 +16,7 @@ class AudioFile private constructor() {
 	private var mFileDescriptor: FileDescriptor? = null
 	private var mUri: Uri? = null
 	private var _AF: com.flammky.musicplayer.common.media.audio.meta_tag.audio.AudioFile? = null
+	private var _ex: Exception? = null
 
 	val imageData: ByteArray?
 		get() = _AF?.tag?.firstArtwork?.binaryData
@@ -23,11 +24,15 @@ class AudioFile private constructor() {
 	val file: File?
 		get() = mFile
 
+	val ex: Exception?
+		get() = _ex
+
 	class Builder {
 		private var _context: Context? = null
 		private var _file: File? = null
 		private var _fileDescriptor: ParcelFileDescriptor? = null
 		private var _uri: Uri? = null
+		private var _ex: Exception? = null
 
 		private constructor()
 
@@ -45,9 +50,9 @@ class AudioFile private constructor() {
 				}
 			} catch (ex: Exception) {
 				Timber.d("AudioFileBuilder ex: $ex")
+				_ex = ex
 				null
 			}
-
 			_fileDescriptor = fd
 			_uri = uri
 		}
@@ -58,14 +63,17 @@ class AudioFile private constructor() {
 			mFileDescriptor = _fileDescriptor?.fileDescriptor
 			mUri = _uri
 
-			try {
-				when {
-					mFileDescriptor != null -> _AF = AudioFileIO.readMagic(mFileDescriptor!!)
+			if (this@Builder._ex == null) {
+				try {
+					when {
+						mFileDescriptor != null -> _AF = AudioFileIO.readMagic(mFileDescriptor!!)
+					}
+				} catch (ex: Exception) {
+					println("audioFile readMagic fail: ${ex.toString()}")
+					this@Builder._ex = ex
 				}
-			} catch (ex: Exception) {
-				println("audioFile readMagic fail: ${ex.toString()}")
 			}
-
+			_ex = this@Builder._ex
 			_fileDescriptor?.close()
 		}
 	}

@@ -33,7 +33,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -59,7 +58,7 @@ import com.flammky.musicplayer.player.presentation.controller.PlaybackController
 import com.flammky.musicplayer.player.presentation.main.PlaybackControlTrackMetadata
 import com.flammky.musicplayer.player.presentation.main.PlaybackControlViewModel
 import com.flammky.musicplayer.player.presentation.presenter.PlaybackObserver
-import com.flammky.musicplayer.player.presentation.queue.MainCurrentPlaybackQueueScreen
+import com.flammky.musicplayer.player.presentation.queue.PlaybackControlQueueScreen
 import com.google.accompanist.pager.*
 import dev.chrisbanes.snapper.ExperimentalSnapperApi
 import kotlinx.coroutines.*
@@ -199,7 +198,7 @@ private fun ContentTransition(
 				.background(
 					Theme
 						.absoluteBackgroundColorAsState().value
-						.copy(alpha = 0.94f)
+						.copy(alpha = 0.97f)
 				),
 			viewModel = viewModel,
 			transitionedState = transitionedState,
@@ -297,7 +296,6 @@ private fun QueueContentTransition(
 	dismiss: () -> Unit
 ) {
 	val transitionedState = remember { mutableStateOf(false) }
-	val transitionedDrawState = remember { mutableStateOf(false) }
 
 	val yOffsetState = remember {
 		heightDpState.derive { heightDp ->
@@ -322,38 +320,21 @@ private fun QueueContentTransition(
 			}
 			// else keep whatever it was
 		}
-
 		Box(
 			modifier = modifier
 				.fillMaxWidth()
 				.height(heightTargetDp)
 				.offset(0.dp, yOffsetState.value)
 				.background(
-					if (transitionedState.value) {
-						Theme.backgroundColorAsState().value
-					} else {
-						Theme
-							.absoluteBackgroundColorAsState().value
-							.copy(alpha = 0.94f)
+					Theme.absoluteBackgroundColorAsState().value.let {
+						remember(it) {
+							it.copy(alpha = 0.97f)
+						}
 					}
 				)
-				.onGloballyPositioned {
-					transitionedDrawState.value = transitionedState.value
-				}
 		) {
-			MainCurrentPlaybackQueueScreen(
-				modifier = modifier
-					.fillMaxSize()
-					.alpha(
-						animateFloatAsState(
-							targetValue = if (transitionedState.value) {
-								1f
-							} else {
-								0f
-							}
-						).value
-					),
-				transitionedState = transitionedDrawState
+			PlaybackControlQueueScreen(
+				transitionedState = transitionedState
 			)
 		}
 	}

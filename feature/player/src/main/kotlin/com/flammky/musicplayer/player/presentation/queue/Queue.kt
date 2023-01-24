@@ -1,6 +1,8 @@
 package com.flammky.musicplayer.player.presentation.queue
 
 import android.widget.Toast
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -12,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -32,6 +35,7 @@ import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.providers.metadata.VirtualFileMetadata
 import com.flammky.musicplayer.base.compose.NoInlineColumn
 import com.flammky.musicplayer.base.compose.NoInlineRow
+import com.flammky.musicplayer.base.media.MediaConstants
 import com.flammky.musicplayer.base.media.playback.OldPlaybackQueue
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.*
@@ -49,11 +53,14 @@ import timber.log.Timber
 import kotlin.time.Duration
 
 @Composable
-internal fun MainCurrentPlaybackQueueScreen(
-    modifier: Modifier,
+internal fun PlaybackControlQueueScreen(
+    modifier: Modifier = Modifier,
     transitionedState: State<Boolean>
-) = Column(modifier = modifier.fillMaxSize()) {
+) {
     val lazyListState: LazyListState = rememberLazyListState()
+    val transitionedDrawState = remember {
+        mutableStateOf(false)
+    }
     val vms: QueueViewModel = hiltViewModel()
     val userState = remember {
         mutableStateOf<User?>(null)
@@ -70,86 +77,127 @@ internal fun MainCurrentPlaybackQueueScreen(
     val maskedQueueState = remember {
         derivedStateOf { queueOverrideState.value ?: queueState.value }
     }
-
-    Box(
-        modifier = Modifier.fillMaxSize()
+    LaunchedEffect(
+        key1 = transitionedState.value,
+        block = {
+            transitionedDrawState.value = transitionedState.value
+        }
+    )
+    val contentAlpha = animateFloatAsState(
+        targetValue = if (transitionedDrawState.value) {
+            1f
+        } else {
+            0f
+        },
+        animationSpec = tween(
+            durationMillis = if (transitionedDrawState.value
+                && Theme.isDarkAsState().value
+            ) {
+                150
+            } else {
+                0
+            }
+        )
+    ).value
+    Column(
+        modifier = modifier
+            .fillMaxSize()
     ) {
         val statusBarHeight = with(LocalDensity.current) {
             WindowInsets.statusBars
                 .getTop(this)
                 .toDp()
         }
-        val navigationBarHeight = with(LocalDensity.current) {
-            WindowInsets.navigationBars
-                .getBottom(this)
-                .toDp()
-        }
-        val controlHeightState = remember {
-            mutableStateOf(0.dp)
-        }
-        Box contentBox@ {
-            val deferLoadState = remember {
-                derivedStateOf { !transitionedState.value }
+        Spacer(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(statusBarHeight)
+                .background(Theme.backgroundColorAsState().value)
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Theme.backgroundColorAsState().value)
+        ) {
+            val navigationBarHeight = with(LocalDensity.current) {
+                WindowInsets.navigationBars
+                    .getBottom(this)
+                    .toDp()
             }
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                state = lazyListState,
-            ) content@ {
-                val user = userState.value
-                val controller = controllerState.value
-                val maskedQueue = maskedQueueState.value
-                if (user == null ||
-                    controller == null ||
-                    user != controller.user ||
-                    maskedQueue === OldPlaybackQueue.UNSET
-                ) {
-                    return@content
+            val controlHeightState = remember {
+                mutableStateOf(0.dp)
+            }
+            Box(modifier = Modifier.alpha(contentAlpha)) contentBox@ {
+                val deferLoadState = remember {
+                    derivedStateOf { !transitionedDrawState.value }
                 }
-                item {
-                    Spacer(
-                        modifier = Modifier.height(statusBarHeight)
-                    )
-                }
-                items(maskedQueue.list.size) { index ->
-                    val id = maskedQueue.list[index]
-                    val playing = index == maskedQueue.currentIndex
-                    Box(
-                        modifier = if (playing) {
-                            Modifier.background(
-                                Theme.surfaceVariantColorAsState().value.copy(alpha = 0.6f)
-                            )
-                        } else {
-                            Modifier
-                        }
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    state = lazyListState,
+                ) content@ {
+                    val user = userState.value
+                    val controller = controllerState.value
+                    val maskedQueue = maskedQueueState.value
+                    if (user == null ||
+                        controller == null ||
+                        user != controller.user ||
+                        maskedQueue === OldPlaybackQueue.UNSET
                     ) {
-                        QueueItem(
-                            id = id,
-                            viewModel = vms,
-                            deferLoadState = deferLoadState
-                        ) play@ {
-                            if (index != maskedQueue.currentIndex) {
-                                controller.requestSeekAsync(index, Duration.ZERO)
+                        return@content
+                    }
+                    item {
+                        Spacer(
+                            modifier = Modifier.height(statusBarHeight)
+                        )
+                    }
+                    items(maskedQueue.list.size) { index ->
+                        val id = maskedQueue.list[index]
+                        val playing = index == maskedQueue.currentIndex
+                        Box(
+                            modifier = if (playing) {
+                                Modifier.background(
+                                    Theme.surfaceVariantColorAsState().value.copy(alpha = 0.6f)
+                                )
+                            } else {
+                                Modifier
+                            }
+                        ) {
+                            QueueItem(
+                                id = id,
+                                viewModel = vms,
+                                deferLoadState = deferLoadState
+                            ) play@ {
+                                if (index != maskedQueue.currentIndex) {
+                                    controller.requestSeekAsync(index, Duration.ZERO)
+                                }
+                            }
+                            if (!Theme.isDarkAsState().value) {
+                                Divider(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 5.dp)
+                                        .align(Alignment.BottomCenter),
+                                    color = Theme.surfaceVariantColorAsState().value
+                                )
                             }
                         }
-                        if (!Theme.isDarkAsState().value) {
-                            Divider(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 5.dp)
-                                    .align(Alignment.BottomCenter),
-                                color = Theme.surfaceVariantColorAsState().value
+                    }
+                    item {
+                        Spacer(
+                            modifier = Modifier.height(
+                                maxOf(controlHeightState.value, navigationBarHeight)
                             )
-                        }
+                        )
                     }
                 }
-                item {
-                    Spacer(
-                        modifier = Modifier.height(
-                            maxOf(controlHeightState.value, navigationBarHeight)
-                        )
-                    )
-                }
             }
+            Spacer(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(navigationBarHeight)
+                    .background(Theme.backgroundColorAsState().value)
+                    .align(Alignment.BottomCenter)
+            )
             // temporary
             TransitioningCompactPlaybackControl(
                 bottomVisibilityVerticalPadding = navigationBarHeight
@@ -157,25 +205,10 @@ internal fun MainCurrentPlaybackQueueScreen(
                 controlHeightState.value = yOffset.unaryMinus()
             }
         }
-        Spacer(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(statusBarHeight)
-                .background(Theme.backgroundColorAsState().value)
-                .align(Alignment.TopCenter)
-        )
-        Spacer(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(navigationBarHeight)
-                .background(Theme.backgroundColorAsState().value)
-                .align(Alignment.BottomCenter)
-        )
     }
 
     LaunchedEffect(key1 = Unit, block = {
         vms.observeUser().collect {
-            Timber.d("QueueScreen collect user=$it")
             userState.value = it
             controllerState.value = null
             queueState.value = OldPlaybackQueue.UNSET
@@ -281,7 +314,7 @@ private fun QueueItem(
     }
 }
 
-private val ART_LOADING = Any()
+private val ART_UNSET = Any()
 
 @Composable
 private fun ItemArtworkCard(
@@ -292,12 +325,31 @@ private fun ItemArtworkCard(
     val context = LocalContext.current
 
     val artState = remember {
-        mutableStateOf<Any?>(null)
+        mutableStateOf<Any?>(ART_UNSET)
     }
 
     val shape: Shape = remember {
         RoundedCornerShape(5)
     }
+
+    LaunchedEffect(
+        key1 = id,
+        key2 = viewModel,
+        block = {
+            withContext(Dispatchers.Main) {
+                val obs = viewModel.observeArtwork(id)
+                obs.collect {
+                    artState.value = it?.let { art ->
+                        if (MediaConstants.isNoArtwork(art)) {
+                            MediaConstants.NO_ARTWORK
+                        } else {
+                            art
+                        }
+                    }
+                }
+            }
+        }
+    )
 
     Card(
         modifier = Modifier
@@ -309,6 +361,9 @@ private fun ItemArtworkCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
 
+        if (deferLoadState.value) {
+            return@Card
+        }
 
         val imageModel = remember(artState.value) {
             ImageRequest.Builder(context)
@@ -321,7 +376,7 @@ private fun ItemArtworkCard(
             modifier = Modifier
                 .fillMaxSize()
                 .placeholder(
-                    visible = imageModel.data === ART_LOADING || deferLoadState.value,
+                    visible = imageModel.data === ART_UNSET || deferLoadState.value,
                     color = localShimmerSurface(),
                     shape = shape,
                     highlight = PlaceholderHighlight.shimmer(highlightColor = localShimmerColor())
@@ -330,24 +385,6 @@ private fun ItemArtworkCard(
             model = imageModel,
             contentDescription = "Artwork",
             contentScale = ContentScale.Crop
-        )
-
-        if (deferLoadState.value) {
-            return@Card
-        }
-
-        LaunchedEffect(
-            key1 = id,
-            key2 = viewModel,
-            block = {
-                withContext(Dispatchers.Main) {
-                    val obs = viewModel.observeArtwork(id)
-                    artState.value = ART_LOADING
-                    obs.collect {
-                        artState.value = it
-                    }
-                }
-            }
         )
     }
 }
@@ -361,6 +398,18 @@ private fun ItemTextDescription(
     textColor: Color = Theme.backgroundContentColorAsState().value
 ) {
     val metadataState = remember { mutableStateOf<AudioMetadata?>(AudioMetadata.UNSET) }
+
+    LaunchedEffect(
+        key1 = id,
+        key2 = viewModel,
+        block = {
+            withContext(coroutineContext + Dispatchers.Main) {
+                viewModel.observeMetadata(id).collect {
+                    metadataState.value = it as? AudioMetadata
+                }
+            }
+        }
+    )
 
     NoInlineColumn(
         modifier = modifier.fillMaxHeight(),
@@ -445,22 +494,6 @@ private fun ItemTextDescription(
             style = style2,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-        )
-
-        if (deferLoadState.value) {
-            return@NoInlineColumn
-        }
-
-        LaunchedEffect(
-            key1 = id,
-            key2 = viewModel,
-            block = {
-                withContext(coroutineContext + Dispatchers.Main) {
-                    viewModel.observeMetadata(id).collect {
-                        metadataState.value = it as? AudioMetadata
-                    }
-                }
-            }
         )
     }
 }

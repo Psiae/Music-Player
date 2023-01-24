@@ -838,14 +838,17 @@ private fun AnimatedProgressBar(
 			val bufferedPosition = bufferedPositionState.value
 			val duration = durationState.value
 
-			require(!bufferedPosition.isNegative() || bufferedPosition == PlaybackConstants.POSITION_UNSET) {
-				"Negative Position ($bufferedPosition) must be equal to " +
-					"PlaybackConstants.POSITION_UNSET (${PlaybackConstants.POSITION_UNSET})"
+			if (bufferedPosition.isNegative()) {
+				require(bufferedPosition == PlaybackConstants.POSITION_UNSET) {
+					"Negative Position ($bufferedPosition) must be equal to " +
+							"PlaybackConstants.POSITION_UNSET (${PlaybackConstants.POSITION_UNSET})"
+				}
+				require(duration == PlaybackConstants.DURATION_UNSET) {
+					"Negative Duration ($duration) must be equal to " +
+							"PlaybackConstants.DURATION_UNSET (${PlaybackConstants.DURATION_UNSET})"
+				}
 			}
-			require(!bufferedPosition.isNegative() || duration == PlaybackConstants.DURATION_UNSET) {
-				"Negative Duration ($duration) must be equal to " +
-					"PlaybackConstants.DURATION_UNSET (${PlaybackConstants.DURATION_UNSET})"
-			}
+
 			val bufferedProgress by animateFloatAsState(
 				targetValue = when {
 					bufferedPosition == PlaybackConstants.POSITION_UNSET ||

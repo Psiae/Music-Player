@@ -57,17 +57,19 @@ class RealMediaMetadataCacheRepository(
 			check(key == id)
 			sf.emit(value)
 		}
-		rwl.write {
-			addMetadataObserver(id, observer)
-			getMetadata(id)
-		}.also { cached ->
-			sf.emit(cached)
+		mainScope.launch {
+			rwl.write {
+				addMetadataObserver(id, observer)
+				getMetadata(id)
+			}.also { cached ->
+				sf.emit(cached)
+			}
 		}
 		runCatching {
 			sf.collect(this)
 		}.onFailure { ex ->
-			if (ex !is CancellationException) throw ex
 			removeMetadataObserver(id, observer)
+			if (ex !is CancellationException) throw ex
 		}
 	}
 
@@ -140,17 +142,19 @@ class RealMediaMetadataCacheRepository(
 			check(key == id)
 			sf.emit(value)
 		}
-		rwl.write {
-			addArtworkObserver(id, observer)
-			getArtwork(id)
-		}.also { cached ->
-			sf.emit(cached)
+		mainScope.launch {
+			rwl.write {
+				addArtworkObserver(id, observer)
+				getArtwork(id)
+			}.also { cached ->
+				sf.emit(cached)
+			}
 		}
 		runCatching {
 			sf.collect(this)
 		}.onFailure { ex ->
-			if (ex !is CancellationException) throw ex
 			removeArtworkObserver(id, observer)
+			if (ex !is CancellationException) throw ex
 		}
 	}
 

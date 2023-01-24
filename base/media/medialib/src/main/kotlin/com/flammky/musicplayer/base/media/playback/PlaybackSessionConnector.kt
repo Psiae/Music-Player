@@ -231,7 +231,7 @@ class PlaybackSessionConnector internal constructor(
 
 		override suspend fun getBufferedPosition(): Duration {
 			return runCatching {
-				_deferredController?.await()?.bufferedPosition?.milliseconds
+				_deferredController?.await()?.bufferedPosition?.milliseconds?.takeIf { !it.isNegative() }
 					?: PlaybackConstants.POSITION_UNSET
 			}.getOrElse { ex ->
 				if (ex !is CancellationException) throw ex
@@ -241,7 +241,7 @@ class PlaybackSessionConnector internal constructor(
 
 		override suspend fun getPosition(): Duration {
 			return runCatching {
-				_deferredController?.await()?.currentPosition?.milliseconds
+				_deferredController?.await()?.currentPosition?.milliseconds?.takeIf { !it.isNegative() }
 					?: PlaybackConstants.POSITION_UNSET
 			}.getOrElse { ex ->
 				if (ex !is CancellationException) throw ex

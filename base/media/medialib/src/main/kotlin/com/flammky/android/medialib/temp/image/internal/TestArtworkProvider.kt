@@ -45,16 +45,16 @@ class TestArtworkProvider(
 			listenable.addException(ex)
 			listenable.setResult(null)
 		}
-		if (request.memoryCacheAllowed) {
-			repo.getArtwork(
-				request.id + "_raw"
-			)?.let {
-				listenable.setResult(it as? R)
-				// maybe check restore cache?
-				return
-			}
-		}
 		ioScope.launch {
+			if (request.memoryCacheAllowed) {
+				repo.getArtwork(
+					request.id + "_raw"
+				)?.let {
+					listenable.setResult(it as? R)
+					// maybe check restore cache?
+					return@launch
+				}
+			}
 			val resolvedUri = when {
 				request.id.startsWith("MediaStore") || request.id.startsWith("MEDIASTORE") -> {
 					ContentUris.withAppendedId(MediaStore28.Audio.EXTERNAL_CONTENT_URI, request.id.takeLastWhile { it.isDigit() }.toLong())
@@ -75,13 +75,18 @@ class TestArtworkProvider(
 								Timber.d("AF($resolvedUri) data: ${data?.size}")
 								if (data != null && data.isNotEmpty()) {
 									BitmapSampler.ByteArray.toSampledBitmap(data, 0, data.size, 500, 500)
-										.let { bitmap ->
+										?.let { bitmap ->
 											bitmap.also {
 												if (request.storeMemoryCacheAllowed) {
-													repo.provideArtwork(request.id + "_raw", it ?: MediaConstants.NO_ARTWORK)
+													repo.provideArtwork(request.id + "_raw", it)
 												}
 											}
 										}
+								} else if (af.ex == null) {
+									if (request.storeMemoryCacheAllowed) {
+										repo.provideArtwork(request.id + "_raw", MediaConstants.NO_ARTWORK)
+									}
+									MediaConstants.NO_ARTWORK_BITMAP
 								} else {
 									null
 								}

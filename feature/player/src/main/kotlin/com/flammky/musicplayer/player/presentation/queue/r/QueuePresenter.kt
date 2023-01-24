@@ -15,6 +15,7 @@ import com.flammky.musicplayer.player.presentation.queue.QueuePresenter
 import com.flammky.musicplayer.player.presentation.r.RealPlaybackController
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flow
 
 // better way is probably to inject supplier instead
@@ -131,18 +132,54 @@ private class Actual(
     override val repo: QueuePresenter.Repo = object : QueuePresenter.Repo {
 
         override fun observeArtwork(id: String): Flow<Any?> {
+            check(inMainLooper())
+            if (_disposed) {
+                return flow {  }
+            }
             return flow {
-                artworkProvider
-                    .request(ArtworkProvider.Request.Builder(id, Bitmap::class.java).build())
-                metadataCacheRepository.observeArtwork(id + "_raw").collect(this)
+                val supervisor = Job()
+                val sf = MutableSharedFlow<Any?>(1)
+                    .apply msf@ {
+                        coroutineScope.launch(supervisor) {
+                            artworkProvider
+                                .request(ArtworkProvider.Request.Builder(id, Bitmap::class.java).build())
+                            metadataCacheRepository.observeArtwork(id + "_raw").collect {
+                                this@msf.emit(it)
+                            }
+                        }
+                    }
+                runCatching collector@ {
+                    sf.collect(this@collector)
+                }.onFailure { ex ->
+                    supervisor.cancel()
+                    if (ex !is CancellationException) throw ex
+                }
             }
         }
 
         override fun observeMetadata(id: String): Flow<MediaMetadata?> {
+            check(inMainLooper())
+            if (_disposed) {
+                return flow {  }
+            }
             return flow {
-                metadataProvider
-                    .requestAsync(id)
-                metadataCacheRepository.observeMetadata(id).collect(this)
+                val supervisor = Job()
+                val sf = MutableSharedFlow<MediaMetadata?>(1)
+                    .apply msf@ {
+                        coroutineScope.launch(supervisor) {
+                            metadataProvider
+                                .requestAsync(id)
+                            metadataCacheRepository.observeMetadata(id).collect {
+                                this@msf.emit(it)
+                            }
+                        }
+                    }
+                runCatching collector@ {
+                    sf.collect(this@collector)
+                }.onFailure { ex ->
+                    supervisor.cancel()
+                    if (ex !is CancellationException) throw ex
+                }
             }
         }
     }

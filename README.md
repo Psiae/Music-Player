@@ -4,12 +4,10 @@ Simple Music Player `100% Made in Kotlin` with Jetpack Compose & AndroidX Media3
 
 > This app has somewhat basic playback control both in app and notification and should be able to play any format supported by [ExoPlayer](https://github.com/google/ExoPlayer) corresponds to the current [Media3](https://github.com/androidx/media/) version 
 
-> it filters incoming Intent with scheme: "content://" ; action: "android.intent.action.VIEW" ; mimeType: "audio/*"
-
-> I'm usually active helping mobile-devs in https://discord.gg/programming for self-learning
+> this app filters incoming `ACTION_VIEW` Intent with `scheme: "content://"` and `mimeType: "audio/*"`
 
 ## Contribution
-Due to full-scale rewrite on the codebase it will be quite hard to accept any pull-request, I might consider if it aligns with the current target
+Due to full-scale rewrite on the codebase it will be quite hard to accept any pull-request, feel free to `Fork` or `Clone` tho
 
 Feel free to open an [issue](https://github.com/flammky/Music-Player/issues) for suggestion
 
@@ -18,11 +16,12 @@ Feel free to open an [issue](https://github.com/flammky/Music-Player/issues) for
 
 > Resolve Audio scan-able by [MediaStore](https://developer.android.com/reference/android/provider/MediaStore)
 >
-> (if insufficient a Full scanner will be implemented to for manual insert to MediaStore with User permission)
+> a Full scanner will be implemented to for manual insert to MediaStore with User permission
 
-> Audio Metadata Extraction with [JAudioTagger](https://www.jthink.net/jaudiotagger/) 
+> Audio Metadata Extraction with modified version of [JAudioTagger](https://www.jthink.net/jaudiotagger/) 
+> (Dirty) to have better compatibility in Android Environment
 >
-> artwork currently only read to [MP3, FLAC, MP4-AAC, OGG-Vorbis, OGG-Opus, WAV], write is not tested.
+> artwork and metadata currently only read to [MP3, FLAC, MP4-AAC, OGG-Vorbis, OGG-Opus, WAV], write is not tested.
 
 > Artwork color generated Playback background on PlaybackController UI with [Palette API](https://developer.android.com/develop/ui/views/graphics/palette-colors) 
 >

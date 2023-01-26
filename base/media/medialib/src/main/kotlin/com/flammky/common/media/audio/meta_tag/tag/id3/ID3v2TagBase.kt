@@ -15,7 +15,6 @@
  */
 package com.flammky.musicplayer.common.media.audio.meta_tag.tag.id3
 
-import com.flammky.android.core.sdk.VersionHelper
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.UnableToCreateFileException
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.UnableToModifyFileException
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.generic.Utils
@@ -30,6 +29,8 @@ import com.flammky.musicplayer.common.media.audio.meta_tag.tag.images.Artwork
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.reference.Languages
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.reference.PictureTypes
 import com.flammky.musicplayer.common.media.audio.meta_tag.utils.ShiftData
+import com.flammky.musicplayer.core.build.AndroidAPI
+import com.flammky.musicplayer.core.build.AndroidBuildVersion.hasOreo
 import java.io.*
 import java.nio.ByteBuffer
 import java.nio.channels.Channels
@@ -950,11 +951,12 @@ abstract class ID3v2TagBase : AbstractID3Tag, Tag {
 		sizeIncPadding: Int,
 		audioStartLocation: Long
 	) {
-		if (!VersionHelper.hasOreo()) TODO("Implement API < 26")
-
 		try {
-			Files.newByteChannel(file.toPath(), StandardOpenOption.READ, StandardOpenOption.WRITE)
-				.use { fc ->
+			if (AndroidAPI.hasOreo()) {
+				Files.newByteChannel(file.toPath(), StandardOpenOption.READ, StandardOpenOption.WRITE)
+			} else {
+				RandomAccessFile(file, "rw").channel
+			}.use { fc ->
 					//We need to adjust location of audio file if true
 					if (sizeIncPadding > audioStartLocation) {
 						fc.position(audioStartLocation)

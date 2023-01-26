@@ -12,13 +12,14 @@ import com.flammky.musicplayer.base.theme.compose.ProvideTheme
 import com.flammky.musicplayer.base.theme.compose.defaultDarkColorScheme
 import com.flammky.musicplayer.base.theme.compose.defaultLightColorScheme
 import com.flammky.musicplayer.base.theme.compose.elevatedTonalPrimarySurfaceAsState
-import com.flammky.musicplayer.core.build.BuildVersion
+import com.flammky.musicplayer.core.build.AndroidAPI
+import com.flammky.musicplayer.core.build.AndroidBuildVersion.hasSnowCone
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.google.android.material.color.DynamicColors
 
 @Composable
 fun MaterialDesign3Theme(
-	dynamic: Boolean = BuildVersion.hasSnowCone(),
+	dynamic: Boolean = AndroidAPI.hasSnowCone(),
 	useDarkTheme: Boolean = isSystemInDarkTheme(),
 	content: @Composable () -> Unit
 ) {

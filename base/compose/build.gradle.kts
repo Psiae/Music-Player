@@ -90,7 +90,7 @@ dependencies {
     }
 
     @Suppress("SpellCheckingInspection")
-    /* Google.accompanist */
+    /* google.accompanist */
     dependencies  {
         val v = "0.28.0"
 

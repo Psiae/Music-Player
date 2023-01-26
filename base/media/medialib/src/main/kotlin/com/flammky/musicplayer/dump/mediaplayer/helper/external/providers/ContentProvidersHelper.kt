@@ -8,7 +8,8 @@ import android.provider.MediaStore
 import android.provider.OpenableColumns
 import androidx.core.net.toUri
 import com.flammky.musicplayer.base.BuildConfig
-import com.flammky.musicplayer.core.build.BuildVersion
+import com.flammky.musicplayer.core.build.AndroidAPI
+import com.flammky.musicplayer.core.build.AndroidBuildVersion.hasR
 import com.flammky.musicplayer.dump.mediaplayer.helper.Preconditions.checkArgument
 import okio.IOException
 import timber.log.Timber
@@ -47,7 +48,7 @@ object ContentProvidersHelper {
     get() = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI ?: "content://media/external/audio/media"
 
 	private fun getDeviceStorage(): File? {
-		if (BuildVersion.hasR()) return Environment.getStorageDirectory()
+		if (AndroidAPI.hasR()) return Environment.getStorageDirectory()
 
 		val storage = File(storagePath)
 		if (storage.exists()) return storage

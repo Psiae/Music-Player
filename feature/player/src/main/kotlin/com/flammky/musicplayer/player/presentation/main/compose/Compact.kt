@@ -44,7 +44,6 @@ import coil.request.ImageRequest
 import com.flammky.musicplayer.base.compose.NoInline
 import com.flammky.musicplayer.base.media.playback.OldPlaybackQueue
 import com.flammky.musicplayer.base.media.playback.PlaybackConstants
-import com.flammky.musicplayer.base.media.playback.PlaybackProperties
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.*
 import com.flammky.musicplayer.player.R
@@ -304,6 +303,9 @@ private fun cardSurfacePaletteColor(
 	val artwork = artworkState.value
 
 	DisposableEffect(key1 = controller, key2 = freezeState.value, effect = {
+		if (freezeState.value) {
+			return@DisposableEffect onDispose {  }
+		}
 		val supervisor = SupervisorJob()
 		val observer = controller.createPlaybackObserver().apply {
 			createQueueCollector()
@@ -321,11 +323,7 @@ private fun cardSurfacePaletteColor(
 	})
 
 	LaunchedEffect(key1 = id, key2 = freezeState.value, block = {
-		if (freezeState.value) {
-			return@LaunchedEffect
-		}
-		artworkState.value = null
-		if (id == null) {
+		if (id == null || freezeState.value) {
 			return@LaunchedEffect
 		}
 		viewModel.observeMetadata(id).collect {
@@ -720,7 +718,6 @@ private fun PlaybackButtons(
 		onDispose {
 			supervisor.cancel()
 			observer.dispose()
-			playbackPropertiesState.value = PlaybackProperties.UNSET
 		}
 	})
 	Row(

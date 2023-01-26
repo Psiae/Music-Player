@@ -32,7 +32,6 @@ abstract class AudioFileWriter2 : AudioFileWriter() {
 	)
 	override fun delete(af: AudioFile) {
 		if (!VersionHelper.hasOreo()) throw UnsupportedOperationException()
-
 		val path = af.mFile!!.toPath()
 		if (TagOptionSingleton.instance.isCheckIsWritable && !Files.isWritable(path)) {
 			logger.severe(Permissions.displayPermissions(path))

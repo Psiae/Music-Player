@@ -24,7 +24,7 @@ class TestMetadataProvider(
 ) : MetadataProvider {
 
 	@OptIn(ExperimentalCoroutinesApi::class)
-	private val limitedIO = coroutineDispatcher.io.limitedParallelism(12)
+	private val limitedIO = coroutineDispatcher.io.limitedParallelism(24)
 
 	private val _lock = Any()
 	private val coroutineScope = CoroutineScope(SupervisorJob())

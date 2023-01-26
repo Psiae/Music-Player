@@ -24,7 +24,9 @@ import com.flammky.musicplayer.base.BuildConfig
 import com.flammky.musicplayer.base.activity.ActivityWatcher
 import com.flammky.musicplayer.base.media.r.MediaContentWatcher
 import com.flammky.musicplayer.base.media.r.MediaMetadataCacheRepository
-import com.flammky.musicplayer.core.build.BuildVersion
+import com.flammky.musicplayer.core.build.AndroidAPI
+import com.flammky.musicplayer.core.build.AndroidBuildVersion.hasQ
+import com.flammky.musicplayer.core.build.AndroidBuildVersion.hasSnowCone
 import com.flammky.musicplayer.domain.musiclib.service.manager.MediaNotificationManager
 import com.flammky.musicplayer.domain.musiclib.service.manager.PlaybackManager
 import com.flammky.musicplayer.domain.musiclib.service.manager.SessionManager
@@ -139,7 +141,7 @@ class MusicLibraryService : MediaLibraryService() {
 	private fun startForegroundService(notification: Notification) {
 		try {
 			if (!isServiceStarted) onStart()
-			if (BuildVersion.hasQ()) {
+			if (AndroidAPI.hasQ()) {
 				startForeground(
 					MediaNotificationId, notification,
 					ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
@@ -153,7 +155,7 @@ class MusicLibraryService : MediaLibraryService() {
 		} catch (e: Exception) {
 			Timber.e(e)
 			if (BuildConfig.DEBUG
-				|| (BuildVersion.hasSnowCone() && e !is ForegroundServiceStartNotAllowedException)
+				|| (AndroidAPI.hasSnowCone() && e !is ForegroundServiceStartNotAllowedException)
 			) throw e
 		}
 	}

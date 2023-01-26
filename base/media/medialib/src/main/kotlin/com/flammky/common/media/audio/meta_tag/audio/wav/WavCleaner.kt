@@ -1,27 +1,24 @@
 package com.flammky.musicplayer.common.media.audio.meta_tag.audio.wav
 
-import com.flammky.android.core.sdk.VersionHelper
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadException
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.iff.ChunkHeader
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.iff.IffHeaderChunk.ensureOnEqualBoundary
 import com.flammky.musicplayer.common.media.audio.meta_tag.logging.Hex
+import java.io.File
 import java.io.IOException
+import java.io.RandomAccessFile
 import java.nio.ByteOrder
 import java.nio.channels.FileChannel
-import java.nio.file.Path
-import java.nio.file.Paths
-import java.nio.file.StandardOpenOption
 import java.util.logging.Logger
 
 /**
  * Experimental, reads the length of data chiunk and removes all data after that, useful for removing screwed up tags at end of file, but
  * use with care, not very robust.
  */
-class WavCleaner(private val path: Path) {
+class WavCleaner(private val file: File) {
 	private var loggingName: String = ""
 
 	init {
-		if (VersionHelper.hasOreo()) loggingName = path.fileName.toString()
 	}
 
 	/**
@@ -42,9 +39,7 @@ class WavCleaner(private val path: Path) {
 	 */
 	@Throws(Exception::class)
 	private fun findEndOfDataChunk(): Int {
-		if (!VersionHelper.hasOreo()) TODO("Implement API < 26")
-
-		FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.READ).use { fc ->
+		RandomAccessFile(file, "rw").channel.use { fc ->
 			if (WavRIFFHeader.isValidHeader(loggingName, fc)) {
 				while (fc.position() < fc.size()) {
 					val endOfChunk = readChunk(fc)
@@ -114,21 +109,16 @@ class WavCleaner(private val path: Path) {
 		@Throws(Exception::class)
 		@JvmStatic
 		fun main(args: Array<String>) {
-			if (!VersionHelper.hasOreo()) TODO("Implement API < 26")
-			val path = Paths.get("E:\\MQ\\Schubert, F\\The Last Six Years, vol 4-Imogen Cooper")
-			recursiveDelete(path)
 		}
 
 		@Throws(Exception::class)
-		private fun recursiveDelete(path: Path) {
-			if (!VersionHelper.hasOreo()) TODO("Implement API < 26")
-
-			for (next in path.toFile().listFiles()) {
+		private fun recursiveDelete(file: File) {
+			for (next in file.listFiles()) {
 				if (next.isFile && (next.name.endsWith(".WAV") || next.name.endsWith(".wav"))) {
-					val wc = WavCleaner(next.toPath())
+					val wc = WavCleaner(next)
 					wc.clean()
 				} else if (next.isDirectory) {
-					recursiveDelete(next.toPath())
+					recursiveDelete(next)
 				}
 			}
 		}

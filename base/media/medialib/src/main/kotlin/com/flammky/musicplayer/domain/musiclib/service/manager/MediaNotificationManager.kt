@@ -24,7 +24,8 @@ import com.flammky.android.medialib.providers.metadata.VirtualFileMetadata
 import com.flammky.common.kotlin.comparable.clamp
 import com.flammky.common.kotlin.coroutines.AutoCancelJob
 import com.flammky.musicplayer.base.activity.ActivityWatcher
-import com.flammky.musicplayer.core.build.BuildVersion
+import com.flammky.musicplayer.core.build.AndroidAPI
+import com.flammky.musicplayer.core.build.AndroidBuildVersion.hasOreo
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory.orEmpty
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemInfo
@@ -171,7 +172,7 @@ class MediaNotificationManager(
 			private set
 
 		init {
-			if (BuildVersion.hasOreo()) {
+			if (AndroidAPI.hasOreo()) {
 				createNotificationChannel(notificationManagerService)
 			}
 		}

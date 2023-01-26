@@ -6,7 +6,5 @@ package com.flammky.musicplayer.base.theme
 abstract class Theme protected constructor() {
 
 	// Companion for extension
-	companion object : Theme() {
-
-	}
+	companion object
 }

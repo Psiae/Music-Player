@@ -5,6 +5,9 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -26,6 +29,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import coil.request.CachePolicy
@@ -33,6 +37,8 @@ import coil.request.ImageRequest
 import com.flammky.android.medialib.common.mediaitem.AudioFileMetadata
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.providers.metadata.VirtualFileMetadata
+import com.flammky.musicplayer.base.R
+import com.flammky.musicplayer.base.compose.NoInlineBox
 import com.flammky.musicplayer.base.compose.NoInlineColumn
 import com.flammky.musicplayer.base.compose.NoInlineRow
 import com.flammky.musicplayer.base.media.MediaConstants
@@ -57,7 +63,6 @@ internal fun PlaybackControlQueueScreen(
     modifier: Modifier = Modifier,
     transitionedState: State<Boolean>
 ) {
-    val lazyListState: LazyListState = rememberLazyListState()
     val transitionedDrawState = remember {
         mutableStateOf(false)
     }
@@ -121,12 +126,19 @@ internal fun PlaybackControlQueueScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(statusBarHeight)
-                    .background(Theme.backgroundColorAsState().value)
             )
-            Box(modifier = Modifier.alpha(contentAlpha)) contentBox@ {
+            NoInlineBox(modifier = Modifier.alpha(contentAlpha)) contentBox@ {
                 val deferLoadState = remember {
                     derivedStateOf { !transitionedDrawState.value }
                 }
+                val queue = queueState.value
+                if (queue == OldPlaybackQueue.UNSET) return@contentBox
+                val lazyListState: LazyListState = rememberLazyListState(
+                    initialFirstVisibleItemIndex = (queue.currentIndex + 1),
+                    initialFirstVisibleItemScrollOffset = with(LocalDensity.current) {
+                        -statusBarHeight.roundToPx()
+                    }
+                )
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
@@ -143,6 +155,7 @@ internal fun PlaybackControlQueueScreen(
                     ) {
                         return@content
                     }
+                    // Maybe Content-Padding is somewhat more appropriate ?
                     item {
                         Spacer(
                             modifier = Modifier.height(statusBarHeight)
@@ -151,32 +164,86 @@ internal fun PlaybackControlQueueScreen(
                     items(maskedQueue.list.size) { index ->
                         val id = maskedQueue.list[index]
                         val playing = index == maskedQueue.currentIndex
+                        val overrideYOffsetState = remember {
+                            mutableStateOf<Float?>(null)
+                        }
+                        val overrideYOffsetDp = with(LocalDensity.current) {
+                            overrideYOffsetState.value?.toDp()
+                        }
                         Box(
-                            modifier = if (playing) {
-                                Modifier.background(
-                                    Theme.surfaceVariantColorAsState().value.copy(alpha = 0.6f)
-                                )
-                            } else {
-                                Modifier
+                            modifier = remember(overrideYOffsetDp) {
+                                var stack: Modifier = Modifier
+                                if (overrideYOffsetDp != null) {
+                                    stack = stack
+                                        .offset(y = overrideYOffsetDp)
+                                        .zIndex(1f)
+                                }
+                                stack
                             }
                         ) {
-                            QueueItem(
-                                id = id,
-                                viewModel = vms,
-                                deferLoadState = deferLoadState
-                            ) play@ {
-                                if (index != maskedQueue.currentIndex) {
-                                    controller.requestSeekAsync(index, Duration.ZERO)
+                            Box(
+                                modifier = run {
+                                    val svc = Theme.surfaceVariantColorAsState().value
+                                    val bck = Theme.backgroundColorAsState().value
+                                    remember(playing, maskedQueue.currentIndex) {
+                                        var acc: Modifier = Modifier
+                                        acc = acc.background(
+                                            color = if (playing) {
+                                                svc.copy(alpha = 0.6f).compositeOver(bck)
+                                            } else {
+                                                bck
+                                            }
+                                        )
+                                        if (index < maskedQueue.currentIndex) {
+                                            acc = acc.alpha(0.6f)
+                                        }
+                                        acc
+                                    }
                                 }
-                            }
-                            if (!Theme.isDarkAsState().value) {
-                                Divider(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 5.dp)
-                                        .align(Alignment.BottomCenter),
-                                    color = Theme.surfaceVariantColorAsState().value
-                                )
+                            ) {
+                                Row {
+                                    NoInlineBox(modifier = Modifier.height(60.dp).width(35.dp)) {
+                                        if (deferLoadState.value) return@NoInlineBox
+                                        Icon(
+                                            modifier = Modifier
+                                                .size(30.dp)
+                                                .align(Alignment.Center)
+                                                .draggable(
+                                                    state = rememberDraggableState {
+                                                        overrideYOffsetState.value =
+                                                            (overrideYOffsetState.value ?: 0f) + it
+                                                    },
+                                                    orientation = Orientation.Vertical,
+                                                    onDragStarted = {
+                                                    },
+                                                    onDragStopped = {
+                                                        overrideYOffsetState.value = null
+                                                    }
+                                                ),
+                                            painter = painterResource(id = R.drawable.drag_handle_material_fill),
+                                            contentDescription = "Drag_Queue_Item",
+                                            tint = Theme.backgroundContentColorAsState().value
+                                        )
+                                    }
+                                    QueueItem(
+                                        id = id,
+                                        viewModel = vms,
+                                        deferLoadState = deferLoadState
+                                    ) play@ {
+                                        if (index != maskedQueue.currentIndex) {
+                                            controller.requestSeekAsync(index, Duration.ZERO)
+                                        }
+                                    }
+                                }
+                                if (!Theme.isDarkAsState().value) {
+                                    Divider(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 5.dp)
+                                            .align(Alignment.BottomCenter),
+                                        color = Theme.surfaceVariantColorAsState().value
+                                    )
+                                }
                             }
                         }
                     }

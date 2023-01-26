@@ -24,7 +24,7 @@ class TestArtworkProvider(
 	private val repo: MediaMetadataCacheRepository
 ) : ArtworkProvider {
 	private val dispatcher = AndroidCoroutineDispatchers.DEFAULT
-	private val ioScope = CoroutineScope(dispatcher.io.limitedParallelism(12) + SupervisorJob())
+	private val ioScope = CoroutineScope(dispatcher.io.limitedParallelism(24) + SupervisorJob())
 	private val rawJobMap = mutableMapOf<Uri, Deferred<Bitmap?>>()
 
 	suspend fun removeCacheForId(id: String, mem: Boolean, disk: Boolean) {

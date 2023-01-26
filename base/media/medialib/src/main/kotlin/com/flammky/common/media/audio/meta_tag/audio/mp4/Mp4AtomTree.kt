@@ -1,6 +1,5 @@
 package com.flammky.musicplayer.common.media.audio.meta_tag.audio.mp4
 
-import com.flammky.android.core.sdk.VersionHelper
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotReadException
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.NullBoxIdException
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.mp4.atom.Mp4BoxHeader
@@ -10,10 +9,14 @@ import com.flammky.musicplayer.common.media.audio.meta_tag.audio.mp4.atom.NullPa
 import com.flammky.musicplayer.common.media.audio.meta_tag.logging.ErrorMessage
 import com.flammky.musicplayer.common.media.audio.meta_tag.utils.tree.DefaultMutableTreeNode
 import com.flammky.musicplayer.common.media.audio.meta_tag.utils.tree.DefaultTreeModel
+import com.flammky.musicplayer.core.build.AndroidAPI
+import com.flammky.musicplayer.core.build.AndroidBuildVersion.hasOreo
 import java.io.File
 import java.io.IOException
+import java.io.RandomAccessFile
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.nio.channels.FileChannel
 import java.nio.channels.SeekableByteChannel
 import java.nio.file.Files
 import java.nio.file.StandardOpenOption
@@ -128,19 +131,27 @@ class Mp4AtomTree {
 	 * @throws IOException
 	 * @throws CannotReadException
 	 */
-	constructor(fc: SeekableByteChannel) {
+	constructor(fc: FileChannel) {
 		buildTree(fc, true)
 	}
 
 	constructor(file: File) {
-		if (!VersionHelper.hasOreo()) TODO("Implement API < 26")
-		val fc = Files.newByteChannel(file.toPath(), StandardOpenOption.READ, StandardOpenOption.WRITE)
+		val fc =
+			if (AndroidAPI.hasOreo()) {
+				Files.newByteChannel(file.toPath(), StandardOpenOption.READ, StandardOpenOption.WRITE)
+			} else {
+				RandomAccessFile(file, "rw").channel
+			}
 		buildTree(fc, true)
 	}
 
 	constructor(file: File, closeExit: Boolean) {
-		if (!VersionHelper.hasOreo()) TODO("Implement API < 26")
-		val fc = Files.newByteChannel(file.toPath(), StandardOpenOption.READ, StandardOpenOption.WRITE)
+		val fc =
+			if (AndroidAPI.hasOreo()) {
+				Files.newByteChannel(file.toPath(), StandardOpenOption.READ, StandardOpenOption.WRITE)
+			} else {
+				RandomAccessFile(file, "rw").channel
+			}
 		buildTree(fc, closeExit)
 	}
 

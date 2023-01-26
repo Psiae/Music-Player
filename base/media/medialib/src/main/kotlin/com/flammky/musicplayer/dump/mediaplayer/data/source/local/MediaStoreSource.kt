@@ -9,7 +9,9 @@ import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaItem.RequestMetadata
 import androidx.media3.common.MediaMetadata
-import com.flammky.musicplayer.core.build.BuildVersion
+import com.flammky.musicplayer.core.build.AndroidAPI
+import com.flammky.musicplayer.core.build.AndroidBuildVersion.hasQ
+import com.flammky.musicplayer.core.build.AndroidBuildVersion.hasR
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemPropertyHelper.mediaUri
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaMetadataHelper.putDisplayTitle
@@ -157,14 +159,14 @@ class MediaStoreSourceImpl(
 
 			try {
         val songFolderName =
-					if (BuildVersion.hasQ()) {
+					if (AndroidAPI.hasQ()) {
 						MediaStore.Audio.AudioColumns.BUCKET_DISPLAY_NAME
         	} else {
          	 	MediaStore.Audio.AudioColumns.DATA
         	}
 
         val songFolderId =
-					if (BuildVersion.hasQ()) {
+					if (AndroidAPI.hasQ()) {
           	MediaStore.Audio.AudioColumns.BUCKET_ID
         	} else {
 						MediaStore.Audio.AudioColumns.DATA
@@ -186,7 +188,7 @@ class MediaStoreSourceImpl(
           songFolderId,
         )
 
-				if (BuildVersion.hasR()) projector.add(MediaStore.Audio.AudioColumns.ALBUM_ARTIST)
+				if (AndroidAPI.hasR()) projector.add(MediaStore.Audio.AudioColumns.ALBUM_ARTIST)
 
 
         val selector = "${MediaStore.Audio.Media.IS_MUSIC} != 0"
@@ -208,7 +210,7 @@ class MediaStoreSourceImpl(
             val albumId =
               cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.ALBUM_ID))
 						val albumArtist =
-							if (BuildVersion.hasR()) {
+							if (AndroidAPI.hasR()) {
 								cursor.getString(
 									cursor.getColumnIndexOrThrow(MediaStore.Audio.AudioColumns.ALBUM_ARTIST))
 							} else {

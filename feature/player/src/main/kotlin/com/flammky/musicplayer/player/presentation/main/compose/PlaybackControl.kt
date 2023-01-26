@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalSnapperApi::class, ExperimentalSnapperApi::class)
+@file:OptIn(ExperimentalSnapperApi::class)
 
 package com.flammky.musicplayer.player.presentation.main.compose
 

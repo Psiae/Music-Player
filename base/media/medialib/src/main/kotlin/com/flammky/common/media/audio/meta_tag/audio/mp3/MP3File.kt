@@ -1,6 +1,5 @@
 package com.flammky.musicplayer.common.media.audio.meta_tag.audio.mp3
 
-import com.flammky.android.core.sdk.VersionHelper
 import com.flammky.common.media.audio.meta_tag.audio.generic.Permissions.displayPermissions
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.AudioFile
 import com.flammky.musicplayer.common.media.audio.meta_tag.audio.exceptions.CannotWriteException
@@ -16,6 +15,8 @@ import com.flammky.musicplayer.common.media.audio.meta_tag.tag.id3.*
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.id3.ID3v2TagBase.Companion.getV2TagSizeIfExists
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.lyrics3.AbstractLyrics3
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.reference.ID3V2Version
+import com.flammky.musicplayer.core.build.AndroidAPI
+import com.flammky.musicplayer.core.build.AndroidBuildVersion.hasLevel
 import timber.log.Timber
 import java.io.*
 import java.nio.ByteBuffer
@@ -724,8 +725,6 @@ class MP3File : AudioFile {
 		NotImplementedError::class
 	)
 	fun getHash(algorithm: String?, bufferSize: Int): ByteArray {
-		if (!VersionHelper.hasOreo()) TODO("Require API >= 26")
-
 		val mp3File = mFile
 		val startByte = getMP3StartByte(mp3File!!)
 		var id3v1TagSize = 0
@@ -734,8 +733,12 @@ class MP3File : AudioFile {
 				iD3v1Tag
 			id3v1TagSize = id1tag!!.size
 		}
-		val inStream = Files
-			.newInputStream(Paths.get(mp3File.absolutePath))
+		val inStream =
+			if (AndroidAPI.hasLevel(26)) {
+				Files.newInputStream(Paths.get(mp3File.absolutePath))
+			} else {
+				FileInputStream(mp3File)
+			}
 		val buffer = ByteArray(bufferSize)
 		val digest = MessageDigest.getInstance(algorithm)
 		inStream.skip(startByte)
@@ -872,15 +875,12 @@ class MP3File : AudioFile {
 	 */
 	@Throws(IOException::class)
 	fun precheck(file: File) {
-		if (!VersionHelper.hasOreo()) TODO("Implement API < 26")
-
-		val path = file.toPath()
-		if (!Files.exists(path)) {
+		if (!file.exists()) {
 			logger.severe(ErrorMessage.GENERAL_WRITE_FAILED_BECAUSE_FILE_NOT_FOUND.getMsg(file.name))
 			throw IOException(ErrorMessage.GENERAL_WRITE_FAILED_BECAUSE_FILE_NOT_FOUND.getMsg(file.name))
 		}
-		if (TagOptionSingleton.instance.isCheckIsWritable && !Files.isWritable(path)) {
-			logger.severe(displayPermissions(path))
+		if (TagOptionSingleton.instance.isCheckIsWritable && !file.canWrite()) {
+			logger.severe(displayPermissions(file))
 			logger.severe(ErrorMessage.GENERAL_WRITE_FAILED.getMsg(file.name))
 			throw IOException(ErrorMessage.GENERAL_WRITE_FAILED.getMsg(file.name))
 		}

@@ -5,11 +5,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,7 +25,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import coil.request.CachePolicy
@@ -51,6 +46,9 @@ import com.flammky.musicplayer.player.presentation.main.compose.TransitioningCom
 import com.google.accompanist.placeholder.PlaceholderHighlight
 import com.google.accompanist.placeholder.placeholder
 import com.google.accompanist.placeholder.shimmer
+import dev.flammky.compose_components.reorderable.ReorderableLazyColumn
+import dev.flammky.compose_components.reorderable.itemsIndexed
+import dev.flammky.compose_components.reorderable.rememberReorderableLazyListState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
@@ -63,6 +61,7 @@ internal fun PlaybackControlQueueScreen(
     modifier: Modifier = Modifier,
     transitionedState: State<Boolean>
 ) {
+    val coroutineScope = rememberCoroutineScope()
     val transitionedDrawState = remember {
         mutableStateOf(false)
     }
@@ -134,16 +133,39 @@ internal fun PlaybackControlQueueScreen(
                 val queue = queueState.value
                 if (queue == OldPlaybackQueue.UNSET) return@contentBox
                 val lazyListState: LazyListState = rememberLazyListState(
-                    initialFirstVisibleItemIndex = (queue.currentIndex + 1),
-                    initialFirstVisibleItemScrollOffset = with(LocalDensity.current) {
-                        -statusBarHeight.roundToPx()
-                    }
+                    initialFirstVisibleItemIndex = (queue.currentIndex),
+                    initialFirstVisibleItemScrollOffset = 0
                 )
-                LazyColumn(
+                ReorderableLazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(Theme.backgroundColorAsState().value),
-                    state = lazyListState,
+                    state = rememberReorderableLazyListState(
+                        lazyListState = lazyListState,
+                        onDragStart = { true },
+                        onDragEnd = end@ { cancelled, from, to, handle ->
+                            if (cancelled || from.index == to.index || from.key == to.key) {
+                                return@end handle.done()
+                            }
+                            val expectFromId = (from.key as String)
+                            val expectToId = (to.key as String)
+                            controllerState.value?.requestMoveAsync(
+                                from.index,
+                                expectFromId,
+                                to.index,
+                                expectToId
+                            )?.run {
+                                coroutineScope.launch {
+                                    await().eventDispatch?.join()
+                                    handle.done()
+                                }
+                            }
+                        },
+                    ),
+                    contentPadding = PaddingValues(
+                        top = statusBarHeight,
+                        bottom = maxOf(controlHeightState.value, navigationBarHeight)
+                    ),
                 ) content@ {
                     val user = userState.value
                     val controller = controllerState.value
@@ -155,104 +177,73 @@ internal fun PlaybackControlQueueScreen(
                     ) {
                         return@content
                     }
-                    // Maybe Content-Padding is somewhat more appropriate ?
-                    item {
-                        Spacer(
-                            modifier = Modifier.height(statusBarHeight)
-                        )
-                    }
-                    items(maskedQueue.list.size) { index ->
-                        val id = maskedQueue.list[index]
+                    itemsIndexed(
+                        maskedQueue.list,
+                        { _, item -> item }
+                    ) { index, item ->
+                        val id = item
                         val playing = index == maskedQueue.currentIndex
-                        val overrideYOffsetState = remember {
-                            mutableStateOf<Float?>(null)
-                        }
-                        val overrideYOffsetDp = with(LocalDensity.current) {
-                            overrideYOffsetState.value?.toDp()
-                        }
                         Box(
-                            modifier = remember(overrideYOffsetDp) {
-                                var stack: Modifier = Modifier
-                                if (overrideYOffsetDp != null) {
-                                    stack = stack
-                                        .offset(y = overrideYOffsetDp)
-                                        .zIndex(1f)
+                            modifier = run {
+                                val svc = Theme.surfaceVariantColorAsState().value
+                                val bck = Theme.backgroundColorAsState().value
+                                val dragging = info.dragging
+                                remember(this, playing, maskedQueue.currentIndex, dragging) {
+                                    var acc: Modifier = Modifier
+                                    acc = acc.reorderingItemVisualModifiers()
+                                    acc = acc.background(
+                                        color = if (playing) {
+                                            svc.copy(alpha = 0.6f).compositeOver(bck)
+                                        } else if (dragging) {
+                                            svc.copy(0.4f).compositeOver(bck)
+                                        } else {
+                                            bck
+                                        }
+                                    )
+                                    if (index < maskedQueue.currentIndex) {
+                                        acc = acc.alpha(0.6f)
+                                    }
+                                    acc
                                 }
-                                stack
                             }
                         ) {
-                            Box(
-                                modifier = run {
-                                    val svc = Theme.surfaceVariantColorAsState().value
-                                    val bck = Theme.backgroundColorAsState().value
-                                    remember(playing, maskedQueue.currentIndex) {
-                                        var acc: Modifier = Modifier
-                                        acc = acc.background(
-                                            color = if (playing) {
-                                                svc.copy(alpha = 0.6f).compositeOver(bck)
-                                            } else {
-                                                bck
-                                            }
-                                        )
-                                        if (index < maskedQueue.currentIndex) {
-                                            acc = acc.alpha(0.6f)
-                                        }
-                                        acc
-                                    }
-                                }
-                            ) {
-                                Row {
-                                    NoInlineBox(modifier = Modifier.height(60.dp).width(35.dp)) {
-                                        if (deferLoadState.value) return@NoInlineBox
-                                        Icon(
-                                            modifier = Modifier
-                                                .size(30.dp)
-                                                .align(Alignment.Center)
-                                                .draggable(
-                                                    state = rememberDraggableState {
-                                                        overrideYOffsetState.value =
-                                                            (overrideYOffsetState.value ?: 0f) + it
-                                                    },
-                                                    orientation = Orientation.Vertical,
-                                                    onDragStarted = {
-                                                    },
-                                                    onDragStopped = {
-                                                        overrideYOffsetState.value = null
-                                                    }
-                                                ),
-                                            painter = painterResource(id = R.drawable.drag_handle_material_fill),
-                                            contentDescription = "Drag_Queue_Item",
-                                            tint = Theme.backgroundContentColorAsState().value
-                                        )
-                                    }
-                                    QueueItem(
-                                        id = id,
-                                        viewModel = vms,
-                                        deferLoadState = deferLoadState
-                                    ) play@ {
-                                        if (index != maskedQueue.currentIndex) {
-                                            controller.requestSeekAsync(index, Duration.ZERO)
-                                        }
-                                    }
-                                }
-                                if (!Theme.isDarkAsState().value) {
-                                    Divider(
+                            Row {
+                                NoInlineBox(
+                                    modifier = Modifier
+                                        .height(60.dp)
+                                        .width(35.dp)
+                                ) {
+                                    if (deferLoadState.value) return@NoInlineBox
+                                    Icon(
                                         modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 5.dp)
-                                            .align(Alignment.BottomCenter),
-                                        color = Theme.surfaceVariantColorAsState().value
+                                            .size(30.dp)
+                                            .align(Alignment.Center)
+                                            .reorderInput(),
+                                        painter = painterResource(id = R.drawable.drag_handle_material_fill),
+                                        contentDescription = "Drag_Queue_Item",
+                                        tint = Theme.backgroundContentColorAsState().value
                                     )
                                 }
+                                QueueItem(
+                                    id = id,
+                                    viewModel = vms,
+                                    deferLoadState = deferLoadState
+                                ) play@{
+                                    if (index != maskedQueue.currentIndex) {
+                                        controller.requestSeekAsync(index, Duration.ZERO)
+                                    }
+                                }
+                            }
+                            if (!Theme.isDarkAsState().value) {
+                                Divider(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 5.dp)
+                                        .align(Alignment.BottomCenter),
+                                    color = Theme.surfaceVariantColorAsState().value
+                                )
                             }
                         }
-                    }
-                    item {
-                        Spacer(
-                            modifier = Modifier.height(
-                                maxOf(controlHeightState.value, navigationBarHeight)
-                            )
-                        )
                     }
                 }
             }
@@ -280,7 +271,6 @@ internal fun PlaybackControlQueueScreen(
         }
     })
 
-    val coroutineScope = rememberCoroutineScope()
     DisposableEffect(key1 = userState.value, effect = {
         val user = userState.value
             ?: return@DisposableEffect onDispose {  }

@@ -6,17 +6,18 @@ import com.flammky.musicplayer.base.media.playback.PlaybackConstants
 import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.core.common.sync
 import com.flammky.musicplayer.player.presentation.presenter.PlaybackObserver
+import com.flammky.musicplayer.player.presentation.r.RealPlaybackObserver
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import timber.log.Timber
 import kotlin.time.Duration
 
 internal class RealPlaybackDurationCollector(
-	private val user: User,
+    private val user: User,
 	// parent should provide the necessary function
-	private val parentObserver: RealPlaybackObserver,
-	private val scope: CoroutineScope,
-	private val connection: PlaybackConnection
+    private val parentObserver: RealPlaybackObserver,
+    private val scope: CoroutineScope,
+    private val connection: PlaybackConnection
 ) : PlaybackObserver.DurationCollector {
 	// unfortunately identity check is not allowed
 	private val _durationStateFlow = MutableStateFlow<Duration?>(null)

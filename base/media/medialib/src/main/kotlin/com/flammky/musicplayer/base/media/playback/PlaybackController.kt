@@ -28,6 +28,13 @@ interface PlaybackController {
 
 	suspend fun getPlaybackProperties(): PlaybackProperties
 
+	suspend fun requestMoveAsync(
+		from: Int,
+		expectFromId: String,
+		to: Int,
+		expectToId: String
+	): Boolean
+
 	/**
 	 * Acquire Observer for the specified owner, Get Or Create
 	 */

@@ -7,6 +7,7 @@ import com.flammky.musicplayer.base.media.playback.PlaybackSessionConnector
 import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.core.common.sync
 import com.flammky.musicplayer.player.presentation.presenter.PlaybackObserver
+import com.flammky.musicplayer.player.presentation.r.RealPlaybackObserver
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import timber.log.Timber
@@ -16,12 +17,12 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class RealPlaybackProgressionCollector(
-	private val user: User,
-	private val observer: RealPlaybackObserver,
-	private val scope: CoroutineScope,
+    private val user: User,
+    private val observer: RealPlaybackObserver,
+    private val scope: CoroutineScope,
 	// remove
-	private val playbackConnection: PlaybackConnection,
-	collectEvent: Boolean,
+    private val playbackConnection: PlaybackConnection,
+    collectEvent: Boolean,
 ) : PlaybackObserver.ProgressionCollector {
 
 	private val _stateLock = Any()

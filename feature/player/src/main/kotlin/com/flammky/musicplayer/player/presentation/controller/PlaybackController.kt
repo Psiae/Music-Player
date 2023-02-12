@@ -96,6 +96,13 @@ internal abstract class PlaybackController(
 		coroutineContext: CoroutineContext = EmptyCoroutineContext
 	): Deferred<RequestResult>
 
+	abstract fun requestMoveAsync(
+		from: Int,
+		expectFromId: String,
+		to: Int,
+		expectToId: String
+	): Deferred<RequestResult>
+
 	/**
 	 * Request to do `CompareAndSet` operation directly
 	 * `compareAndSet` is executed directly in the controller looper

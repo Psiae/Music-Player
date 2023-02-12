@@ -7,16 +7,17 @@ import com.flammky.musicplayer.base.media.playback.PlaybackConstants
 import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.core.common.sync
 import com.flammky.musicplayer.player.presentation.presenter.PlaybackObserver
+import com.flammky.musicplayer.player.presentation.r.RealPlaybackObserver
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import timber.log.Timber
 
 @OptIn(ExperimentalStdlibApi::class, ExperimentalCoroutinesApi::class)
 internal class RealPlaybackQueueCollector(
-	private val user: User,
-	private val observer: RealPlaybackObserver,
-	private val scope: CoroutineScope,
-	private val playbackConnection: PlaybackConnection
+    private val user: User,
+    private val observer: RealPlaybackObserver,
+    private val scope: CoroutineScope,
+    private val playbackConnection: PlaybackConnection
 ) : PlaybackObserver.QueueCollector {
 
 	private val _lock = Any()

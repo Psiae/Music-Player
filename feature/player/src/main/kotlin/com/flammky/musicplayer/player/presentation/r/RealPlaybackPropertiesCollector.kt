@@ -6,6 +6,7 @@ import com.flammky.musicplayer.base.media.playback.PlaybackProperties
 import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.core.common.sync
 import com.flammky.musicplayer.player.presentation.presenter.PlaybackObserver
+import com.flammky.musicplayer.player.presentation.r.RealPlaybackObserver
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,10 +15,10 @@ import kotlinx.coroutines.flow.first
 import javax.annotation.concurrent.GuardedBy
 
 internal class RealPlaybackPropertiesCollector(
-	private val user: User,
-	private val scope: CoroutineScope,
-	private val parentObserver: RealPlaybackObserver,
-	private val connection: PlaybackConnection
+    private val user: User,
+    private val scope: CoroutineScope,
+    private val parentObserver: RealPlaybackObserver,
+    private val connection: PlaybackConnection
 ) : PlaybackObserver.PropertiesCollector {
 
 	private val _lock = Any()

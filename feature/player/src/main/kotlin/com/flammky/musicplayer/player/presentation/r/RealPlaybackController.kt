@@ -8,10 +8,10 @@ import com.flammky.musicplayer.base.media.playback.RepeatMode
 import com.flammky.musicplayer.base.media.playback.ShuffleMode
 import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.core.common.sync
-import com.flammky.musicplayer.playbackcontrol.presentation.r.RealPlaybackObserver
 import com.flammky.musicplayer.player.presentation.controller.PlaybackController
 import com.flammky.musicplayer.player.presentation.presenter.PlaybackObserver
 import kotlinx.coroutines.*
+import timber.log.Timber
 import kotlin.coroutines.CoroutineContext
 import kotlin.time.Duration
 
@@ -318,6 +318,40 @@ internal class RealPlaybackController(
 						val jobs = mutableListOf<Job>()
 						_observers.forEach {
 							jobs.add(it.updateShuffleMode())
+						}
+						jobs.joinAll()
+					}
+				} else {
+					null
+				}
+			)
+		}
+	}
+
+	override fun requestMoveAsync(
+		from: Int,
+		expectFromId: String,
+		to: Int,
+		expectToId: String
+	): Deferred<RequestResult> {
+		Timber.d("requestMoveAsync $from $expectFromId $to $expectToId")
+		return scope.async {
+			Timber.d("requestMoveAsync $from $expectFromId $to $expectToId, in scope")
+			val success = runCatching {
+				playbackConnection.requestUserSessionAsync(user).await().controller.withLooperContext {
+					Timber.d("requestMoveAsync $from $expectFromId $to $expectToId, in Looper Context")
+					requestMoveAsync(from, expectFromId, to, expectToId)
+				}
+			}.getOrElse {
+				false
+			}
+			RequestResult(
+				success = success,
+				eventDispatch = if (success) {
+					launch {
+						val jobs = mutableListOf<Job>()
+						_observers.forEach {
+							jobs.add(it.updateQueue())
 						}
 						jobs.joinAll()
 					}

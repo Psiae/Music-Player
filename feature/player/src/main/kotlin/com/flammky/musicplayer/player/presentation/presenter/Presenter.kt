@@ -356,6 +356,14 @@ internal class ExpectPlaybackControlPresenter(
 	private class EmptyPlaybackController(user: User) : PlaybackController(user) {
 
 
+		override fun requestMoveAsync(
+			from: Int,
+			expectFromId: String,
+			to: Int,
+			expectToId: String
+		): Deferred<RequestResult> {
+			TODO("Not yet implemented")
+		}
 
 		override val disposed: Boolean = true
 

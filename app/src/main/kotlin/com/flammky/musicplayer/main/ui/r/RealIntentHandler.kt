@@ -151,6 +151,10 @@ class RealIntentHandler(
 			parent.notifyDisposedInterceptor(this)
 		}
 
+		override fun isParent(parent: IntentHandler): Boolean {
+			return this.parent === parent
+		}
+
 		fun intercept(
 			intent: Intent,
 			resume: () -> Unit,

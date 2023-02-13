@@ -9,8 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.snapshots.Snapshot
+import androidx.compose.runtime.snapshots.readable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -26,6 +25,7 @@ import com.flammky.musicplayer.main.ext.IntentHandler
 import com.flammky.musicplayer.main.ui.MainViewModel
 import com.flammky.musicplayer.main.ui.compose.entry.EntryPermissionPager
 import com.flammky.musicplayer.main.ui.compose.nav.RootNavigation
+import kotlinx.coroutines.launch
 
 @Composable
 fun BoxScope.RootEntry(
@@ -39,38 +39,61 @@ fun BoxScope.RootEntry(
 			RootNavigation()
 		},
 		onFirstEntryGuardLayout = {
-			Snapshot.observe {
-				it.firstEntryGuardWaiter
-					.apply {
-						if (!isEmpty()) {
-							forEach { it() }
-							clear()
-						}
+			snapshotFlow(equality = { _, _ -> false }) {
+				it.firstEntryGuardWaiter.apply {
+					firstStateRecord.readable(this)
+				}
+			}.collect {
+				it.apply {
+					if (!isEmpty()) {
+						forEach { it() }
+						clear()
 					}
+				}
 			}
 		},
 		onAuthGuarded = {
-			Snapshot.observe {
-				it.authGuardWaiter
-					.apply {
-						if (!isEmpty()) {
-							forEach { it() }
-							clear()
-						}
+			snapshotFlow(equality = { _, _ -> false }) {
+				it.authGuardWaiter.apply {
+					firstStateRecord.readable(this)
+				}
+			}.collect {
+				it.apply {
+					if (!isEmpty()) {
+						forEach { it() }
+						clear()
 					}
+				}
 			}
 		},
 		onRuntimePermissionGuarded = {
-			Snapshot.observe {
-				it.permGuardWaiter
-					.apply {
-						if (!isEmpty()) {
-							forEach { it() }
-							clear()
-						}
+			snapshotFlow(equality = { _, _ -> false }) {
+				it.permGuardWaiter.apply {
+					firstStateRecord.readable(this)
+				}
+			}.collect {
+				it.apply {
+					if (!isEmpty()) {
+						forEach { it() }
+						clear()
 					}
+				}
 			}
 		},
+		onAllGuarded = {
+			snapshotFlow(equality = { _, _ -> false }) {
+				it.allEntryGuardWaiter.apply {
+					firstStateRecord.readable(this)
+				}
+			}.collect {
+				it.apply {
+					if (!isEmpty()) {
+						forEach { it() }
+						clear()
+					}
+				}
+			}
+		}
 	).run {
 		GuardLayout()
 	}
@@ -81,9 +104,10 @@ private fun <HANDLE> rememberRootEntryGuardState(
 	handle: HANDLE,
 	viewModelStoreOwner: ViewModelStoreOwner,
 	intentHandler: (handle: HANDLE) -> IntentHandler,
-	onFirstEntryGuardLayout: (handle: HANDLE) -> Unit,
-	onAuthGuarded: (handle: HANDLE) -> Unit,
-	onRuntimePermissionGuarded: (handle: HANDLE) -> Unit,
+	onFirstEntryGuardLayout: suspend (handle: HANDLE) -> Unit,
+	onAuthGuarded: suspend (handle: HANDLE) -> Unit,
+	onRuntimePermissionGuarded: suspend (handle: HANDLE) -> Unit,
+	onAllGuarded: suspend (handle: HANDLE) -> Unit,
 	onAllowContent: @Composable () -> Unit
 ): RootEntryGuardState<HANDLE> {
 	return remember(handle, viewModelStoreOwner) {
@@ -94,6 +118,7 @@ private fun <HANDLE> rememberRootEntryGuardState(
 			onFirstEntryGuardLayout,
 			onAuthGuarded,
 			onRuntimePermissionGuarded,
+			onAllGuarded,
 			onAllowContent
 		)
 	}
@@ -104,9 +129,10 @@ private class RootEntryGuardState <HANDLE> (
 	private val handle: HANDLE,
 	private val viewModelStoreOwner: ViewModelStoreOwner,
 	private val intentHandler: IntentHandler,
-	private val onFirstEntryGuardLayout: (handle: HANDLE) -> Unit,
-	private val onAuthGuarded: (handle: HANDLE) -> Unit,
-	private val onRuntimePermissionGuarded: (handle: HANDLE) -> Unit,
+	private val onFirstEntryGuardLayout: suspend (handle: HANDLE) -> Unit,
+	private val onAuthGuarded: suspend (handle: HANDLE) -> Unit,
+	private val onRuntimePermissionGuarded: suspend (handle: HANDLE) -> Unit,
+	private val onAllGuarded: suspend (handle: HANDLE) -> Unit,
 	private val onAllowContent: @Composable () -> Unit
 ) {
 	private val authAllowState = mutableStateOf<Boolean>(false)
@@ -179,8 +205,12 @@ private class RootEntryGuardState <HANDLE> (
 		LaunchedEffect(
 			key1 = null,
 			block = {
-				onFirstEntryGuardLayout(handle)
-				onAuthGuarded(handle)
+				launch {
+					onFirstEntryGuardLayout(handle)
+				}
+				launch {
+					onAuthGuarded(handle)
+				}
 				if (vm.currentUser == null) {
 					val remember = vm.loginRememberAsync()
 					showLoading = true
@@ -200,9 +230,12 @@ private class RootEntryGuardState <HANDLE> (
 	private fun PermGuard(
 		onAllowContent: @Composable () -> Unit
 	) {
+		// I think it would be better to ask for saver object instead
 		val vm = hiltViewModel<RuntimePermissionGuardViewModel>(viewModelStoreOwner)
 		val contextHelper = rememberLocalContextHelper()
-		var persistPager by rememberSaveable() { mutableStateOf(false) }
+		var persistPager by remember {
+			mutableStateOf(vm.removeSaved("persistPager") as? Boolean ?: false)
+		}
 		val permissionGrantedState = remember {
 			mutableStateOf(contextHelper.permissions.common.hasReadExternalStorage ||
 				contextHelper.permissions.common.hasWriteExternalStorage
@@ -213,44 +246,47 @@ private class RootEntryGuardState <HANDLE> (
 			derivedStateOf { !persistPager && permissionGrantedState.value }
 		}.value
 
-		if (!permAllowState.value) {
-			persistPager = true
-			val intentInterceptor = remember {
-				intentHandler.createInterceptor()
-					.apply {
-						setFilter { target ->
-							intentHandler.intentRequireAndroidPermission(
-								intent = target.cloneActual(),
-								permission = AndroidPermission.Read_External_Storage
-							)
+		val intentInterceptor = remember {
+			val interceptor = (vm.removeSaved(IntentHandler.Interceptor::class) as? IntentHandler.Interceptor)
+				?.takeIf { it.isParent(intentHandler) }
+				?: run { intentHandler.createInterceptor() }
+			vm.save(IntentHandler.Interceptor::class, interceptor)
+			interceptor
+				.apply {
+					setFilter { target ->
+						if (permAllowState.value) {
+							return@setFilter false
 						}
-						start()
+						intentHandler.intentRequireAndroidPermission(
+							intent = target.cloneActual(),
+							permission = AndroidPermission.Read_External_Storage
+						)
 					}
-			}
-			DisposableEffect(
-				// wait to be removed from composition tree
-				key1 = null
-			) {
-				onDispose {
-					if (permAllowState.value) {
-						intentInterceptor
-							.apply {
-								dispatchAllInterceptedIntent()
-								dispose()
-							}
-						persistPager = false
-					} else {
-						// Probably config change, should find a way to retain it
-						intentInterceptor
-							.apply {
-								dropAllInterceptedIntent()
-								dispose()
-							}
-					}
+					start()
+				}
+		}
+
+		DisposableEffect(
+			// wait to be removed from composition tree
+			key1 = permAllowState.value
+		) {
+			onDispose {
+				if (permAllowState.value) {
+					intentInterceptor
+						.apply {
+							dispatchAllInterceptedIntent()
+						}
+					persistPager = false
+					vm.removeSaved("persistPager")
+				} else {
+					// Probably config change, should find a way to retain it
 				}
 			}
 		}
+
 		if (!permAllowState.value) {
+			persistPager = true
+			vm.save("persistPager", true)
 			Box(modifier = Modifier
 				.fillMaxSize()
 				.background(Theme.backgroundColorAsState().value)) {
@@ -259,6 +295,7 @@ private class RootEntryGuardState <HANDLE> (
 					onGranted = {
 						permissionGrantedState.value = true
 						persistPager = false
+						vm.removeSaved("persistPager")
 					}
 				)
 			}
@@ -266,9 +303,14 @@ private class RootEntryGuardState <HANDLE> (
 			onAllowContent()
 		}
 		LaunchedEffect(
-			key1 = Unit,
+			key1 = intentInterceptor,
 			block = {
-				onRuntimePermissionGuarded(handle)
+				launch {
+					onRuntimePermissionGuarded(handle)
+				}
+				launch {
+					onAllGuarded(handle)
+				}
 			}
 		)
 	}

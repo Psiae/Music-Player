@@ -37,6 +37,7 @@ interface IntentHandler {
 		fun dropAllInterceptedIntent()
 		fun start()
 		fun setFilter(filter: (TargetIntent) -> Boolean)
+		fun isParent(parent: IntentHandler): Boolean
 
 		/**
 		 * Dispose the interceptor, if there's an intercepted intent then it will be dispatched

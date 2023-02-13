@@ -1,4 +1,4 @@
-package com.flammky.musicplayer.core.build
+package com.flammky.musicplayer.core.sdk
 
 import android.os.Build
 import androidx.annotation.ChecksSdkIntAtLeast
@@ -45,7 +45,7 @@ object AndroidBuildVersion {
     // 30
     @JvmStatic
     @ChecksSdkIntAtLeast(api = Build.VERSION_CODES.R)
-    fun AndroidAPI.hasR() = code >= R.code
+    fun AndroidAPI.hasR() = code >= AndroidR.code
 
     // Snow_cone
     // 12.0
@@ -108,7 +108,7 @@ object AndroidBuildVersion {
     // 11.0
     // 30
     @JvmStatic
-    fun AndroidAPI.isR() = code == R.code
+    fun AndroidAPI.isR() = code == AndroidR.code
 
     // Snow_cone
     // 12.0

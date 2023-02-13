@@ -1,4 +1,4 @@
-package com.flammky.musicplayer.core.build
+package com.flammky.musicplayer.core.sdk
 
 data class BuildCode(
     val CODE_INT: Int

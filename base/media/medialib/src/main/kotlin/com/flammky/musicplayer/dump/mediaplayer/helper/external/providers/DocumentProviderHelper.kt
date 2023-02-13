@@ -8,9 +8,9 @@ import android.os.Environment
 import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.provider.OpenableColumns
-import com.flammky.musicplayer.core.build.AndroidAPI
-import com.flammky.musicplayer.core.build.AndroidBuildVersion.hasQ
-import com.flammky.musicplayer.core.build.AndroidBuildVersion.hasR
+import com.flammky.musicplayer.core.sdk.AndroidAPI
+import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.hasQ
+import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.hasR
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File

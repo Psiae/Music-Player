@@ -49,11 +49,10 @@ internal class ReorderableLazyListItemProvider(
         composition: InternalReorderableLazyListScope,
         from: ItemPosition
     ): Boolean {
-        val currentBase = baseScope
-        if (composition != currentBase) {
+        if (composition != baseScope) {
             return false
         }
-        overrideScope = MaskedReorderableLazyListScope(currentBase)
+        overrideScope = MaskedReorderableLazyListScope(baseScope)
         return true
     }
 

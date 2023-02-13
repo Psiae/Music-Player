@@ -15,8 +15,8 @@ import com.flammky.musicplayer.common.media.audio.meta_tag.tag.id3.*
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.id3.ID3v2TagBase.Companion.getV2TagSizeIfExists
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.lyrics3.AbstractLyrics3
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.reference.ID3V2Version
-import com.flammky.musicplayer.core.build.AndroidAPI
-import com.flammky.musicplayer.core.build.AndroidBuildVersion.hasLevel
+import com.flammky.musicplayer.core.sdk.AndroidAPI
+import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.hasLevel
 import timber.log.Timber
 import java.io.*
 import java.nio.ByteBuffer

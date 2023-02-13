@@ -1,8 +1,8 @@
 package com.flammky.musicplayer.dump.common.android.bitmap.config
 
 import android.graphics.Bitmap
-import com.flammky.musicplayer.core.build.AndroidAPI
-import com.flammky.musicplayer.core.build.AndroidBuildVersion.hasSnowCone
+import com.flammky.musicplayer.core.sdk.AndroidAPI
+import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.hasSnowCone
 
 object BitmapConfigInfo {
 	fun getPixelSize(config: Bitmap.Config): Int {

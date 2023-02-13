@@ -31,19 +31,17 @@ import com.flammky.musicplayer.base.nav.compose.ComposeRootDestination
 import com.flammky.musicplayer.base.nav.compose.ComposeRootNavigation
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.*
-import com.flammky.musicplayer.main.MainActivity
 import com.flammky.musicplayer.player.presentation.main.compose.TransitioningCompactPlaybackControl
 import com.flammky.musicplayer.player.presentation.main.compose.TransitioningPlaybackControl
 
 @Composable
-internal fun MainActivity.RootNavigation() {
-	MaterialTheme.colorScheme
+internal fun RootNavigation() {
 	val navController = rememberNavController()
 	RootScaffold(navController)
 }
 
 @Composable
-private fun MainActivity.RootScaffold(
+private fun RootScaffold(
 	navController: NavHostController
 ) {
 	val showFullPlaybackControllerState = rememberSaveable {
@@ -106,7 +104,7 @@ private fun MainActivity.RootScaffold(
 }
 
 @Composable
-private fun MainActivity.BottomNavigation(
+private fun BottomNavigation(
 	navController: NavController
 ) {
 	val backstackEntryState = navController.currentBackStackEntryAsState()

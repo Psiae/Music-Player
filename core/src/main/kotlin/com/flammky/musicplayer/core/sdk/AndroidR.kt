@@ -1,7 +1,7 @@
-package com.flammky.musicplayer.core.build
+package com.flammky.musicplayer.core.sdk
 
 import android.os.Build
 
-object R : AndroidAPI() {
+object AndroidR : AndroidAPI() {
     override val code: BuildCode = BuildCode(Build.VERSION_CODES.R)
 }

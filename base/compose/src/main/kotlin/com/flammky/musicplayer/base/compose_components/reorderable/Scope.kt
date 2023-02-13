@@ -347,7 +347,7 @@ internal class MaskedReorderableLazyListScope(
                 }
                 MaskedReorderableLazyListScope(
                     base,
-                    move(from.index, to.index),
+                    move,
                     toActual
                 )
             }

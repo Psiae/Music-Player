@@ -1,4 +1,4 @@
-package com.flammky.musicplayer.core.build
+package com.flammky.musicplayer.core.sdk
 
 import android.os.Build
 
@@ -15,7 +15,7 @@ abstract class AndroidAPI {
             Tiramisu.code.CODE_INT -> Tiramisu
             SnowConeV2.code.CODE_INT -> SnowConeV2
             SnowCone.code.CODE_INT -> SnowCone
-            R.code.CODE_INT -> R
+            AndroidR.code.CODE_INT -> AndroidR
             Q.code.CODE_INT -> Q
             Pie.code.CODE_INT -> Pie
             Oreo.code.CODE_INT -> Oreo

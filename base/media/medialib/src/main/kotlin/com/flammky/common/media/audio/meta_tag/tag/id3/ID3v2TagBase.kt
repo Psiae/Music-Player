@@ -29,8 +29,8 @@ import com.flammky.musicplayer.common.media.audio.meta_tag.tag.images.Artwork
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.reference.Languages
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.reference.PictureTypes
 import com.flammky.musicplayer.common.media.audio.meta_tag.utils.ShiftData
-import com.flammky.musicplayer.core.build.AndroidAPI
-import com.flammky.musicplayer.core.build.AndroidBuildVersion.hasOreo
+import com.flammky.musicplayer.core.sdk.AndroidAPI
+import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.hasOreo
 import java.io.*
 import java.nio.ByteBuffer
 import java.nio.channels.Channels

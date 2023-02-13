@@ -9,8 +9,8 @@ import com.flammky.musicplayer.common.media.audio.meta_tag.audio.mp4.atom.NullPa
 import com.flammky.musicplayer.common.media.audio.meta_tag.logging.ErrorMessage
 import com.flammky.musicplayer.common.media.audio.meta_tag.utils.tree.DefaultMutableTreeNode
 import com.flammky.musicplayer.common.media.audio.meta_tag.utils.tree.DefaultTreeModel
-import com.flammky.musicplayer.core.build.AndroidAPI
-import com.flammky.musicplayer.core.build.AndroidBuildVersion.hasOreo
+import com.flammky.musicplayer.core.sdk.AndroidAPI
+import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.hasOreo
 import java.io.File
 import java.io.IOException
 import java.io.RandomAccessFile

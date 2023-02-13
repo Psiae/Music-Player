@@ -1,4 +1,4 @@
-package com.flammky.musicplayer.main.ui.compose
+package com.flammky.musicplayer.root
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -41,7 +41,11 @@ fun MaterialDesign3Theme(
 		colorScheme = colors
 	) {
 		with(rememberSystemUiController()) {
-			setStatusBarColor(Theme.elevatedTonalPrimarySurfaceAsState(elevation = 2.dp).value.copy(0.4f))
+			setStatusBarColor(
+				Theme
+					.elevatedTonalPrimarySurfaceAsState(elevation = 2.dp)
+					.value
+					.copy(0.4f))
 			setNavigationBarColor(Color.Transparent)
 			isNavigationBarContrastEnforced = true
 			statusBarDarkContentEnabled = !useDarkTheme

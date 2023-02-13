@@ -9,9 +9,9 @@ import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaItem.RequestMetadata
 import androidx.media3.common.MediaMetadata
-import com.flammky.musicplayer.core.build.AndroidAPI
-import com.flammky.musicplayer.core.build.AndroidBuildVersion.hasQ
-import com.flammky.musicplayer.core.build.AndroidBuildVersion.hasR
+import com.flammky.musicplayer.core.sdk.AndroidAPI
+import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.hasQ
+import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.hasR
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemPropertyHelper.mediaUri
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaMetadataHelper.putDisplayTitle

@@ -24,9 +24,9 @@ import com.flammky.musicplayer.base.BuildConfig
 import com.flammky.musicplayer.base.activity.ActivityWatcher
 import com.flammky.musicplayer.base.media.r.MediaContentWatcher
 import com.flammky.musicplayer.base.media.r.MediaMetadataCacheRepository
-import com.flammky.musicplayer.core.build.AndroidAPI
-import com.flammky.musicplayer.core.build.AndroidBuildVersion.hasQ
-import com.flammky.musicplayer.core.build.AndroidBuildVersion.hasSnowCone
+import com.flammky.musicplayer.core.sdk.AndroidAPI
+import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.hasQ
+import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.hasSnowCone
 import com.flammky.musicplayer.domain.musiclib.service.manager.MediaNotificationManager
 import com.flammky.musicplayer.domain.musiclib.service.manager.PlaybackManager
 import com.flammky.musicplayer.domain.musiclib.service.manager.SessionManager

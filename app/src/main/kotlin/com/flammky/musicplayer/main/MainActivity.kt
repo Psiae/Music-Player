@@ -14,7 +14,7 @@ import com.flammky.android.content.intent.isActionMain
 import com.flammky.musicplayer.activity.ActivityCompanion
 import com.flammky.musicplayer.activity.RequireLauncher
 import com.flammky.musicplayer.main.ui.MainViewModel
-import com.flammky.musicplayer.main.ui.compose.setContent
+import com.flammky.musicplayer.root.setRootContent
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -30,7 +30,7 @@ class MainActivity : ComponentActivity() {
 		checkLauncherIntent()
 		setupWindow()
 		setupSplashScreen()
-		setContent()
+		setRootContent()
 
 		lifecycleScope.launch {
 			// consume

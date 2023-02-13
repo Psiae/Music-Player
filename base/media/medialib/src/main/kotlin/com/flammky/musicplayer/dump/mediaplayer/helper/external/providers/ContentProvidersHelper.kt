@@ -8,8 +8,8 @@ import android.provider.MediaStore
 import android.provider.OpenableColumns
 import androidx.core.net.toUri
 import com.flammky.musicplayer.base.BuildConfig
-import com.flammky.musicplayer.core.build.AndroidAPI
-import com.flammky.musicplayer.core.build.AndroidBuildVersion.hasR
+import com.flammky.musicplayer.core.sdk.AndroidAPI
+import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.hasR
 import com.flammky.musicplayer.dump.mediaplayer.helper.Preconditions.checkArgument
 import okio.IOException
 import timber.log.Timber

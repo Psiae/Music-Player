@@ -11,8 +11,10 @@ Due to full-scale rewrite on the codebase it will be quite hard to accept any pu
 
 Feel free to open an [issue](https://github.com/flammky/Music-Player/issues) for suggestion
 
-## Features
+## Features (prototypes)
 > Audio Playback + Playback Control in App and Notification
+
+> Queue Reordering by Drag & Drop
 
 > Resolve Audio scan-able by [MediaStore](https://developer.android.com/reference/android/provider/MediaStore)
 >
@@ -34,13 +36,13 @@ Feel free to open an [issue](https://github.com/flammky/Music-Player/issues) for
 
 > Playlist Builder
 
-> Dynamic Queue Builder
+> Realtime Queue Editor (reorder & remove)
 
 > Lyrics
 
 > Metadata writer
 >
-> will probably shift metadata operation to rust via NDK JNI
+> will probably shift metadata operation with rust
 
 > Online Artwork Search
 

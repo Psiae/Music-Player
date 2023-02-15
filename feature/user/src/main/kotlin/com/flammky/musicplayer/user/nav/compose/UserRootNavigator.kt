@@ -1,5 +1,6 @@
 package com.flammky.musicplayer.user.nav.compose
 
+import androidx.compose.runtime.Composable
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavGraphBuilder
@@ -35,7 +36,11 @@ object UserRootNavigator : ComposeRootNavigator("library") {
 		controller.navigate(rootDestination.routeID, navOptionsBuilder)
 	}
 
-	override fun addRootDestination(navGraphBuilder: NavGraphBuilder, controller: NavController) {
+	override fun addRootDestination(
+		navGraphBuilder: NavGraphBuilder,
+		controller: NavController,
+		onAppliedScope: @Composable () -> Unit
+	) {
 		navGraphBuilder.composable(rootDestination.routeID) {
 			val nc = rememberNavController()
 			NavHost(navController = nc, "start") {
@@ -55,9 +60,12 @@ object UserRootNavigator : ComposeRootNavigator("library") {
 					}
 				}
 				with(ComposeRootNavigation.getNavigatorById("library")!!) {
-					addRootDestination(this@NavHost, nc)
+					addRootDestination(this@NavHost, nc) {
+						onAppliedScope()
+					}
 				}
 			}
+			onAppliedScope()
 		}
 	}
 }

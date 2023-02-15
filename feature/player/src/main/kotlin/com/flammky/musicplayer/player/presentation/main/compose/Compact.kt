@@ -58,6 +58,7 @@ import com.google.accompanist.placeholder.placeholder
 import dev.chrisbanes.snapper.ExperimentalSnapperApi
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.distinctUntilChanged
 import timber.log.Timber
 import kotlin.coroutines.resume
 import kotlin.math.abs
@@ -75,7 +76,7 @@ fun TransitioningCompactPlaybackControl(
 	},
 	onArtworkClicked: () -> Unit = {},
 	onBaseClicked: () -> Unit = {},
-	onVerticalVisibilityChanged: (Dp) -> Unit = {}
+	onLayoutVisibleHeightChanged: (Dp) -> Unit = {}
 ) {
 	val vm = viewModel<PlaybackControlViewModel>()
 	val coroutineScope = rememberCoroutineScope()
@@ -146,8 +147,14 @@ fun TransitioningCompactPlaybackControl(
 	)
 
 	LaunchedEffect(
-		key1 = animatedOffset,
-		block = { onVerticalVisibilityChanged(animatedOffset - CompactHeight) }
+		key1 = Unit,
+		block = {
+			snapshotFlow { animatedOffset }
+				.distinctUntilChanged()
+				.collect {
+					onLayoutVisibleHeightChanged(CompactHeight - it)
+				}
+		}
 	)
 
 	BoxWithConstraints(

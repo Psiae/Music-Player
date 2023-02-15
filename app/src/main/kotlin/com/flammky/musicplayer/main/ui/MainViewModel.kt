@@ -58,13 +58,13 @@ class MainViewModel @Inject constructor(
 	/**
 	 * Wait for all entryGuard to be initialized
 	 */
-	val allEntryGuardWaiter = mutableStateListOf<() -> Unit>()
+	val intentEntryGuardWaiter = mutableStateListOf<() -> Unit>()
 
 	init {
 		presenter.initialize(presenterDelegate)
 	}
 
-	val intentHandler = presenter.intentHandler
+	val intentHandler = presenter.intentReceiver
 
 	override fun onCleared() {
 		presenter.dispose()

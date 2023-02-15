@@ -58,7 +58,7 @@ class MainActivity : ComponentActivity() {
 		check(intent.getStringExtra(LauncherSignatureKey) == LauncherSignatureCode) {
 			"New Intent must have Launcher Signature, possible uncaught condition"
 		}
-		mainVM.allEntryGuardWaiter.add { mainVM.intentHandler.handleIntent(intent) }
+		mainVM.intentEntryGuardWaiter.add { mainVM.intentHandler.sendIntent(intent) }
 	}
 
 	/**

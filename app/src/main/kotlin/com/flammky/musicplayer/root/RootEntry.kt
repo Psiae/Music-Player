@@ -1,5 +1,6 @@
 package com.flammky.musicplayer.root
 
+import android.app.Activity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -12,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshots.readable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModelStoreOwner
@@ -21,7 +23,7 @@ import com.flammky.musicplayer.base.compose.rememberLocalContextHelper
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.absoluteBackgroundContentColorAsState
 import com.flammky.musicplayer.base.theme.compose.backgroundColorAsState
-import com.flammky.musicplayer.main.ext.IntentHandler
+import com.flammky.musicplayer.main.ext.IntentReceiver
 import com.flammky.musicplayer.main.ui.MainViewModel
 import com.flammky.musicplayer.main.ui.compose.entry.EntryPermissionPager
 import com.flammky.musicplayer.main.ui.compose.nav.RootNavigation
@@ -34,10 +36,7 @@ fun BoxScope.RootEntry(
 	rememberRootEntryGuardState<MainViewModel>(
 		handle = rememberUpdatedState(viewModel).value,
 		viewModelStoreOwner = LocalViewModelStoreOwner.current!!,
-		intentHandler = { it.intentHandler },
-		onAllowContent = {
-			RootNavigation()
-		},
+		intentReceiver = { it.intentHandler },
 		onFirstEntryGuardLayout = {
 			snapshotFlow(equality = { _, _ -> false }) {
 				it.firstEntryGuardWaiter.apply {
@@ -82,7 +81,7 @@ fun BoxScope.RootEntry(
 		},
 		onAllGuarded = {
 			snapshotFlow(equality = { _, _ -> false }) {
-				it.allEntryGuardWaiter.apply {
+				it.intentEntryGuardWaiter.apply {
 					firstStateRecord.readable(this)
 				}
 			}.collect {
@@ -95,7 +94,9 @@ fun BoxScope.RootEntry(
 			}
 		}
 	).run {
-		GuardLayout()
+		GuardLayout {
+			RootNavigation()
+		}
 	}
 }
 
@@ -103,23 +104,21 @@ fun BoxScope.RootEntry(
 private fun <HANDLE> rememberRootEntryGuardState(
 	handle: HANDLE,
 	viewModelStoreOwner: ViewModelStoreOwner,
-	intentHandler: (handle: HANDLE) -> IntentHandler,
+	intentReceiver: (handle: HANDLE) -> IntentReceiver,
 	onFirstEntryGuardLayout: suspend (handle: HANDLE) -> Unit,
 	onAuthGuarded: suspend (handle: HANDLE) -> Unit,
 	onRuntimePermissionGuarded: suspend (handle: HANDLE) -> Unit,
 	onAllGuarded: suspend (handle: HANDLE) -> Unit,
-	onAllowContent: @Composable () -> Unit
 ): RootEntryGuardState<HANDLE> {
 	return remember(handle, viewModelStoreOwner) {
 		RootEntryGuardState(
 			handle,
 			viewModelStoreOwner,
-			intentHandler(handle),
+			intentReceiver(handle),
 			onFirstEntryGuardLayout,
 			onAuthGuarded,
 			onRuntimePermissionGuarded,
 			onAllGuarded,
-			onAllowContent
 		)
 	}
 }
@@ -128,18 +127,19 @@ private fun <HANDLE> rememberRootEntryGuardState(
 private class RootEntryGuardState <HANDLE> (
 	private val handle: HANDLE,
 	private val viewModelStoreOwner: ViewModelStoreOwner,
-	private val intentHandler: IntentHandler,
+	private val intentReceiver: IntentReceiver,
 	private val onFirstEntryGuardLayout: suspend (handle: HANDLE) -> Unit,
 	private val onAuthGuarded: suspend (handle: HANDLE) -> Unit,
 	private val onRuntimePermissionGuarded: suspend (handle: HANDLE) -> Unit,
 	private val onAllGuarded: suspend (handle: HANDLE) -> Unit,
-	private val onAllowContent: @Composable () -> Unit
 ) {
 	private val authAllowState = mutableStateOf<Boolean>(false)
 	private val permAllowState = mutableStateOf<Boolean>(false)
 
 	@Composable
-	fun BoxScope.GuardLayout() {
+	fun BoxScope.GuardLayout(
+		onAllowContent: @Composable () -> Unit
+	) {
 		AuthGuard {
 			PermGuard {
 				onAllowContent()
@@ -156,10 +156,10 @@ private class RootEntryGuardState <HANDLE> (
 
 		if (!authAllowState.value) {
 			val interceptor = remember {
-				intentHandler.createInterceptor()
+				intentReceiver.createInterceptor()
 					.apply {
 						setFilter { target ->
-							intentHandler.intentRequireAuthPermission(target.cloneActual())
+							intentReceiver.intentRequireAuthPermission(target.cloneActual())
 						}
 						start()
 					}
@@ -230,6 +230,7 @@ private class RootEntryGuardState <HANDLE> (
 	private fun PermGuard(
 		onAllowContent: @Composable () -> Unit
 	) {
+		val compositionActivity = LocalContext.current as Activity
 		// I think it would be better to ask for saver object instead
 		val vm = hiltViewModel<RuntimePermissionGuardViewModel>(viewModelStoreOwner)
 		val contextHelper = rememberLocalContextHelper()
@@ -237,7 +238,8 @@ private class RootEntryGuardState <HANDLE> (
 			mutableStateOf(vm.removeSaved("persistPager") as? Boolean ?: false)
 		}
 		val permissionGrantedState = remember {
-			mutableStateOf(contextHelper.permissions.common.hasReadExternalStorage ||
+			mutableStateOf(
+				contextHelper.permissions.common.hasReadExternalStorage ||
 				contextHelper.permissions.common.hasWriteExternalStorage
 			)
 		}
@@ -247,17 +249,14 @@ private class RootEntryGuardState <HANDLE> (
 		}.value
 
 		val intentInterceptor = remember {
-			val interceptor = (vm.removeSaved(IntentHandler.Interceptor::class) as? IntentHandler.Interceptor)
-				?.takeIf { it.isParent(intentHandler) }
-				?: run { intentHandler.createInterceptor() }
-			vm.save(IntentHandler.Interceptor::class, interceptor)
+			val interceptor = intentReceiver.createInterceptor()
 			interceptor
 				.apply {
 					setFilter { target ->
 						if (permAllowState.value) {
 							return@setFilter false
 						}
-						intentHandler.intentRequireAndroidPermission(
+						intentReceiver.intentRequireAndroidPermission(
 							intent = target.cloneActual(),
 							permission = AndroidPermission.Read_External_Storage
 						)
@@ -266,8 +265,11 @@ private class RootEntryGuardState <HANDLE> (
 				}
 		}
 
+		DisposableEffect(key1 = Unit, effect = {
+			onDispose { intentInterceptor.dispose() }
+		})
+
 		DisposableEffect(
-			// wait to be removed from composition tree
 			key1 = permAllowState.value
 		) {
 			onDispose {
@@ -278,8 +280,18 @@ private class RootEntryGuardState <HANDLE> (
 						}
 					persistPager = false
 					vm.removeSaved("persistPager")
+				} else if (compositionActivity.isChangingConfigurations) {
+					intentInterceptor
+						.apply {
+							pendingAllInterceptedIntent()
+							dispose()
+						}
 				} else {
-					// Probably config change, should find a way to retain it
+					intentInterceptor
+						.apply {
+							dropAllInterceptedIntent()
+							dispose()
+						}
 				}
 			}
 		}

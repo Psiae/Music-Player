@@ -1,5 +1,6 @@
 package com.flammky.musicplayer.search.nav.compose
 
+import androidx.compose.runtime.Composable
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavGraphBuilder
@@ -32,7 +33,11 @@ object SearchRootNavigator : ComposeRootNavigator("search") {
 
 
 
-	override fun addRootDestination(navGraphBuilder: NavGraphBuilder, controller: NavController) {
+	override fun addRootDestination(
+		navGraphBuilder: NavGraphBuilder,
+		controller: NavController,
+		onAppliedScope: @Composable () -> Unit
+	) {
 		navGraphBuilder.composable(rootDestination.routeID) {
 			Search {
 				controller.navigate(it) {
@@ -45,6 +50,7 @@ object SearchRootNavigator : ComposeRootNavigator("search") {
 					}
 				}
 			}
+			onAppliedScope()
 		}
 	}
 }

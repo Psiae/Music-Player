@@ -39,7 +39,6 @@ import com.google.accompanist.pager.rememberPagerState
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
-import timber.log.Timber
 
 // Tech-Debt from old package
 
@@ -69,8 +68,6 @@ private val pageItems = listOf(
 @Composable
 fun EntryPermissionPager(contextHelper: ContextHelper, onGranted: () -> Unit) {
 
-	Timber.d("RootEntry GuardLayout EntryPermissionPager")
-
 	val granted = remember {
 		mutableStateOf(false)
 	}
@@ -90,6 +87,7 @@ fun EntryPermissionPager(contextHelper: ContextHelper, onGranted: () -> Unit) {
 	Column(
 		modifier = Modifier
 			.navigationBarsPadding()
+			.statusBarsPadding()
 			.fillMaxSize(),
 		verticalArrangement = Arrangement.Top,
 		horizontalAlignment = Alignment.CenterHorizontally

@@ -12,7 +12,7 @@ import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConne
 import com.flammky.musicplayer.base.media.r.MediaMetadataCacheRepository
 import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.core.common.sync
-import com.flammky.musicplayer.main.ext.IntentHandler
+import com.flammky.musicplayer.main.ext.IntentReceiver
 import com.flammky.musicplayer.main.ext.MediaIntentHandler
 import com.flammky.musicplayer.main.ui.MainPresenter
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -38,9 +38,9 @@ class ExpectMainPresenter @Inject constructor(
 	@GuardedBy("lock")
 	private var _actual: Actual? = null
 
-	override val intentHandler: IntentHandler
+	override val intentReceiver: IntentReceiver
 		get() {
-			return _actual?.intentHandler
+			return _actual?.intentReceiver
 				?: uninitializedError {
 					"The Class is `Not` for late initialization, but for convenience of dependency injection." +
 						"It should be made visible after `initialize` returns, you should reconsider your design"
@@ -125,7 +125,7 @@ class ExpectMainPresenter @Inject constructor(
 			// load saver from [viewModel] here
 		}
 
-		override val intentHandler: IntentHandler = RealIntentHandler(_mediaIntentHandler)
+		override val intentReceiver: IntentReceiver = RealIntentReceiver(_mediaIntentHandler)
 		override val auth: MainPresenter.Auth = object : MainPresenter.Auth {
 			override val currentUserFlow: Flow<User?>
 				get() = authService.observeCurrentUser()
@@ -166,7 +166,7 @@ class ExpectMainPresenter @Inject constructor(
 			// backed by outer _lock
 			if (_disposed) return
 			_disposed = true
-			intentHandler.dispose()
+			intentReceiver.dispose()
 		}
 
 		override val coroutineScope: CoroutineScope

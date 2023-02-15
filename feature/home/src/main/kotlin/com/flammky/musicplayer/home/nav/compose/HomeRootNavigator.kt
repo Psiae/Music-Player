@@ -1,5 +1,6 @@
 package com.flammky.musicplayer.home.nav.compose
 
+import androidx.compose.runtime.Composable
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavGraphBuilder
@@ -33,6 +34,7 @@ object HomeRootNavigator : ComposeRootNavigator("home") {
 	override fun addRootDestination(
 		navGraphBuilder: NavGraphBuilder,
 		controller: NavController,
+		onAppliedScope: @Composable () -> Unit
 	) {
 		navGraphBuilder.composable(
 			rootDestination.routeID
@@ -49,6 +51,7 @@ object HomeRootNavigator : ComposeRootNavigator("home") {
 					}
 				}
 			}
+			onAppliedScope()
 		}
 	}
 }

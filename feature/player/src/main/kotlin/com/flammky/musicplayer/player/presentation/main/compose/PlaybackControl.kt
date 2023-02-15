@@ -93,7 +93,6 @@ fun TransitioningPlaybackControl(
 	}
 
 	if (showSelf) {
-		BackHandler(onBack = localDismiss)
 		LockScreenOrientation(landscape = false)
 	}
 

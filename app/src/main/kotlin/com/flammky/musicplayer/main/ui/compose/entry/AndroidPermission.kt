@@ -12,7 +12,7 @@ import com.flammky.musicplayer.base.compose.NoInline
 import com.flammky.musicplayer.base.compose.rememberLocalContextHelper
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.backgroundColorAsState
-import com.flammky.musicplayer.main.ext.IntentHandler
+import com.flammky.musicplayer.main.ext.IntentReceiver
 import com.flammky.musicplayer.main.ui.MainViewModel
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 
@@ -105,7 +105,7 @@ private inline fun invoke(block: () -> Unit) = block.invoke()
 
 internal class AndroidPermissionViewModel() : ViewModel() {
 	var persistPager = false
-	var intentInterceptor: IntentHandler.Interceptor? = null
+	var intentInterceptor: IntentReceiver.Interceptor? = null
 
 	override fun onCleared() {
 		intentInterceptor

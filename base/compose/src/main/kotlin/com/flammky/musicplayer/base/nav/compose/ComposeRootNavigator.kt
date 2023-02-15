@@ -1,5 +1,6 @@
 package com.flammky.musicplayer.base.nav.compose
 
+import androidx.compose.runtime.Composable
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavOptionsBuilder
@@ -14,6 +15,7 @@ abstract class ComposeRootNavigator(val id: String) {
 
 	abstract fun addRootDestination(
 		navGraphBuilder: NavGraphBuilder,
-		controller: NavController
+		controller: NavController,
+		onAppliedScope: @Composable () -> Unit
 	)
 }

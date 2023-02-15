@@ -1,5 +1,6 @@
 package com.flammky.musicplayer.library.presentation.nav
 
+import androidx.compose.runtime.Composable
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavOptionsBuilder
@@ -30,9 +31,14 @@ object LibraryRootNavigator : ComposeRootNavigator("library") {
 		controller.navigate(rootDestination.routeID, navOptionsBuilder)
 	}
 
-	override fun addRootDestination(navGraphBuilder: NavGraphBuilder, controller: NavController) {
+	override fun addRootDestination(
+		navGraphBuilder: NavGraphBuilder,
+		controller: NavController,
+		onAppliedScope: @Composable () -> Unit
+	) {
 		navGraphBuilder.composable(rootDestination.routeID) {
 			com.flammky.musicplayer.library.presentation.Library()
+			onAppliedScope()
 		}
 	}
 }

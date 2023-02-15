@@ -3,7 +3,7 @@ package com.flammky.musicplayer.main.ui
 import android.os.Bundle
 import androidx.lifecycle.SavedStateHandle
 import com.flammky.musicplayer.base.user.User
-import com.flammky.musicplayer.main.ext.IntentHandler
+import com.flammky.musicplayer.main.ext.IntentReceiver
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.flow.Flow
 import kotlin.coroutines.CoroutineContext
@@ -15,7 +15,7 @@ interface MainPresenter {
 
 	val auth: Auth
 
-	val intentHandler: IntentHandler
+	val intentReceiver: IntentReceiver
 		/**
 		 * get the IntentHandler of this presenter, must be called after `initialize` returns.
 		 * @throws IllegalStateException if attempted to get the value before initialized

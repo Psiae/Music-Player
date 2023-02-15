@@ -6,7 +6,7 @@ import com.flammky.android.manifest.permission.AndroidPermission
 /**
  * Intent Handler interface for the `Main` Module
  */
-interface IntentHandler {
+interface IntentReceiver {
 
 	/**
 	 * Create an Interceptor to intercept incoming Intent sent to this handler.
@@ -18,7 +18,7 @@ interface IntentHandler {
 	 */
 	fun createInterceptor(): Interceptor
 
-	fun handleIntent(intent: Intent)
+	fun sendIntent(intent: Intent)
 
 	fun intentRequireAndroidPermission(
 		intent: Intent,
@@ -35,9 +35,10 @@ interface IntentHandler {
 		fun collectInterceptedIntent(): List<InterceptedIntent>
 		fun dispatchAllInterceptedIntent()
 		fun dropAllInterceptedIntent()
+		fun pendingAllInterceptedIntent()
 		fun start()
 		fun setFilter(filter: (TargetIntent) -> Boolean)
-		fun isParent(parent: IntentHandler): Boolean
+		fun isParent(parent: IntentReceiver): Boolean
 
 		/**
 		 * Dispose the interceptor, if there's an intercepted intent then it will be dispatched
@@ -51,5 +52,10 @@ interface IntentHandler {
 
 	interface InterceptedIntent {
 		fun cloneActual(): Intent
+	}
+
+	interface PendingIntent {
+		fun cloneActual(): Intent
+		fun consume()
 	}
 }

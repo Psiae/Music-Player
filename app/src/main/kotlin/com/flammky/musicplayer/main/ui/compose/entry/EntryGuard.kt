@@ -45,7 +45,7 @@ private fun entryGuardState(): State<Boolean?> {
 	)
 
 	NoInline {
-		mainVM.allEntryGuardWaiter
+		mainVM.intentEntryGuardWaiter
 			.apply {
 				// check for size, because `clear` will count as modification regardless of content
 				if (!isEmpty()) {

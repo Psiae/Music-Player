@@ -33,29 +33,37 @@ import com.flammky.musicplayer.base.nav.compose.ComposeRootDestination
 import com.flammky.musicplayer.base.nav.compose.ComposeRootNavigation
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.*
+import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.player.presentation.root.rememberRootCompactPlaybackControlState
 import com.flammky.musicplayer.player.presentation.root.rememberRootPlaybackControlState
 
 @Composable
-internal fun RootNavigation() {
-	rememberRootNavigationState()
+internal fun RootNavigation(user: User) {
+	rememberRootNavigationState(user)
 		.run {
 			Layout(withBackground = false)
 		}
 }
 
 private class RootNavigationState(
+	private val user: User,
 	private val navController: NavHostController,
 ) {
 
 	private var restored = false
 
-	val showFullPlaybackControllerState = mutableStateOf(false)
+	val rememberShowFullPlaybackControllerState = mutableStateOf(false)
 
 	fun performRestore(bundle: Bundle) {
 		check(!restored)
 		restored = true
-		showFullPlaybackControllerState.value = bundle.getBoolean(::showFullPlaybackControllerState.name)
+		if (
+			user.uid == bundle.getString(User::class.qualifiedName!! + "_" + User::uid.name) &&
+				user.verify == bundle.getString(User::class.qualifiedName!! + "_" + User::verify.name)
+		) {
+			rememberShowFullPlaybackControllerState.value =
+				bundle.getBoolean(::rememberShowFullPlaybackControllerState.name)
+		}
 	}
 
 	@Composable
@@ -66,21 +74,28 @@ private class RootNavigationState(
 		val contentBottomOffsetState = remember {
 			mutableStateOf(0.dp)
 		}
+		val playbackControlState =
+			rememberRootPlaybackControlState(
+				user,
+				initialFreezeState = false,
+				initialShowSelfState = rememberShowFullPlaybackControllerState.value,
+				dismissHandle = { rememberShowFullPlaybackControllerState.value = false ; true }
+			)
 		val compactPlaybackControlState =
 			rememberRootCompactPlaybackControlState(
 				bottomOffsetState = contentBottomOffsetState,
-				freezeState = showFullPlaybackControllerState,
-				onArtworkClicked = { showFullPlaybackControllerState.value = true },
-				onBackgroundClicked = { showFullPlaybackControllerState.value = true }
-			)
-		val playbackControlState =
-			rememberRootPlaybackControlState(
-				// none yet
-				freezeState = remember { mutableStateOf(false) },
-				showSelfState = showFullPlaybackControllerState
+				freezeState = rememberShowFullPlaybackControllerState,
+				onArtworkClicked = {
+					rememberShowFullPlaybackControllerState.value = true
+					playbackControlState.showSelf()
+				},
+				onBackgroundClicked = {
+					rememberShowFullPlaybackControllerState.value = true
+					playbackControlState.showSelf()
+				}
 			)
 		val localBackgroundColorState = Theme.backgroundColorAsState()
-		Box(
+		BoxWithConstraints(
 			modifier = remember(
 				modifier,
 				withBackground,
@@ -130,12 +145,11 @@ private class RootNavigationState(
 						startDestination = ComposeRootNavigation.navigators[0].getRootDestination().routeID,
 					) {
 						ComposeRootNavigation.navigators.forEach {
-							it.addRootDestination(this, navController) {
-								BackHandler(showFullPlaybackControllerState.value) {
-									showFullPlaybackControllerState.value = false
-								}
-							}
+							it.addRootDestination(this, navController)
 						}
+					}
+					BackHandler(rememberShowFullPlaybackControllerState.value) {
+						playbackControlState.backPress()
 					}
 				}
 			} // Scaffold Layout End
@@ -143,102 +157,60 @@ private class RootNavigationState(
 				Layout()
 			}
 			playbackControlState.run {
-				Layout(onDismissRequest = { showFullPlaybackControllerState.value = false })
+				Layout()
 			}
 		}
 	}
 
 	companion object {
-		fun saver(navController: NavHostController): Saver<RootNavigationState, Bundle> = Saver(
+		fun saver(
+			user: User,
+			navController: NavHostController
+		): Saver<RootNavigationState, Bundle> = Saver(
 			save = { state ->
 				Bundle()
 					.apply {
+						putString(
+							User::class.qualifiedName!! + "_" + User::uid.name,
+							state.user.uid
+						)
+						putString(
+							User::class.qualifiedName!! + "_" + User::verify.name,
+							state.user.verify
+						)
 						putBoolean(
-							state::showFullPlaybackControllerState.name,
-							state.showFullPlaybackControllerState.value
+							state::rememberShowFullPlaybackControllerState.name,
+							state.rememberShowFullPlaybackControllerState.value
 						)
 					}
 			},
 			restore = { bundle ->
-				RootNavigationState(navController).apply { performRestore(bundle) }
+				RootNavigationState(user, navController)
+					.apply {
+						performRestore(bundle)
+					}
 			}
 		)
 	}
 }
 
 @Composable
-private fun rememberRootNavigationState(): RootNavigationState {
-	val navController = rememberNavController()
+private fun rememberRootNavigationState(
+	user: User,
+	navController: NavHostController = rememberNavController()
+): RootNavigationState {
 	return rememberSaveable(
-		navController,
-		saver = RootNavigationState.saver(navController)
+		saver = RootNavigationState.saver(
+			user,
+			navController
+		)
 	) {
-		RootNavigationState(navController)
-	}
-}
-
-/*@Composable
-private fun RootScaffold(
-	state: RootNavigationState
-) {
-	val showFullPlaybackControllerState = rememberSaveable {
-		mutableStateOf(false)
-	}
-	val topLevelNavigationRegisteredState = remember {
-		mutableStateOf(false)
-	}
-	Scaffold(
-		modifier = Modifier.fillMaxSize(),
-		bottomBar = { BottomNavigation(state) },
-		containerColor = Theme.backgroundColorAsState().value
-	) { contentPadding ->
-		val playbackControlVisibilityOffset = remember {
-			mutableStateOf(0.dp)
-		}
-		val topBarVisibility = remember {
-			mutableStateOf(0.dp)
-		}.rewrite {
-			contentPadding.calculateTopPadding()
-		}
-		val bottomBarVisibility = remember {
-			mutableStateOf(0.dp)
-		}.rewrite {
-			maxOf(
-				contentPadding.calculateBottomPadding(),
-				playbackControlVisibilityOffset.value
-			)
-		}
-		CompositionLocalProvider(
-			LocalLayoutVisibility.LocalTopBar provides contentPadding.calculateTopPadding(),
-			LocalLayoutVisibility.LocalBottomBar provides bottomBarVisibility.value
-		) {
-			NavHost(
-				modifier = Modifier
-					// will also consume insets for children
-					.statusBarsPadding(),
-				navController = navController,
-				startDestination = ComposeRootNavigation.navigators[0].getRootDestination().routeID,
-			) {
-				ComposeRootNavigation.navigators.forEach { it.addRootDestination(this, navController) }
-			}.also {
-				topLevelNavigationRegisteredState.value = true
-			}
-		}
-		TransitioningCompactPlaybackControl(
-			bottomVisibilityVerticalPadding = contentPadding.calculateBottomPadding(),
-			freezeState = showFullPlaybackControllerState,
-			onArtworkClicked = { showFullPlaybackControllerState.value = true },
-			onBaseClicked = { showFullPlaybackControllerState.value = true },
-			onLayoutVisibleHeightChanged = { playbackControlVisibilityOffset.value = it }
+		RootNavigationState(
+			user,
+			navController
 		)
 	}
-	TransitioningPlaybackControl(
-		showSelfState = remember {
-			derivedStateOf { showFullPlaybackControllerState.value && topLevelNavigationRegisteredState.value }
-		},
-		dismiss = { showFullPlaybackControllerState.value = false }
-	)
-}*/
+}
 
 @Composable
 private fun BottomNavigation(

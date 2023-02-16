@@ -23,6 +23,7 @@ import com.flammky.musicplayer.base.compose.rememberLocalContextHelper
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.absoluteBackgroundContentColorAsState
 import com.flammky.musicplayer.base.theme.compose.backgroundColorAsState
+import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.main.ext.IntentReceiver
 import com.flammky.musicplayer.main.ui.MainViewModel
 import com.flammky.musicplayer.main.ui.compose.entry.EntryPermissionPager
@@ -94,8 +95,8 @@ fun BoxScope.RootEntry(
 			}
 		}
 	).run {
-		GuardLayout {
-			RootNavigation()
+		GuardLayout { user ->
+			RootNavigation(user = user)
 		}
 	}
 }
@@ -125,7 +126,7 @@ private fun <HANDLE> rememberRootEntryGuardState(
 
 
 private class RootEntryGuardState <HANDLE> (
-	private val handle: HANDLE,
+	val handle: HANDLE,
 	private val viewModelStoreOwner: ViewModelStoreOwner,
 	private val intentReceiver: IntentReceiver,
 	private val onFirstEntryGuardLayout: suspend (handle: HANDLE) -> Unit,
@@ -138,18 +139,19 @@ private class RootEntryGuardState <HANDLE> (
 
 	@Composable
 	fun BoxScope.GuardLayout(
-		onAllowContent: @Composable () -> Unit
+		// should provide scope instead
+		onAllowContent: @Composable (User) -> Unit
 	) {
-		AuthGuard {
+		AuthGuard { user ->
 			PermGuard {
-				onAllowContent()
+				onAllowContent(user)
 			}
 		}
 	}
 
 	@Composable
 	private fun AuthGuard(
-		onAllowContent: @Composable () -> Unit
+		onAllowContent: @Composable (User) -> Unit
 	) {
 		val vm = hiltViewModel<AuthGuardViewModel>(viewModelStoreOwner)
 		var showLoading by remember { mutableStateOf(false) }
@@ -199,7 +201,7 @@ private class RootEntryGuardState <HANDLE> (
 		}
 
 		if (authAllowState.value) {
-			onAllowContent()
+			vm.currentUser?.let { onAllowContent(it) }
 		}
 
 		LaunchedEffect(

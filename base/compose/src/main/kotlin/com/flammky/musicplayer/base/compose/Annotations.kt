@@ -34,4 +34,15 @@ annotation class SnapshotReader()
 	AnnotationTarget.PROPERTY_SETTER
 )
 @Retention(AnnotationRetention.SOURCE)
+annotation class SnapshotWrite()
+
+/**
+ * Denote that execution of the block will write to a [Snapshot] Target.
+ */
+@Target(
+	AnnotationTarget.FUNCTION,
+	AnnotationTarget.TYPE,
+	AnnotationTarget.TYPE_PARAMETER,
+)
+@Retention(AnnotationRetention.SOURCE)
 annotation class SnapshotWriter()

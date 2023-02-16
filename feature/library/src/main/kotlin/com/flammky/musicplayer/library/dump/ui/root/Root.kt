@@ -68,7 +68,7 @@ private fun LibraryRootContent(
 ) {
 	val tabsNavHostController = rememberNavController()
 
-	Column(modifier = Modifier.fillMaxSize()) {
+	Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
 		NoInlineBox {
 			val tabsNavBackstackEntry = tabsNavHostController.currentBackStackEntryAsState().value
 			if (tabsNavBackstackEntry != null) {

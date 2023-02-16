@@ -16,6 +16,6 @@ abstract class ComposeRootNavigator(val id: String) {
 	abstract fun addRootDestination(
 		navGraphBuilder: NavGraphBuilder,
 		controller: NavController,
-		onAppliedScope: @Composable () -> Unit
+		onAppliedScope: @Composable () -> Unit = {}
 	)
 }

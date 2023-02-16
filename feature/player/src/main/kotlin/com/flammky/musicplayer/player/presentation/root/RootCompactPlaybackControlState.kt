@@ -5,7 +5,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.flammky.musicplayer.base.compose.SnapshotRead
-import com.flammky.musicplayer.base.compose.SnapshotWriter
+import com.flammky.musicplayer.base.compose.SnapshotWrite
 import com.flammky.musicplayer.player.presentation.main.compose.TransitioningCompactPlaybackControl
 
 /**
@@ -29,7 +29,7 @@ class RootCompactPlaybackControlState internal constructor(
 
     var layoutVisibleHeight: Dp by mutableStateOf(0.dp)
         @SnapshotRead get
-        @SnapshotWriter private set
+        @SnapshotWrite private set
 
     @Composable
     fun BoxScope.Layout() {

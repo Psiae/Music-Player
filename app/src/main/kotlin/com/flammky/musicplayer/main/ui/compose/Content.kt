@@ -10,7 +10,6 @@ import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.backgroundColorAsState
 import com.flammky.musicplayer.main.MainActivity
 import com.flammky.musicplayer.main.ui.compose.entry.EntryGuard
-import com.flammky.musicplayer.main.ui.compose.nav.RootNavigation
 
 fun MainActivity.setContent() = setContent {
 	ThemedContent()
@@ -24,7 +23,6 @@ private fun MainActivity.ThemedContent() = MaterialDesign3Theme {
 			.background(Theme.backgroundColorAsState().value),
 	) {
 		EntryGuard {
-			RootNavigation()
 		}
 	}
 }

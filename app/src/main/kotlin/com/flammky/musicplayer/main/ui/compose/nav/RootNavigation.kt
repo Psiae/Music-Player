@@ -157,7 +157,7 @@ private class RootNavigationState(
 				Layout()
 			}
 			playbackControlState.run {
-				Layout()
+				Compose()
 			}
 		}
 	}

@@ -189,7 +189,7 @@ private fun ContentTransition(
 			mutableStateOf<Boolean>(false)
 		}
 
-		Content(
+		PlaybackControllerContent(
 			modifier = modifier
 				.fillMaxWidth()
 				.height(heightTargetDp)
@@ -340,7 +340,7 @@ private fun QueueContentTransition(
 }
 
 @Composable
-private fun Content(
+internal fun PlaybackControllerContent(
     modifier: Modifier,
     viewModel: PlaybackControlViewModel,
     transitionedState: State<Boolean>,

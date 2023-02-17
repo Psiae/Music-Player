@@ -21,11 +21,12 @@ class RootPlaybackControlState internal constructor(
     private var pendingRestore = false
     private var restored = false
 
-    internal val rememberFullyTransitionedState = mutableStateOf(false)
+    // TODO: move these
+    internal val rememberMainFullyTransitionedState = mutableStateOf(false)
     internal val rememberQueueFullyTransitionedState = mutableStateOf(false)
-
     internal val freezeState = mutableStateOf(false)
-    internal val showSelfState = mutableStateOf(false)
+    internal val showMainState = mutableStateOf(false)
+
     internal var dismissHandle: (() -> Boolean)? = null
 
     /**
@@ -37,7 +38,7 @@ class RootPlaybackControlState internal constructor(
                 currentScope.fullyVisibleHeightTarget
                     // TODO: assert that this should not happen
                     .takeIf { it >= 0 }
-                    ?.let { _ -> currentScope.visibleHeight >= 0 }
+                    ?.let { _ -> currentScope.visibleHeight > 0 }
             } == true
     } @SnapshotRead get
 
@@ -63,7 +64,7 @@ class RootPlaybackControlState internal constructor(
                 queueScope.fullyVisibleHeightTarget
                     // TODO: assert that this should not happen
                     .takeIf { it >= 0 }
-                    ?.let { _ -> queueScope.visibleHeight >= 0 }
+                    ?.let { _ -> queueScope.visibleHeight > 0 }
             } == true
     } @SnapshotRead get
 
@@ -81,24 +82,24 @@ class RootPlaybackControlState internal constructor(
     } @SnapshotRead get
 
     @Composable
-    fun Layout(
+    fun Compose(
         modifier: Modifier = Modifier
     ) {
         check(restored)
+        /* TODO: RootPlaybackControl(state = this) */
         TransitioningPlaybackControl(
-            showSelfState = showSelfState,
-            dismiss = ::dismiss
+            showSelfState = showMainState,
+            dismiss = { dismiss() }
         )
     }
 
     fun showSelf() {
-        showSelfState.value = true
+        showMainState.value = true
     }
 
     fun dismiss() {
         if (dismissHandle?.invoke() != false) {
-            showSelfState.value = false
-            rememberFullyTransitionedState.value = false
+            showMainState.value = false
         }
     }
 
@@ -123,16 +124,16 @@ class RootPlaybackControlState internal constructor(
             return
         }
         check(pendingRestore)
-        showSelfState.value = initialShowSelfState
+        showMainState.value = initialShowSelfState
         freezeState.value = initialFreezeState
         restorationBundle
             ?.let {
-                rememberFullyTransitionedState.value =
-                    it.getBoolean(::rememberFullyTransitionedState.name) && showSelfState.value
+                rememberMainFullyTransitionedState.value =
+                    it.getBoolean(::rememberMainFullyTransitionedState.name) && showMainState.value
             }
             ?: run {
-                rememberFullyTransitionedState.value =
-                    showSelfState.value
+                rememberMainFullyTransitionedState.value =
+                    showMainState.value
             }
         restored = true
         pendingRestore = false
@@ -151,8 +152,8 @@ class RootPlaybackControlState internal constructor(
                 Bundle()
                     .apply {
                         putBoolean(
-                            state::rememberFullyTransitionedState.name,
-                            state.rememberFullyTransitionedState.value
+                            state::rememberMainFullyTransitionedState.name,
+                            state.mainScreenFullyVisible
                         )
                     }
             },
@@ -180,7 +181,7 @@ fun rememberRootPlaybackControlState(
         RootPlaybackControlState(user)
             .apply {
                 this.freezeState.value = initialFreezeState
-                this.showSelfState.value = initialShowSelfState
+                this.showMainState.value = initialShowSelfState
                 this.dismissHandle = dismissHandle
                 skipRestore()
             }
@@ -210,6 +211,10 @@ internal class RootPlaybackControlMainScope(
     var visibleHeight by mutableStateOf(0)
         @SnapshotRead get
         @SnapshotWrite internal set
+
+    internal fun showPlaybackQueue() {
+
+    }
 
     companion object {
         // Saver ?

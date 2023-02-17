@@ -1,22 +1,21 @@
 package com.flammky.musicplayer.player.presentation.root
 
 import android.content.pm.ActivityInfo
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.forEachGesture
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.flammky.androidx.content.context.findActivity
 import com.flammky.musicplayer.base.compose.NoInline
+import com.flammky.musicplayer.base.theme.Theme
+import com.flammky.musicplayer.base.theme.compose.absoluteBackgroundColorAsState
 import com.flammky.musicplayer.player.presentation.PlaybackControlViewModel
 import com.flammky.musicplayer.player.presentation.controller.PlaybackController
 
@@ -29,7 +28,7 @@ internal fun RootPlaybackControl(
         modifier = modifier,
         state = state,
         content = {
-
+            ContentTransition()
         },
     )
 }
@@ -40,7 +39,7 @@ private fun RootPlaybackControl(
     state: RootPlaybackControlState,
     content: @Composable RootPlaybackControlMainScope.() -> Unit,
 ) {
-    if (state.showSelfState.value) {
+    if (state.showMainState.value) {
         LockScreenOrientation(landscape = false)
     }
 
@@ -68,36 +67,244 @@ private fun RootPlaybackControl(
             val mainScope = remember(state, controller) {
                 RootPlaybackControlMainScope(state, controller)
             }
-            val queueScope = remember(mainScope) {
-                RootPlaybackControlQueueScope(mainScope)
-            }
-            val blockerFraction =
-                if (state.showSelfState.value || state.mainScreenVisible) 1f else 0f
-
-            // Inline Box to immediately consume input during transition
-            Box(
-                modifier = Modifier
-                    .fillMaxSize(blockerFraction)
-                    .pointerInput(Unit) {
-                        forEachGesture {
-                            awaitPointerEventScope { awaitFirstDown().consume() }
-                        }
-                    }
-            )
-
             // Main Content
             mainScope
                 .apply {
-                    fullyVisibleHeightTarget = with(LocalDensity.current) {
-                        this@BoxWithConstraints.maxHeight.roundToPx()
-                    }
+                    fullyVisibleHeightTarget = constraints.maxHeight
                 }
                 .run {
+                    state.currentComposition = this
                     content()
                 }
         }
     }
 }
+
+@Composable
+private fun RootPlaybackControlMainScope.ContentTransition() {
+    // Think if there is somewhat better way to do this
+    val transitionHeightState = updateTransition(targetState = state.showMainState.value, label = "")
+        .animateInt(
+            label = "Playback Control Transition",
+            targetValueByState = { targetShowSelf ->
+                if (targetShowSelf) fullyVisibleHeightTarget else 0
+            },
+            transitionSpec = {
+                remember(targetState) {
+                    tween(
+                        durationMillis = if (targetState) {
+                            if (state.rememberMainFullyTransitionedState.value) {
+                                0
+                            } else {
+                                350
+                            }
+                        } else {
+                            250
+                        },
+                        easing = if (targetState) FastOutSlowInEasing else LinearOutSlowInEasing
+                    )
+                }
+            }
+        ).apply {
+            LaunchedEffect(
+                this@ContentTransition, this.value, fullyVisibleHeightTarget,
+                block = {
+                    visibleHeight = value
+                    if (visibleHeight == fullyVisibleHeightTarget) {
+                        state.rememberMainFullyTransitionedState.value = true
+                    } else if (visibleHeight == 0) {
+                        state.rememberMainFullyTransitionedState.value = false
+                    }
+                }
+            )
+        }
+
+    val blockerFraction =
+        if (state.showMainState.value || visibleHeight > 0) 1f else 0f
+
+    // Inline Box to immediately consume input during transition
+    Box(
+        modifier = Modifier
+            .fillMaxSize(blockerFraction)
+            .clickable(
+                enabled = true,
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = {}
+            )
+    ) {
+        if (visibleHeight > 0) {
+            val localDensity = LocalDensity.current
+            val absBackgroundColor = Theme.absoluteBackgroundColorAsState().value
+            Layout(
+                modifier = Modifier
+                    .runRemember {
+                        Modifier.fillMaxWidth()
+                    }
+                    .runRemember(
+                        localDensity,
+                        fullyVisibleHeightTarget,
+                        transitionHeightState.value
+                    ) {
+                        this
+                            .height(
+                                height = with(localDensity) {
+                                    fullyVisibleHeightTarget.toDp()
+                                }
+                            )
+                            .offset(
+                                y = with(localDensity) {
+                                    (fullyVisibleHeightTarget - transitionHeightState.value).toDp()
+                                }
+                            )
+                    }
+                    .runRemember(absBackgroundColor) {
+                        this
+                            .background(
+                                color = absBackgroundColor.copy(alpha = 0.97f)
+                            )
+                    },
+                background = { RadialPlaybackBackground(composition = it) },
+                toolbar = { Toolbar(composition = it) },
+                pager = { Pager(composition = it) },
+                description = { Pager(composition = it) },
+                seekbar = { Seekbar(composition = it) },
+                primaryControlRow = { PrimaryControlRow(composition = it) },
+                secondaryControlRow = { SecondaryControlRow(composition = it) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun RootPlaybackControlMainScope.Layout(
+    modifier: Modifier,
+    background: @Composable BoxScope.(composition: RootPlaybackControlMainScope) -> Unit,
+    toolbar: @Composable BoxScope.(composition: RootPlaybackControlMainScope) -> Unit,
+    pager: @Composable BoxScope.(composition: RootPlaybackControlMainScope) -> Unit,
+    description: @Composable BoxScope.(composition: RootPlaybackControlMainScope) -> Unit,
+    seekbar: @Composable BoxScope.(composition: RootPlaybackControlMainScope) -> Unit,
+    primaryControlRow: @Composable RowScope.(composition: RootPlaybackControlMainScope) -> Unit,
+    secondaryControlRow: @Composable RowScope.(composition: RootPlaybackControlMainScope) -> Unit,
+    // TODO: Lyrics ?
+) {
+    val composition = this
+    Box(
+        modifier = modifier.fillMaxSize()
+    ) {
+        background(composition)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+            ) {
+                toolbar(composition)
+            }
+            Spacer(modifier = Modifier.height(15.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(300.dp)
+            ) {
+                pager(composition)
+            }
+            Spacer(modifier = Modifier.height(15.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(60.dp)
+            ) {
+                description(composition)
+            }
+            Spacer(modifier = Modifier.height(15.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(32.dp)
+            ) {
+                seekbar(composition)
+            }
+            Spacer(modifier = Modifier.height(15.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(40.dp)
+            ) {
+                primaryControlRow(composition)
+            }
+            Spacer(modifier = Modifier.height(15.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(40.dp)
+            ) {
+                secondaryControlRow(composition)
+            }
+        }
+    }
+}
+
+@Composable
+private fun BoxScope.RadialPlaybackBackground(
+    composition: RootPlaybackControlMainScope
+) {
+
+}
+
+@Composable
+private fun BoxScope.Toolbar(
+    composition: RootPlaybackControlMainScope
+) {
+
+}
+
+@Composable
+private fun BoxScope.Pager(
+    composition: RootPlaybackControlMainScope
+) {
+
+}
+
+@Composable
+private fun BoxScope.Description(
+    composition: RootPlaybackControlMainScope
+) {
+
+}
+
+@Composable
+private fun BoxScope.Seekbar(
+    composition: RootPlaybackControlMainScope
+) {
+
+}
+
+@Composable
+private fun BoxScope.Queue(
+    composition: RootPlaybackControlMainScope
+) {
+
+}
+
+@Composable
+private fun RowScope.PrimaryControlRow(
+    composition: RootPlaybackControlMainScope
+) {
+
+}
+
+@Composable
+private fun RowScope.SecondaryControlRow(
+    composition: RootPlaybackControlMainScope
+) {
+
+}
+
 
 @Composable
 private fun LockScreenOrientation(landscape: Boolean) {
@@ -112,5 +319,15 @@ private fun LockScreenOrientation(landscape: Boolean) {
                 ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
             }
         onDispose { activity.requestedOrientation = original }
+    }
+}
+
+@Composable
+inline fun <T, R> T.runRemember(
+    vararg keys: Any?,
+    crossinline block: @DisallowComposableCalls T.() -> R
+): R {
+    return remember(this, *keys) {
+        block()
     }
 }

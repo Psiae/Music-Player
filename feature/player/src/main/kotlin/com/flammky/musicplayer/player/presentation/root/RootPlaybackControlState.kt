@@ -1,18 +1,26 @@
 package com.flammky.musicplayer.player.presentation.root
 
+import android.graphics.Bitmap
 import android.os.Bundle
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.palette.graphics.Palette
 import com.flammky.musicplayer.base.compose.SnapshotRead
 import com.flammky.musicplayer.base.compose.SnapshotWrite
+import com.flammky.musicplayer.base.media.playback.OldPlaybackQueue
 import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.player.presentation.controller.PlaybackController
+import com.flammky.musicplayer.player.presentation.main.PlaybackControlTrackMetadata
+import com.flammky.musicplayer.player.presentation.main.PlaybackControlViewModel
 import com.flammky.musicplayer.player.presentation.main.compose.TransitioningPlaybackControl
+import kotlinx.coroutines.flow.Flow
 
 class RootPlaybackControlState internal constructor(
-    internal val user: User
+    internal val user: User,
+    internal val viewModel: PlaybackControlViewModel
 ) {
 
     internal var currentComposition: RootPlaybackControlMainScope? = null
@@ -147,7 +155,10 @@ class RootPlaybackControlState internal constructor(
     }
 
     companion object {
-        fun saver(user: User): Saver<RootPlaybackControlState, Bundle> = Saver(
+        internal fun saver(
+            user: User,
+            viewModel: PlaybackControlViewModel
+        ): Saver<RootPlaybackControlState, Bundle> = Saver(
             save = { state ->
                 Bundle()
                     .apply {
@@ -158,7 +169,7 @@ class RootPlaybackControlState internal constructor(
                     }
             },
             restore = { bundle ->
-                RootPlaybackControlState(user)
+                RootPlaybackControlState(user, viewModel)
                     .apply {
                         performRestore(bundle)
                     }
@@ -174,11 +185,11 @@ fun rememberRootPlaybackControlState(
     initialShowSelfState: Boolean,
     dismissHandle: (() -> Boolean)? = null
 ): RootPlaybackControlState {
+    val viewModel = hiltViewModel<PlaybackControlViewModel>()
     return rememberSaveable(
-        user,
-        saver = RootPlaybackControlState.saver(user)
+        saver = RootPlaybackControlState.saver(user, viewModel)
     ) {
-        RootPlaybackControlState(user)
+        RootPlaybackControlState(user, viewModel)
             .apply {
                 this.freezeState.value = initialFreezeState
                 this.showMainState.value = initialShowSelfState
@@ -196,8 +207,46 @@ fun rememberRootPlaybackControlState(
 
 internal class RootPlaybackControlMainScope(
     val state: RootPlaybackControlState,
-    val playbackController: PlaybackController
+    val playbackController: PlaybackController,
+    val observeMetadata: (String) -> Flow<PlaybackControlTrackMetadata>,
+    val dismiss: () -> Unit
 ) {
+
+    internal var currentQueue by mutableStateOf(OldPlaybackQueue.UNSET)
+        @SnapshotRead get
+        @SnapshotWrite set
+
+    internal var currentQueueReaderCount by mutableStateOf<Int>(0)
+        @SnapshotRead get
+        @SnapshotWrite set
+
+    internal var currentPlaybackMetadata by mutableStateOf<PlaybackControlTrackMetadata?>(null)
+        @SnapshotRead get
+        @SnapshotWrite set
+
+    internal var currentMetadataReaderCount by mutableStateOf<Int>(0)
+        @SnapshotRead get
+        @SnapshotWrite set
+
+    internal var currentPlaybackBitmap by mutableStateOf<Bitmap?>(null)
+        @SnapshotRead get
+        @SnapshotWrite set
+
+    internal var currentBitmapReaderCount by mutableStateOf<Int>(0)
+        @SnapshotRead get
+        @SnapshotWrite set
+
+    internal var currentBitmapReaderBiggestViewport by mutableStateOf(0)
+        @SnapshotRead get
+        @SnapshotWrite set
+
+    internal var currentPlaybackPalette by mutableStateOf<Palette?>(null)
+        @SnapshotRead get
+        @SnapshotWrite set
+
+    internal var currentPaletteReaderCount by mutableStateOf<Int>(0)
+        @SnapshotRead get
+        @SnapshotWrite set
 
     // should this be nullable tho ?
     var queueComposition by mutableStateOf<RootPlaybackControlQueueScope?>(null)
@@ -213,14 +262,16 @@ internal class RootPlaybackControlMainScope(
         @SnapshotWrite internal set
 
     internal fun showPlaybackQueue() {
-
+        // TODO
     }
 
     companion object {
         // Saver ?
         fun saver(
             state: RootPlaybackControlState,
-            controller: PlaybackController
+            controller: PlaybackController,
+            viewModel: PlaybackControlViewModel,
+            dismiss: () -> Unit
         ): Saver<RootPlaybackControlMainScope, Bundle> {
             return Saver(
                 save = {
@@ -230,10 +281,14 @@ internal class RootPlaybackControlMainScope(
                         }
                 },
                 restore = {
-                    RootPlaybackControlMainScope(state, controller)
-                        .apply {
-                            // TODO
-                        }
+                    RootPlaybackControlMainScope(
+                        state,
+                        controller,
+                        viewModel::observeMetadata,
+                        dismiss
+                    ).apply {
+                        // TODO
+                    }
                 }
             )
         }

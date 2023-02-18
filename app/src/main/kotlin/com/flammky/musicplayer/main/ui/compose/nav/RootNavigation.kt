@@ -74,6 +74,7 @@ private class RootNavigationState(
 		val contentBottomOffsetState = remember {
 			mutableStateOf(0.dp)
 		}
+		// I think the compact version can just be part of the main one ?
 		val playbackControlState =
 			rememberRootPlaybackControlState(
 				user,

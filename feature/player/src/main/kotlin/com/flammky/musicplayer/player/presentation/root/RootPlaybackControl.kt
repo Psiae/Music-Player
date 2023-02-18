@@ -90,17 +90,19 @@ private fun RootPlaybackControl(
 
     val controllerState = remember {
         mutableStateOf<PlaybackController?>(null)
+    }.apply {
+        DisposableEffect(
+            this,
+            viewModel,
+            effect = {
+                val controller = viewModel.createUserPlaybackController(state.user)
+                value = controller
+                onDispose { controller.dispose() }
+            }
+        )
     }
 
-    DisposableEffect(
-        state,
-        viewModel,
-        effect = {
-            val controller = viewModel.createUserPlaybackController(state.user)
-            controllerState.value = controller
-            onDispose { controller.dispose() }
-        }
-    )
+
     NoInline {
         val controller = controllerState.value
             ?: return@NoInline
@@ -111,9 +113,13 @@ private fun RootPlaybackControl(
                 RootPlaybackControlMainScope(
                     state,
                     controller,
-                    observeMetadata = state.viewModel::observeMetadata,
-                    dismiss = state::dismiss
-                )
+                    observeTrackSimpleMetadata = state.viewModel::observeSimpleMetadata,
+                    observeTrackMetadata = state.viewModel::observeMediaMetadata,
+                    observeArtwork = state.viewModel::observeMediaArtwork,
+                    dismiss = state::dismiss,
+                ).apply {
+                    state.restoreComposition(this)
+                }
             }
             // Main Content
             mainScope
@@ -141,7 +147,7 @@ private fun RootPlaybackControlMainScope.ContentTransition() {
                 remember(targetState) {
                     tween(
                         durationMillis = if (targetState) {
-                            if (state.rememberMainFullyTransitionedState.value) {
+                            if (rememberFullyTransitioned) {
                                 0
                             } else {
                                 350
@@ -159,9 +165,9 @@ private fun RootPlaybackControlMainScope.ContentTransition() {
                 block = {
                     visibleHeight = value
                     if (visibleHeight == fullyVisibleHeightTarget) {
-                        state.rememberMainFullyTransitionedState.value = true
+                        rememberFullyTransitioned = true
                     } else if (visibleHeight == 0) {
-                        state.rememberMainFullyTransitionedState.value = false
+                        rememberFullyTransitioned = false
                     }
                 }
             )
@@ -212,6 +218,7 @@ private fun RootPlaybackControlMainScope.ContentTransition() {
                                 color = absBackgroundColor.copy(alpha = 0.97f)
                             )
                     },
+                queue = { Queue(parent = it) },
                 background = { RadialPlaybackBackground(composition = it) },
                 toolbar = { Toolbar(composition = it) },
                 pager = { Pager(composition = it) },
@@ -227,6 +234,7 @@ private fun RootPlaybackControlMainScope.ContentTransition() {
 @Composable
 private fun RootPlaybackControlMainScope.Layout(
     modifier: Modifier,
+    queue: @Composable BoxScope.(composition: RootPlaybackControlMainScope) -> Unit,
     background: @Composable BoxScope.(composition: RootPlaybackControlMainScope) -> Unit,
     toolbar: @Composable BoxScope.(composition: RootPlaybackControlMainScope) -> Unit,
     pager: @Composable BoxScope.(composition: RootPlaybackControlMainScope) -> Unit,
@@ -239,12 +247,9 @@ private fun RootPlaybackControlMainScope.Layout(
     val composition = this
     val coroutineScope = rememberCoroutineScope()
     val animatedAlpha by animateFloatAsState(
-        targetValue = if (composition.state.rememberMainFullyTransitionedState.value) 1f else 0f,
+        targetValue = if (composition.rememberFullyTransitioned) 1f else 0f,
         animationSpec = tween(
-            if (
-                composition.state.rememberMainFullyTransitionedState.value
-                && Theme.isDarkAsState().value
-            ) 150 else 0
+            if (composition.rememberFullyTransitioned && Theme.isDarkAsState().value) 150 else 0
         )
     )
     Box(
@@ -315,6 +320,7 @@ private fun RootPlaybackControlMainScope.Layout(
                 secondaryControlRow(composition)
             }
         }
+        queue(composition)
     }
     DisposableEffect(key1 = composition, effect = {
         val supervisor = SupervisorJob()
@@ -378,7 +384,7 @@ private fun RootPlaybackControlMainScope.Layout(
                                         }
                                         latestTransformer = launch {
                                             composition
-                                                .observeMetadata(it)
+                                                .observeTrackSimpleMetadata(it)
                                                 .collect(composition::currentPlaybackMetadata::set)
                                         }
                                     }
@@ -655,7 +661,7 @@ private fun BoxScope.Pager(
                         mutableStateOf(PlaybackControlTrackMetadata())
                     }
                 } else {
-                    composition.observeMetadata(id).collectAsState(PlaybackControlTrackMetadata())
+                    composition.observeTrackSimpleMetadata(id).collectAsState(PlaybackControlTrackMetadata())
                 }
             TracksPagerItem(metadataState = state)
         }
@@ -1201,9 +1207,20 @@ private fun RowScope.PlaybackProgressSliderText(
 
 @Composable
 private fun BoxScope.Queue(
-    composition: RootPlaybackControlMainScope
+    parent: RootPlaybackControlMainScope
 ) {
-
+    BoxWithConstraints {
+        if (!parent.showPlaybackQueue && parent.queueComposition == null) {
+            return@BoxWithConstraints
+        }
+        parent.queueComposition = remember(parent) {
+            RootPlaybackControlQueueScope(parent)
+        }.apply {
+            parent.restoreQueueComposition(this)
+            fullyVisibleHeightTarget = constraints.maxHeight
+        }
+        RootPlaybackControlQueueScreen(composition = parent.queueComposition!!)
+    }
 }
 
 @Composable

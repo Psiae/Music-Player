@@ -1,10 +1,10 @@
-package com.flammky.musicplayer.player.presentation.queue
+package com.flammky.musicplayer.player.presentation.root
 
 import android.widget.Toast
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -25,12 +25,12 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import coil.request.CachePolicy
 import coil.request.ImageRequest
 import com.flammky.android.medialib.common.mediaitem.AudioFileMetadata
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
+import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.android.medialib.providers.metadata.VirtualFileMetadata
 import com.flammky.musicplayer.base.R
 import com.flammky.musicplayer.base.compose.NoInlineBox
@@ -40,8 +40,6 @@ import com.flammky.musicplayer.base.media.MediaConstants
 import com.flammky.musicplayer.base.media.playback.OldPlaybackQueue
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.*
-import com.flammky.musicplayer.base.user.User
-import com.flammky.musicplayer.player.presentation.controller.PlaybackController
 import com.flammky.musicplayer.player.presentation.main.compose.TransitioningCompactPlaybackControl
 import com.google.accompanist.placeholder.PlaceholderHighlight
 import com.google.accompanist.placeholder.placeholder
@@ -49,52 +47,135 @@ import com.google.accompanist.placeholder.shimmer
 import dev.flammky.compose_components.reorderable.ReorderableLazyColumn
 import dev.flammky.compose_components.reorderable.itemsIndexed
 import dev.flammky.compose_components.reorderable.rememberReorderableLazyListState
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import timber.log.Timber
 import kotlin.time.Duration
 
 @Composable
-internal fun PlaybackControlQueueScreen(
-    modifier: Modifier = Modifier,
-    transitionedState: State<Boolean>
+internal fun BoxScope.RootPlaybackControlQueueScreen(
+    composition: RootPlaybackControlQueueScope
 ) {
-    val coroutineScope = rememberCoroutineScope()
-    val transitionedDrawState = remember {
-        mutableStateOf(false)
-    }
-    val vms: QueueViewModel = hiltViewModel()
-    val userState = remember {
-        mutableStateOf<User?>(null)
-    }
-    val controllerState = remember {
-        mutableStateOf<PlaybackController?>(null)
-    }
-    val queueState = remember {
-        mutableStateOf<OldPlaybackQueue>(OldPlaybackQueue.UNSET)
-    }
-    val queueOverrideState = remember {
-        mutableStateOf<OldPlaybackQueue?>(null)
-    }
-    val maskedQueueState = remember {
-        derivedStateOf { queueOverrideState.value ?: queueState.value }
-    }
-    LaunchedEffect(
-        key1 = transitionedState.value,
-        block = {
-            transitionedDrawState.value = transitionedState.value
+    val transitionHeightState = updateTransition(targetState = composition.showSelf, label = "")
+        .animateInt(
+            label = "Playback Control Transition",
+            targetValueByState = { targetShowSelf ->
+                if (targetShowSelf) composition.fullyVisibleHeightTarget else 0
+            },
+            transitionSpec = {
+                remember(composition, targetState) {
+                    tween(
+                        durationMillis = if (targetState) {
+                            if (composition.rememberFullyTransitionedState) {
+                                // consume
+                                composition.rememberFullyTransitionedState = false
+                                0
+                            } else {
+                                350
+                            }
+                        } else {
+                            250
+                        },
+                        easing = if (targetState) FastOutSlowInEasing else LinearOutSlowInEasing
+                    )
+                }
+            }
+        ).apply {
+            LaunchedEffect(
+                composition, this.value, composition.fullyVisibleHeightTarget,
+                block = {
+                    composition.apply {
+                        visibleHeight = value
+                        if (visibleHeight == fullyVisibleHeightTarget) {
+                            rememberFullyTransitionedState = true
+                        } else if (visibleHeight == 0) {
+                            rememberFullyTransitionedState = false
+                        }
+                    }
+                }
+            )
         }
-    )
-    val contentAlpha = animateFloatAsState(
-        targetValue = if (transitionedDrawState.value) {
+
+    val blockerFraction =
+        if (composition.showSelf || composition.visibleHeight > 0) 1f else 0f
+
+    // Inline Box to immediately consume input during transition
+    Box(
+        modifier = Modifier
+            .fillMaxSize(blockerFraction)
+            .clickable(
+                enabled = true,
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = {}
+            )
+    ) {
+        if (composition.visibleHeight > 0) {
+            val localDensity = LocalDensity.current
+            val absBackgroundColor = Theme.absoluteBackgroundColorAsState().value
+            Layout(
+                modifier = Modifier
+                    .runRemember {
+                        Modifier.fillMaxWidth()
+                    }
+                    .runRemember(
+                        localDensity,
+                        composition,
+                        composition.fullyVisibleHeightTarget,
+                        transitionHeightState.value
+                    ) {
+                        this
+                            .height(
+                                height = with(localDensity) {
+                                    composition.fullyVisibleHeightTarget.toDp()
+                                }
+                            )
+                            .offset(
+                                y = with(localDensity) {
+                                    (composition.fullyVisibleHeightTarget - transitionHeightState.value).toDp()
+                                }
+                            )
+                    }
+                    .runRemember(absBackgroundColor) {
+                        this
+                            .background(
+                                color = absBackgroundColor.copy(alpha = 0.97f)
+                            )
+                    },
+                composition = composition,
+                compactControl = {
+                    CompactControl(it)
+                },
+                queueColumn = {
+                    it.statusBarInset = with(LocalDensity.current) {
+                        WindowInsets.statusBars.getTop(this).toDp()
+                    }
+                    ReorderableLazyQueueColumn(composition = it)
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun Layout(
+    modifier: Modifier,
+    composition: RootPlaybackControlQueueScope,
+    compactControl: @Composable BoxScope.(composition: RootPlaybackControlQueueScope) -> Unit,
+    queueColumn: @Composable BoxScope.(composition: RootPlaybackControlQueueScope) -> Unit
+) {
+    val transitioned by remember(composition) {
+        derivedStateOf {
+            composition.fullyVisibleHeightTarget >= 0 &&
+            composition.visibleHeight >= composition.fullyVisibleHeightTarget
+        }
+    }
+    val contentAlpha by animateFloatAsState(
+        targetValue = if (transitioned) {
             1f
         } else {
             0f
         },
         animationSpec = tween(
-            durationMillis = if (transitionedDrawState.value
+            durationMillis = if (transitioned
                 && Theme.isDarkAsState().value
             ) {
                 150
@@ -102,35 +183,58 @@ internal fun PlaybackControlQueueScreen(
                 0
             }
         )
-    ).value
+    )
+    Box(modifier = modifier
+        .fillMaxSize()
+        .alpha(contentAlpha)
+    ) {
+        queueColumn(composition)
+        compactControl(composition)
+    }
+}
+
+@Composable
+private fun BoxScope.CompactControl(composition: RootPlaybackControlQueueScope) {
+    val navigationBarHeight = with(LocalDensity.current) {
+        WindowInsets.navigationBars
+            .getBottom(this)
+            .toDp()
+    }
+    Spacer(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(navigationBarHeight)
+            .background(Theme.backgroundColorAsState().value)
+            .align(Alignment.BottomCenter)
+    )
+    TransitioningCompactPlaybackControl(
+        bottomVisibilityVerticalPadding = navigationBarHeight
+    ) { height ->
+        composition.playbackControlContentPadding = PaddingValues(bottom = height)
+    }
+}
+
+@Composable
+private fun BoxScope.ReorderableLazyQueueColumn(composition: RootPlaybackControlQueueScope) {
+    val coroutineScope = rememberCoroutineScope()
+    val queueOverrideState = remember(composition) {
+        mutableStateOf<OldPlaybackQueue?>(null)
+    }
+    val maskedQueueState = remember(composition) {
+        derivedStateOf { queueOverrideState.value ?: composition.currentQueue }
+    }.apply {
+        DisposableEffect(key1 = this, effect = {
+            composition.incrementQueueReaderCount()
+            onDispose { composition.decrementQueueReaderCount() }
+        })
+    }
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
     ) {
-        val statusBarHeight = with(LocalDensity.current) {
-            WindowInsets.statusBars
-                .getTop(this)
-                .toDp()
-        }
         Box(modifier = Modifier.fillMaxSize()) {
-            val navigationBarHeight = with(LocalDensity.current) {
-                WindowInsets.navigationBars
-                    .getBottom(this)
-                    .toDp()
-            }
-            val controlHeightState = remember {
-                mutableStateOf(0.dp)
-            }
-            Spacer(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(statusBarHeight)
-            )
-            NoInlineBox(modifier = Modifier.alpha(contentAlpha)) contentBox@ {
-                val deferLoadState = remember {
-                    derivedStateOf { !transitionedDrawState.value }
-                }
-                val queue = queueState.value
+            NoInlineBox() contentBox@ {
+                val queue = maskedQueueState.value
                 if (queue == OldPlaybackQueue.UNSET) return@contentBox
                 val lazyListState: LazyListState = rememberLazyListState(
                     initialFirstVisibleItemIndex = (queue.currentIndex),
@@ -143,38 +247,31 @@ internal fun PlaybackControlQueueScreen(
                     state = rememberReorderableLazyListState(
                         lazyListState = lazyListState,
                         onDragStart = { true },
-                        onDragEnd = end@ { cancelled, from, to, handle ->
-                            if (cancelled || from.index == to.index || from.key == to.key) {
-                                return@end handle.done()
-                            }
-                            val expectFromId = (from.key as String)
-                            val expectToId = (to.key as String)
-                            controllerState.value?.requestMoveAsync(
-                                from.index,
-                                expectFromId,
-                                to.index,
-                                expectToId
-                            )?.run {
-                                coroutineScope.launch {
-                                    await().eventDispatch?.join()
-                                    handle.done()
+                        onDragEnd = remember(composition) {
+                            end@ { cancelled, from, to, handle ->
+                                if (cancelled || from.index == to.index || from.key == to.key) {
+                                    return@end handle.done()
+                                }
+                                val expectFromId = (from.key as String)
+                                val expectToId = (to.key as String)
+                                composition.playbackController.requestMoveAsync(
+                                    from.index,
+                                    expectFromId,
+                                    to.index,
+                                    expectToId
+                                ).run {
+                                    coroutineScope.launch {
+                                        await().eventDispatch?.join()
+                                        handle.done()
+                                    }
                                 }
                             }
                         },
                     ),
-                    contentPadding = PaddingValues(
-                        top = statusBarHeight,
-                        bottom = maxOf(controlHeightState.value, navigationBarHeight)
-                    ),
+                    contentPadding = composition.columnVisibilityContentPadding,
                 ) content@ {
-                    val user = userState.value
-                    val controller = controllerState.value
                     val maskedQueue = maskedQueueState.value
-                    if (user == null ||
-                        controller == null ||
-                        user != controller.user ||
-                        maskedQueue === OldPlaybackQueue.UNSET
-                    ) {
+                    if (maskedQueue === OldPlaybackQueue.UNSET) {
                         return@content
                     }
                     itemsIndexed(
@@ -213,7 +310,6 @@ internal fun PlaybackControlQueueScreen(
                                         .height(60.dp)
                                         .width(35.dp)
                                 ) {
-                                    if (deferLoadState.value) return@NoInlineBox
                                     Icon(
                                         modifier = Modifier
                                             .size(30.dp)
@@ -226,11 +322,10 @@ internal fun PlaybackControlQueueScreen(
                                 }
                                 QueueItem(
                                     id = id,
-                                    viewModel = vms,
-                                    deferLoadState = deferLoadState
-                                ) play@{
+                                    composition = composition,
+                                ) play@ {
                                     if (index != maskedQueue.currentIndex) {
-                                        controller.requestSeekAsync(index, Duration.ZERO)
+                                        composition.playbackController.requestSeekAsync(index, Duration.ZERO)
                                     }
                                 }
                             }
@@ -247,60 +342,36 @@ internal fun PlaybackControlQueueScreen(
                     }
                 }
             }
-            Spacer(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(navigationBarHeight)
-                    .background(Theme.backgroundColorAsState().value)
-                    .align(Alignment.BottomCenter)
-            )
-            // temporary
-            TransitioningCompactPlaybackControl(
-                bottomVisibilityVerticalPadding = navigationBarHeight
-            ) { height ->
-                controlHeightState.value = height
-            }
         }
     }
-
-    LaunchedEffect(key1 = Unit, block = {
-        vms.observeUser().collect {
-            userState.value = it
-            controllerState.value = null
-            queueState.value = OldPlaybackQueue.UNSET
-        }
-    })
-
-    DisposableEffect(key1 = userState.value, effect = {
-        val user = userState.value
-            ?: return@DisposableEffect onDispose {  }
-        val supervisor = SupervisorJob()
-        val controller = vms.createPlaybackController(user)
-        controllerState.value = controller
-            .apply {
-                val collector = createPlaybackObserver(supervisor).createQueueCollector()
-                coroutineScope.launch(supervisor) {
-                    collector.startCollect().join()
-                    collector.queueStateFlow.collect {
-                        Timber.d("QueueScreen collect queue=$it")
-                        queueState.value = it
-                    }
-                }
-            }
-        onDispose {
-            supervisor.cancel()
-            controller.dispose()
-        }
-    })
 }
 
 @Composable
 private fun QueueItem(
     id: String,
-    viewModel: QueueViewModel,
-    deferLoadState: State<Boolean>,
+    composition: RootPlaybackControlQueueScope,
     play: () -> Unit
 ) {
+    val artwork by remember(id, composition) {
+        mutableStateOf<Any?>(null)
+    }.apply {
+        LaunchedEffect(key1 = this, block = {
+            composition.observeTrackArtwork(id)
+                .collect {
+                    value = it
+                }
+        })
+    }
+    val metadata by remember(id, composition) {
+        mutableStateOf<MediaMetadata?>(AudioMetadata.UNSET)
+    }.apply {
+        LaunchedEffect(key1 = this, block = {
+            composition.observeTrackMetadata(id)
+                .collect {
+                    value = it
+                }
+        })
+    }
     Box(
         modifier = Modifier
             .height(60.dp)
@@ -316,28 +387,22 @@ private fun QueueItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
 
-            ItemArtworkCard(id, deferLoadState, viewModel)
+            ItemArtworkCard(artwork)
 
             Spacer(modifier = Modifier.width(8.dp))
 
             ItemTextDescription(
                 modifier = Modifier.weight(1f, true),
-                id = id,
-                viewModel = viewModel,
-                deferLoadState = deferLoadState
+                metadata = metadata
             )
-
-            if (deferLoadState.value) {
-                return@NoInlineRow
-            }
 
             Spacer(modifier = Modifier.width(8.dp))
 
             val moreResId =
                 if (Theme.isDarkAsState().value) {
-                    com.flammky.musicplayer.base.R.drawable.more_vert_48px
+                    R.drawable.more_vert_48px
                 } else {
-                    com.flammky.musicplayer.base.R.drawable.more_vert_48px_dark
+                    R.drawable.more_vert_48px_dark
                 }
 
             val context = LocalContext.current
@@ -373,38 +438,17 @@ private val ART_UNSET = Any()
 
 @Composable
 private fun ItemArtworkCard(
-    id: String,
-    deferLoadState: State<Boolean>,
-    viewModel: QueueViewModel,
+    artwork: Any?
 ) {
     val context = LocalContext.current
 
-    val artState = remember {
-        mutableStateOf<Any?>(ART_UNSET)
+    val art = remember(artwork) {
+        artwork?.takeIf { !MediaConstants.isNoArtwork(it) } ?: MediaConstants.NO_ARTWORK
     }
 
     val shape: Shape = remember {
         RoundedCornerShape(5)
     }
-
-    LaunchedEffect(
-        key1 = id,
-        key2 = viewModel,
-        block = {
-            withContext(Dispatchers.Main) {
-                val obs = viewModel.observeArtwork(id)
-                obs.collect {
-                    artState.value = it?.let { art ->
-                        if (MediaConstants.isNoArtwork(art)) {
-                            MediaConstants.NO_ARTWORK
-                        } else {
-                            art
-                        }
-                    }
-                }
-            }
-        }
-    )
 
     Card(
         modifier = Modifier
@@ -416,13 +460,9 @@ private fun ItemArtworkCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
 
-        if (deferLoadState.value) {
-            return@Card
-        }
-
-        val imageModel = remember(artState.value) {
+        val imageModel = remember(art) {
             ImageRequest.Builder(context)
-                .data(artState.value)
+                .data(art)
                 .memoryCachePolicy(CachePolicy.ENABLED)
                 .build()
         }
@@ -431,7 +471,7 @@ private fun ItemArtworkCard(
             modifier = Modifier
                 .fillMaxSize()
                 .placeholder(
-                    visible = imageModel.data === ART_UNSET || deferLoadState.value,
+                    visible = imageModel.data === ART_UNSET,
                     color = localShimmerSurface(),
                     shape = shape,
                     highlight = PlaceholderHighlight.shimmer(highlightColor = localShimmerColor())
@@ -447,29 +487,16 @@ private fun ItemArtworkCard(
 @Composable
 private fun ItemTextDescription(
     modifier: Modifier,
-    id: String,
-    viewModel: QueueViewModel,
-    deferLoadState: State<Boolean>,
+    metadata: MediaMetadata?,
     textColor: Color = Theme.backgroundContentColorAsState().value
 ) {
-    val metadataState = remember { mutableStateOf<AudioMetadata?>(AudioMetadata.UNSET) }
-
-    LaunchedEffect(
-        key1 = id,
-        key2 = viewModel,
-        block = {
-            withContext(coroutineContext + Dispatchers.Main) {
-                viewModel.observeMetadata(id).collect {
-                    metadataState.value = it as? AudioMetadata
-                }
-            }
-        }
-    )
-
     NoInlineColumn(
         modifier = modifier.fillMaxHeight(),
         verticalArrangement = Arrangement.Center
     ) {
+        if (metadata !is AudioMetadata?) {
+            return@NoInlineColumn
+        }
         val style = with(MaterialTheme.typography.bodyMedium) {
             copy(
                 color = textColor,
@@ -482,8 +509,8 @@ private fun ItemTextDescription(
                 fontWeight = FontWeight.Normal
             )
         }
-        val placeHolderState = remember {
-            derivedStateOf { metadataState.value === AudioMetadata.UNSET || deferLoadState.value }
+        val placeHolderState = remember(metadata) {
+            derivedStateOf { metadata === AudioMetadata.UNSET }
         }
         Text(
             modifier = Modifier
@@ -494,17 +521,15 @@ private fun ItemTextDescription(
                     color = localShimmerSurface(),
                     highlight = PlaceholderHighlight.shimmer(localShimmerColor())
                 ),
-            text = remember(metadataState.value) {
-                metadataState.value
-                    ?.let { metadata ->
-                        metadata.title
-                            ?: (metadata as? AudioFileMetadata)?.let { afm ->
-                                afm.file.fileName
-                                    ?: (afm.file as? VirtualFileMetadata)?.uri?.toString()
-                            }
-                    }
-                    ?: ""
-            },
+            text = metadata
+                ?.let { metadata ->
+                    metadata.title
+                        ?: (metadata as? AudioFileMetadata)?.let { afm ->
+                            afm.file.fileName
+                                ?: (afm.file as? VirtualFileMetadata)?.uri?.toString()
+                        }
+                }
+                ?: "",
             style = style,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -512,8 +537,8 @@ private fun ItemTextDescription(
 
         Spacer(modifier = Modifier.height(3.dp))
 
-        val formattedDuration = remember(metadataState.value?.duration) {
-            val seconds = metadataState.value?.duration?.inWholeSeconds ?: 0
+        val formattedDuration = remember(metadata) {
+            val seconds = metadata?.duration?.inWholeSeconds ?: 0
             if (seconds > 3600) {
                 String.format(
                     "%02d:%02d:%02d",
@@ -545,7 +570,7 @@ private fun ItemTextDescription(
                 ),
             text = formattedDuration + " " +
                     separator + " " +
-                    (metadataState.value?.albumArtistName ?: metadataState.value?.artistName ?: ""),
+                    (metadata?.albumArtistName ?: metadata?.artistName ?: ""),
             style = style2,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,

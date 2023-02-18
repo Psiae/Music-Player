@@ -11,7 +11,6 @@ import com.flammky.musicplayer.core.common.sync
 import com.flammky.musicplayer.player.presentation.controller.PlaybackController
 import com.flammky.musicplayer.player.presentation.presenter.PlaybackObserver
 import kotlinx.coroutines.*
-import timber.log.Timber
 import kotlin.coroutines.CoroutineContext
 import kotlin.time.Duration
 
@@ -334,12 +333,9 @@ internal class RealPlaybackController(
 		to: Int,
 		expectToId: String
 	): Deferred<RequestResult> {
-		Timber.d("requestMoveAsync $from $expectFromId $to $expectToId")
 		return scope.async {
-			Timber.d("requestMoveAsync $from $expectFromId $to $expectToId, in scope")
 			val success = runCatching {
 				playbackConnection.requestUserSessionAsync(user).await().controller.withLooperContext {
-					Timber.d("requestMoveAsync $from $expectFromId $to $expectToId, in Looper Context")
 					requestMoveAsync(from, expectFromId, to, expectToId)
 				}
 			}.getOrElse {

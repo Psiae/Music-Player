@@ -333,7 +333,7 @@ private fun cardSurfacePaletteColor(
 		if (id == null || freezeState.value) {
 			return@LaunchedEffect
 		}
-		viewModel.observeMetadata(id).collect {
+		viewModel.observeSimpleMetadata(id).collect {
 			val q = queueState.value
 			if (q.list.getOrNull(q.currentIndex) == id) {
 				artworkState.value = it.artwork
@@ -443,7 +443,7 @@ private fun ArtworkCard(
 							queue.list.getOrNull(queue.currentIndex)
 								?.let {
 									lastJob = launch {
-										viewModel.observeMetadata(it).collect { metadata ->
+										viewModel.observeSimpleMetadata(it).collect { metadata ->
 											artState.value = metadata.artwork
 										}
 									}
@@ -646,7 +646,7 @@ private fun DescriptionPagerItem(
 
 	LaunchedEffect(key1 = mediaID, key2 = freezeState.value, block = {
 		if (freezeState.value) return@LaunchedEffect
-		viewModel.observeMetadata(mediaID).collect { metadataState.value = it }
+		viewModel.observeSimpleMetadata(mediaID).collect { metadataState.value = it }
 	})
 
 	Column(

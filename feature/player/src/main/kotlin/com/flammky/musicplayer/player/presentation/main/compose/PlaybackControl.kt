@@ -562,8 +562,8 @@ private fun TracksPagerDisplay(
 			metadataStateForId = { id ->
 				val scope = rememberCoroutineScope()
 				remember(id) {
-					viewModel.observeMetadata(id)
-						.stateIn(scope, SharingStarted.Lazily, viewModel.getCachedMetadata(id))
+					viewModel.observeSimpleMetadata(id)
+						.stateIn(scope, SharingStarted.Lazily, viewModel.getCachedSimpleMetadata(id))
 				}.collectAsState()
 			},
 			seekIndex = { q, index ->
@@ -670,8 +670,8 @@ private fun RadialPlaybackPaletteBackground(
 	val idState = remember(observer) { mutableStateOf("") }
 	val id = idState.value
 	val metadataStateFlow = remember(id) {
-		viewModel.observeMetadata(id)
-			.stateIn(coroutineScope, started = SharingStarted.Lazily, viewModel.getCachedMetadata(id))
+		viewModel.observeSimpleMetadata(id)
+			.stateIn(coroutineScope, started = SharingStarted.Lazily, viewModel.getCachedSimpleMetadata(id))
 	}
 	RadialPlaybackPaletteBackground(
 		modifier,

@@ -149,7 +149,7 @@ private class RootNavigationState(
 							it.addRootDestination(this, navController)
 						}
 					}
-					BackHandler(rememberShowFullPlaybackControllerState.value) {
+					BackHandler(playbackControlState.consumeBackPress) {
 						playbackControlState.backPress()
 					}
 				}

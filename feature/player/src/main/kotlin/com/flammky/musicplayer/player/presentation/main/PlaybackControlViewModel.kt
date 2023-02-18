@@ -108,14 +108,22 @@ internal class PlaybackControlViewModel @Inject constructor(
 								}
 							}
 							.distinctUntilChanged()
-							.flatMapLatest(::observeMetadata)
+							.flatMapLatest(::observeSimpleMetadata)
 							.collect(this)
 					}
 					?: emit(PlaybackControlTrackMetadata())
 			}
 	}.stateIn(viewModelScope, SharingStarted.Lazily, PlaybackControlTrackMetadata())
 
-	fun getCachedMetadata(id: String): PlaybackControlTrackMetadata {
+	fun observeMediaMetadata(id: String): Flow<MediaMetadata?> {
+		return presenter.mediaRepo.observeMetadata(id)
+	}
+
+	fun observeMediaArtwork(id: String): Flow<Any?> {
+		return presenter.mediaRepo.observeArtwork(id)
+	}
+
+	fun getCachedSimpleMetadata(id: String): PlaybackControlTrackMetadata {
 		val metadata = presenter.mediaRepo.getCachedMetadata(id)
 		return PlaybackControlTrackMetadata(
 			id = id,
@@ -124,7 +132,7 @@ internal class PlaybackControlViewModel @Inject constructor(
 			subtitle = metadata?.findSubtitle()
 		)
 	}
-	fun observeMetadata(id: String): Flow<PlaybackControlTrackMetadata> {
+	fun observeSimpleMetadata(id: String): Flow<PlaybackControlTrackMetadata> {
 		return combine(
 			flow = presenter.mediaRepo.observeArtwork(id),
 			flow2 = presenter.mediaRepo.observeMetadata(id)

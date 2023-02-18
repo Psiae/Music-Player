@@ -21,7 +21,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.guava.await
-import timber.log.Timber
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -552,10 +551,8 @@ class PlaybackSessionConnector internal constructor(
 					?.let { controller ->
 						val count = controller.mediaItemCount
 						if (count <= from || count <= to) return@let false
-						Timber.d("requestMoveAsync $from $expectFromId $to $expectToId, pass count check")
 						val atFrom = controller.getMediaItemAt(from)
 						val atTo = controller.getMediaItemAt(to)
-						Timber.d("requestMoveAsync $from $expectFromId $to $expectToId, checkMediaId ${atFrom.mediaId} ${atTo.mediaId}")
 						if (atFrom.mediaId != expectFromId || atTo.mediaId != expectToId) return@let false
 						controller.moveMediaItem(from, to)
 						true
@@ -564,8 +561,6 @@ class PlaybackSessionConnector internal constructor(
 			}.getOrElse { ex ->
 				if (ex !is CancellationException) throw ex
 				false
-			}.also {
-				Timber.d("requestMoveAsync $from $expectFromId $to $expectToId = $it")
 			}
 		}
 

@@ -36,6 +36,7 @@ import com.flammky.musicplayer.base.theme.compose.*
 import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.player.presentation.root.rememberRootCompactPlaybackControlState
 import com.flammky.musicplayer.player.presentation.root.rememberRootPlaybackControlState
+import timber.log.Timber
 
 @Composable
 internal fun RootNavigation(user: User) {

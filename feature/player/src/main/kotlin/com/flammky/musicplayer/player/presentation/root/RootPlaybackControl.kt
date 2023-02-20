@@ -846,7 +846,6 @@ private fun PagerListenPageState(
         dragging,
         touched,
         block = {
-            Timber.d("FullPlaybackControl, PageChangeListener: $page, $dragging, $touched")
             if (touched && !dragging &&
                 (page != rememberedPageState.value
                         || rememberedPageState.value != queueState.value.currentIndex)

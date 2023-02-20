@@ -192,7 +192,7 @@ fun rememberRootPlaybackControlState(
     val viewModel = hiltViewModel<PlaybackControlViewModel>()
     return rememberSaveable(
         saver = RootPlaybackControlState.saver(user, viewModel)
-    ) {
+    ) init@ {
         RootPlaybackControlState(user, viewModel)
             .apply {
                 this.freezeState.value = initialFreezeState

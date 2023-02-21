@@ -196,6 +196,15 @@ class RealPlaybackController(
 		TODO("Not yet implemented")
 	}
 
+	override suspend fun requestSeekIndexAsync(
+		from: Int,
+		expectFromId: String,
+		to: Int,
+		expectToId: String
+	): Boolean {
+		TODO("Not yet implemented")
+	}
+
 	override fun acquireObserver(owner: Any): PlaybackController.Observer {
 		TODO("Not yet implemented")
 	}

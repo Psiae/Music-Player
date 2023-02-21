@@ -35,6 +35,13 @@ interface PlaybackController {
 		expectToId: String
 	): Boolean
 
+	suspend fun requestSeekIndexAsync(
+		from: Int,
+		expectFromId: String,
+		to: Int,
+		expectToId: String
+	): Boolean
+
 	/**
 	 * Acquire Observer for the specified owner, Get Or Create
 	 */

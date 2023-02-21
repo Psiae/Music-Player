@@ -62,6 +62,15 @@ internal abstract class PlaybackController(
 		coroutineContext: CoroutineContext = EmptyCoroutineContext
 	): Deferred<RequestResult>
 
+	abstract fun requestSeekAsync(
+		expectFromIndex: Int,
+		expectFromId: String,
+		expectToIndex: Int,
+		expectToId: String,
+		startPosition: Duration = Duration.ZERO,
+		coroutineContext: CoroutineContext = EmptyCoroutineContext
+	): Deferred<RequestResult>
+
 	abstract fun requestSeekNextAsync(
 		startPosition: Duration,
 		coroutineContext: CoroutineContext = EmptyCoroutineContext

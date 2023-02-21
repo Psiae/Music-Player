@@ -117,6 +117,39 @@ internal class RealPlaybackController(
 		}
 	}
 
+	override fun requestSeekAsync(
+		expectFromIndex: Int,
+		expectFromId: String,
+		expectToIndex: Int,
+		expectToId: String,
+		startPosition: Duration,
+		coroutineContext: CoroutineContext
+	): Deferred<RequestResult> {
+		return scope.async(coroutineContext.minusKey(CoroutineDispatcher)) {
+			val success = runCatching {
+				playbackConnection.requestUserSessionAsync(user).await().controller.withLooperContext {
+					requestSeekIndexAsync(expectFromIndex, expectFromId, expectToIndex, expectToId)
+				}
+			}.getOrElse {
+				false
+			}
+			RequestResult(
+				success = success,
+				eventDispatch = if (success) {
+					scope.launch {
+						val jobs = mutableListOf<Job>()
+						_observers.forEach {
+							jobs.add(it.updateQueue())
+						}
+						jobs.joinAll()
+					}
+				} else {
+					null
+				}
+			)
+		}
+	}
+
 	override fun requestSeekNextAsync(
 		startPosition: Duration,
 		coroutineContext: CoroutineContext

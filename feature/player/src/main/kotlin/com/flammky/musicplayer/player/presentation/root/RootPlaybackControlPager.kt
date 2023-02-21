@@ -1,7 +1,9 @@
 package com.flammky.musicplayer.player.presentation.root
 
+import androidx.compose.foundation.MutatePriority
 import androidx.compose.foundation.gestures.FlingBehavior
 import androidx.compose.foundation.gestures.ScrollScope
+import androidx.compose.foundation.gestures.stopScroll
 import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
@@ -9,6 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -19,68 +22,157 @@ import com.google.accompanist.pager.PagerDefaults
 import dev.chrisbanes.snapper.ExperimentalSnapperApi
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import timber.log.Timber
+import kotlin.coroutines.resume
 import kotlin.math.abs
 
-@OptIn(ExperimentalPagerApi::class, ExperimentalSnapperApi::class)
+@OptIn(ExperimentalPagerApi::class)
 @Composable
 internal fun BoxScope.RootPlaybackControlPager(
     state: RootPlaybackControlPagerState
 ) {
-    val upState = rememberUpdatedState(newValue = state)
-    val upStateApplier = remember(upState.value) {
-        PagerStateApplier(upState.value)
+    val coroutineScope = rememberCoroutineScope()
+    val upStateApplier = remember(state) {
+        PagerStateApplier(state, coroutineScope)
     }.apply {
         ComposePreLayout()
     }
     BoxWithConstraints {
-        val pagerState = upState.value
-        val baseQueue = upState.value.latestDisplayQueue
-        val maskedQueue = upState.value.maskedQueue
+        val baseQueue = state.latestDisplayQueue
+        val maskedQueue = state.maskedDisplayQueue
         if (maskedQueue.list.isEmpty()) return@BoxWithConstraints
         HorizontalPager(
             state = upStateApplier.pagerLayoutState,
             count = maskedQueue.list.size,
-            flingBehavior = run {
-                val baseFling = PagerDefaults.flingBehavior(state = upStateApplier.pagerLayoutState)
-                remember(baseFling, constraints) {
-                    object : FlingBehavior {
-                        override suspend fun ScrollScope.performFling(initialVelocity: Float): Float {
-                            val constraint = constraints.maxWidth * 0.8F / 0.5f
-                            val coerced =
-                                (initialVelocity).coerceIn(-abs(constraint)..abs(constraint))
-                            return with(baseFling) { performFling(coerced) }
-                        }
-                    }
-                }
-            },
+            flingBehavior = upStateApplier.rememberFlingBehavior(constraints = constraints),
             key = { i -> maskedQueue.list[i] }
         ) { i ->
             val id = maskedQueue.list[i]
-            PagerItemScope(observeCurrentArtwork = { pagerState.observeArtwork(id) })
-                .run {
-                    PagerItem()
-                }
+            remember(state, id) {
+                PagerItemScope(observeCurrentArtwork = { state.observeArtwork(id) })
+            }.run {
+                PagerItem()
+            }
         }
+        upStateApplier.ComposePostLayout(baseQueue = baseQueue, displayQueue = maskedQueue)
     }
 }
 
 @OptIn(ExperimentalPagerApi::class)
 private class PagerStateApplier(
     private val state: RootPlaybackControlPagerState,
+    private val coroutineScope: CoroutineScope
 ) {
 
+    private var userDragging by mutableStateOf(false)
+
     val pagerLayoutState = state.pagerLayoutState
+
+    private var pageInternalTouchWaiter = mutableListOf<() -> Unit>()
+
+    private suspend fun scrollToPage(
+        internal: Boolean,
+        index: Int
+    ) {
+        Timber.d("RootPlaybackControlPager scrollToPage($internal, $index)")
+        if (internal) {
+            pageInternalTouchWaiter.forEach { it() }
+            pageInternalTouchWaiter.clear()
+            pagerLayoutState.stopScroll(MutatePriority.UserInput)
+        }
+        pagerLayoutState.scrollToPage(index)
+    }
+
+    private suspend fun animateScrollToPage(
+        internal: Boolean,
+        index: Int
+    ) {
+        Timber.d("RootPlaybackControlPager animateScrollToPage($internal, $index)")
+        if (userDragging) {
+            return scrollToPage(internal, index)
+        }
+        if (internal) {
+            pageInternalTouchWaiter.forEach { it() }
+            pageInternalTouchWaiter.clear()
+            pagerLayoutState.stopScroll(MutatePriority.PreventUserInput)
+        }
+        pagerLayoutState.animateScrollToPage(index)
+    }
+
+    private suspend fun scrollToLatestBasePage(
+        internal: Boolean,
+    ) {
+        if (internal) {
+            pageInternalTouchWaiter.forEach { it() }
+            pageInternalTouchWaiter.clear()
+        }
+        pagerLayoutState.scrollToPage(
+            state.compositionLatestQueue.currentIndex.coerceAtLeast(0)
+        )
+    }
+
+    private suspend fun scrollToLatestOverrideOrBasePage(
+        internal: Boolean,
+    ) {
+        if (internal) {
+            pageInternalTouchWaiter.forEach { it() }
+            pageInternalTouchWaiter.clear()
+        }
+    }
 
     @Composable
     fun ComposePreLayout() {
         ListenLatestParentQueue()
+        LaunchedEffect(key1 = Unit, block = {
+            val dragInteractions = mutableListOf<DragInteraction.Start>()
+            pagerLayoutState.interactionSource.interactions.collect { interaction ->
+                when (interaction) {
+                    is DragInteraction.Start -> dragInteractions.add(interaction)
+                    is DragInteraction.Stop -> dragInteractions.remove(interaction.start)
+                    is DragInteraction.Cancel -> dragInteractions.remove(interaction.start)
+                }
+                userDragging = dragInteractions.isNotEmpty()
+            }
+        })
+    }
+
+    @OptIn(ExperimentalSnapperApi::class)
+    @Composable
+    fun rememberFlingBehavior(constraints: Constraints): FlingBehavior {
+        val baseFling = PagerDefaults.flingBehavior(pagerLayoutState)
+        return remember(baseFling, constraints) {
+            object : FlingBehavior {
+                override suspend fun ScrollScope.performFling(initialVelocity: Float): Float {
+                    val constraint = constraints.maxWidth * 0.8F / 0.5f
+                    val coerced =
+                        (initialVelocity).coerceIn(-abs(constraint)..abs(constraint))
+                    return with(baseFling) { performFling(coerced) }
+                }
+            }
+        }
     }
 
     @Composable
-    fun ComposeAfterLayout(
+    fun ComposePostLayout(
         baseQueue: OldPlaybackQueue,
         displayQueue: OldPlaybackQueue
     ) {
+        ListenUserPageSwipe(
+            baseQueue = baseQueue,
+            displayQueue = displayQueue
+        )
+        LaunchedEffect(key1 = displayQueue, block = {
+            if (displayQueue.currentIndex == -1) {
+                return@LaunchedEffect pagerLayoutState.scrollToPage(0)
+            }
+            val spread = displayQueue.currentIndex - 2 .. displayQueue.currentIndex + 2
+            if (pagerLayoutState.currentPage in spread) {
+                animateScrollToPage(true, displayQueue.currentIndex)
+            } else {
+                scrollToPage(true, displayQueue.currentIndex)
+            }
+        })
     }
 
     @Composable
@@ -88,24 +180,22 @@ private class PagerStateApplier(
         LaunchedEffect(
             this,
             block = {
-                var first = true
                 snapshotFlow { state.compositionLatestQueue }
-                    .collect {
-                        state.latestDisplayQueue = it
-                        if (it === OldPlaybackQueue.UNSET) {
-                            return@collect
-                        }
-                        if (first) {
-                            first = false
-                            pagerLayoutState.scrollToPage(it.currentIndex)
-                        } else {
-                            val spread = (it.currentIndex - 2)..(it.currentIndex + 2)
-                            if (pagerLayoutState.currentPage in spread) {
-                                pagerLayoutState.animateScrollToPage(it.currentIndex)
-                            } else {
-                                pagerLayoutState.scrollToPage(it.currentIndex)
+                    .first { it !== OldPlaybackQueue.UNSET }
+                    .let { first ->
+                        state
+                            .apply {
+                                latestDisplayQueue = first
+                                scrollToPage(true, if (first.currentIndex == -1) 0 else first.currentIndex)
                             }
-                        }
+                    }
+                snapshotFlow { state.compositionLatestQueue }
+                    .collect { current ->
+                        state
+                            .apply {
+                                Timber.d("state.compositionLatestQueue updated")
+                                latestDisplayQueue = current
+                            }
                     }
             }
         )
@@ -116,25 +206,29 @@ private class PagerStateApplier(
         baseQueue: OldPlaybackQueue,
         displayQueue: OldPlaybackQueue,
     ) {
+        val upBaseQueue = rememberUpdatedState(newValue = baseQueue)
+        val upDisplayQueue = rememberUpdatedState(newValue = displayQueue)
         LaunchedEffect(
             this,
-            baseQueue,
-            displayQueue,
             block = {
-                forEachUserPageDrag { instance ->
-                    check(instance.startingPage >= 0)
+                forEachUserPageScroll { instance ->
+                    val baseQueue = upBaseQueue.value
+                    val displayQueue = upDisplayQueue.value
                     var latestPage = instance.startingPage
                     try {
-                        instance.whilePointerDown {
+                        runCatching { instance.whileDragging { awaitCancellation() } }
+                        instance.whileScrollingOrInterrupted {
                             snapshotFlow { pagerLayoutState.currentPage }
-                                .collect { currentPage ->
-                                    latestPage = currentPage
+                                .collect {
+                                    if (it != latestPage) {
+                                        launch {
+                                            onUserSwipe(baseQueue, displayQueue, instance.startingPage, latestPage)
+                                        }
+                                    }
+                                    latestPage = it
                                 }
                         }
                     } finally {
-                        if (instance.pointerUp && instance.startingPage != latestPage) {
-                            onUserSwipe(baseQueue, displayQueue, instance.startingPage, latestPage)
-                        }
                     }
                 }
             }
@@ -144,22 +238,50 @@ private class PagerStateApplier(
     /**
      * Callback on which the user fully swipe the page and released the pointer
      */
-    private fun onUserSwipe(
+    private suspend fun onUserSwipe(
         baseQueue: OldPlaybackQueue,
         displayQueue: OldPlaybackQueue,
         from: Int,
         to: Int
     ) {
+        Timber.d("RootPlaybackControlPager onUserSwipe($from, $to)")
         check(from != to)
-        if (state.latestDisplayQueue !== baseQueue || to !in baseQueue.list.indices) {
+        if (to !in baseQueue.list.indices || to !in displayQueue.list.indices) {
             return
         }
-        state.overrideMoveNextIndex(displayQueue, to)
+        when (to) {
+            from + 1 -> {
+                val success = state.requestPlaybackMoveNext(
+                    displayQueue,
+                    from,
+                    displayQueue.list[from],
+                    to,
+                    displayQueue.list[to]
+                )
+                Timber.d("RootPlaybackControlPager onUserSwipe($from, $to), success=$success")
+                if (!success) {
+                    scrollToPage(true, from)
+                }
+            }
+            from - 1 -> {
+                val success = state.requestPlaybackMovePrevious(
+                    displayQueue,
+                    from,
+                    displayQueue.list[from],
+                    to,
+                    displayQueue.list[to]
+                )
+                Timber.d("RootPlaybackControlPager onUserSwipe($from, $to), success=$success")
+                if (!success) {
+                    scrollToPage(true, from)
+                }
+            }
+            else -> scrollToPage(true, from)
+        }
     }
 
-
-    private suspend fun forEachUserPageDrag(
-        block: suspend (instance: UserPageDragInstance) -> Unit
+    private suspend fun forEachUserPageScroll(
+        block: suspend (instance: UserPageScrollInstance) -> Unit
     ) {
         val dragging = mutableStateOf(false)
         val coroutineScope = CoroutineScope(currentCoroutineContext())
@@ -179,56 +301,115 @@ private class PagerStateApplier(
             }
         }
         coroutineScope.launch {
-            var latestInstance: UserPageDragInstance? = null
+            var latestInstance: UserPageScrollInstance? = null
             try {
                 snapshotFlow { dragging.value }
                     .collect { start ->
                         if (start) {
-                            check(latestInstance?.pointerUp != false)
-                            latestInstance = UserPageDragInstance(latestDragStartInteractionAtPage)
-                            block(latestInstance!!)
+                            latestInstance
+                                ?.apply {
+                                    check(pointerUp)
+                                    markScrollInterrupted()
+                                }
+                            latestInstance =
+                                UserPageScrollInstance(latestDragStartInteractionAtPage)
+                                    .apply {
+                                        launch {
+                                            whileScrollingOrInterrupted {
+                                                awaitPageCorrection {
+                                                    markScrollInterrupted()
+                                                }
+                                            }
+                                        }
+                                        launch {
+                                            run { block(this@apply) }
+                                        }
+                                    }
                         } else {
-                            latestInstance?.markPointerUp()
+                            latestInstance
+                                ?.apply {
+                                    markPointerUp()
+                                    launch {
+                                        whileScrollingOrInterrupted {
+                                            awaitLayoutScrollingEnd {
+                                                markScrollEnd()
+                                            }
+                                        }
+                                    }
+                                }
                         }
                     }
             } catch (ce: CancellationException) {
                 check(!currentCoroutineContext().isActive)
-                latestInstance?.cancel()
+                latestInstance?.markScrollInterrupted()
             }
         }
     }
-
-    private class UserPageDragInstance(
+    private class UserPageScrollInstance(
         val startingPage: Int
     ) {
-        private val supervisor = SupervisorJob()
+        private val dragSupervisor = SupervisorJob()
+        private val scrollJob = SupervisorJob()
+        private val dragJob = SupervisorJob(dragSupervisor)
 
         var pointerUp: Boolean = false
             private set
 
+        var interrupted: Boolean = false
+            private set
+
         fun markPointerUp() {
-            check(!pointerUp)
-            pointerUp = true
-            supervisor.cancel()
-        }
-
-        fun cancel() {
-            supervisor.cancel()
-        }
-
-        suspend fun whilePointerDown(
-            block: suspend () -> Unit
-        ) = withContext(supervisor) { block() }
-
-        suspend fun awaitPointerUpOrCancellation(
-            onPointerUp: suspend () -> Unit
-        ) = whilePointerDown {
-            try {
-                awaitCancellation()
-            } finally {
-                if (pointerUp) onPointerUp()
+            check(!pointerUp) {
+                "$pointerUp"
             }
+            pointerUp = true
+            dragJob.cancel()
+            dragSupervisor.cancel()
         }
+
+        fun markScrollEnd() {
+            check(pointerUp && !interrupted) {
+                "$pointerUp $interrupted"
+            }
+            scrollJob.cancel()
+        }
+
+        fun markScrollInterrupted() {
+            Timber.d("RootPlaybackControlPager, markScrollInterrupted")
+            interrupted = true
+            dragJob.cancel()
+            scrollJob.cancel()
+        }
+
+        suspend fun whileScrollingOrInterrupted(
+            block: suspend CoroutineScope.() -> Unit
+        ) = withContext(scrollJob) { block() }
+
+        suspend fun whileDraggingOrScrollInterrupted(
+            block: suspend CoroutineScope.() -> Unit
+        ) = withContext(dragJob) { block() }
+
+        suspend fun whileDragging(
+            block: suspend CoroutineScope.() -> Unit
+        ) = withContext(dragSupervisor) { block() }
+    }
+
+    private suspend fun awaitPageCorrection(
+        block: suspend () -> Unit
+    ) {
+        suspendCancellableCoroutine<Unit> { uCont ->
+            val await = { uCont.resume(Unit) }
+            pageInternalTouchWaiter.add(await)
+            uCont.invokeOnCancellation { pageInternalTouchWaiter.remove(await) }
+        }
+        block()
+    }
+
+    private suspend fun awaitLayoutScrollingEnd(
+        block: suspend () -> Unit
+    ) {
+        snapshotFlow { pagerLayoutState.isScrollInProgress }.first { !it }
+        block()
     }
 }
 

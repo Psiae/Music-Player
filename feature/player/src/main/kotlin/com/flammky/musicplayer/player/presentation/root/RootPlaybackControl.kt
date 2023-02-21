@@ -221,7 +221,11 @@ private fun RootPlaybackControlMainScope.ContentTransition() {
                 queue = { Queue(parent = it) },
                 background = { RadialPlaybackBackground(composition = it) },
                 toolbar = { Toolbar(composition = it) },
-                pager = { Pager(composition = it) },
+                pager = {
+                    RootPlaybackControlPager(
+                        state = rememberRootPlaybackControlPagerState(composition = it)
+                    )
+                },
                 description = { Description(composition = it) },
                 seekbar = { Seekbar(composition = it) },
                 primaryControlRow = { PrimaryControlRow(composition = it) },

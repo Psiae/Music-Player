@@ -564,6 +564,31 @@ class PlaybackSessionConnector internal constructor(
 			}
 		}
 
+		override suspend fun requestSeekIndexAsync(
+			from: Int,
+			expectFromId: String,
+			to: Int,
+			expectToId: String
+		): Boolean {
+			return runCatching {
+				_deferredController?.await()
+					?.let { controller ->
+						val count = controller.mediaItemCount
+						if (count <= from || count <= to) return@let false
+						val atFrom = controller.getMediaItemAt(from)
+						val atTo = controller.getMediaItemAt(to)
+						if (atFrom.mediaId != expectFromId || atTo.mediaId != expectToId) return@let false
+						controller.seekTo(to, 0L)
+						true
+					}
+					?: false
+			}.getOrElse { ex ->
+				if (ex !is CancellationException) throw ex
+				false
+			}
+		}
+
+
 		override fun acquireObserver(owner: Any): PlaybackController.Observer {
 			return sync(_lock) {
 				if (observersMap.isEmpty()) {

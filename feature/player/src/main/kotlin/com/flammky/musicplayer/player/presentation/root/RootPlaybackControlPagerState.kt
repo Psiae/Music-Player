@@ -30,6 +30,64 @@ internal class RootPlaybackControlPagerState constructor(
     observeArtwork: (String) -> Flow<Any?>,
 ) {
 
+    suspend fun requestPlaybackMoveNext(
+        expectCurrentQueue: OldPlaybackQueue,
+        expectFromIndex: Int,
+        expectFromId: String,
+        expectNextIndex: Int,
+        expectNextId: String
+    ): Boolean {
+        val success = runCatching {
+            if (!overrideMoveNextIndex(expectCurrentQueue, expectNextIndex)) {
+                return@runCatching false
+            }
+            composition.playbackController.requestSeekAsync(
+                expectFromIndex,
+                expectFromId,
+                expectNextIndex,
+                expectNextId
+            ).await().run {
+                eventDispatch?.join()
+                success
+            }
+        }.getOrElse { false }
+        if (--overrideCount == 0) {
+            overrideDisplayQueue = null
+        }
+        return success
+    }
+
+    suspend fun requestPlaybackMovePrevious(
+        expectCurrentQueue: OldPlaybackQueue,
+        expectFromIndex: Int,
+        expectFromId: String,
+        expectPreviousIndex: Int,
+        expectPreviousId: String
+    ): Boolean {
+        val success = runCatching {
+            if (
+                !overrideMoveNextIndex(expectCurrentQueue, expectPreviousIndex)
+            ) {
+                return@runCatching false
+            }
+            composition.playbackController.requestSeekAsync(
+                expectFromIndex,
+                expectFromId,
+                expectPreviousIndex,
+                expectPreviousId
+            ).await().run {
+                eventDispatch?.join()
+                success
+            }
+        }.getOrElse { false }
+        if (--overrideCount == 0) {
+            overrideDisplayQueue = null
+        }
+        return success
+    }
+
+
+
     private val _observeMetadata = observeMetadata
     private val _observeArtwork = observeArtwork
 
@@ -41,7 +99,9 @@ internal class RootPlaybackControlPagerState constructor(
     var overrideDisplayQueue by mutableStateOf<OldPlaybackQueue?>(null)
         private set
 
-    val maskedQueue by derivedStateOf { overrideDisplayQueue ?: latestDisplayQueue }
+    val maskedDisplayQueue by derivedStateOf { overrideDisplayQueue ?: latestDisplayQueue }
+
+    var overrideCount = 0
 
     fun incrementQueueReader() {
         composition.currentQueueReaderCount++
@@ -58,14 +118,8 @@ internal class RootPlaybackControlPagerState constructor(
         withBase: OldPlaybackQueue,
         newIndex: Int
     ): Boolean {
-        if (
-            (maskedQueue.currentIndex + 1) != newIndex ||
-            maskedQueue.currentIndex != withBase.currentIndex ||
-            maskedQueue.list !== withBase.list
-        ) {
-            return false
-        }
-        overrideDisplayQueue = withBase.copy(currentIndex = newIndex)
+        overrideCount++
+        overrideDisplayQueue = (overrideDisplayQueue ?: withBase).copy(currentIndex = newIndex)
         return true
     }
 
@@ -73,14 +127,8 @@ internal class RootPlaybackControlPagerState constructor(
         withBase: OldPlaybackQueue,
         newIndex: Int
     ): Boolean {
-        if (
-            (maskedQueue.currentIndex - 1) != newIndex ||
-            maskedQueue.currentIndex != withBase.currentIndex ||
-            maskedQueue.list !== withBase.list
-        ) {
-            return false
-        }
-        overrideDisplayQueue = withBase.copy(currentIndex = newIndex)
+        overrideCount++
+        overrideDisplayQueue = (overrideDisplayQueue ?: withBase).copy(currentIndex = newIndex)
         return true
     }
 
@@ -91,8 +139,6 @@ internal class RootPlaybackControlPagerState constructor(
     fun onCompositionQueueUpdated(
         new: OldPlaybackQueue
     ) {
-        clearOverride()
-        latestDisplayQueue = new
     }
 }
 

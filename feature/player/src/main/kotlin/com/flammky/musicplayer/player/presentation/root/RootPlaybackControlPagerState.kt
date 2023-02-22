@@ -32,7 +32,9 @@ internal class PagerLayoutComposition(
     val queueData: OldPlaybackQueue,
     private val rememberCoroutineScope: CoroutineScope,
 ) {
-    private val initialPageCorrectionJob = Job()
+    private val initialPageCorrectionDispatchJob = Job()
+    private val initialPageCorrectionScrolledAtPageJob = Job()
+    private val initialPageCorrectionFullyScrolledAtPageJob = Job()
     private val userInteractionListenerInstallingJob = Job()
     private val rememberSupervisor = SupervisorJob()
 
@@ -48,16 +50,24 @@ internal class PagerLayoutComposition(
         @SnapshotRead get
         @SnapshotWrite set
 
-    var readyForUserScroll by mutableStateOf(false)
+    var readyForUserScroll by mutableStateOf(true)
         @SnapshotRead get
         @SnapshotWrite set
 
-    suspend inline fun awaitPageCorrection() = initialPageCorrectionJob.join()
-
+    suspend inline fun awaitFullyScrollToPageCorrection() = initialPageCorrectionFullyScrolledAtPageJob.join()
+    suspend inline fun awaitScrollToPageCorrection() = initialPageCorrectionScrolledAtPageJob.join()
     suspend inline fun awaitUserInteractionListener() = userInteractionListenerInstallingJob.join()
 
     fun onPageCorrectionDispatched() {
-        initialPageCorrectionJob.complete()
+        initialPageCorrectionDispatchJob.complete()
+    }
+
+    fun onPageCorrectionAtPage() {
+        initialPageCorrectionScrolledAtPageJob.complete()
+    }
+
+    fun onPageCorrectionFullyAtPage() {
+        initialPageCorrectionFullyScrolledAtPageJob.complete()
     }
 
     fun onUserInteractionListenerInstalled() {
@@ -67,7 +77,7 @@ internal class PagerLayoutComposition(
     fun onForgotten() {
         rememberCoroutineScope.cancel()
         rememberSupervisor.cancel()
-        initialPageCorrectionJob.cancel()
+        initialPageCorrectionFullyScrolledAtPageJob.cancel()
         userInteractionListenerInstallingJob.cancel()
     }
 

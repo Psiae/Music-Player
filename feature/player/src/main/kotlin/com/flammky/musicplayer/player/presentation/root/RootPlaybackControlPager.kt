@@ -9,7 +9,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.AndroidUiDispatcher
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
@@ -40,13 +39,14 @@ internal fun BoxScope.RootPlaybackControlPager(
         PrepareComposition()
     }
     BoxWithConstraints {
+        // there is definitely a way to get optimization on the the PagerScope item provider
         val data = state.currentCompositionLayoutData
             ?: return@BoxWithConstraints
         upStateApplier.PagerCompositionStart(data)
         val displayQueue = data.queueData
         HorizontalPager(
             state = upStateApplier.pagerLayoutState,
-            userScrollEnabled = data.readyForUserScroll,
+            userScrollEnabled = true,
             count = displayQueue.list.size,
             flingBehavior = upStateApplier.rememberFlingBehavior(constraints = constraints),
             key = { i -> displayQueue.list[i] },
@@ -142,26 +142,33 @@ private class PagerStateApplier(
     ) {
         Timber.d("RootPlaybackControlPager: PagerCompositionEnd $composition")
         remember(composition) {
-            this@PagerStateApplier.coroutineScope.launch(AndroidUiDispatcher.Main) {
-                if (
-                    composition.isFirstComposition ||
-                    run {
-                        val spread =
-                            (composition.queueData.currentIndex - 2) ..
-                                    (composition.queueData.currentIndex + 2)
-                        pagerLayoutState.currentPage !in spread
+            composition.launchInRememberScope {
+                launch {
+                    if (
+                        composition.isFirstComposition ||
+                        run {
+                            val spread =
+                                (composition.queueData.currentIndex - 2) ..
+                                        (composition.queueData.currentIndex + 2)
+                            pagerLayoutState.currentPage !in spread
+                        }
+                    ) {
+                        scrollToPage(true, composition.queueData.currentIndex)
+                    } else {
+                        animateScrollToPage(true, composition.queueData.currentIndex)
                     }
-                ) {
-                    scrollToPage(true, composition.queueData.currentIndex)
-                } else {
-                    animateScrollToPage(true, composition.queueData.currentIndex)
+                    composition.awaitScrollToPageCorrection()
+                    composition.onPageCorrectionFullyAtPage()
                 }
+                composition.onPageCorrectionDispatched()
+                snapshotFlow { pagerLayoutState.currentPage }
+                    .first { it == composition.queueData.currentIndex }
+                composition.onPageCorrectionAtPage()
             }
-            composition.onPageCorrectionDispatched()
             composition
                 .apply {
                     launchInRememberScope {
-                        awaitPageCorrection()
+                        awaitScrollToPageCorrection()
                         awaitUserInteractionListener()
                         readyForUserScroll = true
                     }
@@ -242,7 +249,7 @@ private class PagerStateApplier(
             composition
                 .apply {
                     launchInRememberScope {
-                        composition.awaitPageCorrection()
+                        composition.awaitScrollToPageCorrection()
                         snapshotFlow { pagerLayoutState.currentPage }
                             .collect { page ->
                                 composition.currentPageInCompositionSpan = page
@@ -250,7 +257,7 @@ private class PagerStateApplier(
                             }
                     }
                     launchInRememberScope {
-                        composition.awaitPageCorrection()
+                        composition.awaitScrollToPageCorrection()
                         layoutPageCollectorStart.join()
                         snapshotFlow { userDraggingLayout }
                             .collect { dragging ->
@@ -260,7 +267,7 @@ private class PagerStateApplier(
                             }
                     }
                     launchInRememberScope {
-                        composition.awaitPageCorrection()
+                        composition.awaitScrollToPageCorrection()
                         layoutDragCollectorStart.join()
                         var latestDragInstance: PagerLayoutComposition.UserDragInstance? = null
                         var latestScrollInstance: PagerLayoutComposition.UserScrollInstance? = null

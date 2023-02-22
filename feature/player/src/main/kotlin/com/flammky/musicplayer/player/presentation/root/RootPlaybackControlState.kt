@@ -18,6 +18,7 @@ import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.player.presentation.controller.PlaybackController
 import com.flammky.musicplayer.player.presentation.main.PlaybackControlTrackMetadata
 import com.flammky.musicplayer.player.presentation.main.PlaybackControlViewModel
+import com.flammky.musicplayer.player.presentation.main.compose.TransitioningPlaybackControl
 import kotlinx.coroutines.flow.Flow
 import kotlin.reflect.KMutableProperty
 
@@ -99,7 +100,12 @@ class RootPlaybackControlState internal constructor(
         modifier: Modifier = Modifier
     ) {
         check(restored)
-        RootPlaybackControl(modifier = modifier, state = this)
+        // unstable
+        /*RootPlaybackControl(modifier = modifier, state = this)*/
+        TransitioningPlaybackControl(
+            showSelfState = showMainState,
+            dismiss = ::dismiss
+        )
     }
 
     internal fun restoreComposition(

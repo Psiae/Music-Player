@@ -28,7 +28,6 @@ internal fun rememberRootPlaybackControlPagerState(
 }
 
 internal class PagerLayoutComposition(
-    val isFirstComposition: Boolean,
     val queueData: OldPlaybackQueue,
     private val rememberCoroutineScope: CoroutineScope,
 ) {
@@ -37,6 +36,9 @@ internal class PagerLayoutComposition(
     private val initialPageCorrectionFullyScrolledAtPageJob = Job()
     private val userInteractionListenerInstallingJob = Job()
     private val rememberSupervisor = SupervisorJob()
+
+    var isForgotten = false
+        private set
 
     var currentUserDragInstance by mutableStateOf<UserDragInstance?>(null)
 
@@ -50,7 +52,7 @@ internal class PagerLayoutComposition(
         @SnapshotRead get
         @SnapshotWrite set
 
-    var readyForUserScroll by mutableStateOf(true)
+    var readyForUserScroll by mutableStateOf(false)
         @SnapshotRead get
         @SnapshotWrite set
 
@@ -75,8 +77,12 @@ internal class PagerLayoutComposition(
     }
 
     fun onForgotten() {
+        Timber.d("PagerLayoutComposition=$this onForgotten()")
+        isForgotten = true
         rememberCoroutineScope.cancel()
         rememberSupervisor.cancel()
+        initialPageCorrectionDispatchJob.cancel()
+        initialPageCorrectionScrolledAtPageJob.cancel()
         initialPageCorrectionFullyScrolledAtPageJob.cancel()
         userInteractionListenerInstallingJob.cancel()
     }
@@ -208,9 +214,6 @@ internal class RootPlaybackControlPagerState constructor(
         }.onFailure {
             Timber.d("requestPlaybackMoveNext onFailure($it)")
         }.getOrElse { false }
-        if (--overrideCount == 0) {
-            overrideDisplayQueue = null
-        }
         return success
     }
 
@@ -222,9 +225,7 @@ internal class RootPlaybackControlPagerState constructor(
         expectPreviousId: String
     ): Boolean {
         val success = runCatching {
-            if (
-                !overrideMovePreviousIndex(expectCurrentQueue, expectPreviousIndex)
-            ) {
+            if (!overrideMovePreviousIndex(expectCurrentQueue, expectPreviousIndex)) {
                 return@runCatching false
             }
             composition.playbackController.requestSeekAsync(
@@ -237,9 +238,6 @@ internal class RootPlaybackControlPagerState constructor(
                 success
             }
         }.getOrElse { false }
-        if (--overrideCount == 0) {
-            overrideDisplayQueue = null
-        }
         return success
     }
 
@@ -250,15 +248,6 @@ internal class RootPlaybackControlPagerState constructor(
 
     val compositionLatestQueue
         get() = composition.currentQueue
-
-    var latestDisplayQueue by mutableStateOf<OldPlaybackQueue>(OldPlaybackQueue.UNSET)
-
-    var overrideDisplayQueue by mutableStateOf<OldPlaybackQueue?>(null)
-        private set
-
-    val maskedDisplayQueue by derivedStateOf { overrideDisplayQueue ?: latestDisplayQueue }
-
-    var overrideCount = 0
 
     fun incrementQueueReader() {
         composition.currentQueueReaderCount++
@@ -275,8 +264,6 @@ internal class RootPlaybackControlPagerState constructor(
         withBase: OldPlaybackQueue,
         newIndex: Int
     ): Boolean {
-        overrideCount++
-        overrideDisplayQueue = (overrideDisplayQueue ?: withBase).copy(currentIndex = newIndex)
         return true
     }
 
@@ -284,13 +271,7 @@ internal class RootPlaybackControlPagerState constructor(
         withBase: OldPlaybackQueue,
         newIndex: Int
     ): Boolean {
-        overrideCount++
-        overrideDisplayQueue = (overrideDisplayQueue ?: withBase).copy(currentIndex = newIndex)
         return true
-    }
-
-    fun clearOverride() {
-        overrideDisplayQueue = null
     }
 
     fun onCompositionQueueUpdated(

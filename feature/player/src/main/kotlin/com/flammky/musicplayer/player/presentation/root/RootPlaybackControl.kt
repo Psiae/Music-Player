@@ -218,18 +218,34 @@ private fun RootPlaybackControlMainScope.ContentTransition() {
                                 color = absBackgroundColor.copy(alpha = 0.97f)
                             )
                     },
-                queue = { Queue(parent = it) },
-                background = { RadialPlaybackBackground(composition = it) },
-                toolbar = { Toolbar(composition = it) },
+                queue = {
+                    Queue(parent = it)
+                },
+                background = {
+                    RadialPlaybackBackground(composition = it)
+                },
+                toolbar = {
+                    Toolbar(composition = it)
+                },
                 pager = {
                     RootPlaybackControlPager(
                         state = rememberRootPlaybackControlPagerState(composition = it)
                     )
                 },
-                description = { Description(composition = it) },
-                seekbar = { Seekbar(composition = it) },
-                primaryControlRow = { PrimaryControlRow(composition = it) },
-                secondaryControlRow = { SecondaryControl(composition = it) }
+                description = {
+                    Description(composition = it)
+                },
+                seekbar = {
+                    RootPlaybackControlSlider(
+                        state = rememberRootPlaybackControlSliderState(parentComposition = it)
+                    )
+                },
+                primaryControlRow = {
+                    PrimaryControlRow(composition = it)
+                },
+                secondaryControlRow = {
+                    SecondaryControl(composition = it)
+                }
             )
         }
     }
@@ -1124,7 +1140,7 @@ private fun BoxScope.Seekbar(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    PlaybackProgressSliderText(
+                    PlaybackPositionSliderText(
                         progressState = remember {
                             derivedStateOf {
                                 val raw = sliderTextPositionState.value
@@ -1144,7 +1160,7 @@ private fun BoxScope.Seekbar(
 }
 
 @Composable
-private fun RowScope.PlaybackProgressSliderText(
+private fun RowScope.PlaybackPositionSliderText(
     progressState: State<Float>,
     durationState: State<Duration>
 ) {

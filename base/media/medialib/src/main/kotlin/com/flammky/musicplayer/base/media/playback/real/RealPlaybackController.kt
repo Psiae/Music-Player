@@ -237,6 +237,15 @@ class RealPlaybackController(
 		TODO("Not yet implemented")
 	}
 
+
+	override suspend fun seekPosition(
+		expectId: String,
+		expectDuration: Duration,
+		percent: Float
+	): Boolean {
+		TODO("Not yet implemented")
+	}
+
 	override suspend fun seekIndex(index: Int, startPosition: Duration): Boolean {
 		TODO("Not yet implemented")
 	}

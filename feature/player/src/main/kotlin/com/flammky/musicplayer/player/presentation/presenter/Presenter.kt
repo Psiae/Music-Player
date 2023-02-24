@@ -355,6 +355,14 @@ internal class ExpectPlaybackControlPresenter(
 
 	private class EmptyPlaybackController(user: User) : PlaybackController(user) {
 
+		override fun requestSeekPositionAsync(
+			expectId: String,
+			expectDuration: Duration,
+			percent: Float
+		): Deferred<RequestResult> {
+			TODO("Not yet implemented")
+		}
+
 		override fun requestSeekAsync(
 			expectFromIndex: Int,
 			expectFromId: String,

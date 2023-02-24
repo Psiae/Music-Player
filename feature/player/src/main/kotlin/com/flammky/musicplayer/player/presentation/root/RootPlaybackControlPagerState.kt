@@ -97,6 +97,8 @@ internal class PagerLayoutComposition(
         return rememberCoroutineScope.launch(rememberSupervisor, block = block)
     }
 
+    suspend fun withRememberSupervisor(block: suspend CoroutineScope.() -> Unit) = withContext(rememberSupervisor, block)
+
     class UserDragInstance(
         val startPageIndex: Int
     ) {
@@ -197,8 +199,8 @@ internal class RootPlaybackControlPagerState constructor(
         expectFromId: String,
         expectNextIndex: Int,
         expectNextId: String
-    ): Boolean {
-        val success = runCatching {
+    ): Result<Boolean> {
+        return runCatching {
             if (!overrideMoveNextIndex(expectCurrentQueue, expectNextIndex)) {
                 return@runCatching false
             }
@@ -211,10 +213,7 @@ internal class RootPlaybackControlPagerState constructor(
                 eventDispatch?.join()
                 success
             }
-        }.onFailure {
-            Timber.d("requestPlaybackMoveNext onFailure($it)")
-        }.getOrElse { false }
-        return success
+        }
     }
 
     suspend fun requestPlaybackMovePrevious(
@@ -223,8 +222,8 @@ internal class RootPlaybackControlPagerState constructor(
         expectFromId: String,
         expectPreviousIndex: Int,
         expectPreviousId: String
-    ): Boolean {
-        val success = runCatching {
+    ): Result<Boolean> {
+        return runCatching {
             if (!overrideMovePreviousIndex(expectCurrentQueue, expectPreviousIndex)) {
                 return@runCatching false
             }
@@ -237,8 +236,7 @@ internal class RootPlaybackControlPagerState constructor(
                 eventDispatch?.join()
                 success
             }
-        }.getOrElse { false }
-        return success
+        }
     }
 
 

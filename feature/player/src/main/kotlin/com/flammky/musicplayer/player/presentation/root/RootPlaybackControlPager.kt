@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.flammky.musicplayer.base.media.playback.PlaybackConstants
+import com.flammky.musicplayer.player.BuildConfig
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.PagerDefaults
@@ -44,7 +45,10 @@ internal fun BoxScope.RootPlaybackControlPager(
     BoxWithConstraints {
         // there is definitely a way to get optimization on the the PagerScope item provider
         val data = state.currentCompositionLayoutData
-            ?: return@BoxWithConstraints
+            ?: run {
+                upStateApplier.pagerCompositionSkip()
+                return@BoxWithConstraints
+            }
         upStateApplier.PagerCompositionStart(data)
         val displayQueue = data.queueData
         // TODO: we should dispatch drag delta by ourselves,
@@ -73,6 +77,9 @@ private class PagerStateApplier(
     private val coroutineScope: CoroutineScope
 ) {
 
+    private var currentPreAppliedLayout by mutableStateOf<PagerLayoutComposition?>(null)
+    private var currentAppliedLayout by mutableStateOf<PagerLayoutComposition?>(null)
+
     private var firstAppliedLayout = true
 
     fun prepareState() {
@@ -84,34 +91,25 @@ private class PagerStateApplier(
 
     val pagerLayoutState = state.pagerLayoutState
 
-    private suspend fun scrollToPage(
-        correction: Boolean,
-        index: Int
+    private suspend fun scrollToAppliedCompositionPage(
+        animate: Boolean,
+        debugReason: String = ""
     ) {
+        if (BuildConfig.DEBUG) {
+            Timber.d("scrollToAppliedCompositionPage($animate, $debugReason)")
+        }
         coroutineContext.ensureActive()
-        Timber.d("RootPlaybackControlPager scrollToPage($correction, $index)")
-        if (correction) {
-            state.currentCompositionLayoutData?.currentUserScrollInstance?.onInterruptedByAnotherScroll()
-            if (userDraggingLayout) {
-                pagerLayoutState.stopScroll(MutatePriority.UserInput)
+        currentAppliedLayout?.let {
+            it.withRememberSupervisor {
+                pagerLayoutState.stopScroll(MutatePriority.PreventUserInput)
+                snapshotFlow { userDraggingLayout }.first { dragging -> !dragging }
+                if (animate) {
+                    pagerLayoutState.animateScrollToPage(it.queueData.currentIndex)
+                } else {
+                    pagerLayoutState.scrollToPage(it.queueData.currentIndex)
+                }
             }
         }
-        pagerLayoutState.scrollToPage(index)
-    }
-
-    private suspend fun animateScrollToPage(
-        correction: Boolean,
-        index: Int
-    ) {
-        coroutineContext.ensureActive()
-        Timber.d("RootPlaybackControlPager animateScrollToPage($correction, $index)")
-        if (userDraggingLayout) {
-            return scrollToPage(correction, index)
-        }
-        if (correction) {
-            state.currentCompositionLayoutData?.currentUserScrollInstance?.onInterruptedByAnotherScroll()
-        }
-        pagerLayoutState.animateScrollToPage(index)
     }
 
     @Composable
@@ -147,12 +145,17 @@ private class PagerStateApplier(
         )
     }
 
+    fun pagerCompositionSkip() {
+        currentPreAppliedLayout = null
+        currentAppliedLayout = null
+        firstAppliedLayout = true
+    }
+
     @Composable
     fun PagerCompositionStart(
         composition: PagerLayoutComposition
     ) {
-        Timber.d("RootPlaybackControlPager: PagerCompositionStart $composition")
-
+        currentPreAppliedLayout = composition
         DisposableEffect(
             key1 = composition,
             effect = {
@@ -169,47 +172,61 @@ private class PagerStateApplier(
         composition: PagerLayoutComposition
     ) {
         Timber.d("RootPlaybackControlPager: PagerCompositionEnd $composition")
-        remember(composition) {
-            composition.launchInRememberScope {
-                snapshotFlow { userDraggingLayout }
-                    .first { !it }
-                launch {
-                    when {
-                        firstAppliedLayout -> {
-                            firstAppliedLayout = false
-                            scrollToPage(true, composition.queueData.currentIndex)
+        check(currentPreAppliedLayout == composition)
+        currentAppliedLayout = composition
+        LaunchedEffect(
+            composition,
+            block = {
+                composition.withRememberSupervisor {
+                    pagerLayoutState.stopScroll(MutatePriority.PreventUserInput)
+                    snapshotFlow { userDraggingLayout }.first { !it }
+                    launch {
+                        when {
+                            firstAppliedLayout -> {
+                                firstAppliedLayout = false
+                                scrollToAppliedCompositionPage(
+                                    false,
+                                    "compositionInitialPageCorrection, firstLayout"
+                                )
+                            }
+                            run {
+                                val spread =
+                                    (composition.queueData.currentIndex - 2) ..
+                                            (composition.queueData.currentIndex + 2)
+                                pagerLayoutState.currentPage !in spread
+                            } -> {
+                                scrollToAppliedCompositionPage(
+                                    false,
+                                    "compositionInitialPageCorrection, out spread"
+                                )
+                            }
+                            else -> {
+                                scrollToAppliedCompositionPage(
+                                    true,
+                                    "compositionInitialPageCorrection, in spread"
+                                )
+                            }
                         }
-                        run {
-                            val spread =
-                                (composition.queueData.currentIndex - 2) ..
-                                        (composition.queueData.currentIndex + 2)
-                            pagerLayoutState.currentPage !in spread
-                        } -> {
-                            scrollToPage(true, composition.queueData.currentIndex)
-                        }
-                        else -> {
-                            animateScrollToPage(true, composition.queueData.currentIndex)
-                        }
+                        composition
+                            .apply {
+                                awaitScrollToPageCorrection()
+                                onPageCorrectionFullyAtPage()
+                            }
                     }
                     composition
                         .apply {
+                            onPageCorrectionDispatched()
+                            snapshotFlow { pagerLayoutState.currentPage }
+                                .first { it == composition.queueData.currentIndex }
+                            onPageCorrectionAtPage()
                             awaitScrollToPageCorrection()
-                            onPageCorrectionFullyAtPage()
+                            awaitUserInteractionListener()
+                            readyForUserScroll = true
+                            Timber.d("RootPlaybackControlPager $composition readyForUserScroll true")
                         }
                 }
-                composition
-                    .apply {
-                        onPageCorrectionDispatched()
-                        snapshotFlow { pagerLayoutState.currentPage }
-                            .first { it == composition.queueData.currentIndex }
-                        onPageCorrectionAtPage()
-                        awaitScrollToPageCorrection()
-                        awaitUserInteractionListener()
-                        readyForUserScroll = true
-                        Timber.d("RootPlaybackControlPager $composition readyForUserScroll true")
-                    }
             }
-        }
+        )
         InstallInteractionListenerForComposition(composition = composition)
         ListenUserPageSwipeOnComposition(composition = composition)
     }
@@ -373,12 +390,16 @@ private class PagerStateApplier(
         if (composition.isForgotten) {
             return
         }
-        if (from != composition.queueData.currentIndex) {
-            return scrollToPage(true, composition.queueData.currentIndex)
+        if (from != composition.queueData.currentIndex || to !in from -1..from +1) {
+            return scrollToAppliedCompositionPage(
+                false,
+                "onUserSwipe($composition, $from, $to), " +
+                        "invalid request data $from ${composition.queueData.currentIndex}"
+            )
         }
         when (to) {
             from + 1 -> {
-                val success = withContext(coroutineScope.coroutineContext) {
+                val result = withContext(coroutineScope.coroutineContext) {
                     state.requestPlaybackMoveNext(
                         composition.queueData,
                         from,
@@ -387,14 +408,18 @@ private class PagerStateApplier(
                         composition.queueData.list[to]
                     )
                 }
-                Timber.d("RootPlaybackControlPager onUserSwipe($from, $to), success=$success")
-                if (!success) {
-                    scrollToPage(true, from)
+                Timber.d("RootPlaybackControlPager onUserSwipe($from, $to), success=$result")
+                if (!result.isSuccess) {
+                    scrollToAppliedCompositionPage(
+                        false,
+                        "onUserSwipe($composition, $from, $to), " +
+                                "requestPlaybackMoveNextFail(${result.exceptionOrNull()})"
+                    )
                 }
             }
             from - 1 -> {
-                val success = withContext(coroutineScope.coroutineContext) {
-                    state.requestPlaybackMoveNext(
+                val result = withContext(coroutineScope.coroutineContext) {
+                    state.requestPlaybackMovePrevious(
                         composition.queueData,
                         from,
                         composition.queueData.list[from],
@@ -402,12 +427,16 @@ private class PagerStateApplier(
                         composition.queueData.list[to]
                     )
                 }
-                Timber.d("RootPlaybackControlPager onUserSwipe($from, $to), success=$success")
-                if (!success) {
-                    scrollToPage(true, from)
+                Timber.d("RootPlaybackControlPager onUserSwipe($from, $to), success=$result")
+                if (!result.isSuccess) {
+                    scrollToAppliedCompositionPage(
+                        false,
+                        "onUserSwipe($composition, $from, $to), " +
+                                "requestPlaybackMovePreviousFail(${result.exceptionOrNull()})"
+                    )
                 }
             }
-            else -> scrollToPage(true, from)
+            else -> error("should not reach here")
         }
     }
 }

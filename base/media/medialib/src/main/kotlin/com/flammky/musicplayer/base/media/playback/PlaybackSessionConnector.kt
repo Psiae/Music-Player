@@ -412,6 +412,30 @@ class PlaybackSessionConnector internal constructor(
 			}
 		}
 
+		override suspend fun seekPosition(
+			expectId: String,
+			expectDuration: Duration,
+			percent: Float
+		): Boolean {
+			return runCatching {
+				_deferredController?.await()
+					?.let { controller ->
+						if (controller.currentMediaItem?.mediaId != expectId) {
+							return false
+						}
+						if (controller.duration != expectDuration.inWholeMilliseconds) {
+							return false
+						}
+						controller.seekTo(((percent / 100) * expectDuration.inWholeMilliseconds).toLong())
+						true
+					}
+					?: false
+			}.getOrElse { ex ->
+				if (ex !is CancellationException) throw ex
+				false
+			}
+		}
+
 		override suspend fun seekIndex(index: Int, startPosition: Duration): Boolean {
 			return runCatching {
 				_deferredController?.await()

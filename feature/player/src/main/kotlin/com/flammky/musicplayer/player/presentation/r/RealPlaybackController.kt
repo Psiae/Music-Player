@@ -60,6 +60,38 @@ internal class RealPlaybackController(
 	// We obviously don't have to request for the controller everytime
 	// but that's for later
 
+	override fun requestSeekPositionAsync(
+		expectId: String,
+		expectDuration: Duration,
+		percent: Float
+	): Deferred<RequestResult> {
+		return scope.async {
+			val success = runCatching {
+				playbackConnection.requestUserSessionAsync(user).await().controller.withLooperContext {
+					seekPosition(
+						expectId,
+						expectDuration,
+						percent
+					)
+				}
+			}.getOrElse {
+				false
+			}
+			RequestResult(
+				success = success,
+				eventDispatch = if (success) {
+					launch {
+						val jobs = mutableListOf<Job>()
+						_observers.forEach { jobs.add(it.updateProgress()) }
+						jobs.joinAll()
+					}
+				} else {
+					null
+				}
+			)
+		}
+	}
+
 	override fun requestSeekAsync(
 		position: Duration,
 		coroutineContext: CoroutineContext

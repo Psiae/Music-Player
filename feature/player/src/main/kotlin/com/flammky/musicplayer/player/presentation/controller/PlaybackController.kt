@@ -44,6 +44,12 @@ internal abstract class PlaybackController(
 		coroutineContext: CoroutineContext = EmptyCoroutineContext,
 	): PlaybackObserver
 
+	abstract fun requestSeekPositionAsync(
+		expectId: String,
+		expectDuration: Duration,
+		percent: Float
+	): Deferred<RequestResult>
+
 	/**
 	 * seek to [position] in current playback
 	 *

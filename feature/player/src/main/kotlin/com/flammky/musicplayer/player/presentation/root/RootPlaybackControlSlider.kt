@@ -73,7 +73,7 @@ internal fun RootPlaybackControlSlider(
                 duration = composition.sliderTextDurationDisplayValue()
             )
         }
-        remember(composition, constraints.maxWidth) {
+        remember(composition, maxWidth) {
             composition
                 .apply {
                     layoutWidthDp = maxWidth

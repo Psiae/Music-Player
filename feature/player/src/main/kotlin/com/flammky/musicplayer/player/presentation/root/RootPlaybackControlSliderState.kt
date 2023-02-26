@@ -109,7 +109,10 @@ internal class SliderLayoutComposition(
         val switch = currentScrubbingInstance
             ?.let { instance ->
                 consumeSliderValueAnimator = true
-                if (instance.currentProgress > 0f && instance.startInDuration.isPositive()) {
+                if (
+                    instance.currentProgress > 0f &&
+                    instance.startInDuration.isPositive()
+                ) {
                     instance.currentProgress
                 } else {
                     0f

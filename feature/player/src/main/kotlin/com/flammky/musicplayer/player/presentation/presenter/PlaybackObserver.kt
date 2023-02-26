@@ -97,6 +97,7 @@ interface PlaybackObserver {
 		 * The current PlaybackQueue,
 		 * [OldPlaybackQueue.UNSET] if invalid
 		 */
+		// I don't think we should expose a StateFlow
 		val queueStateFlow: StateFlow<OldPlaybackQueue>
 
 		/**

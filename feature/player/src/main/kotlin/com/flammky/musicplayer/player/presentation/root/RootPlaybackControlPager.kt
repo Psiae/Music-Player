@@ -42,6 +42,7 @@ internal fun BoxScope.RootPlaybackControlPager(
     }.apply {
         PrepareComposition()
     }
+
     BoxWithConstraints {
         // there is definitely a way to get optimization on the the PagerScope item provider
         val data = state.currentCompositionLayoutData

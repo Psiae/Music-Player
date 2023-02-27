@@ -1,78 +1,85 @@
 package com.flammky.musicplayer.player.presentation.root
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import com.flammky.musicplayer.player.presentation.root.CompactControlTransitionState.Applier.Companion.PrepareCompositionInline
+import com.flammky.musicplayer.player.presentation.root.ControlCompactCoordinator.Companion.PrepareCompositionInline
+import com.google.accompanist.pager.ExperimentalPagerApi
 
 @Composable
 internal fun RootPlaybackControlCompact(
     state: RootPlaybackControlCompactState
 ) {
-    val coordinator = remember(state) {
-       RootPlaybackControlCompactCoordinator(state)
-           .apply {
-               prepareState()
-           }
-    }.apply {
-        PrepareCompose()
-    }
-    ContentTransition(coordinator = coordinator)
+    val coordinator = state.coordinator
+        .apply {
+            PrepareCompositionInline()
+        }
+    TransitioningContentLayout(coordinator.layoutComposition)
 }
 
 @Composable
-private fun ContentTransition(
-    coordinator: RootPlaybackControlCompactCoordinator
-) {
-    val state = remember(coordinator) {
-        RootPlaybackControlCompactTransitionState()
-    }.apply {
-
+private fun TransitioningContentLayout(composition: ControlCompactComposition) {
+    val state = composition.transitionState
+        .apply {
+            applier.PrepareCompositionInline()
+        }
+    BoxWithConstraints(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .height(state.layoutHeight)
+                .width(state.layoutWidth)
+                .offset(state.animatedLayoutOffset.x, state.animatedLayoutOffset.y)
+        ) {
+            ContentLayout(composition = composition)
+        }
     }
 }
 
 @Composable
 private fun ContentLayout(
-    composition: RootPlaybackControlCompactComposition
+    composition: ControlCompactComposition
 ) {
     Box {
-        RootPlaybackControlCompactBackground(composition.currentBackground!!)
+        RootPlaybackControlCompactBackground(composition.backgroundState)
         Column {
             Row {
-                PagerControl(state = composition.currentPager!!)
-                ButtonControls(controlState = composition.currentControls!!)
+                PagerControl(state = composition.pagerState)
+                ButtonControls(state = composition.controlsState)
             }
-            TimeBar(timeBarData = composition.currentTimeBar!!)
+            TimeBar(state = composition.timeBarState)
         }
     }
 
 }
 
+@OptIn(ExperimentalPagerApi::class)
 @Composable
 private fun PagerControl(
-    state: RootPlaybackControlCompactPagerState
-) {
-
-}
+    state: CompactControlPagerState
+) = CompactControlPager(state = state)
 
 @Composable
 private fun ArtworkDisplay(
-    pagerData: RootPlaybackControlCompactPagerState
+    state: CompactControlPagerState
 ) {
 
 }
 
 @Composable
 private fun ButtonControls(
-    controlState: RootPlaybackControlCompactControlsState
+    state: CompactButtonControlsState
 ) {
 
 }
 
 @Composable
 private fun TimeBar(
-    timeBarData: RootPlaybackControlCompactTimeBarState
+    state: CompactTimeBarState
 ) {
 
 }

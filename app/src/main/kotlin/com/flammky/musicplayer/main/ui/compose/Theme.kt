@@ -23,22 +23,20 @@ fun MaterialDesign3Theme(
 	useDarkTheme: Boolean = isSystemInDarkTheme(),
 	content: @Composable () -> Unit
 ) {
-	val colors = if (dynamic && DynamicColors.isDynamicColorAvailable()) {
-		if (useDarkTheme) {
-			dynamicDarkColorScheme(LocalContext.current)
-		} else {
-			dynamicLightColorScheme(LocalContext.current)
-		}
+	val lightColors = if (dynamic && DynamicColors.isDynamicColorAvailable()) {
+		dynamicLightColorScheme(LocalContext.current)
 	} else {
-		if (useDarkTheme) {
-			Theme.defaultDarkColorScheme()
-		} else {
-			Theme.defaultLightColorScheme()
-		}
+		Theme.defaultLightColorScheme()
+	}
+	val darkColors = if (dynamic && DynamicColors.isDynamicColorAvailable()) {
+		dynamicDarkColorScheme(LocalContext.current)
+	} else {
+		Theme.defaultDarkColorScheme()
 	}
 	Theme.ProvideTheme(
-		isThemeDark = useDarkTheme,
-		colorScheme = colors
+		isDefaultDark = useDarkTheme,
+		lightColorScheme = lightColors,
+		darkColorScheme = darkColors
 	) {
 		with(rememberSystemUiController()) {
 			setStatusBarColor(Theme.elevatedTonalPrimarySurfaceAsState(elevation = 2.dp).value.copy(0.4f))

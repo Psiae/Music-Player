@@ -2,14 +2,22 @@ package com.flammky.musicplayer.player.presentation.root
 
 import androidx.compose.runtime.*
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
+import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.musicplayer.base.compose.SnapshotRead
 import com.flammky.musicplayer.base.compose.SnapshotWrite
 import com.flammky.musicplayer.base.media.playback.OldPlaybackQueue
 import com.flammky.musicplayer.player.presentation.controller.PlaybackController
-import kotlinx.coroutines.*
+import com.google.accompanist.pager.ExperimentalPagerApi
+import com.google.accompanist.pager.PagerState
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 
 internal class RootPlaybackControlCompactState(
@@ -18,9 +26,13 @@ internal class RootPlaybackControlCompactState(
     val onArtworkClicked: () -> Unit,
 ) {
 
-    var currentLayoutComposition by mutableStateOf<RootPlaybackControlCompactComposition?>(null)
+    val coordinator = ControlCompactCoordinator(this)
 
     var height by mutableStateOf<Dp>(55.dp)
+        @SnapshotRead get
+        @SnapshotWrite set
+
+    var width by mutableStateOf<Dp>(Dp.Infinity)
         @SnapshotRead get
         @SnapshotWrite set
 
@@ -40,11 +52,16 @@ internal class RootPlaybackControlCompactState(
         @SnapshotWrite set
 }
 
-internal class RootPlaybackControlCompactCoordinator(
+internal class ControlCompactCoordinator(
     private val state: RootPlaybackControlCompactState
 ) {
 
-    private val layoutComposition = RootPlaybackControlCompactComposition()
+    val coordinatorSupervisorJob = SupervisorJob()
+
+    val layoutComposition = ControlCompactComposition(
+        getLayoutHeight = @SnapshotRead { state.height },
+        getLayoutWidth = @SnapshotRead { state.width }
+    )
 
     private var queueReaderCount = 0
 
@@ -53,114 +70,168 @@ internal class RootPlaybackControlCompactCoordinator(
 
     val freeze by derivedStateOf { state.freeze }
 
-    fun prepareState() {
-        state.currentLayoutComposition = layoutComposition
-    }
+    companion object {
+        @Suppress("NOTHING_TO_INLINE")
+        @Composable
+        inline fun ControlCompactCoordinator.PrepareCompositionInline() {
+            ComposeRemoteQueueReader()
+        }
 
-    fun incrementQueueReader() {
-        queueReaderCount++
-    }
-
-    fun decrementQueueReader() {
-        check(queueReaderCount > 0)
-        queueReaderCount--
-    }
-
-    @Suppress("NOTHING_TO_INLINE")
-    @Composable
-    inline fun PrepareCompose() {
-        val composableCoroutineScope = rememberCoroutineScope()
-        DisposableEffect(
-            key1 = this,
-            effect = {
-                val supervisor = SupervisorJob(composableCoroutineScope.coroutineContext.job)
-                val coroutineScope = CoroutineScope(composableCoroutineScope.coroutineContext + supervisor)
-                val playbackObserver = state.playbackController.createPlaybackObserver()
-
-                launchQueueCollectorForReader(coroutineScope)
-
-                onDispose {
-                    supervisor.cancel()
-                    playbackObserver.dispose()
-                }
-            }
-        )
-    }
-
-    fun onComposingTransition(state: RootPlaybackControlCompactTransitionState) {
-        layoutComposition.currentTransition = state
-    }
-
-    private fun launchQueueCollectorForReader(
-        coroutineScope: CoroutineScope
-    ) {
-        coroutineScope.launch {
-            var latestCollectorJob: Job? = null
-            snapshotFlow { queueReaderCount }
-                .map {
-                    check(it >= 0)
-                    it > 0
-                }
-                .distinctUntilChanged()
-                .collect { hasActiveReader ->
-                    if (!hasActiveReader) {
-                        latestCollectorJob?.cancel()
-                        return@collect
-                    }
-                    check(latestCollectorJob?.isActive != true)
-                    latestCollectorJob = launch {
-                        var collectWithFreezeHandle: Job? = null
-                        snapshotFlow { state.freeze }
-                            .collect { freeze ->
-                                if (freeze) {
-                                    collectWithFreezeHandle?.cancel()
+        @Composable
+        private fun ControlCompactCoordinator.ComposeRemoteQueueReader() {
+            LaunchedEffect(
+                key1 = this,
+                block = {
+                    launch(coordinatorSupervisorJob) {
+                        var latestCollectorJob: Job? = null
+                        snapshotFlow { queueReaderCount }
+                            .map {
+                                check(it >= 0)
+                                it > 0
+                            }
+                            .distinctUntilChanged()
+                            .collect { hasActiveReader ->
+                                if (!hasActiveReader) {
+                                    latestCollectorJob?.cancel()
                                     return@collect
                                 }
-                                check(collectWithFreezeHandle?.isActive != true)
-                                collectWithFreezeHandle = launch {
-                                    val observer = state.playbackController.createPlaybackObserver()
-                                    try {
-                                        val collector = observer.createQueueCollector()
-                                            .apply { startCollect().join() }
-                                        collector.queueStateFlow
-                                            .collect {
-                                                remoteQueueSnapshot = it
+                                check(latestCollectorJob?.isActive != true)
+                                latestCollectorJob = launch {
+                                    var collectWithFreezeHandle: Job? = null
+                                    snapshotFlow { state.freeze }
+                                        .collect { freeze ->
+                                            if (freeze) {
+                                                collectWithFreezeHandle?.cancel()
+                                                return@collect
                                             }
-                                    } catch (ce: CancellationException) {
+                                            check(collectWithFreezeHandle?.isActive != true)
+                                            collectWithFreezeHandle = launch {
+                                                val observer = state.playbackController.createPlaybackObserver()
+                                                try {
+                                                    val collector = observer.createQueueCollector()
+                                                        .apply { startCollect().join() }
+                                                    collector.queueStateFlow
+                                                        .collect {
+                                                            remoteQueueSnapshot = it
+                                                        }
+                                                } catch (ce: CancellationException) {
 
-                                    } finally {
-                                        observer.dispose()
-                                    }
+                                                } finally {
+                                                    observer.dispose()
+                                                }
+                                            }
+                                        }
                                 }
                             }
-                    }
+                    }.join()
                 }
+            )
         }
     }
 }
 
-class RootPlaybackControlCompactTransitionState() {
+class CompactControlTransitionState(
+    private val getLayoutHeight: @SnapshotRead () -> Dp,
+    private val getLayoutWidth: @SnapshotRead () -> Dp
+) {
 
+    val applier: Applier = Applier(this)
+
+    val layoutHeight: Dp
+        @SnapshotRead get() = getLayoutHeight()
+
+    val layoutWidth: Dp
+        @SnapshotRead get() = getLayoutWidth()
+
+    val animatedLayoutOffset: DpOffset by mutableStateOf(DpOffset.Zero)
+
+    class Applier(
+        private val state: CompactControlTransitionState
+    ) {
+        companion object {
+            @Suppress("NOTHING_TO_INLINE")
+            @Composable
+            inline fun Applier.PrepareCompositionInline() {
+
+            }
+        }
+    }
+}
+@OptIn(ExperimentalPagerApi::class)
+class CompactControlPagerState(
+    val layoutState: PagerState,
+    val observeMetadata: (String) -> Flow<MediaMetadata?>
+) {
+
+    val applier = Applier()
+
+    var currentLayoutComposition by mutableStateOf<LayoutComposition?>(null)
+
+    class Applier {
+        companion object {
+            @Suppress("NOTHING_TO_INLINE")
+            @Composable
+            inline fun Applier.PrepareCompositionInline() {
+
+            }
+        }
+    }
+
+    class LayoutComposition(
+        val queueData: OldPlaybackQueue
+    ) {
+
+        var userScrollReady by mutableStateOf(false)
+
+        companion object {
+
+            @Composable
+            fun LayoutComposition.OnLayoutComposed() {
+                val coroutineScope = rememberCoroutineScope()
+                remember(this) {
+                    coroutineScope.launch {  }
+                }
+            }
+        }
+    }
 }
 
-class RootPlaybackControlCompactPagerState() {
+class CompactButtonControlsState() {
 
+    val applier = Applier()
 
-    class LayoutComposition()
-}
+    class Applier {
+        companion object {
+            @Suppress("NOTHING_TO_INLINE")
+            @Composable
+            inline fun Applier.PrepareCompositionInline() {
 
-class RootPlaybackControlCompactControlsState() {
+            }
+        }
+    }
 
 
     class LayoutData()
 }
 
-class RootPlaybackControlCompactTimeBarState() {
+class CompactTimeBarState() {
+
+    val applier = Applier()
+
+    class Applier {
+
+    }
 
     class LayoutData()
 }
 
-class RootPlaybackControlCompactBackgroundState() {
+class CompactBackgroundState() {
+
+    val applier = Applier()
+
+    class Applier {
+
+    }
 
     class LayoutData()
 }

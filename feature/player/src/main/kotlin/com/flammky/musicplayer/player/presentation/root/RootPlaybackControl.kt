@@ -71,7 +71,7 @@ internal fun RootPlaybackControl(
         modifier = modifier,
         state = state,
         content = {
-            ContentTransition()
+            TransitioningContentLayout()
         },
     )
 }
@@ -135,7 +135,7 @@ private fun RootPlaybackControl(
 }
 
 @Composable
-private fun RootPlaybackControlMainScope.ContentTransition() {
+private fun RootPlaybackControlMainScope.TransitioningContentLayout() {
     // Think if there is somewhat better way to do this
     val transitionHeightState = updateTransition(targetState = state.showMainState.value, label = "")
         .animateInt(
@@ -161,7 +161,7 @@ private fun RootPlaybackControlMainScope.ContentTransition() {
             }
         ).apply {
             LaunchedEffect(
-                this@ContentTransition, this.value, fullyVisibleHeightTarget,
+                this@TransitioningContentLayout, this.value, fullyVisibleHeightTarget,
                 block = {
                     visibleHeight = value
                     if (visibleHeight == fullyVisibleHeightTarget) {

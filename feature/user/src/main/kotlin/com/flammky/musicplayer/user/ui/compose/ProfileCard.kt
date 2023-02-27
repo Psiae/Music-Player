@@ -100,7 +100,11 @@ private fun UserTextDescription(
 @Composable
 @Preview
 private fun Preview() {
-	Theme.ProvideTheme(isThemeDark = false, colorScheme = Theme.defaultLightColorScheme()) {
+	Theme.ProvideTheme(
+		isDefaultDark = false,
+		lightColorScheme = Theme.defaultLightColorScheme(),
+		darkColorScheme = Theme.defaultDarkColorScheme()
+	) {
 		AsyncImage(
 			modifier = Modifier
 				.fillMaxHeight()
@@ -115,7 +119,11 @@ private fun Preview() {
 @Composable
 @Preview
 private fun PreviewDark() {
-	Theme.ProvideTheme(isThemeDark = true, colorScheme = Theme.defaultDarkColorScheme()) {
+	Theme.ProvideTheme(
+		isDefaultDark = true,
+		lightColorScheme = Theme.defaultLightColorScheme(),
+		darkColorScheme = Theme.defaultDarkColorScheme()
+	) {
 
 	}
 }

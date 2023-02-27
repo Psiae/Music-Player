@@ -169,7 +169,7 @@ fun TransitioningCompactPlaybackControl(
 			return@BoxWithConstraints
 		}
 		if (!disposeCardState.value) {
-			CardLayout(
+			ControlCompactCardLayout(
 				modifier = Modifier
 					.offset(y = animatedOffset)
 					.onGloballyPositioned { lc ->
@@ -192,7 +192,7 @@ fun TransitioningCompactPlaybackControl(
 
 // Consider a single observer
 @Composable
-private fun CardLayout(
+internal fun ControlCompactCardLayout(
     modifier: Modifier = Modifier,
     viewModel: PlaybackControlViewModel,
     controller: PlaybackController,

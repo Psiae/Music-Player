@@ -4,7 +4,7 @@ import androidx.compose.runtime.Composable
 
 @Composable
 fun RootPlaybackControlCompactBackground(
-    state: RootPlaybackControlCompactBackgroundState
+    state: CompactBackgroundState
 ) {
 
 }

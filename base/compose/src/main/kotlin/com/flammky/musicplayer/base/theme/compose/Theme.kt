@@ -38,6 +38,16 @@ fun Theme.Companion.surfaceContentColorAsState(): State<Color> {
 }
 
 @Composable
+fun Theme.Companion.darkSurfaceContentColorAsState(): State<Color> {
+	return rememberUpdatedState(newValue = ComposeMaterialTheme.darkColorScheme.onSurface)
+}
+
+@Composable
+fun Theme.Companion.lightSurfaceContentColorAsState(): State<Color> {
+	return rememberUpdatedState(newValue = ComposeMaterialTheme.lightColorScheme.onSurface)
+}
+
+@Composable
 fun Theme.Companion.surfaceTintColorAsState(): State<Color> {
 	return rememberUpdatedState(newValue = ComposeMaterialTheme.colorScheme.surfaceTint)
 }
@@ -119,14 +129,15 @@ fun Theme.Companion.defaultDarkColorScheme(): ColorScheme =
 
 @Composable
 fun Theme.Companion.ProvideTheme(
-	isThemeDark: Boolean,
-	colorScheme: ColorScheme,
+	isDefaultDark: Boolean,
+	lightColorScheme: ColorScheme,
+	darkColorScheme: ColorScheme,
 	content: @Composable () -> Unit
 ) {
 	MaterialTheme(
-		colorScheme = colorScheme,
+		colorScheme = if (isDefaultDark) darkColorScheme else lightColorScheme,
 	) {
-		CompositionLocalProvider(ComposeMaterialTheme.LocalIsThemeDark provides isThemeDark) {
+		CompositionLocalProvider(ComposeMaterialTheme.LocalIsThemeDark provides isDefaultDark) {
 			content()
 		}
 	}
@@ -210,10 +221,20 @@ private object ComposeMaterialTheme {
 	}
 
 	val LocalIsThemeDark = staticCompositionLocalOf<Boolean> { false }
+	val LocalDarkColorScheme = staticCompositionLocalOf { defaultDarkColorScheme }
+	val LocalLightColorScheme = staticCompositionLocalOf { defaultLightColorScheme }
 
 	val colorScheme: ColorScheme
 		@Composable
 		get() = MaterialTheme.colorScheme
+
+	val lightColorScheme: ColorScheme
+		@Composable
+		get() = LocalLightColorScheme.current
+
+	val darkColorScheme: ColorScheme
+		@Composable
+		get() = LocalDarkColorScheme.current
 
 	val isThemeDark: Boolean
 		@Composable

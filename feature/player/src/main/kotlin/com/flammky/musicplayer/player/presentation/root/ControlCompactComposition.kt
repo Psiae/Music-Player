@@ -1,19 +1,64 @@
 package com.flammky.musicplayer.player.presentation.root
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.Dp
+import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.musicplayer.base.compose.SnapshotRead
+import com.flammky.musicplayer.base.media.playback.OldPlaybackQueue
+import com.flammky.musicplayer.base.media.playback.PlaybackProperties
+import com.google.accompanist.pager.ExperimentalPagerApi
+import com.google.accompanist.pager.PagerState
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.flow.Flow
+import kotlin.time.Duration
 
 class ControlCompactComposition internal constructor(
     private val getLayoutHeight: @SnapshotRead () -> Dp,
-    private val getLayoutWidth: @SnapshotRead () -> Dp
+    private val getLayoutWidth: @SnapshotRead () -> Dp,
+    private val observeMetadata: (String) -> Flow<MediaMetadata?>,
+    private val observeArtwork: (String) -> Flow<Any?>,
+    private val observePlaybackQueue: () -> Flow<OldPlaybackQueue>,
+    private val observePlaybackProperties: () -> Flow<PlaybackProperties>,
+    private val setPlayWhenReady: (play: Boolean, joinCollectorDispatch: Boolean) -> Deferred<Result<Boolean>>,
+    private val observeProgressWithIntervalHandle: (
+        getInterval: (progress: Duration, duration: Duration, speed: Float) -> Duration
+    ) -> Flow<Duration>,
+    private val coroutineScope: CoroutineScope
 ) {
+
+    private var isPagerSurfaceDark by mutableStateOf(false)
 
     val transitionState = CompactControlTransitionState(
         getLayoutHeight = getLayoutHeight,
         getLayoutWidth = getLayoutWidth
     )
-    val pagerState = CompactControlPagerState()
-    val controlsState = CompactButtonControlsState()
-    val timeBarState = CompactTimeBarState()
-    val backgroundState = CompactBackgroundState()
+
+    val backgroundState = CompactControlBackgroundState(
+        observeArtwork = observeArtwork,
+        observeQueue = observePlaybackQueue,
+        onComposingBackgroundColor = { isPagerSurfaceDark = it.luminance() <= 4 },
+        coroutineScope = coroutineScope
+    )
+
+    @OptIn(ExperimentalPagerApi::class)
+    val pagerState = CompactControlPagerState(
+        layoutState = PagerState(0),
+        observeArtwork = observeArtwork,
+        observeMetadata = observeMetadata,
+        observeQueue = observePlaybackQueue,
+        isSurfaceDark = ::isPagerSurfaceDark
+    )
+
+    val controlsState = CompactButtonControlsState(
+        observePlaybackProperties = observePlaybackProperties,
+        setPlayWhenReady = setPlayWhenReady
+    )
+
+    val timeBarState = CompactControlTimeBarState(
+        observeProgressWithIntervalHandle = observeProgressWithIntervalHandle
+    )
 }

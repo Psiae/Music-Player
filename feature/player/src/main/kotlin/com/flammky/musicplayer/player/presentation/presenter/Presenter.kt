@@ -502,7 +502,7 @@ internal class ExpectPlaybackControlPresenter(
 				override fun startCollectPosition(): Job = Job().apply { cancel() }
 				override fun stopCollectProgress(): Job = Job().apply { cancel() }
 				override fun setIntervalHandler(
-					handler: suspend (
+					handler: (
 						isEvent: Boolean,
 						progress: Duration,
 						duration: Duration,

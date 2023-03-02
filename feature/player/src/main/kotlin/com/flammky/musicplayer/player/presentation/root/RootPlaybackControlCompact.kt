@@ -20,7 +20,9 @@ internal fun RootPlaybackControlCompact(
 }
 
 @Composable
-private fun TransitioningContentLayout(composition: ControlCompactComposition) {
+private fun TransitioningContentLayout(
+    composition: ControlCompactComposition
+) {
     val state = composition.transitionState
         .apply {
             applier.PrepareCompositionInline()
@@ -59,27 +61,21 @@ private fun ContentLayout(
 
 @OptIn(ExperimentalPagerApi::class)
 @Composable
-private fun PagerControl(
+private inline fun RowScope.PagerControl(
     state: CompactControlPagerState
-) = CompactControlPager(state = state)
+) = Box(modifier = Modifier.weight(1f)) { CompactControlPager(state = state) }
 
 @Composable
-private fun ArtworkDisplay(
-    state: CompactControlPagerState
-) {
-
-}
+private inline fun ArtworkDisplay(
+    state: CompactControlArtworkState
+) = Box { CompactControlArtwork(state = state) }
 
 @Composable
-private fun ButtonControls(
+private inline fun ButtonControls(
     state: CompactButtonControlsState
-) {
-
-}
+) = Box { CompactControlButtons(state = state) }
 
 @Composable
-private fun TimeBar(
-    state: CompactTimeBarState
-) {
-
-}
+private inline fun TimeBar(
+    state: CompactControlTimeBarState
+) = Box { CompactControlTimeBar(state = state) }

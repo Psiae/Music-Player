@@ -65,7 +65,7 @@ interface PlaybackObserver {
 		 * about 10ms, may be both early or late, this is on fix list, which we might just not use it **
 		 */
 		fun setIntervalHandler(
-			handler: suspend (
+			handler: (
 				isEvent: Boolean,
 				progress: Duration,
 				duration: Duration,

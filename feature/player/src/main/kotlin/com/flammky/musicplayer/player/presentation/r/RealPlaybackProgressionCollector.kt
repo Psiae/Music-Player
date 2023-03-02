@@ -45,7 +45,7 @@ internal class RealPlaybackProgressionCollector(
 
 	private var _collectEvent: Boolean = collectEvent
 
-	private var intervalHandler: suspend (
+	private var _intervalHandler: (
 		isEvent: Boolean, progress: Duration, duration: Duration, speed: Float
 	) -> Duration? = { _, _, _, _ ->
 		null
@@ -108,10 +108,10 @@ internal class RealPlaybackProgressionCollector(
 	}
 
 	override fun setIntervalHandler(
-		handler: suspend (isEvent: Boolean, progress: Duration, duration: Duration, speed: Float) -> Duration?
+		handler: (isEvent: Boolean, progress: Duration, duration: Duration, speed: Float) -> Duration?
 	) {
 		scope.launch {
-			intervalHandler = handler
+			_intervalHandler = handler
 			if (progressCollectorJob?.isActive == true) {
 				internalStartProgress(false)
 			}
@@ -174,7 +174,7 @@ internal class RealPlaybackProgressionCollector(
 				_bufferedProgressStateFlow.update { buffered }
 				_progressStateFlow.update { progress }
 
-				val nextInterval = intervalHandler(true, progress, duration, speed)
+				val nextInterval = _intervalHandler(true, progress, duration, speed)
 					?: run {
 						val currentProgress = session?.controller?.withLooperContext { progress }
 							?.takeIf { it != PlaybackConstants.POSITION_UNSET }
@@ -209,7 +209,7 @@ internal class RealPlaybackProgressionCollector(
 				_bufferedProgressStateFlow.update { buffered }
 				_progressStateFlow.update { progress }
 
-				nextInterval = intervalHandler(false, progress, duration, speed)
+				nextInterval = _intervalHandler(false, progress, duration, speed)
 					?: run {
 						val currentProgress = session?.controller?.withLooperContext { progress }
 							?.takeIf { it != PlaybackConstants.POSITION_UNSET }

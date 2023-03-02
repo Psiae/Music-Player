@@ -14,10 +14,12 @@ import com.flammky.android.medialib.common.mediaitem.AudioFileMetadata
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.android.medialib.providers.metadata.VirtualFileMetadata
+import com.flammky.musicplayer.base.compose.SnapshotRead
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.darkSurfaceContentColorAsState
 import com.flammky.musicplayer.base.theme.compose.lightSurfaceContentColorAsState
 import com.flammky.musicplayer.player.presentation.root.CompactControlPagerState.Applier.Companion.PrepareCompositionInline
+import com.flammky.musicplayer.player.presentation.root.CompactControlPagerState.LayoutComposition.Companion.OnComposingLayout
 import com.flammky.musicplayer.player.presentation.root.CompactControlPagerState.LayoutComposition.Companion.OnLayoutComposed
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
@@ -32,7 +34,6 @@ import kotlinx.coroutines.flow.Flow
 @Composable
 fun CompactControlPager(
     state: CompactControlPagerState,
-    isSurfaceDark: Boolean
 ) {
     state.applier
         .apply { PrepareCompositionInline() }
@@ -43,6 +44,7 @@ fun CompactControlPager(
     ) {
         val layoutData = state.currentLayoutComposition
             ?: return@Box
+        layoutData.OnComposingLayout()
         HorizontalPager(
             modifier = Modifier.fillMaxSize(),
             state = state.layoutState,
@@ -55,7 +57,7 @@ fun CompactControlPager(
         ) {
             PagerItem(
                 metadataFlow = state.observeMetadata(layoutData.queueData.list[it]),
-                darkSurface = isSurfaceDark
+                darkSurface = state.isSurfaceDark
             )
         }
         layoutData.OnLayoutComposed()
@@ -65,12 +67,12 @@ fun CompactControlPager(
 @Composable
 fun PagerItem(
     metadataFlow: Flow<MediaMetadata?>,
-    darkSurface: Boolean
+    darkSurface: @SnapshotRead () -> Boolean
 ) {
     val metadata =
         metadataFlow.collectAsState(initial = null).value
     val textColor =
-        if (darkSurface) {
+        if (darkSurface()) {
             Theme.darkSurfaceContentColorAsState().value
         } else {
             Theme.lightSurfaceContentColorAsState().value

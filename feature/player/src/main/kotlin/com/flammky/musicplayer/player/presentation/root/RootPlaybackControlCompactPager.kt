@@ -1,6 +1,9 @@
 package com.flammky.musicplayer.player.presentation.root
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -14,6 +17,7 @@ import com.flammky.android.medialib.common.mediaitem.AudioFileMetadata
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.android.medialib.providers.metadata.VirtualFileMetadata
+import com.flammky.musicplayer.base.compose.NoInlineBox
 import com.flammky.musicplayer.base.compose.SnapshotRead
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.darkSurfaceContentColorAsState
@@ -37,13 +41,13 @@ fun CompactControlPager(
 ) {
     state.applier
         .apply { PrepareCompositionInline() }
-    Box(
+    NoInlineBox(
         modifier = Modifier
             .fillMaxWidth()
             .fillMaxSize()
     ) {
         val layoutData = state.currentLayoutComposition
-            ?: return@Box
+            ?: return@NoInlineBox
         layoutData.OnComposingLayout()
         HorizontalPager(
             modifier = Modifier.fillMaxSize(),

@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.musicplayer.base.compose.SnapshotRead
 import com.flammky.musicplayer.base.media.playback.OldPlaybackQueue
@@ -19,6 +20,7 @@ import kotlin.time.Duration
 class ControlCompactComposition internal constructor(
     private val getLayoutHeight: @SnapshotRead () -> Dp,
     private val getLayoutWidth: @SnapshotRead () -> Dp,
+    private val getLayoutBottomOffset: @SnapshotRead () -> Dp,
     private val observeMetadata: (String) -> Flow<MediaMetadata?>,
     private val observeArtwork: (String) -> Flow<Any?>,
     private val observePlaybackQueue: () -> Flow<OldPlaybackQueue>,
@@ -32,9 +34,14 @@ class ControlCompactComposition internal constructor(
 
     private var isPagerSurfaceDark by mutableStateOf(false)
 
+    var topPosition by mutableStateOf(0.dp)
+    var topPositionFromAnchor by mutableStateOf(0.dp)
+
     val transitionState = CompactControlTransitionState(
         getLayoutHeight = getLayoutHeight,
-        getLayoutWidth = getLayoutWidth
+        getLayoutWidth = getLayoutWidth,
+        getLayoutBottomSpacing = getLayoutBottomOffset,
+        observeQueue = observePlaybackQueue
     )
 
     val backgroundState = CompactControlBackgroundState(
@@ -42,6 +49,11 @@ class ControlCompactComposition internal constructor(
         observeQueue = observePlaybackQueue,
         onComposingBackgroundColor = { isPagerSurfaceDark = it.luminance() <= 4 },
         coroutineScope = coroutineScope
+    )
+
+    val artworkDisplayState = CompactControlArtworkState(
+        observeArtwork = observeArtwork,
+        observeQueue = observePlaybackQueue,
     )
 
     @OptIn(ExperimentalPagerApi::class)

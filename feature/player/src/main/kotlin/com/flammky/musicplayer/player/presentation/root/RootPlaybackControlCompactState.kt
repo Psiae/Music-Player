@@ -1,15 +1,25 @@
 package com.flammky.musicplayer.player.presentation.root
 
 import android.graphics.Bitmap
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.VectorConverter
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.DpOffset
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.*
 import androidx.palette.graphics.Palette
+import coil.request.ImageRequest
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.musicplayer.base.compose.SnapshotRead
 import com.flammky.musicplayer.base.compose.SnapshotWrite
@@ -18,16 +28,18 @@ import com.flammky.musicplayer.base.media.playback.PlaybackProperties
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.isDarkAsState
 import com.flammky.musicplayer.base.theme.compose.surfaceVariantColorAsState
+import com.flammky.musicplayer.base.theme.compose.surfaceVariantContentColorAsState
 import com.flammky.musicplayer.player.presentation.controller.PlaybackController
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.PagerState
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import timber.log.Timber
 import kotlin.time.Duration
 
 
-internal class RootPlaybackControlCompactState(
-    val playbackController: PlaybackController,
+class RootPlaybackControlCompactState internal constructor(
+    internal val playbackController: PlaybackController,
     val onBackgroundClicked: () -> Unit,
     val onArtworkClicked: () -> Unit,
     val onObserveMetadata: (String) -> Flow<MediaMetadata?>,
@@ -36,20 +48,21 @@ internal class RootPlaybackControlCompactState(
     val coroutineDispatchScope: CoroutineScope,
 ) {
 
-    val coordinator = ControlCompactCoordinator(this, coroutineScope, coroutineDispatchScope)
+    @Suppress("JoinDeclarationAndAssignment")
+    internal val coordinator: ControlCompactCoordinator
 
     var height by mutableStateOf<Dp>(55.dp)
         @SnapshotRead get
         @SnapshotWrite set
 
-    var width by mutableStateOf<Dp>(Dp.Infinity)
+    var width by mutableStateOf<Dp>(Dp.Unspecified)
         @SnapshotRead get
         @SnapshotWrite set
 
     /**
      * the bottom offset for the coordinator to apply
      */
-    var bottomOffset by mutableStateOf<Dp>(0.dp)
+    var bottomSpacing by mutableStateOf<Dp>(0.dp)
         @SnapshotRead get
         @SnapshotWrite set
 
@@ -60,6 +73,23 @@ internal class RootPlaybackControlCompactState(
     var freeze by mutableStateOf<Boolean>(false)
         @SnapshotRead get
         @SnapshotWrite set
+
+    val topPositionRelativeToParent
+        @SnapshotRead get() = coordinator.topPositionRelativeToParent
+
+    val topPositionRelativeToAnchor
+        @SnapshotRead get() = coordinator.topPositionRelativeToAnchor
+
+    init {
+        // I guess we should provide lambdas as opposed to `this`
+        coordinator = ControlCompactCoordinator(this, coroutineScope, coroutineDispatchScope)
+    }
+
+    internal fun dispose() {
+        playbackController.dispose()
+        coroutineScope.cancel()
+        coroutineDispatchScope.cancel()
+    }
 }
 
 internal class ControlCompactCoordinator(
@@ -73,6 +103,7 @@ internal class ControlCompactCoordinator(
     val layoutComposition = ControlCompactComposition(
         getLayoutHeight = @SnapshotRead state::height::get,
         getLayoutWidth = @SnapshotRead state::width::get,
+        getLayoutBottomOffset = @SnapshotRead state::bottomSpacing::get,
         observeMetadata = state.onObserveMetadata,
         observeArtwork = state.onObserveArtwork,
         observePlaybackQueue = ::observeControllerPlaybackQueue,
@@ -81,6 +112,12 @@ internal class ControlCompactCoordinator(
         observeProgressWithIntervalHandle = ::observeProgressWithIntervalHandle,
         coroutineScope = coroutineScope
     )
+
+    val topPositionRelativeToParent
+        get() = layoutComposition.topPosition
+
+    val topPositionRelativeToAnchor
+        get() = layoutComposition.topPositionFromAnchor
 
     private var queueReaderCount by mutableStateOf(0)
     private var propertiesReaderCount by mutableStateOf(0)
@@ -275,27 +312,115 @@ internal class ControlCompactCoordinator(
 
 class CompactControlTransitionState(
     private val getLayoutHeight: @SnapshotRead () -> Dp,
-    private val getLayoutWidth: @SnapshotRead () -> Dp
+    private val getLayoutWidth: @SnapshotRead () -> Dp,
+    private val getLayoutBottomSpacing: @SnapshotRead () -> Dp,
+    private val observeQueue: () -> Flow<OldPlaybackQueue>
 ) {
 
     val applier: Applier = Applier(this)
 
-    val layoutHeight: Dp
-        @SnapshotRead get() = getLayoutHeight()
+    private var showSelf by mutableStateOf(false)
 
-    val layoutWidth: Dp
-        @SnapshotRead get() = getLayoutWidth()
+    companion object {
 
-    val animatedLayoutOffset: DpOffset by mutableStateOf(DpOffset.Zero)
+        @Composable
+        internal fun CompactControlTransitionState.getLayoutOffset(
+            constraints: Constraints,
+            density: Density
+        ): DpOffset {
+            return remember {
+                val override = getLayoutHeight()
+                Animatable(
+                    initialValue = with(density) {
+                        if (override == Dp.Unspecified) {
+                            (constraints.maxHeight).toDp()
+                        } else {
+                            override.coerceIn(0.dp, (constraints.maxHeight).toDp())
+                        }
+                    },
+                    typeConverter = Dp.VectorConverter,
+                )
+            }.apply {
+                LaunchedEffect(
+                    key1 = this,
+                    block = {
+                        var latestAnimateJob: Job? = null
+                        snapshotFlow { showSelf }
+                            .collect { show ->
+                                latestAnimateJob?.cancel()
+                                latestAnimateJob = launch {
+                                    if (show) {
+                                        snapshotFlow { getLayoutBottomSpacing().unaryMinus() }
+                                            .collect {
+                                                Timber.d("RootPlaybackControlCompact_Transition: animateTo: $it")
+                                                animateTo(it, tween(200))
+                                            }
+                                    } else {
+                                        snapshotFlow { getLayoutHeight() }
+                                            .collect {
+                                                Timber.d("RootPlaybackControlCompact_Transition: animateTo: $it")
+                                                animateTo(it, tween(200))
+                                            }
+                                    }
+                                }
+                            }
+                    }
+                )
+            }.run {
+                DpOffset(0.dp, value)
+            }
+        }
+
+        @Composable
+        internal fun CompactControlTransitionState.getLayoutWidth(
+            constraints: Constraints
+        ): Dp {
+            val override = getLayoutWidth()
+            return with(LocalDensity.current) {
+                if (override == Dp.Unspecified) {
+                    (constraints.maxWidth).toDp() - 15.dp
+                } else {
+                    override.coerceIn(0.dp, (constraints.maxWidth).toDp())
+                }
+            }
+        }
+
+        @Composable
+        internal fun CompactControlTransitionState.getLayoutHeight(
+            constraints: Constraints
+        ): Dp {
+            val override = getLayoutHeight()
+            return with(LocalDensity.current) {
+                if (override == Dp.Unspecified) {
+                    55.dp
+                } else {
+                    override.coerceIn(0.dp, (constraints.maxHeight).toDp())
+                }
+            }
+        }
+    }
 
     class Applier(
         private val state: CompactControlTransitionState
     ) {
         companion object {
-            @Suppress("NOTHING_TO_INLINE")
             @Composable
-            inline fun Applier.PrepareCompositionInline() {
-
+            fun Applier.PrepareComposition() {
+                val coroutineScope = rememberCoroutineScope()
+                DisposableEffect(
+                    key1 = this,
+                    effect = {
+                        val queueListener = coroutineScope.launch {
+                            state.observeQueue()
+                                .collect { queue ->
+                                    state.showSelf = queue.list.getOrNull(queue.currentIndex) != null
+                                }
+                        }
+                        onDispose {
+                            queueListener.cancel()
+                        }
+                    }
+                )
             }
         }
     }
@@ -318,7 +443,7 @@ class CompactControlPagerState(
             @Suppress("NOTHING_TO_INLINE")
             @Composable
             inline fun Applier.PrepareCompositionInline() {
-
+                DisposableEffect(key1 = this, effect = { onDispose { } })
             }
         }
     }
@@ -332,16 +457,11 @@ class CompactControlPagerState(
         companion object {
 
             @Composable
-            inline fun LayoutComposition.OnComposingLayout() {
-
+            fun LayoutComposition.OnComposingLayout() {
             }
 
             @Composable
-            inline fun LayoutComposition.OnLayoutComposed() {
-                val coroutineScope = rememberCoroutineScope()
-                remember(this) {
-                    coroutineScope.launch {  }
-                }
+            fun LayoutComposition.OnLayoutComposed() {
             }
         }
     }
@@ -359,7 +479,7 @@ class CompactButtonControlsState(
             @Suppress("NOTHING_TO_INLINE")
             @Composable
             inline fun Applier.PrepareCompositionInline() {
-
+                DisposableEffect(key1 = this, effect = { onDispose { } })
             }
         }
     }
@@ -493,13 +613,85 @@ class CompactControlBackgroundState(
     class LayoutData()
 }
 
-class CompactControlArtworkState() {
+class CompactControlArtworkState(
+    private val observeArtwork: (String) -> Flow<Any?>,
+    private val observeQueue: () -> Flow<OldPlaybackQueue>
+) {
 
-    val applier = Applier()
+    val applier = Applier(this)
 
-    class Applier {
+    var latestQueue by mutableStateOf<OldPlaybackQueue>(OldPlaybackQueue.UNSET)
 
+    companion object {
+
+        fun CompactControlArtworkState.getInteractionModifier(): Modifier {
+            return Modifier.composed { Modifier.clickable {  } }
+        }
+
+        fun CompactControlArtworkState.getLayoutModifier(imageModel: Any?): Modifier {
+            return Modifier.composed {
+                this
+                    .fillMaxHeight()
+                    .aspectRatio(1f, true)
+                    .clip(RoundedCornerShape(5.dp))
+                    .background(Theme.surfaceVariantContentColorAsState().value)
+                    .then(getInteractionModifier())
+            }
+        }
+
+        @Composable
+        fun CompactControlArtworkState.getImageModel(): Any {
+            val data = latestQueue.let { queue ->
+                val id = queue.list.getOrNull(queue.currentIndex)
+                    ?: return@let null
+                val flow = remember(id) {
+                    observeArtwork(id)
+                }
+                flow.collectAsState(initial = Unit).value
+            }
+            val context = LocalContext.current
+            return remember(data) {
+                ImageRequest.Builder(context)
+                    .data(data)
+                    .crossfade(true)
+                    .build()
+            }
+        }
+
+        @Composable
+        fun CompactControlArtworkState.getContentScale(imageModel: Any?): ContentScale {
+            // TODO: The content scale will depends on the image data,
+            //  Spotify for example doesn't allow cropping so we must `fit`
+            return ContentScale.Crop
+        }
+    }
+
+    class Applier(private val state: CompactControlArtworkState) {
+
+        companion object {
+
+            @Composable
+            fun Applier.PrepareComposition() {
+                val coroutineScope = rememberCoroutineScope()
+                DisposableEffect(
+                    key1 = this,
+                    effect = {
+                        val job = coroutineScope.launch {
+                            state.observeQueue()
+                                .collect { queue ->
+                                    state.latestQueue = queue
+                                }
+                        }
+                        onDispose { job.cancel() }
+                    }
+                )
+            }
+        }
     }
 
     class LayoutData()
+
+    class CompositionScope {
+
+    }
 }

@@ -31,6 +31,14 @@ fun Theme.Companion.primaryContainerColorAsState(): State<Color> {
 fun Theme.Companion.surfaceColorAsState(): State<Color> {
 	return rememberUpdatedState(newValue = ComposeMaterialTheme.colorScheme.surface)
 }
+@Composable
+fun Theme.Companion.darkSurfaceColorAsState(): State<Color> {
+	return rememberUpdatedState(newValue = ComposeMaterialTheme.darkColorScheme.surface)
+}
+@Composable
+fun Theme.Companion.lightSurfaceColorAsState(): State<Color> {
+	return rememberUpdatedState(newValue = ComposeMaterialTheme.lightColorScheme.surface)
+}
 
 @Composable
 fun Theme.Companion.surfaceContentColorAsState(): State<Color> {
@@ -58,6 +66,16 @@ fun Theme.Companion.surfaceVariantColorAsState(): State<Color> {
 }
 
 @Composable
+fun Theme.Companion.lightSurfaceVariantColorAsState(): State<Color> {
+	return rememberUpdatedState(newValue = ComposeMaterialTheme.lightColorScheme.surfaceVariant)
+}
+
+@Composable
+fun Theme.Companion.darkSurfaceVariantColorAsState(): State<Color> {
+	return rememberUpdatedState(newValue = ComposeMaterialTheme.darkColorScheme.surfaceVariant)
+}
+
+@Composable
 fun Theme.Companion.surfaceVariantContentColorAsState(): State<Color> {
 	return rememberUpdatedState(newValue = MaterialTheme.colorScheme.onSurfaceVariant)
 }
@@ -76,7 +94,17 @@ fun Theme.Companion.absoluteBackgroundColorAsState(): State<Color> {
 
 @Composable
 fun Theme.Companion.backgroundContentColorAsState(): State<Color> {
-	return rememberUpdatedState(newValue = MaterialTheme.colorScheme.onBackground)
+	return rememberUpdatedState(newValue = ComposeMaterialTheme.colorScheme.onBackground)
+}
+
+@Composable
+fun Theme.Companion.darkBackgroundContentColorAsState(): State<Color> {
+	return rememberUpdatedState(newValue = ComposeMaterialTheme.darkColorScheme.onBackground)
+}
+
+@Composable
+fun Theme.Companion.lightBackgroundContentColorAsState(): State<Color> {
+	return rememberUpdatedState(newValue = ComposeMaterialTheme.lightColorScheme.onBackground)
 }
 
 @Composable
@@ -137,7 +165,11 @@ fun Theme.Companion.ProvideTheme(
 	MaterialTheme(
 		colorScheme = if (isDefaultDark) darkColorScheme else lightColorScheme,
 	) {
-		CompositionLocalProvider(ComposeMaterialTheme.LocalIsThemeDark provides isDefaultDark) {
+		CompositionLocalProvider(
+			ComposeMaterialTheme.LocalIsThemeDark provides isDefaultDark,
+			ComposeMaterialTheme.LocalLightColorScheme provides lightColorScheme,
+			ComposeMaterialTheme.LocalDarkColorScheme provides darkColorScheme
+		) {
 			content()
 		}
 	}

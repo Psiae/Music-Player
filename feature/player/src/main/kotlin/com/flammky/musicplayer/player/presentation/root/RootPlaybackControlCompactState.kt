@@ -1,11 +1,14 @@
 package com.flammky.musicplayer.player.presentation.root
 
 import android.graphics.Bitmap
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.MutatePriority
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.stopScroll
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -434,35 +438,117 @@ class CompactControlPagerState(
     val isSurfaceDark: @SnapshotRead () -> Boolean
 ) {
 
-    val applier = Applier()
+    val applier = Applier(this)
 
-    var currentLayoutComposition by mutableStateOf<LayoutComposition?>(null)
-
-    class Applier {
+    class Applier(private val state: CompactControlPagerState) {
         companion object {
-            @Suppress("NOTHING_TO_INLINE")
+
             @Composable
-            inline fun Applier.PrepareCompositionInline() {
-                DisposableEffect(key1 = this, effect = { onDispose { } })
+            fun Applier.ComposeLayout(
+                content: @Composable CompositionScope.() -> Unit
+            ) {
+                observeForScope()
+                    .apply {
+                        content()
+                        // assume that invoking the content means the pager layout is recomposed
+                        DoLayoutComposedWork()
+                    }
+            }
+
+            @Composable
+            private fun Applier.observeForScope(): CompositionScope {
+                val composableCoroutineScope = rememberCoroutineScope()
+                val state = remember {
+                    mutableStateOf(
+                        CompositionScope(
+                            state.layoutState,
+                            OldPlaybackQueue.UNSET,
+                            CoroutineScope(
+                                composableCoroutineScope.coroutineContext +
+                                        SupervisorJob(composableCoroutineScope.coroutineContext.job)
+                            ),
+                        )
+                    )
+                }.apply {
+                    DisposableEffect(
+                        key1 = this,
+                        effect = {
+                            val supervisor = SupervisorJob(composableCoroutineScope.coroutineContext.job)
+                            composableCoroutineScope.launch(supervisor) {
+                                try {
+                                    state.observeQueue()
+                                        .collect { queue ->
+                                            value.lifetimeCoroutineScope.cancel()
+                                            val lifetimeCoroutineScope = CoroutineScope(
+                                                currentCoroutineContext() + SupervisorJob(supervisor)
+                                            )
+                                            value = CompositionScope(state.layoutState, queue, lifetimeCoroutineScope)
+                                        }
+                                } finally {
+                                    value.lifetimeCoroutineScope.cancel()
+                                }
+                            }
+                            onDispose { supervisor.cancel() }
+                        }
+                    )
+                }
+
+                return state.value
+            }
+
+            @Composable
+            private fun CompositionScope.DoLayoutComposedWork() {
+                LaunchedEffect(
+                    key1 = this,
+                    block = {
+                        lifetimeCoroutineScope.launch {
+                            val targetIndex = queueData.currentIndex.coerceAtLeast(0)
+                            layoutState.stopScroll(MutatePriority.PreventUserInput)
+                            layoutState.animateScrollToPage(targetIndex)
+                            snapshotFlow { layoutState.currentPage }
+                                .first {
+                                    it == targetIndex
+                                }
+                            onPageCorrected()
+                        }
+                        lifetimeCoroutineScope.launch {
+                            awaitUserInteractionListener()
+                            userScrollEnabled = true
+                        }
+                    }
+                )
             }
         }
     }
 
-    class LayoutComposition(
-        val queueData: OldPlaybackQueue
+    class CompositionScope(
+        val layoutState: PagerState,
+        val queueData: OldPlaybackQueue,
+        val lifetimeCoroutineScope: CoroutineScope,
     ) {
+        val userInteractionListenerInstallationJob = Job()
 
-        var userScrollReady by mutableStateOf(false)
 
-        companion object {
+        var userScrollEnabled by mutableStateOf(false)
 
-            @Composable
-            fun LayoutComposition.OnComposingLayout() {
-            }
+        private val pageCorrectionJob = Job()
 
-            @Composable
-            fun LayoutComposition.OnLayoutComposed() {
-            }
+        fun onPageCorrected() {
+            check(pageCorrectionJob.isActive)
+            pageCorrectionJob.complete()
+        }
+
+        fun onUserInteractionListenerInstalled() {
+            check(pageCorrectionJob.isCompleted)
+            check(userInteractionListenerInstallationJob.isActive)
+            userInteractionListenerInstallationJob.complete()
+        }
+
+        suspend fun awaitPageCorrected() {
+            pageCorrectionJob.join()
+        }
+        suspend fun awaitUserInteractionListener() {
+            userInteractionListenerInstallationJob.join()
         }
     }
 }
@@ -516,27 +602,36 @@ class CompactControlBackgroundState(
 
     fun Modifier.backgroundModifier(): Modifier {
         return composed {
-            val darkTheme = Theme.isDarkAsState().value
-            val color = palette
-                .run {
-                    val argb =
-                        if (this is Palette) {
-                            if (darkTheme) {
-                                getDarkVibrantColor(getMutedColor(getDominantColor(-1)))
+            val backgroundColor = @Composable {
+                val darkTheme = Theme.isDarkAsState().value
+                val compositeOver = Theme.surfaceVariantColorAsState().value
+                val factor = 0.7f
+                val paletteGen = palette
+                    .run {
+                        remember(this, darkTheme) {
+                            if (this is Palette) {
+                                if (darkTheme) {
+                                    getDarkVibrantColor(getMutedColor(getDominantColor(-1)))
+                                } else {
+                                    getVibrantColor(getLightMutedColor(getDominantColor(-1)))
+                                }
                             } else {
-                                getVibrantColor(getLightMutedColor(getDominantColor(-1)))
+                                -1
                             }
-                        } else {
-                            -1
                         }
-                    if (argb != -1) {
-                        Color(argb)
+                    }
+                remember(compositeOver, paletteGen) {
+                    if (paletteGen == -1) {
+                        compositeOver
                     } else {
-                        Theme.surfaceVariantColorAsState().value
+                        Color(paletteGen).copy(factor).compositeOver(compositeOver)
                     }
                 }
-            onComposingBackgroundColor(color)
-            background(color)
+            }
+            val animatedBackgroundTransitionColor by
+                animateColorAsState(targetValue = backgroundColor())
+            onComposingBackgroundColor(animatedBackgroundTransitionColor)
+            background(animatedBackgroundTransitionColor)
         }
     }
 

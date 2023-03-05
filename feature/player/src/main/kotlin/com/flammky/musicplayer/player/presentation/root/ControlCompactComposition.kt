@@ -47,7 +47,9 @@ class ControlCompactComposition internal constructor(
     val backgroundState = CompactControlBackgroundState(
         observeArtwork = observeArtwork,
         observeQueue = observePlaybackQueue,
-        onComposingBackgroundColor = { isPagerSurfaceDark = it.luminance() <= 4 },
+        onComposingBackgroundColor = {
+            isPagerSurfaceDark = it.luminance() <= 0.4
+        },
         coroutineScope = coroutineScope
     )
 

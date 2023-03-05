@@ -108,7 +108,9 @@ private fun ContentLayout(
             Column {
                 Row(modifier = Modifier.padding(7.dp)) {
                     ArtworkDisplay(state = composition.artworkDisplayState)
+                    Spacer(modifier = Modifier.width(7.dp))
                     PagerControl(state = composition.pagerState)
+                    Spacer(modifier = Modifier.width(7.dp))
                     ButtonControls(state = composition.controlsState)
                 }
                 TimeBar(state = composition.timeBarState)

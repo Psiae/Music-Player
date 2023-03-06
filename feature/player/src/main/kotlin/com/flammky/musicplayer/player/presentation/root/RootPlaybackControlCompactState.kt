@@ -5,10 +5,8 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.MutatePriority
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.stopScroll
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -501,13 +499,39 @@ class CompactControlPagerState(
                 LaunchedEffect(
                     key1 = this,
                     block = {
-                        lifetimeCoroutineScope.launch {
+                        val pageCorrectionJob = lifetimeCoroutineScope.launch {
                             val targetIndex = queueData.currentIndex.coerceAtLeast(0)
-                            layoutState.stopScroll(MutatePriority.PreventUserInput)
-                            layoutState.animateScrollToPage(targetIndex)
+                            val spread =
+                                (queueData.currentIndex - 2) ..(queueData.currentIndex + 2)
+                            val expectScrollFromPage = layoutState.currentPage
+                            val isDirectionToLeft = expectScrollFromPage > targetIndex
+                            launch {
+                                try {
+                                    if (layoutState.currentPage in spread) {
+                                        layoutState.animateScrollToPage(targetIndex)
+                                    } else {
+                                        layoutState.scrollToPage(targetIndex)
+                                    }
+                                    awaitPageCorrected()
+                                    onPageFullyCorrected()
+                                } catch (cce: CancellationException) {
+                                    onPageFullCorrectionCancelled()
+                                }
+                            }
+                            var latestCollectedPage = -1
                             snapshotFlow { layoutState.currentPage }
-                                .first {
-                                    it == targetIndex
+                                .first { page ->
+                                    if (latestCollectedPage == -1) {
+                                        check(page == expectScrollFromPage)
+                                    } else {
+                                        if (isDirectionToLeft) {
+                                            check(page < latestCollectedPage)
+                                        } else {
+                                            check(page > latestCollectedPage)
+                                        }
+                                    }
+                                    latestCollectedPage = page
+                                    latestCollectedPage == targetIndex
                                 }
                             onPageCorrected()
                         }
@@ -521,6 +545,18 @@ class CompactControlPagerState(
         }
     }
 
+    class UserDragInstance(
+        val pointerId: Long
+    ) {
+
+    }
+
+    class UserScrollInstance(
+        val drag: UserDragInstance
+    ) {
+
+    }
+
     class CompositionScope(
         val layoutState: PagerState,
         val queueData: OldPlaybackQueue,
@@ -532,10 +568,21 @@ class CompactControlPagerState(
         var userScrollEnabled by mutableStateOf(false)
 
         private val pageCorrectionJob = Job()
+        private val pageFullCorrectionJob = Job()
 
         fun onPageCorrected() {
             check(pageCorrectionJob.isActive)
             pageCorrectionJob.complete()
+        }
+
+        fun onPageFullyCorrected() {
+            check(pageCorrectionJob.isActive)
+            pageCorrectionJob.complete()
+        }
+
+        fun onPageFullCorrectionCancelled() {
+            check(pageFullCorrectionJob.isActive)
+            pageCorrectionJob.cancel()
         }
 
         fun onUserInteractionListenerInstalled() {

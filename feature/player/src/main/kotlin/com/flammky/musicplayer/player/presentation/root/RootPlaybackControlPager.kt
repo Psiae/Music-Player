@@ -23,6 +23,7 @@ import dev.chrisbanes.snapper.ExperimentalSnapperApi
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.onStart
 import timber.log.Timber
 import kotlin.coroutines.coroutineContext
 
@@ -179,8 +180,11 @@ private class PagerStateApplier(
             composition,
             block = {
                 composition.withRememberSupervisor {
-                    pagerLayoutState.stopScroll(MutatePriority.PreventUserInput)
-                    snapshotFlow { userDraggingLayout }.first { !it }
+                    val targetIndex = composition.queueData.currentIndex.coerceAtLeast(0)
+                    val spread =
+                        (composition.queueData.currentIndex - 2) ..(composition.queueData.currentIndex + 2)
+                    val expectScrollFromPage = state.pagerLayoutState.currentPage
+                    val isDirectionToLeft = expectScrollFromPage > targetIndex
                     launch {
                         when {
                             firstAppliedLayout -> {
@@ -191,9 +195,6 @@ private class PagerStateApplier(
                                 )
                             }
                             run {
-                                val spread =
-                                    (composition.queueData.currentIndex - 2) ..
-                                            (composition.queueData.currentIndex + 2)
                                 pagerLayoutState.currentPage !in spread
                             } -> {
                                 scrollToAppliedCompositionPage(
@@ -217,8 +218,21 @@ private class PagerStateApplier(
                     composition
                         .apply {
                             onPageCorrectionDispatched()
-                            snapshotFlow { pagerLayoutState.currentPage }
-                                .first { it == composition.queueData.currentIndex }
+                            var latestCollectedPage = -1
+                            snapshotFlow { state.pagerLayoutState.currentPage }
+                                .first { page ->
+                                    if (latestCollectedPage == -1) {
+                                        check(page == expectScrollFromPage)
+                                    } else {
+                                        if (isDirectionToLeft) {
+                                            check(page < latestCollectedPage)
+                                        } else {
+                                            check(page > latestCollectedPage)
+                                        }
+                                    }
+                                    latestCollectedPage = page
+                                    latestCollectedPage == targetIndex
+                                }
                             onPageCorrectionAtPage()
                             awaitScrollToPageCorrection()
                             awaitUserInteractionListener()
@@ -274,6 +288,7 @@ private class PagerStateApplier(
         composition: PagerLayoutComposition
     ) {
         remember(composition) {
+            val targetInitialPage = composition.queueData.currentIndex.coerceAtLeast(0)
             val layoutPageCollectorStart = Job()
             val layoutDragCollectorStart = Job()
             val dragCollectorStart = Job()
@@ -282,24 +297,31 @@ private class PagerStateApplier(
                     launchInRememberScope {
                         composition.awaitScrollToPageCorrection()
                         snapshotFlow { pagerLayoutState.currentPage }
+                            .onStart {
+                                composition.currentPageInCompositionSpan = targetInitialPage
+                                layoutPageCollectorStart.complete()
+                            }
                             .collect { page ->
                                 composition.currentPageInCompositionSpan = page
-                                layoutPageCollectorStart.complete()
                             }
                     }
                     launchInRememberScope {
                         composition.awaitScrollToPageCorrection()
                         layoutPageCollectorStart.join()
                         snapshotFlow { userDraggingLayout }
+                            .onStart {
+                                composition.userDraggingToStartIndex = null
+                                layoutDragCollectorStart.complete()
+                            }
                             .collect { dragging ->
                                 composition.userDraggingToStartIndex =
                                     if (dragging) true to currentPageInCompositionSpan else null
-                                layoutDragCollectorStart.complete()
                             }
                     }
                     launchInRememberScope {
                         composition.awaitScrollToPageCorrection()
                         layoutDragCollectorStart.join()
+                        check(pagerLayoutState.currentPage == targetInitialPage)
                         var latestDragInstance: PagerLayoutComposition.UserDragInstance? = null
                         var latestScrollInstance: PagerLayoutComposition.UserScrollInstance? = null
                         try {
@@ -329,6 +351,7 @@ private class PagerStateApplier(
                         layoutPageCollectorStart.join()
                         layoutDragCollectorStart.join()
                         dragCollectorStart.join()
+                        check(pagerLayoutState.currentPage == targetInitialPage)
                         composition.onUserInteractionListenerInstalled()
                     }
                 }
@@ -342,10 +365,10 @@ private class PagerStateApplier(
         LaunchedEffect(
             composition,
             block = {
-                composition.forEachUserPageScroll { instance ->
-                    Timber.d("RootPlaybackControlPager, forEachUserPageScroll $instance")
-                    try {
-                        composition.launchInRememberScope {
+                composition.run {
+                    launchInRememberScope {
+                        forEachUserPageScroll { instance ->
+                            Timber.d("RootPlaybackControlPager, forEachUserPageScroll $instance")
                             var latestPage = instance.startPageIndex
                             runCatching {
                                 // suspend until drag pointer is up
@@ -367,7 +390,7 @@ private class PagerStateApplier(
                                 }
                             }
                         }
-                    } catch (ce: CancellationException) {}
+                    }
                 }
             }
         )

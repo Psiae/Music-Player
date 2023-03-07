@@ -7,6 +7,7 @@ import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -496,10 +497,11 @@ class CompactControlPagerState(
 
             @Composable
             private fun CompositionScope.DoLayoutComposedWork() {
-                LaunchedEffect(
+                DisposableEffect(
                     key1 = this,
-                    block = {
-                        val pageCorrectionJob = lifetimeCoroutineScope.launch {
+                    effect = {
+                        val supervisor = SupervisorJob()
+                        val pageCorrectionJob = lifetimeCoroutineScope.launch(supervisor) {
                             val targetIndex = queueData.currentIndex.coerceAtLeast(0)
                             val spread =
                                 (queueData.currentIndex - 2) ..(queueData.currentIndex + 2)
@@ -535,10 +537,96 @@ class CompactControlPagerState(
                                 }
                             onPageCorrected()
                         }
-                        lifetimeCoroutineScope.launch {
-                            awaitUserInteractionListener()
+                        val pageSupervisorJob = lifetimeCoroutineScope.launch(supervisor) {
+                            awaitPageCorrected()
+                            val targetPage = queueData.currentIndex.coerceAtLeast(0)
+                            snapshotFlow { layoutState.currentPage }
+                                .onStart {
+                                    check(layoutState.currentPage == targetPage)
+                                    currentPageInCompositionSpan = targetPage
+                                    onPageSupervisorInstalled()
+                                }
+                                .collect { page ->
+                                    currentPageInCompositionSpan = page
+                                }
+                        }
+                        // should we install listener on every page change instead ?
+                        val userDragListenerJob = lifetimeCoroutineScope.launch(supervisor) {
+                            val stack = mutableListOf<UserDragInstance>()
+                            layoutState.interactionSource.interactions
+                                .onStart { onDragSupervisorInstalled() }
+                                .collect { interaction ->
+                                    if (interaction !is DragInteraction) return@collect
+                                    when (interaction) {
+                                        is DragInteraction.Start -> {
+                                            val dragInstance = UserDragInstance(
+                                                interaction,
+                                                currentPageInCompositionSpan
+                                            )
+                                            val scrollInstance = UserScrollInstance(dragInstance)
+                                            stack.add(dragInstance)
+                                            userDraggingLayout = true
+                                            userScrollInstance = UserScrollInstance(dragInstance)
+                                        }
+                                        is DragInteraction.Stop -> {
+                                            var indexToRemove: Int? = null
+                                            run {
+                                                stack.forEachIndexed { index, userDragInstance ->
+                                                    if (userDragInstance.start === interaction.start) {
+                                                        indexToRemove = index
+                                                        return@run
+                                                    }
+
+                                                }
+                                            }
+                                            indexToRemove?.let { i ->
+                                                stack.removeAt(i).apply {
+                                                    check(start === interaction.start)
+                                                    onStopped()
+                                                }
+                                                if (stack.isEmpty()) userDraggingLayout = false
+                                            }
+                                        }
+                                        is DragInteraction.Cancel -> {
+                                            var indexToRemove: Int? = null
+                                            run {
+                                                stack.forEachIndexed { index, userDragInstance ->
+                                                    if (userDragInstance.start === interaction.start) {
+                                                        indexToRemove = index
+                                                        return@run
+                                                    }
+                                                }
+                                            }
+                                            indexToRemove?.let { i ->
+                                                stack.removeAt(i).apply {
+                                                    check(start === interaction.start)
+                                                    onCancelled()
+                                                }
+                                                if (stack.isEmpty()) userDraggingLayout = false
+                                            }
+                                        }
+                                    }
+                                }
+                        }
+                        val userScrollListenerJob = lifetimeCoroutineScope.launch(supervisor) {
+                            snapshotFlow { userScrollInstance }
+                                .collect {  scroll ->
+                                    scroll?.withLifetime {
+                                        snapshotFlow { currentPageInCompositionSpan }
+                                            .collect { page ->
+                                                scroll.onScrollOverPage(page)
+                                            }
+                                    }
+                                }
+                        }
+                        lifetimeCoroutineScope.launch(supervisor) {
+                            awaitPageCorrected()
+                            awaitPageSupervisor()
+                            awaitDragSupervisor()
+                            onUserInteractionListenerInstalled()
                             userScrollEnabled = true
                         }
+                        onDispose { supervisor.cancel() }
                     }
                 )
             }
@@ -546,15 +634,73 @@ class CompactControlPagerState(
     }
 
     class UserDragInstance(
-        val pointerId: Long
+        val start: DragInteraction.Start,
+        val startPage: Int
     ) {
 
+        val lifetime = Job()
+
+        fun onStopped()  {
+            check(lifetime.isActive)
+            lifetime.complete()
+        }
+
+        fun onCancelled() {
+            check(lifetime.isActive)
+            lifetime.complete()
+        }
     }
 
     class UserScrollInstance(
         val drag: UserDragInstance
     ) {
+        private val nextInstance = CompletableDeferred<UserScrollInstance>()
+        private val lifetime = Job()
+        private val completion = Job()
 
+        var currentPage by mutableStateOf(drag.startPage)
+            private set
+
+        fun onScrollStopped() {
+            check(lifetime.isActive)
+            check(completion.isActive)
+            completion.complete()
+            lifetime.complete()
+        }
+
+        fun onScrollInterrupted() {
+            check(lifetime.isActive)
+            check(completion.isActive)
+            completion.cancel()
+            lifetime.complete()
+        }
+
+        fun onNextScroll(next: UserScrollInstance) {
+            check(next !== this)
+            check(!completion.isActive)
+            check(lifetime.isCompleted)
+            check(nextInstance.isActive)
+            nextInstance.complete(next)
+        }
+
+        fun onScrollOverPage(page: Int) {
+            check(lifetime.isActive)
+            currentPage = page
+        }
+
+        suspend fun awaitNextScroll(): UserScrollInstance = nextInstance.await()
+
+        suspend fun withLifetime(
+            block: suspend () -> Unit
+        ) {
+            withContext(lifetime) {
+                try {
+                    block()
+                } catch (ex: CancellationException) {
+                    if (lifetime.isActive) throw ex
+                }
+            }
+        }
     }
 
     class CompositionScope(
@@ -562,10 +708,15 @@ class CompactControlPagerState(
         val queueData: OldPlaybackQueue,
         val lifetimeCoroutineScope: CoroutineScope,
     ) {
-        val userInteractionListenerInstallationJob = Job()
+        private val userInteractionListenerInstallationJob = Job()
+        private val pageSupervisorInstallationJob = Job()
+        private val dragSupervisorInstallationJob = Job()
 
 
+        var userDraggingLayout by mutableStateOf(false)
         var userScrollEnabled by mutableStateOf(false)
+        var currentPageInCompositionSpan by mutableStateOf(-1)
+        var userScrollInstance by mutableStateOf<UserScrollInstance?>(null)
 
         private val pageCorrectionJob = Job()
         private val pageFullCorrectionJob = Job()
@@ -585,8 +736,20 @@ class CompactControlPagerState(
             pageCorrectionJob.cancel()
         }
 
+        fun onPageSupervisorInstalled() {
+            check(pageSupervisorInstallationJob.isActive)
+            pageSupervisorInstallationJob.complete()
+        }
+
+        fun onDragSupervisorInstalled() {
+            check(dragSupervisorInstallationJob.isActive)
+            dragSupervisorInstallationJob.complete()
+        }
+
         fun onUserInteractionListenerInstalled() {
             check(pageCorrectionJob.isCompleted)
+            check(pageSupervisorInstallationJob.isCompleted)
+            check(dragSupervisorInstallationJob.isCompleted)
             check(userInteractionListenerInstallationJob.isActive)
             userInteractionListenerInstallationJob.complete()
         }
@@ -596,6 +759,12 @@ class CompactControlPagerState(
         }
         suspend fun awaitUserInteractionListener() {
             userInteractionListenerInstallationJob.join()
+        }
+        suspend fun awaitPageSupervisor() {
+            pageSupervisorInstallationJob.join()
+        }
+        suspend fun awaitDragSupervisor() {
+            dragSupervisorInstallationJob.join()
         }
     }
 }
@@ -609,9 +778,9 @@ class CompactButtonControlsState(
 
     class Applier {
         companion object {
-            @Suppress("NOTHING_TO_INLINE")
+
             @Composable
-            inline fun Applier.PrepareCompositionInline() {
+            fun Applier.PrepareComposition() {
                 DisposableEffect(key1 = this, effect = { onDispose { } })
             }
         }

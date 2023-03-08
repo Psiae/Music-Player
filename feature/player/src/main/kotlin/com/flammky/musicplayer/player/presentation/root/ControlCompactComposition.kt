@@ -29,6 +29,20 @@ class ControlCompactComposition internal constructor(
     private val observeProgressWithIntervalHandle: (
         getInterval: (progress: Duration, duration: Duration, speed: Float) -> Duration
     ) -> Flow<Duration>,
+    private val requestPlaybackMovePrevious: (
+        expectCurrentQueue: OldPlaybackQueue,
+        expectFromIndex: Int,
+        expectFromId: String,
+        expectPreviousIndex: Int,
+        expectPreviousId: String
+    ) -> Deferred<Result<Boolean>>,
+    private val requestPlaybackMoveNext: (
+        expectCurrentQueue: OldPlaybackQueue,
+        expectFromIndex: Int,
+        expectFromId: String,
+        expectPreviousIndex: Int,
+        expectPreviousId: String
+    ) -> Deferred<Result<Boolean>>,
     private val coroutineScope: CoroutineScope
 ) {
 
@@ -64,7 +78,9 @@ class ControlCompactComposition internal constructor(
         observeArtwork = observeArtwork,
         observeMetadata = observeMetadata,
         observeQueue = observePlaybackQueue,
-        isSurfaceDark = ::isPagerSurfaceDark
+        isSurfaceDark = ::isPagerSurfaceDark,
+        requestPlaybackMovePrevious = requestPlaybackMovePrevious,
+        requestPlaybackMoveNext = requestPlaybackMoveNext,
     )
 
     val controlsState = CompactButtonControlsState(

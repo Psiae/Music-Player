@@ -1,12 +1,15 @@
 package com.flammky.musicplayer.player.presentation.root
 
 import android.graphics.Bitmap
+import android.util.Log
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.MutatePriority
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.stopScroll
 import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -113,6 +116,8 @@ internal class ControlCompactCoordinator(
         observePlaybackProperties = ::observeControllerPlaybackProperties,
         setPlayWhenReady = ::setPlayWhenReady,
         observeProgressWithIntervalHandle = ::observeProgressWithIntervalHandle,
+        requestPlaybackMoveNext = ::requestPlaybackMoveNext,
+        requestPlaybackMovePrevious = ::requestPlaybackMovePrevious,
         coroutineScope = coroutineScope
     )
 
@@ -189,6 +194,56 @@ internal class ControlCompactCoordinator(
                 collector.positionStateFlow.collect(this@flow)
             } finally {
                 observer.dispose()
+            }
+        }
+    }
+
+    private fun requestPlaybackMoveNext(
+        expectCurrentQueue: OldPlaybackQueue,
+        expectFromIndex: Int,
+        expectFromId: String,
+        expectNextIndex: Int,
+        expectNextId: String
+    ): Deferred<Result<Boolean>> {
+        return coroutineDispatchScope.async {
+            runCatching {
+                if (expectFromIndex + 1 != expectNextIndex) {
+                    return@runCatching false
+                }
+                state.playbackController.requestSeekAsync(
+                    expectFromIndex,
+                    expectFromId,
+                    expectNextIndex,
+                    expectNextId
+                ).await().run {
+                    eventDispatch?.join()
+                    success
+                }
+            }
+        }
+    }
+
+    private fun requestPlaybackMovePrevious(
+        expectCurrentQueue: OldPlaybackQueue,
+        expectFromIndex: Int,
+        expectFromId: String,
+        expectNextIndex: Int,
+        expectNextId: String
+    ): Deferred<Result<Boolean>> {
+        return coroutineDispatchScope.async {
+            runCatching {
+                if (expectFromIndex - 1 != expectNextIndex) {
+                    return@runCatching false
+                }
+                state.playbackController.requestSeekAsync(
+                    expectFromIndex,
+                    expectFromId,
+                    expectNextIndex,
+                    expectNextId
+                ).await().run {
+                    eventDispatch?.join()
+                    success
+                }
             }
         }
     }
@@ -434,6 +489,20 @@ class CompactControlPagerState(
     val observeMetadata: (String) -> Flow<MediaMetadata?>,
     val observeArtwork: (String) -> Flow<Any?>,
     val observeQueue: () -> Flow<OldPlaybackQueue>,
+    val requestPlaybackMovePrevious: (
+        expectCurrentQueue: OldPlaybackQueue,
+        expectFromIndex: Int,
+        expectFromId: String,
+        expectPreviousIndex: Int,
+        expectPreviousId: String
+    ) -> Deferred<Result<Boolean>>,
+    val requestPlaybackMoveNext: (
+        expectCurrentQueue: OldPlaybackQueue,
+        expectFromIndex: Int,
+        expectFromId: String,
+        expectPreviousIndex: Int,
+        expectPreviousId: String
+    ) -> Deferred<Result<Boolean>>,
     val isSurfaceDark: @SnapshotRead () -> Boolean
 ) {
 
@@ -450,7 +519,7 @@ class CompactControlPagerState(
                     .apply {
                         content()
                         // assume that invoking the content means the pager layout is recomposed
-                        DoLayoutComposedWork()
+                        DoLayoutComposedWork(this@ComposeLayout)
                     }
             }
 
@@ -496,7 +565,7 @@ class CompactControlPagerState(
             }
 
             @Composable
-            private fun CompositionScope.DoLayoutComposedWork() {
+            private fun CompositionScope.DoLayoutComposedWork(self: Applier) {
                 DisposableEffect(
                     key1 = this,
                     effect = {
@@ -556,6 +625,7 @@ class CompactControlPagerState(
                             layoutState.interactionSource.interactions
                                 .onStart { onDragSupervisorInstalled() }
                                 .collect { interaction ->
+                                    Log.d("RootCompactPager", "drag: collected=$interaction")
                                     if (interaction !is DragInteraction) return@collect
                                     when (interaction) {
                                         is DragInteraction.Start -> {
@@ -566,7 +636,23 @@ class CompactControlPagerState(
                                             val scrollInstance = UserScrollInstance(dragInstance)
                                             stack.add(dragInstance)
                                             userDraggingLayout = true
-                                            userScrollInstance = UserScrollInstance(dragInstance)
+                                            userScrollInstance = scrollInstance
+                                            lifetimeCoroutineScope.launch {
+                                                scrollInstance.withLifetime {
+                                                    snapshotFlow { currentPageInCompositionSpan }
+                                                        .collect { page ->
+                                                            scrollInstance.onScrollOverPage(page)
+                                                        }
+                                                }
+                                            }
+                                            lifetimeCoroutineScope.launch {
+                                                scrollInstance.withLifetime {
+                                                    snapshotFlow { layoutState.isScrollInProgress }
+                                                        .collect {
+                                                            if (!it) scrollInstance.onScrollStopped()
+                                                        }
+                                                }
+                                            }
                                         }
                                         is DragInteraction.Stop -> {
                                             var indexToRemove: Int? = null
@@ -576,7 +662,6 @@ class CompactControlPagerState(
                                                         indexToRemove = index
                                                         return@run
                                                     }
-
                                                 }
                                             }
                                             indexToRemove?.let { i ->
@@ -608,14 +693,50 @@ class CompactControlPagerState(
                                     }
                                 }
                         }
-                        val userScrollListenerJob = lifetimeCoroutineScope.launch(supervisor) {
+                        val userSwipeListenerJob = lifetimeCoroutineScope.launch(supervisor) {
                             snapshotFlow { userScrollInstance }
-                                .collect {  scroll ->
-                                    scroll?.withLifetime {
-                                        snapshotFlow { currentPageInCompositionSpan }
-                                            .collect { page ->
-                                                scroll.onScrollOverPage(page)
+                                .filterNotNull()
+                                .collect { scroll ->
+                                    Log.d("RootCompactPager", "swipe: collectedScrollInstance=$scroll")
+                                    val next = runCatching {
+                                        scroll.withLifetime {
+                                            runCatching {
+                                                scroll.drag.withLifetime { awaitCancellation() }
                                             }
+                                            snapshotFlow { scroll.currentPage }
+                                                .first { page ->
+                                                    page != scroll.drag.startPage
+                                                }
+                                        }
+                                    }.getOrElse { -1 }
+                                    Log.d("RootCompactPager", "swipe: next=$next")
+                                    launch {
+                                        val success = when (next) {
+                                            scroll.drag.startPage + 1 -> {
+                                                self.state.requestPlaybackMoveNext(
+                                                    queueData,
+                                                    scroll.drag.startPage,
+                                                    queueData.list[scroll.drag.startPage],
+                                                    next,
+                                                    queueData.list[next]
+                                                ).await().getOrElse { false }
+                                            }
+                                            scroll.drag.startPage - 1 -> {
+                                                self.state.requestPlaybackMovePrevious(
+                                                    queueData,
+                                                    scroll.drag.startPage,
+                                                    queueData.list[scroll.drag.startPage],
+                                                    next,
+                                                    queueData.list[next]
+                                                ).await().getOrElse { false }
+                                            }
+                                            else -> false
+                                        }
+                                        Log.d("RootCompactPager", "swipe: success=$success")
+                                        if (!success) {
+                                            layoutState.stopScroll(MutatePriority.PreventUserInput)
+                                            layoutState.scrollToPage(queueData.currentIndex)
+                                        }
                                     }
                                 }
                         }
@@ -638,16 +759,24 @@ class CompactControlPagerState(
         val startPage: Int
     ) {
 
-        val lifetime = Job()
+        val lifetime = SupervisorJob()
 
         fun onStopped()  {
             check(lifetime.isActive)
-            lifetime.complete()
+            lifetime.cancel()
         }
 
         fun onCancelled() {
             check(lifetime.isActive)
-            lifetime.complete()
+            lifetime.cancel()
+        }
+
+        suspend fun withLifetime(
+            block: suspend () -> Unit
+        ) {
+            withContext(lifetime) {
+                block()
+            }
         }
     }
 
@@ -655,8 +784,8 @@ class CompactControlPagerState(
         val drag: UserDragInstance
     ) {
         private val nextInstance = CompletableDeferred<UserScrollInstance>()
-        private val lifetime = Job()
-        private val completion = Job()
+        private val lifetime = SupervisorJob()
+        private val completion = SupervisorJob()
 
         var currentPage by mutableStateOf(drag.startPage)
             private set
@@ -665,14 +794,14 @@ class CompactControlPagerState(
             check(lifetime.isActive)
             check(completion.isActive)
             completion.complete()
-            lifetime.complete()
+            lifetime.cancel()
         }
 
         fun onScrollInterrupted() {
             check(lifetime.isActive)
             check(completion.isActive)
             completion.cancel()
-            lifetime.complete()
+            lifetime.cancel()
         }
 
         fun onNextScroll(next: UserScrollInstance) {
@@ -690,15 +819,11 @@ class CompactControlPagerState(
 
         suspend fun awaitNextScroll(): UserScrollInstance = nextInstance.await()
 
-        suspend fun withLifetime(
-            block: suspend () -> Unit
-        ) {
-            withContext(lifetime) {
-                try {
-                    block()
-                } catch (ex: CancellationException) {
-                    if (lifetime.isActive) throw ex
-                }
+        suspend fun <R> withLifetime(
+            block: suspend () -> R
+        ): R {
+            return withContext(lifetime) {
+                block()
             }
         }
     }
@@ -727,13 +852,13 @@ class CompactControlPagerState(
         }
 
         fun onPageFullyCorrected() {
-            check(pageCorrectionJob.isActive)
-            pageCorrectionJob.complete()
+            check(pageFullCorrectionJob.isActive)
+            pageFullCorrectionJob.complete()
         }
 
         fun onPageFullCorrectionCancelled() {
             check(pageFullCorrectionJob.isActive)
-            pageCorrectionJob.cancel()
+            pageFullCorrectionJob.cancel()
         }
 
         fun onPageSupervisorInstalled() {

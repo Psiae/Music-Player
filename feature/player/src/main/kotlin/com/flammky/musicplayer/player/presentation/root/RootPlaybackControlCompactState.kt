@@ -622,76 +622,83 @@ class CompactControlPagerState(
                         // should we install listener on every page change instead ?
                         val userDragListenerJob = lifetimeCoroutineScope.launch(supervisor) {
                             val stack = mutableListOf<UserDragInstance>()
-                            layoutState.interactionSource.interactions
-                                .onStart { onDragSupervisorInstalled() }
-                                .collect { interaction ->
-                                    Log.d("RootCompactPager", "drag: collected=$interaction")
-                                    if (interaction !is DragInteraction) return@collect
-                                    when (interaction) {
-                                        is DragInteraction.Start -> {
-                                            val dragInstance = UserDragInstance(
-                                                interaction,
-                                                currentPageInCompositionSpan
-                                            )
-                                            val scrollInstance = UserScrollInstance(dragInstance)
-                                            stack.add(dragInstance)
-                                            userDraggingLayout = true
-                                            userScrollInstance = scrollInstance
-                                            lifetimeCoroutineScope.launch {
-                                                scrollInstance.withLifetime {
-                                                    snapshotFlow { currentPageInCompositionSpan }
-                                                        .collect { page ->
-                                                            scrollInstance.onScrollOverPage(page)
-                                                        }
+                            try {
+                                layoutState.interactionSource.interactions
+                                    .onStart { onDragSupervisorInstalled() }
+                                    .collect { interaction ->
+                                        Log.d("RootCompactPager", "drag: collected=$interaction")
+                                        if (interaction !is DragInteraction) return@collect
+                                        when (interaction) {
+                                            is DragInteraction.Start -> {
+                                                val dragInstance = UserDragInstance(
+                                                    interaction,
+                                                    currentPageInCompositionSpan
+                                                )
+                                                val scrollInstance = UserScrollInstance(dragInstance)
+                                                stack.add(dragInstance)
+                                                userDraggingLayout = true
+                                                userScrollInstance = scrollInstance
+                                                lifetimeCoroutineScope.launch {
+                                                    scrollInstance.inLifetime {
+                                                        snapshotFlow { currentPageInCompositionSpan }
+                                                            .collect { page ->
+                                                                scrollInstance.onScrollOverPage(page)
+                                                            }
+                                                    }
                                                 }
-                                            }
-                                            lifetimeCoroutineScope.launch {
-                                                scrollInstance.withLifetime {
-                                                    snapshotFlow { layoutState.isScrollInProgress }
-                                                        .collect {
-                                                            if (!it) scrollInstance.onScrollStopped()
+                                                lifetimeCoroutineScope.launch {
+                                                    try {
+                                                        scrollInstance.inLifetime {
+                                                            snapshotFlow { layoutState.isScrollInProgress }
+                                                                .first { !it }
                                                         }
-                                                }
-                                            }
-                                        }
-                                        is DragInteraction.Stop -> {
-                                            var indexToRemove: Int? = null
-                                            run {
-                                                stack.forEachIndexed { index, userDragInstance ->
-                                                    if (userDragInstance.start === interaction.start) {
-                                                        indexToRemove = index
-                                                        return@run
+                                                        scrollInstance.onScrollStopped()
+                                                    } catch (ce: CancellationException) {
+                                                        scrollInstance.onScrollInterrupted()
                                                     }
                                                 }
                                             }
-                                            indexToRemove?.let { i ->
-                                                stack.removeAt(i).apply {
-                                                    check(start === interaction.start)
-                                                    onStopped()
-                                                }
-                                                if (stack.isEmpty()) userDraggingLayout = false
-                                            }
-                                        }
-                                        is DragInteraction.Cancel -> {
-                                            var indexToRemove: Int? = null
-                                            run {
-                                                stack.forEachIndexed { index, userDragInstance ->
-                                                    if (userDragInstance.start === interaction.start) {
-                                                        indexToRemove = index
-                                                        return@run
+                                            is DragInteraction.Stop -> {
+                                                var indexToRemove: Int? = null
+                                                run {
+                                                    stack.forEachIndexed { index, userDragInstance ->
+                                                        if (userDragInstance.start === interaction.start) {
+                                                            indexToRemove = index
+                                                            return@run
+                                                        }
                                                     }
                                                 }
-                                            }
-                                            indexToRemove?.let { i ->
-                                                stack.removeAt(i).apply {
-                                                    check(start === interaction.start)
-                                                    onCancelled()
+                                                indexToRemove?.let { i ->
+                                                    stack.removeAt(i).apply {
+                                                        check(start === interaction.start)
+                                                        onStopped()
+                                                    }
+                                                    if (stack.isEmpty()) userDraggingLayout = false
                                                 }
-                                                if (stack.isEmpty()) userDraggingLayout = false
+                                            }
+                                            is DragInteraction.Cancel -> {
+                                                var indexToRemove: Int? = null
+                                                run {
+                                                    stack.forEachIndexed { index, userDragInstance ->
+                                                        if (userDragInstance.start === interaction.start) {
+                                                            indexToRemove = index
+                                                            return@run
+                                                        }
+                                                    }
+                                                }
+                                                indexToRemove?.let { i ->
+                                                    stack.removeAt(i).apply {
+                                                        check(start === interaction.start)
+                                                        onCancelled()
+                                                    }
+                                                    if (stack.isEmpty()) userDraggingLayout = false
+                                                }
                                             }
                                         }
                                     }
-                                }
+                            } finally {
+                                stack.forEach { it.onCancelled() }
+                            }
                         }
                         val userSwipeListenerJob = lifetimeCoroutineScope.launch(supervisor) {
                             snapshotFlow { userScrollInstance }
@@ -699,9 +706,9 @@ class CompactControlPagerState(
                                 .collect { scroll ->
                                     Log.d("RootCompactPager", "swipe: collectedScrollInstance=$scroll")
                                     val next = runCatching {
-                                        scroll.withLifetime {
+                                        scroll.inLifetime {
                                             runCatching {
-                                                scroll.drag.withLifetime { awaitCancellation() }
+                                                scroll.drag.inLifetime { awaitCancellation() }
                                             }
                                             snapshotFlow { scroll.currentPage }
                                                 .first { page ->
@@ -735,6 +742,7 @@ class CompactControlPagerState(
                                         Log.d("RootCompactPager", "swipe: success=$success")
                                         if (!success) {
                                             layoutState.stopScroll(MutatePriority.PreventUserInput)
+                                            snapshotFlow { userDraggingLayout }.first { !it }
                                             layoutState.scrollToPage(queueData.currentIndex)
                                         }
                                     }
@@ -771,7 +779,7 @@ class CompactControlPagerState(
             lifetime.cancel()
         }
 
-        suspend fun withLifetime(
+        suspend fun inLifetime(
             block: suspend () -> Unit
         ) {
             withContext(lifetime) {
@@ -819,7 +827,7 @@ class CompactControlPagerState(
 
         suspend fun awaitNextScroll(): UserScrollInstance = nextInstance.await()
 
-        suspend fun <R> withLifetime(
+        suspend fun <R> inLifetime(
             block: suspend () -> R
         ): R {
             return withContext(lifetime) {

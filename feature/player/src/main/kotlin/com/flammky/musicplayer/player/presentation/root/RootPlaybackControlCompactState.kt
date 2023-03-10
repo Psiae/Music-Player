@@ -6,11 +6,13 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Indication
 import androidx.compose.foundation.MutatePriority
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.stopScroll
 import androidx.compose.foundation.interaction.DragInteraction
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,6 +25,7 @@ import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.*
 import androidx.palette.graphics.Palette
 import coil.request.ImageRequest
@@ -297,6 +300,7 @@ internal class ControlCompactCoordinator(
         inline fun ControlCompactCoordinator.PrepareCompositionInline() {
             // I don't think these should be composable, but that's for later
             ComposeRemoteQueueReaderObserver()
+            ComposeRemotePropertiesReaderObserver()
             DisposableEffect(
                 key1 = this,
                 effect = {
@@ -946,24 +950,122 @@ class CompactControlPagerState(
 }
 
 class CompactButtonControlsState(
-    observePlaybackProperties: () -> Flow<PlaybackProperties>,
-    setPlayWhenReady: (play: Boolean, joinCollectorDispatch: Boolean) -> Deferred<Result<Boolean>>
+    private val observePlaybackProperties: () -> Flow<PlaybackProperties>,
+    private val setPlayWhenReady: (play: Boolean, joinCollectorDispatch: Boolean) -> Deferred<Result<Boolean>>,
+    private val isSurfaceDark: @SnapshotRead () -> Boolean
 ) {
 
-    val applier = Applier()
+    val applier = Applier(this)
 
-    class Applier {
+    class Applier(private val state: CompactButtonControlsState) {
         companion object {
 
             @Composable
-            fun Applier.PrepareComposition() {
-                DisposableEffect(key1 = this, effect = { onDispose { } })
+            fun Applier.ComposeLayout(
+                content: @Composable CompositionScope.() -> Unit
+            ) {
+                observeForScope()
+                    .run {
+                        content()
+                    }
+            }
+
+            @Composable
+            private fun Applier.observeForScope(): CompositionScope {
+                val composableCoroutineScope = rememberCoroutineScope()
+                val latestScopeState = remember {
+                    mutableStateOf(
+                        CompositionScope(
+                            PlaybackProperties.UNSET,
+                            CoroutineScope(SupervisorJob()),
+                            state.setPlayWhenReady,
+                            state.isSurfaceDark
+                        )
+                    )
+                }
+                DisposableEffect(
+                    key1 = this,
+                    effect = {
+                        check(state.applier === this@observeForScope)
+                        val supervisor = SupervisorJob()
+                        composableCoroutineScope.launch(supervisor) {
+                            state.observePlaybackProperties()
+                                .collect {
+                                    Timber.d("CompactControlState, collectedProperties: $it")
+                                    latestScopeState.value.onReplaced()
+                                    latestScopeState.value =
+                                        CompositionScope(
+                                            it,
+                                            CoroutineScope(
+                                                composableCoroutineScope.coroutineContext + SupervisorJob(supervisor)
+                                            ),
+                                            state.setPlayWhenReady,
+                                            state.isSurfaceDark
+                                        )
+                                }
+                        }
+                        onDispose {
+                            latestScopeState.value.onDisposedByComposer()
+                            supervisor.cancel()
+                        }
+                    }
+                )
+                return latestScopeState.value
             }
         }
     }
 
 
-    class LayoutData()
+    class CompositionScope(
+        private val properties: PlaybackProperties,
+        private val lifetimeCoroutineScope: CoroutineScope,
+        private val setPlayWhenReady: (
+            play: Boolean,
+            joinCollectorDispatch: Boolean
+        ) -> Deferred<Result<Boolean>>,
+        val isSurfaceDark: @SnapshotRead () -> Boolean
+    ) {
+
+        var allowPlayPauseInteraction by mutableStateOf(true)
+
+        fun Modifier.playButtonInteractionModifier(
+            interactionSource: MutableInteractionSource? = null,
+            indication: Indication? = null,
+        ): Modifier {
+            return composed {
+                clickable(
+                    interactionSource = interactionSource ?: remember { MutableInteractionSource() },
+                    indication = indication,
+                    enabled = allowPlayPauseInteraction,
+                    onClickLabel = null,
+                    role = Role.Button
+                ) {
+                    if (!allowPlayPauseInteraction) return@clickable
+                    allowPlayPauseInteraction = false
+                    lifetimeCoroutineScope.launch {
+                        setPlayWhenReady(!properties.playWhenReady, true).await()
+                        allowPlayPauseInteraction = true
+                    }
+                }
+            }
+        }
+
+        fun onDisposedByComposer() {
+            lifetimeCoroutineScope.cancel()
+        }
+
+        fun onReplaced() {
+            lifetimeCoroutineScope.cancel()
+        }
+
+        companion object {
+
+            @Composable
+            fun CompositionScope.showPlayButton(): Boolean {
+                return !properties.playWhenReady
+            }
+        }
+    }
 }
 
 class CompactControlTimeBarState(

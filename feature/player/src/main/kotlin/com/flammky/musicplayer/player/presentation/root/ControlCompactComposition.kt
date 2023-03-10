@@ -51,6 +51,7 @@ class ControlCompactComposition internal constructor(
 ) {
 
     private var isPagerSurfaceDark by mutableStateOf(false)
+    private var isButtonControlSurfaceDark by mutableStateOf(false)
 
     var topPosition by mutableStateOf(0.dp)
     var topPositionFromAnchor by mutableStateOf(0.dp)
@@ -66,7 +67,9 @@ class ControlCompactComposition internal constructor(
         observeArtwork = observeArtwork,
         observeQueue = observePlaybackQueue,
         onComposingBackgroundColor = {
-            isPagerSurfaceDark = it.luminance() <= 0.4
+            val dark = it.luminance() <= 0.4
+            isPagerSurfaceDark = dark
+            isButtonControlSurfaceDark = dark
         },
         coroutineScope = coroutineScope
     )
@@ -89,7 +92,8 @@ class ControlCompactComposition internal constructor(
 
     val controlsState = CompactButtonControlsState(
         observePlaybackProperties = observePlaybackProperties,
-        setPlayWhenReady = setPlayWhenReady
+        setPlayWhenReady = setPlayWhenReady,
+        isSurfaceDark = ::isButtonControlSurfaceDark
     )
 
     val timeBarState = CompactControlTimeBarState(

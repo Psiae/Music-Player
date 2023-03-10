@@ -106,7 +106,7 @@ private fun ContentLayout(
         Box {
             RootPlaybackControlCompactBackground(composition.backgroundState)
             Column {
-                Row(modifier = Modifier.padding(7.dp)) {
+                Row(modifier = Modifier.padding(7.dp).weight(1f)) {
                     ArtworkDisplay(state = composition.artworkDisplayState)
                     Spacer(modifier = Modifier.width(7.dp))
                     PagerControl(state = composition.pagerState)
@@ -137,4 +137,4 @@ private inline fun ButtonControls(
 @Composable
 private inline fun ColumnScope.TimeBar(
     state: CompactControlTimeBarState
-) = Box(modifier = Modifier.weight(1f)) { CompactControlTimeBar(state = state) }
+) = Box(modifier = Modifier) { CompactControlTimeBar(state = state) }

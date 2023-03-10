@@ -29,6 +29,10 @@ class ControlCompactComposition internal constructor(
     private val observeProgressWithIntervalHandle: (
         getInterval: (progress: Duration, duration: Duration, speed: Float) -> Duration
     ) -> Flow<Duration>,
+    private val observeBufferedProgressWithIntervalHandle: (
+        getInterval: (progress: Duration, duration: Duration, speed: Float) -> Duration
+    ) -> Flow<Duration>,
+    private val observeDuration: () -> Flow<Duration>,
     private val requestPlaybackMovePrevious: (
         expectCurrentQueue: OldPlaybackQueue,
         expectFromIndex: Int,
@@ -89,6 +93,9 @@ class ControlCompactComposition internal constructor(
     )
 
     val timeBarState = CompactControlTimeBarState(
-        observeProgressWithIntervalHandle = observeProgressWithIntervalHandle
+        observeProgressWithIntervalHandle = observeProgressWithIntervalHandle,
+        observeBufferedProgressWithIntervalHandle = observeBufferedProgressWithIntervalHandle,
+        observeQueue = observePlaybackQueue,
+        observeDuration = observeDuration,
     )
 }

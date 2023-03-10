@@ -30,6 +30,7 @@ import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.musicplayer.base.compose.SnapshotRead
 import com.flammky.musicplayer.base.compose.SnapshotWrite
 import com.flammky.musicplayer.base.media.playback.OldPlaybackQueue
+import com.flammky.musicplayer.base.media.playback.PlaybackConstants
 import com.flammky.musicplayer.base.media.playback.PlaybackProperties
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.isDarkAsState
@@ -42,6 +43,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import timber.log.Timber
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 
 
 class RootPlaybackControlCompactState internal constructor(
@@ -116,6 +118,8 @@ internal class ControlCompactCoordinator(
         observePlaybackProperties = ::observeControllerPlaybackProperties,
         setPlayWhenReady = ::setPlayWhenReady,
         observeProgressWithIntervalHandle = ::observeProgressWithIntervalHandle,
+        observeBufferedProgressWithIntervalHandle = ::observeBufferedProgressWithIntervalHandle,
+        observeDuration = ::observeDuration,
         requestPlaybackMoveNext = ::requestPlaybackMoveNext,
         requestPlaybackMovePrevious = ::requestPlaybackMovePrevious,
         coroutineScope = coroutineScope
@@ -177,7 +181,7 @@ internal class ControlCompactCoordinator(
         }
     }
 
-    private fun observeProgressWithIntervalHandle (
+    private fun observeProgressWithIntervalHandle(
         getNextInterval: (progress: Duration, duration: Duration, speed: Float) -> Duration
     ): Flow<Duration> {
         return flow {
@@ -192,6 +196,45 @@ internal class ControlCompactCoordinator(
                         startCollectPosition().join()
                     }
                 collector.positionStateFlow.collect(this@flow)
+            } finally {
+                observer.dispose()
+            }
+        }
+    }
+
+    private fun observeBufferedProgressWithIntervalHandle(
+        getNextInterval: (progress: Duration, duration: Duration, speed: Float) -> Duration
+    ): Flow<Duration> {
+        return flow {
+            val observer = state.playbackController.createPlaybackObserver()
+            val collector = observer.createProgressionCollector()
+            try {
+                collector
+                    .apply {
+                        setIntervalHandler { _, p, d, s ->
+                            getNextInterval(p, d, s)
+                        }
+                        startCollectPosition().join()
+                    }
+                collector.bufferedPositionStateFlow.collect(this@flow)
+            } finally {
+                observer.dispose()
+            }
+        }
+    }
+
+    private fun observeDuration(): Flow<Duration> {
+        return flow {
+            val observer = state.playbackController.createPlaybackObserver()
+            val collector = observer.createDurationCollector()
+            try {
+                collector
+                    .apply {
+                        startCollect().join()
+                    }
+                    .run {
+                        durationStateFlow.collect(this@flow)
+                    }
             } finally {
                 observer.dispose()
             }
@@ -926,16 +969,208 @@ class CompactButtonControlsState(
 class CompactControlTimeBarState(
     private val observeProgressWithIntervalHandle: (
         getInterval: (progress: Duration, duration: Duration, speed: Float) -> Duration
-    ) -> Flow<Duration>
+    ) -> Flow<Duration>,
+    private val observeBufferedProgressWithIntervalHandle: (
+        getInterval: (progress: Duration, duration: Duration, speed: Float) -> Duration
+    ) -> Flow<Duration>,
+    private val observeQueue: () -> Flow<OldPlaybackQueue>,
+    private val observeDuration: () -> Flow<Duration>
 ) {
 
-    val applier = Applier()
+    val applier = Applier(this)
 
-    class Applier {
+    class Applier(private val state: CompactControlTimeBarState) {
 
+        companion object {
+
+            @Composable
+            fun Applier.ComposeLayout(
+                content: @Composable CompositionScope.() -> Unit
+            ) {
+                check(this === state.applier)
+                observeForScope()
+                    .apply {
+                        content()
+                        DoLayoutComposedWork(this)
+                    }
+            }
+
+
+            @Composable
+            private fun Applier.observeForScope(): CompositionScope {
+                val composableCoroutineScope = rememberCoroutineScope()
+                val latestScopeState = remember {
+                    mutableStateOf(
+                        CompositionScope(
+                            CoroutineScope(
+                                composableCoroutineScope.coroutineContext + SupervisorJob()
+                            ),
+                            OldPlaybackQueue.UNSET,
+                            state.observeProgressWithIntervalHandle,
+                            state.observeBufferedProgressWithIntervalHandle,
+                            state.observeDuration
+                        )
+                    )
+                }
+                DisposableEffect(
+                    key1 = this,
+                    effect = {
+                        composableCoroutineScope.launch {
+                            state.observeQueue()
+                                .collect { queue ->
+                                    latestScopeState.value.onReplaced()
+                                    latestScopeState.value = CompositionScope(
+                                        CoroutineScope(
+                                            composableCoroutineScope.coroutineContext + SupervisorJob()
+                                        ),
+                                        queue,
+                                        state.observeProgressWithIntervalHandle,
+                                        state.observeBufferedProgressWithIntervalHandle,
+                                        state.observeDuration
+                                    )
+                                }
+                        }
+                        onDispose { latestScopeState.value.onDisposedByComposer() }
+                    }
+                )
+                return latestScopeState.value
+            }
+
+            @Composable
+            private fun Applier.DoLayoutComposedWork(
+                composition: CompositionScope
+            ) {
+
+            }
+        }
     }
 
-    class LayoutData()
+    class CompositionScope(
+        val lifetimeCoroutineScope: CoroutineScope,
+        val queueData: OldPlaybackQueue,
+        private val observeProgressWithIntervalHandle: (
+            getInterval: (progress: Duration, duration: Duration, speed: Float) -> Duration
+        ) -> Flow<Duration>,
+        private val observeBufferedProgressWithIntervalHandle: (
+            getInterval: (progress: Duration, duration: Duration, speed: Float) -> Duration
+        ) -> Flow<Duration>,
+        private val observeDuration: () -> Flow<Duration>
+    ) {
+
+        fun onDisposedByComposer() {
+            lifetimeCoroutineScope.cancel()
+        }
+
+        fun onReplaced() {
+            lifetimeCoroutineScope.cancel()
+        }
+
+        companion object {
+
+            @Composable
+            fun CompositionScope.positionTimeBarValue(width: Dp): Float {
+                val animatable = remember(this) {
+                    Animatable(0f)
+                }
+                val latestWidth = rememberUpdatedState(newValue = width)
+
+                LaunchedEffect(
+                    key1 = this,
+                    block = {
+                        var latestCollector: Job? = null
+                        snapshotFlow { latestWidth.value }
+                            .collect {
+                                latestCollector?.cancel()
+                                latestCollector = lifetimeCoroutineScope.launch {
+                                    observeDuration().collect { duration ->
+                                        if (duration <= Duration.ZERO) {
+                                            animatable.animateTo(0f, tween(100))
+                                            return@collect
+                                        }
+                                        observeProgressWithIntervalHandle { progress, duration, speed ->
+                                            if (progress == Duration.ZERO ||
+                                                duration == Duration.ZERO ||
+                                                speed == 0f
+                                            ) {
+                                                PlaybackConstants.DURATION_UNSET
+                                            } else {
+                                                (duration.inWholeMilliseconds / it.value / speed)
+                                                    .toLong()
+                                                    .takeIf { it > 100 }?.milliseconds
+                                                    ?: PlaybackConstants.DURATION_UNSET
+                                            }
+                                        }.collect { position ->
+                                            if (position <= Duration.ZERO) {
+                                                animatable.animateTo(0f, tween(100))
+                                            }
+                                            animatable.animateTo(
+                                                (position / duration)
+                                                    .toFloat()
+                                                    .coerceAtLeast(0f),
+                                                tween(100)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                    }
+                )
+
+                return animatable.value
+            }
+
+            @Composable
+            fun CompositionScope.bufferedPositionTimeBarValue(width: Dp): Float {
+                val animatable = remember(this) {
+                    Animatable(0f)
+                }
+                val latestWidth = rememberUpdatedState(newValue = width)
+                LaunchedEffect(
+                    key1 = this,
+                    block = {
+                        var latestCollector: Job? = null
+                        snapshotFlow { latestWidth.value }
+                            .collect {
+                                latestCollector?.cancel()
+                                latestCollector = lifetimeCoroutineScope.launch {
+                                    observeDuration().collect { duration ->
+                                        if (duration <= Duration.ZERO) {
+                                            animatable.animateTo(0f, tween(100))
+                                            return@collect
+                                        }
+                                        observeBufferedProgressWithIntervalHandle { progress, duration, speed ->
+                                            if (progress == Duration.ZERO ||
+                                                duration == Duration.ZERO ||
+                                                speed == 0f
+                                            ) {
+                                                PlaybackConstants.DURATION_UNSET
+                                            } else {
+                                                (duration.inWholeMilliseconds / it.value / speed)
+                                                    .toLong()
+                                                    .takeIf { it > 100 }?.milliseconds
+                                                    ?: PlaybackConstants.DURATION_UNSET
+                                            }
+                                        }.collect { position ->
+                                            if (position <= Duration.ZERO) {
+                                                animatable.animateTo(0f, tween(100))
+                                            }
+                                            animatable.animateTo(
+                                                (position / duration)
+                                                    .toFloat()
+                                                    .coerceAtLeast(0f),
+                                                tween(100)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                    }
+                )
+
+                return animatable.value
+            }
+        }
+    }
 }
 
 class CompactControlBackgroundState(

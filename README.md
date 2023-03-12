@@ -17,8 +17,6 @@ Feel free to open an [issue](https://github.com/flammky/Music-Player/issues) for
 > Queue Reordering by Drag & Drop
 
 > Resolve Audio scan-able by [MediaStore](https://developer.android.com/reference/android/provider/MediaStore)
->
-> a Full scanner will be implemented to for manual insert to MediaStore with User permission
 
 > Audio Metadata Extraction with modified version of [JAudioTagger](https://www.jthink.net/jaudiotagger/) 
 > (Dirty) to have better compatibility in Android Environment
@@ -26,8 +24,6 @@ Feel free to open an [issue](https://github.com/flammky/Music-Player/issues) for
 > artwork and metadata currently only read to [MP3, FLAC, MP4-AAC, OGG-Vorbis, OGG-Opus, WAV], write is not tested.
 
 > Artwork color generated Playback background on PlaybackController UI with [Palette API](https://developer.android.com/develop/ui/views/graphics/palette-colors) 
->
-> (considering to also mix it with the theme accent)
 
 > Material You (Android 12++)
 
@@ -41,8 +37,6 @@ Feel free to open an [issue](https://github.com/flammky/Music-Player/issues) for
 > Lyrics
 
 > Metadata writer
->
-> will probably shift metadata operation with rust
 
 > Online Artwork Search
 
@@ -57,13 +51,13 @@ Feel free to open an [issue](https://github.com/flammky/Music-Player/issues) for
 > `etc.`
 
 ## Previews
-> Image Preview below will be updated accordingly on any changes made
+> Image Preview below will be updated accordingly on any notable changes made
 
-> Currently only [Library] and [User] screen are in consideration
+> Currently only [Library] and [User] screen are in work
 
 | Library Screen |
 | -------------- |
-| <img src="https://user-images.githubusercontent.com/94031495/212595987-07a46e4f-535a-4e89-996a-ee4fcf8155cf.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/212595992-5a24d0c0-c250-4d64-b595-6445022c5d3d.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/212595996-2f4ebb8a-ae55-4cb6-a096-776032662325.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/212596000-9d2cf692-61a1-4a7b-a1df-280867107b3b.png" width="195"> |
+| <img src="https://user-images.githubusercontent.com/94031495/212595987-07a46e4f-535a-4e89-996a-ee4fcf8155cf.png" width="195"> <img src="https://user-images.githubusercontent.com/94031495/212595992-5a24d0c0-c250-4d64-b595-6445022c5d3d.png" width="195"> |
 
 | Playback Control on Dark Mode |
 | -------------- |

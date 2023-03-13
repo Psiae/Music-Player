@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.player.presentation.main.PlaybackControlViewModel
+import com.flammky.musicplayer.player.presentation.root.CompactControlBackgroundState.Applier.Companion.PrepareCompositionInline
 import com.flammky.musicplayer.player.presentation.root.CompactControlTransitionState.Applier.Companion.PrepareComposition
 import com.flammky.musicplayer.player.presentation.root.CompactControlTransitionState.Companion.getLayoutHeight
 import com.flammky.musicplayer.player.presentation.root.CompactControlTransitionState.Companion.getLayoutOffset
@@ -28,19 +29,22 @@ import kotlinx.coroutines.SupervisorJob
 @Composable
 fun rememberRootPlaybackControlCompactState(
     user: User,
+    onBaseClicked: (() -> Unit)?,
+    onArtworkClicked: (() -> Unit)?
 ): RootPlaybackControlCompactState {
     val coroutineScope = rememberCoroutineScope()
     val viewModel = hiltViewModel<PlaybackControlViewModel>()
     val state = remember(user, viewModel) {
         RootPlaybackControlCompactState(
             playbackController = viewModel.createUserPlaybackController(user),
-            onBackgroundClicked = {},
-            onArtworkClicked = {},
             onObserveArtwork = viewModel::observeMediaArtwork,
             onObserveMetadata = viewModel::observeMediaMetadata,
             coroutineScope = coroutineScope,
             coroutineDispatchScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         )
+    }.apply {
+        artworkClickedHandle = onArtworkClicked
+        baseClickedHandle = onBaseClicked
     }
 
     DisposableEffect(
@@ -89,7 +93,7 @@ private fun TransitioningContentLayout(
                         composition.topPosition =
                             posInParent.y.toDp()
                         composition.topPositionFromAnchor =
-                            (lc.parentCoordinates!!.size.height - posInParent.y).toDp()
+                            (lc.parentLayoutCoordinates!!.size.height - posInParent.y).toDp()
                     }
                 }
         ) {
@@ -103,10 +107,24 @@ private fun ContentLayout(
     composition: ControlCompactComposition
 ) {
     Card(shape = RoundedCornerShape(10)) {
-        Box {
-            RootPlaybackControlCompactBackground(composition.backgroundState)
+        Box(
+            Modifier.fillMaxSize()
+                .run {
+                    with(composition.backgroundState) {
+                        // TODO: change to ComposeLayout
+                        applier.PrepareCompositionInline()
+                        backgroundModifier().interactionModifier()
+                    }
+                }
+        ) {
+            // I have no Idea why clickable here is not working
+            // when interaction is passed through the pager
             Column {
-                Row(modifier = Modifier.padding(7.dp).weight(1f)) {
+                Row(
+                    modifier = Modifier
+                        .padding(7.dp)
+                        .weight(1f)
+                ) {
                     ArtworkDisplay(state = composition.artworkDisplayState)
                     Spacer(modifier = Modifier.width(7.dp))
                     PagerControl(state = composition.pagerState)

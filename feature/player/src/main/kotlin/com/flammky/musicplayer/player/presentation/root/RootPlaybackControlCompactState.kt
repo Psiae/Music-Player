@@ -51,8 +51,6 @@ import kotlin.time.Duration.Companion.milliseconds
 
 class RootPlaybackControlCompactState internal constructor(
     internal val playbackController: PlaybackController,
-    val onBackgroundClicked: () -> Unit,
-    val onArtworkClicked: () -> Unit,
     val onObserveMetadata: (String) -> Flow<MediaMetadata?>,
     val onObserveArtwork: (String) -> Flow<Any?>,
     val coroutineScope: CoroutineScope,
@@ -74,6 +72,14 @@ class RootPlaybackControlCompactState internal constructor(
      * the bottom offset for the coordinator to apply
      */
     var bottomSpacing by mutableStateOf<Dp>(0.dp)
+        @SnapshotRead get
+        @SnapshotWrite set
+
+    var artworkClickedHandle by mutableStateOf<(() -> Unit)?>(null)
+        @SnapshotRead get
+        @SnapshotWrite set
+
+    var baseClickedHandle by mutableStateOf<(() -> Unit)?>(null)
         @SnapshotRead get
         @SnapshotWrite set
 
@@ -115,6 +121,8 @@ internal class ControlCompactCoordinator(
         getLayoutHeight = @SnapshotRead state::height::get,
         getLayoutWidth = @SnapshotRead state::width::get,
         getLayoutBottomOffset = @SnapshotRead state::bottomSpacing::get,
+        getArtworkClickedHandle = @SnapshotRead state::artworkClickedHandle::get,
+        getBaseClickedHandle = @SnapshotRead state::baseClickedHandle::get,
         observeMetadata = state.onObserveMetadata,
         observeArtwork = state.onObserveArtwork,
         observePlaybackQueue = ::observeControllerPlaybackQueue,
@@ -137,7 +145,7 @@ internal class ControlCompactCoordinator(
     private var queueReaderCount by mutableStateOf(0)
     private var propertiesReaderCount by mutableStateOf(0)
 
-    var remoteQueueSnapshot by mutableStateOf<OldPlaybackQueue>(OldPlaybackQueue.UNSET)
+    var remoteQueueSnapshot by mutableStateOf(OldPlaybackQueue.UNSET)
         private set
 
     var remotePlaybackPropertiesSnapshot by mutableStateOf(PlaybackProperties.UNSET)
@@ -198,7 +206,9 @@ internal class ControlCompactCoordinator(
                         }
                         startCollectPosition().join()
                     }
-                collector.positionStateFlow.collect(this@flow)
+                    .run {
+                        positionStateFlow.collect(this@flow)
+                    }
             } finally {
                 observer.dispose()
             }
@@ -219,7 +229,9 @@ internal class ControlCompactCoordinator(
                         }
                         startCollectPosition().join()
                     }
-                collector.bufferedPositionStateFlow.collect(this@flow)
+                    .run {
+                        bufferedPositionStateFlow.collect(this@flow)
+                    }
             } finally {
                 observer.dispose()
             }
@@ -1279,7 +1291,8 @@ class CompactControlBackgroundState(
     private val observeArtwork: (String) -> Flow<Any?>,
     private val observeQueue: () -> Flow<OldPlaybackQueue>,
     private val coroutineScope: CoroutineScope,
-    private val onComposingBackgroundColor: (Color) -> Unit
+    private val onComposingBackgroundColor: (Color) -> Unit,
+    private val getBackgroundClickedHandle: () -> (() -> Unit)?
 ) {
 
     val applier = Applier(this)
@@ -1318,6 +1331,16 @@ class CompactControlBackgroundState(
                 animateColorAsState(targetValue = backgroundColor())
             onComposingBackgroundColor(animatedBackgroundTransitionColor)
             background(animatedBackgroundTransitionColor)
+        }
+    }
+
+    fun Modifier.interactionModifier(): Modifier {
+        return composed {
+            getBackgroundClickedHandle()
+                ?.let {
+                    clickable(onClick = it)
+                }
+                ?: this
         }
     }
 
@@ -1396,7 +1419,8 @@ class CompactControlBackgroundState(
 
 class CompactControlArtworkState(
     private val observeArtwork: (String) -> Flow<Any?>,
-    private val observeQueue: () -> Flow<OldPlaybackQueue>
+    private val observeQueue: () -> Flow<OldPlaybackQueue>,
+    private val getArtworkClickedHandle: () -> (() -> Unit)?
 ) {
 
     val applier = Applier(this)
@@ -1406,7 +1430,13 @@ class CompactControlArtworkState(
     companion object {
 
         fun CompactControlArtworkState.getInteractionModifier(): Modifier {
-            return Modifier.composed { Modifier.clickable {  } }
+            return Modifier.composed {
+                getArtworkClickedHandle()
+                    ?.let {
+                        clickable(onClick = it)
+                    }
+                    ?: this
+            }
         }
 
         fun CompactControlArtworkState.getLayoutModifier(imageModel: Any?): Modifier {

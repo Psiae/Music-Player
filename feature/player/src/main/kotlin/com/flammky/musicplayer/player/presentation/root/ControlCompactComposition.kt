@@ -21,6 +21,8 @@ class ControlCompactComposition internal constructor(
     private val getLayoutHeight: @SnapshotRead () -> Dp,
     private val getLayoutWidth: @SnapshotRead () -> Dp,
     private val getLayoutBottomOffset: @SnapshotRead () -> Dp,
+    private val getBaseClickedHandle: @SnapshotRead () -> (() -> Unit)?,
+    private val getArtworkClickedHandle: @SnapshotRead () -> (() -> Unit)?,
     private val observeMetadata: (String) -> Flow<MediaMetadata?>,
     private val observeArtwork: (String) -> Flow<Any?>,
     private val observePlaybackQueue: () -> Flow<OldPlaybackQueue>,
@@ -71,12 +73,14 @@ class ControlCompactComposition internal constructor(
             isPagerSurfaceDark = dark
             isButtonControlSurfaceDark = dark
         },
-        coroutineScope = coroutineScope
+        coroutineScope = coroutineScope,
+        getBackgroundClickedHandle = getBaseClickedHandle
     )
 
     val artworkDisplayState = CompactControlArtworkState(
         observeArtwork = observeArtwork,
         observeQueue = observePlaybackQueue,
+        getArtworkClickedHandle = getArtworkClickedHandle
     )
 
     @OptIn(ExperimentalPagerApi::class)

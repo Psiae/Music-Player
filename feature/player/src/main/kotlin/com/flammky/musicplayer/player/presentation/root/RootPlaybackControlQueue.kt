@@ -254,15 +254,18 @@ private fun BoxScope.ReorderableLazyQueueColumn(composition: RootPlaybackControl
                                 }
                                 val expectFromId = (from.key as String)
                                 val expectToId = (to.key as String)
-                                composition.playbackController.requestMoveAsync(
+                                composition.requestMoveQueueItemAsync(
                                     from.index,
                                     expectFromId,
                                     to.index,
                                     expectToId
                                 ).run {
                                     coroutineScope.launch {
-                                        await().eventDispatch?.join()
-                                        handle.done()
+                                        try {
+                                            await()
+                                        } finally {
+                                            handle.done()
+                                        }
                                     }
                                 }
                             }
@@ -325,7 +328,12 @@ private fun BoxScope.ReorderableLazyQueueColumn(composition: RootPlaybackControl
                                     composition = composition,
                                 ) play@ {
                                     if (index != maskedQueue.currentIndex) {
-                                        composition.playbackController.requestSeekAsync(index, Duration.ZERO)
+                                        composition.requestSeekIndexAsync(
+                                            maskedQueue.currentIndex,
+                                            maskedQueue.list[maskedQueue.currentIndex],
+                                            index,
+                                            item,
+                                        )
                                     }
                                 }
                             }

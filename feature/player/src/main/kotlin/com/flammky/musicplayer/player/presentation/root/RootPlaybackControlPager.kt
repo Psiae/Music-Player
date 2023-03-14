@@ -30,12 +30,12 @@ import kotlin.coroutines.coroutineContext
 @OptIn(ExperimentalPagerApi::class)
 @Composable
 internal fun BoxScope.RootPlaybackControlPager(
-    state: RootPlaybackControlPagerState
+    state: PlaybackControlPagerState
 ) {
     Timber.d("RootPlaybackControlPager, Entry Recomposed $state")
     val coroutineScope = rememberCoroutineScope()
     val upStateApplier = remember(state) {
-        PagerStateApplier(state, coroutineScope)
+        PlaybackControlPagerStateApplier(state, coroutineScope)
             .apply {
                 Timber.d("RootPlaybackControlPager, Entry new Applier $this for $state")
                 prepareState()
@@ -74,13 +74,42 @@ internal fun BoxScope.RootPlaybackControlPager(
 }
 
 @OptIn(ExperimentalPagerApi::class)
-private class PagerStateApplier(
-    private val state: RootPlaybackControlPagerState,
+internal class PlaybackControlPagerStateApplier(
+    private val state: PlaybackControlPagerState,
     private val coroutineScope: CoroutineScope
 ) {
 
-    private var currentPreAppliedLayout by mutableStateOf<PagerLayoutComposition?>(null)
-    private var currentAppliedLayout by mutableStateOf<PagerLayoutComposition?>(null)
+    companion object {
+
+        @Composable
+        fun PlaybackControlPagerStateApplier.ComposeLayout(
+            content: @Composable PagerLayoutCompositionScope.() -> Unit
+        ) {
+
+        }
+/*
+        @Composable
+        private fun PlaybackControlPagerStateApplier.observeForCompositionScope(): PagerLayoutCompositionScope {
+            val composableCoroutineScope = rememberCoroutineScope()
+            DisposableEffect(
+                key1 = this,
+                effect = {
+                    val supervisor = SupervisorJob()
+
+                    composableCoroutineScope.launch {
+
+                    }
+
+                    onDispose {
+                        supervisor.cancel()
+                    }
+                }
+            )
+        }*/
+    }
+
+    private var currentPreAppliedLayout by mutableStateOf<PagerLayoutCompositionScope?>(null)
+    private var currentAppliedLayout by mutableStateOf<PagerLayoutCompositionScope?>(null)
 
     private var firstAppliedLayout = true
 
@@ -126,7 +155,7 @@ private class PagerStateApplier(
                     is DragInteraction.Stop -> dragInteractions.remove(interaction.start)
                     is DragInteraction.Cancel -> dragInteractions.remove(interaction.start)
                 }
-                this@PagerStateApplier.userDraggingLayout = dragInteractions.isNotEmpty()
+                this@PlaybackControlPagerStateApplier.userDraggingLayout = dragInteractions.isNotEmpty()
                 Timber.d("RootPlaybackControlPager, diagnostic: new Interaction=$interaction, dragging=$userDraggingLayout")
             }
         })
@@ -155,7 +184,7 @@ private class PagerStateApplier(
 
     @Composable
     fun PagerCompositionStart(
-        composition: PagerLayoutComposition
+        composition: PagerLayoutCompositionScope
     ) {
         currentPreAppliedLayout = composition
         DisposableEffect(
@@ -171,7 +200,7 @@ private class PagerStateApplier(
      */
     @Composable
     fun PagerCompositionEnd(
-        composition: PagerLayoutComposition
+        composition: PagerLayoutCompositionScope
     ) {
         Timber.d("RootPlaybackControlPager: PagerCompositionEnd $composition")
         check(currentPreAppliedLayout == composition)
@@ -270,7 +299,7 @@ private class PagerStateApplier(
                                     currentCompositionLayoutData = null
                                     return@collect
                                 }
-                                currentCompositionLayoutData = PagerLayoutComposition(
+                                currentCompositionLayoutData = PagerLayoutCompositionScope(
                                     current,
                                     CoroutineScope(
                                         currentCoroutineContext() +
@@ -285,7 +314,7 @@ private class PagerStateApplier(
 
     @Composable
     private fun InstallInteractionListenerForComposition(
-        composition: PagerLayoutComposition
+        composition: PagerLayoutCompositionScope
     ) {
         remember(composition) {
             val targetInitialPage = composition.queueData.currentIndex.coerceAtLeast(0)
@@ -322,8 +351,8 @@ private class PagerStateApplier(
                         composition.awaitScrollToPageCorrection()
                         layoutDragCollectorStart.join()
                         check(pagerLayoutState.currentPage == targetInitialPage)
-                        var latestDragInstance: PagerLayoutComposition.UserDragInstance? = null
-                        var latestScrollInstance: PagerLayoutComposition.UserScrollInstance? = null
+                        var latestDragInstance: PagerLayoutCompositionScope.UserDragInstance? = null
+                        var latestScrollInstance: PagerLayoutCompositionScope.UserScrollInstance? = null
                         try {
                             snapshotFlow { composition.userDraggingToStartIndex }
                                 .collect {
@@ -331,8 +360,8 @@ private class PagerStateApplier(
                                         latestScrollInstance?.onInterruptedByAnotherScroll()
                                         val (dragging: Boolean, page: Int) = it
                                         check(dragging)
-                                        val newDrag = PagerLayoutComposition.UserDragInstance(page)
-                                        val newScroll = PagerLayoutComposition.UserScrollInstance(newDrag)
+                                        val newDrag = PagerLayoutCompositionScope.UserDragInstance(page)
+                                        val newScroll = PagerLayoutCompositionScope.UserScrollInstance(newDrag)
                                         composition.currentUserDragInstance = newDrag
                                         composition.currentUserScrollInstance = newScroll
                                         latestDragInstance = newDrag
@@ -360,7 +389,7 @@ private class PagerStateApplier(
 
     @Composable
     private fun ListenUserPageSwipeOnComposition(
-        composition: PagerLayoutComposition,
+        composition: PagerLayoutCompositionScope,
     ) {
         LaunchedEffect(
             composition,
@@ -400,7 +429,7 @@ private class PagerStateApplier(
      * Callback on which the user fully swipe the page and released the pointer
      */
     private suspend fun onUserSwipe(
-        composition: PagerLayoutComposition,
+        composition: PagerLayoutCompositionScope,
         from: Int,
         to: Int
     ) {
@@ -428,7 +457,6 @@ private class PagerStateApplier(
                         composition.queueData,
                         from,
                         composition.queueData.list[from],
-                        to,
                         composition.queueData.list[to]
                     )
                 }
@@ -447,7 +475,6 @@ private class PagerStateApplier(
                         composition.queueData,
                         from,
                         composition.queueData.list[from],
-                        to,
                         composition.queueData.list[to]
                     )
                 }

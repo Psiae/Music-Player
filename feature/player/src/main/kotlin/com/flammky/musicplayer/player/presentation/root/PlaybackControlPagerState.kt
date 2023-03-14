@@ -15,11 +15,13 @@ import timber.log.Timber
 @OptIn(ExperimentalPagerApi::class)
 @Composable
 internal fun rememberRootPlaybackControlPagerState(
-    composition: RootPlaybackControlMainScope
-): RootPlaybackControlPagerState {
+    composition: RootPlaybackControlComposition
+): PlaybackControlPagerState {
+    val coroutineScope = rememberCoroutineScope()
     return remember(composition) {
-        RootPlaybackControlPagerState(
+        PlaybackControlPagerState(
             composition = composition,
+            coroutineScope = coroutineScope,
             pagerLayoutState = PagerState(),
             observeMetadata = composition.observeTrackMetadata,
             observeArtwork = composition.observeArtwork
@@ -27,7 +29,7 @@ internal fun rememberRootPlaybackControlPagerState(
     }
 }
 
-internal class PagerLayoutComposition(
+internal class PagerLayoutCompositionScope(
     val queueData: OldPlaybackQueue,
     private val rememberCoroutineScope: CoroutineScope,
 ) {
@@ -184,60 +186,39 @@ internal class PagerLayoutComposition(
 
 
 @OptIn(ExperimentalPagerApi::class)
-internal class RootPlaybackControlPagerState constructor(
-    private val composition: RootPlaybackControlMainScope,
+internal class PlaybackControlPagerState constructor(
+    val composition: RootPlaybackControlComposition,
+    val coroutineScope: CoroutineScope,
     val pagerLayoutState: PagerState,
-    observeMetadata: (String) -> Flow<MediaMetadata?>,
-    observeArtwork: (String) -> Flow<Any?>,
+    val observeMetadata: (String) -> Flow<MediaMetadata?>,
+    val observeArtwork: (String) -> Flow<Any?>,
 ) {
 
-    var currentCompositionLayoutData by mutableStateOf<PagerLayoutComposition?>(null)
+    val applier = PlaybackControlPagerStateApplier(this, coroutineScope)
+
+    var currentCompositionLayoutData by mutableStateOf<PagerLayoutCompositionScope?>(null)
 
     suspend fun requestPlaybackMoveNext(
         expectCurrentQueue: OldPlaybackQueue,
         expectFromIndex: Int,
         expectFromId: String,
-        expectNextIndex: Int,
         expectNextId: String
-    ): Result<Boolean> {
-        return runCatching {
-            if (!overrideMoveNextIndex(expectCurrentQueue, expectNextIndex)) {
-                return@runCatching false
-            }
-            composition.playbackController.requestSeekAsync(
-                expectFromIndex,
-                expectFromId,
-                expectNextIndex,
-                expectNextId
-            ).await().run {
-                eventDispatch?.join()
-                success
-            }
-        }
-    }
+    ): Result<Boolean> = composition.requestSeekNextWithExpectAsync(
+        expectFromIndex,
+        expectFromId,
+        expectNextId
+    ).await()
 
     suspend fun requestPlaybackMovePrevious(
         expectCurrentQueue: OldPlaybackQueue,
         expectFromIndex: Int,
         expectFromId: String,
-        expectPreviousIndex: Int,
         expectPreviousId: String
-    ): Result<Boolean> {
-        return runCatching {
-            if (!overrideMovePreviousIndex(expectCurrentQueue, expectPreviousIndex)) {
-                return@runCatching false
-            }
-            composition.playbackController.requestSeekAsync(
-                expectFromIndex,
-                expectFromId,
-                expectPreviousIndex,
-                expectPreviousId
-            ).await().run {
-                eventDispatch?.join()
-                success
-            }
-        }
-    }
+    ): Result<Boolean> = composition.requestSeekPreviousWithExpectAsync(
+        expectFromIndex,
+        expectFromId,
+        expectPreviousId
+    ).await()
 
 
 

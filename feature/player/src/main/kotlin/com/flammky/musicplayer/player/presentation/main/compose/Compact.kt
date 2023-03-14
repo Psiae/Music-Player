@@ -834,7 +834,7 @@ private fun AnimatedProgressBar(
 			observer.createProgressionCollector(coroutineScope.coroutineContext)
 				.apply {
 					setCollectEvent(true)
-					setIntervalHandler { isEvent, progress, duration, speed ->
+					setIntervalHandler { isEvent, progress, buf, duration, speed ->
 						if (progress == Duration.ZERO || duration == Duration.ZERO || speed == 0f) {
 							PlaybackConstants.DURATION_UNSET
 						} else {

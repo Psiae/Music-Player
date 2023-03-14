@@ -36,6 +36,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.flammky.android.medialib.common.mediaitem.AudioFileMetadata
+import com.flammky.android.medialib.common.mediaitem.AudioMetadata
+import com.flammky.android.medialib.common.mediaitem.MediaMetadata
+import com.flammky.android.medialib.providers.metadata.VirtualFileMetadata
 import com.flammky.androidx.content.context.findActivity
 import com.flammky.common.kotlin.comparable.clamp
 import com.flammky.common.kotlin.comparable.clampPositive
@@ -80,9 +84,9 @@ internal fun RootPlaybackControl(
 private fun RootPlaybackControl(
     modifier: Modifier,
     state: RootPlaybackControlState,
-    content: @Composable RootPlaybackControlMainScope.() -> Unit,
+    content: @Composable RootPlaybackControlComposition.() -> Unit,
 ) {
-    if (state.showMainState.value) {
+    if (state.showSelfState.value) {
         LockScreenOrientation(landscape = false)
     }
 
@@ -109,18 +113,7 @@ private fun RootPlaybackControl(
         BoxWithConstraints(
             modifier = modifier
         ) {
-            val mainScope = remember(state, controller) {
-                RootPlaybackControlMainScope(
-                    state,
-                    controller,
-                    observeTrackSimpleMetadata = state.viewModel::observeSimpleMetadata,
-                    observeTrackMetadata = state.viewModel::observeMediaMetadata,
-                    observeArtwork = state.viewModel::observeMediaArtwork,
-                    dismiss = state::dismiss,
-                ).apply {
-                    state.restoreComposition(this)
-                }
-            }
+            val mainScope = state.coordinator.layoutComposition
             // Main Content
             mainScope
                 .apply {
@@ -135,9 +128,9 @@ private fun RootPlaybackControl(
 }
 
 @Composable
-private fun RootPlaybackControlMainScope.TransitioningContentLayout() {
+private fun RootPlaybackControlComposition.TransitioningContentLayout() {
     // Think if there is somewhat better way to do this
-    val transitionHeightState = updateTransition(targetState = state.showMainState.value, label = "")
+    val transitionHeightState = updateTransition(targetState = showSelf(), label = "")
         .animateInt(
             label = "Playback Control Transition",
             targetValueByState = { targetShowSelf ->
@@ -174,7 +167,7 @@ private fun RootPlaybackControlMainScope.TransitioningContentLayout() {
         }
 
     val blockerFraction =
-        if (state.showMainState.value || visibleHeight > 0) 1f else 0f
+        if (showSelf() || visibleHeight > 0) 1f else 0f
 
     // Inline Box to immediately consume input during transition
     Box(
@@ -252,16 +245,16 @@ private fun RootPlaybackControlMainScope.TransitioningContentLayout() {
 }
 
 @Composable
-private fun RootPlaybackControlMainScope.Layout(
+private fun RootPlaybackControlComposition.Layout(
     modifier: Modifier,
-    queue: @Composable BoxScope.(composition: RootPlaybackControlMainScope) -> Unit,
-    background: @Composable BoxScope.(composition: RootPlaybackControlMainScope) -> Unit,
-    toolbar: @Composable BoxScope.(composition: RootPlaybackControlMainScope) -> Unit,
-    pager: @Composable BoxScope.(composition: RootPlaybackControlMainScope) -> Unit,
-    description: @Composable BoxScope.(composition: RootPlaybackControlMainScope) -> Unit,
-    seekbar: @Composable BoxScope.(composition: RootPlaybackControlMainScope) -> Unit,
-    primaryControlRow: @Composable BoxScope.(composition: RootPlaybackControlMainScope) -> Unit,
-    secondaryControlRow: @Composable BoxScope.(composition: RootPlaybackControlMainScope) -> Unit,
+    queue: @Composable BoxScope.(composition: RootPlaybackControlComposition) -> Unit,
+    background: @Composable BoxScope.(composition: RootPlaybackControlComposition) -> Unit,
+    toolbar: @Composable BoxScope.(composition: RootPlaybackControlComposition) -> Unit,
+    pager: @Composable BoxScope.(composition: RootPlaybackControlComposition) -> Unit,
+    description: @Composable BoxScope.(composition: RootPlaybackControlComposition) -> Unit,
+    seekbar: @Composable BoxScope.(composition: RootPlaybackControlComposition) -> Unit,
+    primaryControlRow: @Composable BoxScope.(composition: RootPlaybackControlComposition) -> Unit,
+    secondaryControlRow: @Composable BoxScope.(composition: RootPlaybackControlComposition) -> Unit,
     // TODO: Lyrics ?
 ) {
     val composition = this
@@ -356,22 +349,10 @@ private fun RootPlaybackControlMainScope.Layout(
                         // snapshotFlow is conflated by default
                         if (job?.isActive == true) return@collect
                         job = launch {
-                            val observer = composition.playbackController.createPlaybackObserver()
-                            val queueCollector = observer.createQueueCollector()
-                            try {
-                                queueCollector
-                                    .apply {
-                                        startCollect().join()
-                                    }
-                                    .run {
-                                        queueStateFlow.collect {
-                                            composition.currentQueue = it
-                                        }
-                                    }
-                            } finally {
-                                queueCollector.dispose()
-                                observer.dispose()
-                            }
+                            composition.observeQueue()
+                                .collect {
+                                    composition.currentQueue = it
+                                }
                         }
                     }
                 }
@@ -404,7 +385,7 @@ private fun RootPlaybackControlMainScope.Layout(
                                         }
                                         latestTransformer = launch {
                                             composition
-                                                .observeTrackSimpleMetadata(it)
+                                                .observeTrackMetadata(it)
                                                 .collect(composition::currentPlaybackMetadata::set)
                                         }
                                     }
@@ -428,26 +409,31 @@ private fun RootPlaybackControlMainScope.Layout(
                         if (job?.isActive == true) return@collect
                         job = launch {
                             var latestTransformer: Job? = null
-                            composition.currentMetadataReaderCount++
+                            composition.currentQueueReaderCount++
                             try {
-                                snapshotFlow { composition.currentPlaybackMetadata }
-                                    .collect collectMetadata@ {
-                                        latestTransformer?.cancel()
-                                        if (it?.artwork == null) {
-                                            composition.currentPlaybackBitmap = null
-                                            return@collectMetadata
-                                        }
-                                        if (it.artwork is Bitmap) {
-                                            composition.currentPlaybackBitmap = it.artwork
-                                            return@collectMetadata
-                                        }
-                                        composition.currentPlaybackBitmap = null
-                                        // else we need to collect the biggest layout viewport
-                                        // within the composition and load the bitmap according to
-                                        // the source kind
+                                composition.observeQueue()
+                                    .collect {
+                                        it.list.getOrNull(it.currentIndex)
+                                            ?.let {
+                                                composition.observeArtwork(it)
+                                                    .collect collectArtwork@ { art ->
+                                                        latestTransformer?.cancel()
+                                                        if (art is Bitmap) {
+                                                            composition.currentPlaybackBitmap = art
+                                                            return@collectArtwork
+                                                        }
+                                                        // else we need to collect the biggest layout viewport
+                                                        // within the composition and load the bitmap according to
+                                                        // the source kind
+                                                        composition.currentPlaybackBitmap = null
+                                                    }
+                                            }
+                                            ?: run {
+                                                composition.currentPlaybackBitmap = null
+                                            }
                                     }
                             } finally {
-                                composition.currentMetadataReaderCount--
+                                composition.currentQueueReaderCount--
                             }
                         }
                     }
@@ -496,7 +482,7 @@ private fun RootPlaybackControlMainScope.Layout(
 
 @Composable
 private fun BoxScope.RadialPlaybackBackground(
-    composition: RootPlaybackControlMainScope
+    composition: RootPlaybackControlComposition
 ) {
     val darkTheme by Theme.isDarkAsState()
     val absoluteBackgroundColor by Theme.absoluteBackgroundColorAsState()
@@ -567,7 +553,7 @@ private fun BoxScope.RadialPlaybackBackground(
 
 @Composable
 private fun BoxScope.Toolbar(
-    composition: RootPlaybackControlMainScope
+    composition: RootPlaybackControlComposition
 ) {
     Row(modifier = Modifier
         .height(40.dp)
@@ -610,278 +596,9 @@ private fun BoxScope.Toolbar(
     }
 }
 
-@OptIn(ExperimentalPagerApi::class, ExperimentalSnapperApi::class)
-@Composable
-private fun BoxScope.Pager(
-    composition: RootPlaybackControlMainScope
-) {
-    // TODO: Tech Debt, should define the state
-    val upComposition = rememberUpdatedState(newValue = composition)
-    upComposition.value.apply {
-        DisposableEffect(
-            key1 = this,
-            effect = {
-                currentQueueReaderCount++
-                onDispose { currentQueueReaderCount-- }
-            }
-        )
-    }
-    val queueOverrideAmountState = remember(composition) { mutableStateOf(0) }
-    val queueOverrideState = remember(composition) { mutableStateOf<OldPlaybackQueue?>(null) }
-    val maskedQueueState = remember(composition) {
-        derivedStateOf { queueOverrideState.value ?: composition.currentQueue }
-    }
-    val queue = maskedQueueState.value
-    val queueIndex = queue.currentIndex
-    val queueList = queue.list
-
-    remember(queueList.size, queueIndex) {
-        if (queueList.isEmpty()) {
-            require( queueIndex == PlaybackConstants.INDEX_UNSET) {
-                "empty QueueList must be followed by an invalid Index, queue=$queueList index=$queueIndex"
-            }
-            null
-        } else {
-            requireNotNull(queueList.getOrNull(queueIndex)) {
-                "non-empty QueueList must be followed by a valid index"
-            }
-        }
-    } ?: return
-
-    BoxWithConstraints(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(300.dp),
-    ) {
-        val pagerState = rememberPagerState(maskedQueueState.value.currentIndex.clampPositive())
-        val basePagerFling = PagerDefaults.flingBehavior(state = pagerState)
-        val rememberUpdatedConstraintState = rememberUpdatedState(newValue = constraints)
-
-        HorizontalPager(
-            modifier = Modifier.fillMaxSize(),
-            state = pagerState,
-            count = queueList.size,
-            flingBehavior = remember {
-                object : FlingBehavior {
-                    override suspend fun ScrollScope.performFling(initialVelocity: Float): Float {
-                        val constraint = rememberUpdatedConstraintState.value.maxWidth.toFloat() * 0.8F / 0.5f
-                        val coerced = (initialVelocity).coerceIn(-abs(constraint)..abs(constraint))
-                        return with(basePagerFling) { performFling(coerced) }.also {
-                            Timber.d("FullPlaybackControl, fling vel=$initialVelocity, coerced=$coerced, left=$it")
-                        }
-                    }
-                }
-            },
-            key = { queueList[it] }
-        ) {
-            val id = maskedQueueState.value.list.getOrNull(it)
-            val state =
-                if (id == null) {
-                    remember {
-                        mutableStateOf(PlaybackControlTrackMetadata())
-                    }
-                } else {
-                    composition.observeTrackSimpleMetadata(id).collectAsState(PlaybackControlTrackMetadata())
-                }
-            TracksPagerItem(metadataState = state)
-        }
-
-        val touchedState = remember { mutableStateOf(false) }
-
-        PagerListenMediaIndexChange(
-            indexState = remember(composition) {
-                derivedStateOf { composition.currentQueue.currentIndex }
-            },
-            pagerState = pagerState,
-            overrideState = remember(composition) {
-                derivedStateOf { queueOverrideState.value != null }
-            },
-            onScroll = { touchedState.value = false }
-        )
-
-        // Should consider to Just be be either `seekPrevious / seekNext`
-
-        PagerListenUserDrag(
-            pagerState = pagerState,
-            onStartDrag = { touchedState.value = true },
-            onEndDrag = { touchedState.value = true }
-        )
-
-        PagerListenPageState(
-            composition = composition,
-            pagerState = pagerState,
-            queueState = maskedQueueState,
-            touchedState = touchedState,
-            shouldSeekIndex = { c, index ->
-                if (c != upComposition.value) return@PagerListenPageState false
-                val currentQ = maskedQueueState.value
-                queueOverrideState.value = currentQ.copy(currentIndex = index)
-                true
-            },
-            seekIndex = { c, index ->
-                if (c != upComposition.value) {
-                    return@PagerListenPageState false
-                }
-                queueOverrideAmountState.value++
-                val seek = runCatching {
-                    val q = composition.currentQueue
-                    val result: PlaybackController.RequestResult = when (index) {
-                        q.currentIndex + 1 -> {
-                            c.playbackController.requestSeekNextAsync(Duration.ZERO).await()
-                        }
-                        q.currentIndex - 1 -> {
-                            c.playbackController.requestSeekPreviousItemAsync(Duration.ZERO).await()
-                        }
-                        else -> return@runCatching false
-                    }
-                    result.eventDispatch?.join()
-                    result.success
-                }.onFailure {
-                    if (it !is CancellationException) throw it
-                }
-                if (--queueOverrideAmountState.value == 0) {
-                    queueOverrideState.value = null
-                }
-                (seek.getOrElse { false })
-                    .also {
-                        if (!it && queueOverrideAmountState.value == 0) {
-                            touchedState.value = false
-                            pagerState.scrollToPage(maskedQueueState.value.currentIndex)
-                        }
-                        Timber.d("PagerListenPageChange seek to $index done, " +
-                                "$it ${queueOverrideAmountState.value}, ${queueOverrideState.value}")
-                    }
-            }
-        )
-    }
-}
-
-@Composable
-private fun TracksPagerItem(
-    metadataState: State<PlaybackControlTrackMetadata>
-) {
-    val art = metadataState.value.artwork
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        val context = LocalContext.current
-        val req = remember(art) {
-            ImageRequest.Builder(context)
-                .data(art)
-                .build()
-        }
-        AsyncImage(
-            modifier = Modifier
-                .fillMaxWidth(0.8f)
-                .height(280.dp)
-                .align(Alignment.Center),
-            model = req,
-            contentDescription = "art",
-            contentScale = ContentScale.Crop
-        )
-    }
-}
-
-@OptIn(ExperimentalPagerApi::class)
-@Composable
-private fun PagerListenMediaIndexChange(
-    indexState: State<Int>,
-    pagerState: PagerState,
-    overrideState: State<Boolean>,
-    onScroll: suspend () -> Unit
-) {
-    val currentIndex = indexState.value
-    val currentOverride = overrideState.value
-    LaunchedEffect(
-        key1 = currentIndex,
-        key2 = currentOverride
-    ) {
-        if (currentOverride) return@LaunchedEffect
-        // TODO: Velocity check, if the user is dragging the pager but aren't moving
-        // or if the user drag velocity will ends in another page
-        if (currentIndex >= 0 &&
-            pagerState.currentPage != currentIndex &&
-            !pagerState.isScrollInProgress
-        ) {
-            onScroll()
-            if (pagerState.currentPage in currentIndex - 2 .. currentIndex + 2) {
-                pagerState.animateScrollToPage(currentIndex)
-            } else {
-                pagerState.scrollToPage(currentIndex)
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalPagerApi::class)
-@Composable
-private fun PagerListenUserDrag(
-    pagerState: PagerState,
-    onStartDrag: () -> Unit,
-    onEndDrag: () -> Unit
-) {
-    LaunchedEffect(
-        null
-    ) {
-        var wasDragging = false
-        val stack = mutableListOf<DragInteraction.Start>()
-        pagerState.interactionSource.interactions.collect { interaction ->
-            when (interaction) {
-                is DragInteraction.Start -> stack.add(interaction)
-                is DragInteraction.Stop -> stack.remove(interaction.start)
-                is DragInteraction.Cancel -> stack.remove(interaction.start)
-            }
-            if (stack.isNotEmpty()) {
-                if (!wasDragging) {
-                    wasDragging = true
-                    onStartDrag()
-                }
-            } else {
-                if (wasDragging) {
-                    wasDragging = false
-                    onEndDrag()
-                }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalPagerApi::class)
-@Composable
-private fun PagerListenPageState(
-    composition: RootPlaybackControlMainScope,
-    pagerState: PagerState,
-    queueState: State<OldPlaybackQueue>,
-    touchedState: State<Boolean>,
-    shouldSeekIndex: (RootPlaybackControlMainScope, Int) -> Boolean,
-    seekIndex: suspend (RootPlaybackControlMainScope, Int) -> Boolean
-) {
-    val upComposition = rememberUpdatedState(newValue = composition)
-    val dragging by pagerState.interactionSource.collectIsDraggedAsState()
-    val touched by touchedState
-    val page = pagerState.currentPage
-    val rememberedPageState = remember {
-        mutableStateOf(page)
-    }
-    LaunchedEffect(
-        page,
-        dragging,
-        touched,
-        block = {
-            if (touched && !dragging &&
-                (page != rememberedPageState.value
-                        || rememberedPageState.value != queueState.value.currentIndex)
-            ) {
-                if (shouldSeekIndex(upComposition.value, page)) {
-                    rememberedPageState.value = page
-                    seekIndex(upComposition.value, page)
-                }
-            }
-        }
-    )
-}
-
 @Composable
 private fun BoxScope.Description(
-    composition: RootPlaybackControlMainScope
+    composition: RootPlaybackControlComposition
 ) {
     Box(modifier = Modifier.fillMaxWidth()) {
         Column(
@@ -891,7 +608,7 @@ private fun BoxScope.Description(
             horizontalAlignment = Alignment.Start,
             verticalArrangement = Arrangement.spacedBy(5.dp)
         ) {
-            val currentMetadata by remember(composition) {
+            val metadata by remember(composition) {
                 derivedStateOf { composition.currentPlaybackMetadata }
             }.apply {
                 DisposableEffect(key1 = composition, effect = {
@@ -899,8 +616,41 @@ private fun BoxScope.Description(
                     onDispose { composition.currentMetadataReaderCount-- }
                 })
             }
-            PlaybackDescriptionTitle(currentMetadata?.title ?: "")
-            PlaybackDescriptionSubtitle(currentMetadata?.subtitle ?: "")
+            PlaybackDescriptionTitle(
+                text = remember(metadata) {
+                    if (metadata === MediaMetadata.UNSET) {
+                        ""
+                    } else {
+                        metadata?.title
+                            ?: metadata.run {
+                                (this as? AudioFileMetadata)?.file
+                                    ?.let { fileMetadata ->
+                                        fileMetadata.fileName
+                                            ?.ifBlank {
+                                                (fileMetadata as? VirtualFileMetadata)?.uri?.toString()
+                                            }
+                                            ?: ""
+                                    }
+                                    ?.ifEmpty { "TITLE_EMPTY" }?.ifBlank { "TITLE_BLANK" }
+                            }
+                            ?: "TITLE_NONE"
+                    }
+                }
+            )
+            PlaybackDescriptionSubtitle(
+                text = remember(metadata) {
+                    if (metadata === MediaMetadata.UNSET) {
+                        ""
+                    } else {
+                        (metadata as? AudioMetadata)
+                            ?.let {
+                                it.albumArtistName ?: it.artistName
+                            }
+                            ?.ifEmpty { "TITLE_EMPTY" }?.ifBlank { "TITLE_BLANK" }
+                            ?: "SUBTITLE_NONE"
+                    }
+                }
+            )
         }
     }
 }
@@ -927,313 +677,21 @@ private fun PlaybackDescriptionSubtitle(text: String) {
     )
 }
 
-@Composable
-private fun BoxScope.Seekbar(
-    composition: RootPlaybackControlMainScope
-) {
-    // TODO: Tech Debt, should define the state
-    val upComposition = rememberUpdatedState(newValue = composition)
-
-    BoxWithConstraints {
-        val coroutineScope = rememberCoroutineScope()
-
-        val sliderPositionCollectorReady = remember {
-            mutableStateOf(false)
-        }
-        val sliderTextPositionCollectorReady = remember {
-            mutableStateOf(false)
-        }
-        val sliderDurationCollectorReady = remember {
-            mutableStateOf(false)
-        }
-        val sliderReady = remember {
-            mutableStateOf(false)
-        }
-        val sliderTextReady = remember {
-            mutableStateOf(false)
-        }
-        val sliderWidth = remember(maxWidth) {
-            maxWidth * 0.85f
-        }
-
-        val playbackObserver = remember(composition) {
-            composition.playbackController.createPlaybackObserver()
-        }.apply {
-            DisposableEffect(key1 = this, effect = {
-                onDispose { dispose() }
-            })
-        }
-
-        val sliderPositionCollector = remember(playbackObserver) {
-            playbackObserver.createProgressionCollector(
-                collectorContext = coroutineScope.coroutineContext,
-                includeEvent = true,
-            ).apply {
-                coroutineScope.launch {
-                    startCollectPosition().join()
-                    sliderPositionCollectorReady.value = true
-                }
-                setIntervalHandler { _, progress, duration, speed ->
-                    if (progress == Duration.ZERO || duration == Duration.ZERO || speed == 0f) {
-                        null
-                    } else {
-                        (duration.inWholeMilliseconds / sliderWidth.value / speed).toLong()
-                            .takeIf { it > 100 }?.milliseconds
-                            ?: PlaybackConstants.DURATION_UNSET
-                    }.also {
-                        Timber.d("Playback_Slider_Debug: intervalHandler($it) param: $progress $duration $speed")
-                    }
-                }
-            }
-        }.apply {
-            DisposableEffect(key1 = this, effect = {
-                onDispose { dispose() }
-            })
-        }
-
-        val sliderTextPositionCollector = remember(playbackObserver) {
-            playbackObserver.createProgressionCollector(
-                collectorContext = coroutineScope.coroutineContext,
-                includeEvent = true,
-            ).apply {
-                coroutineScope.launch {
-                    startCollectPosition().join()
-                    sliderTextPositionCollectorReady.value = true
-                }
-            }
-        }.apply {
-            DisposableEffect(key1 = this, effect = {
-                onDispose { dispose() }
-            })
-        }
-
-        val durationCollector = remember(playbackObserver) {
-            playbackObserver.createDurationCollector(
-                collectorContext = coroutineScope.coroutineContext
-            ).apply {
-                coroutineScope.launch {
-                    startCollect().join()
-                    sliderDurationCollectorReady.value = true
-                }
-            }
-        }.apply {
-            DisposableEffect(key1 = this, effect = {
-                onDispose { dispose() }
-            })
-        }
-
-        val ready = remember {
-            derivedStateOf { sliderReady.value && sliderTextReady.value }
-        }
-
-        val alpha = if (ready.value) 1f else 0f
-
-        if (sliderPositionCollectorReady.value && sliderDurationCollectorReady.value) {
-            sliderReady.value = true
-        }
-
-        if (sliderTextPositionCollectorReady.value && sliderDurationCollectorReady.value) {
-            sliderTextReady.value = true
-        }
-
-        if (!sliderReady.value || !sliderTextReady.value) {
-            return@BoxWithConstraints
-        }
-
-        val sliderTextPositionState = sliderTextPositionCollector.positionStateFlow.collectAsState()
-        val sliderPositionState = sliderPositionCollector.positionStateFlow.collectAsState()
-        val durationState = durationCollector.durationStateFlow.collectAsState()
-        val interactionSource = remember { MutableInteractionSource() }
-        val draggedState = interactionSource.collectIsDraggedAsState()
-        val pressedState = interactionSource.collectIsPressedAsState()
-
-        val changedValueState = remember {
-            // the Slider should constraint it to 0, consider change it to nullable Float
-            mutableStateOf(-1f)
-        }
-        val seekRequestCountState = remember {
-            mutableStateOf(0)
-        }
-
-        // consume the `animate` composable, it will recreate a new state so it will not animate
-        // should the first visible progress be animated ?
-        val consumeAnimationState = remember { mutableStateOf(1) }
-
-        NoInlineBox(modifier = Modifier.fillMaxWidth()) {
-
-            Column(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .alpha(alpha),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-
-                val seekRequestCount = seekRequestCountState.value
-                val consumeAnimationCount = consumeAnimationState.value
-
-                require(seekRequestCount == 0 || consumeAnimationCount > 0) {
-                    "seekRequest should be followed by consumeAnimation"
-                }
-
-                val position by sliderPositionState
-                val duration by durationState
-
-                val sliderValue = when {
-                    draggedState.value or pressedState.value or (changedValueState.value >= 0) -> {
-                        changedValueState.value
-                    }
-                    consumeAnimationState.value > 0 -> {
-                        consumeAnimationState.value = 0
-                        (position / duration).toFloat().clamp(0f, 1f)
-                    }
-                    else -> {
-                        val clampedProgress = (position / duration).toFloat().clamp(0f, 1f)
-                        // should snap
-                        val tweenDuration = if (clampedProgress == 1f || clampedProgress == 0f) 0 else 100
-                        animateFloatAsState(
-                            targetValue = clampedProgress,
-                            animationSpec = tween(tweenDuration)
-                        ).value
-                    }
-                }
-
-                Slider(
-                    modifier = Modifier
-                        .width(sliderWidth)
-                        .height(16.dp),
-                    value = sliderValue,
-                    // unfortunately There's no guarantee these 2 will be called in order
-                    onValueChange = { value ->
-                        Timber.d("Slider_DEBUG: onValueChange: $value")
-                        changedValueState.value = value
-                    },
-                    onValueChangeFinished = {
-                        Timber.d("Slider_DEBUG: onValueChangeFinished: ${changedValueState.value}")
-                        changedValueState.value.takeIf { it >= 0 }?.let {
-                            seekRequestCountState.value++
-                            consumeAnimationState.value++
-                            coroutineScope.launch {
-                                val seekTo = (duration.inWholeMilliseconds * it).toLong().milliseconds
-                                composition.playbackController
-                                    .requestSeekAsync(seekTo, coroutineContext)
-                                    .await().eventDispatch?.join()
-                                if (--seekRequestCountState.value == 0) {
-                                    changedValueState.value = -1f
-                                }
-                            }
-                            return@Slider
-                        }
-                        if (seekRequestCountState.value == 0) changedValueState.value = -1f
-                    },
-                    interactionSource = interactionSource,
-                    trackHeight = 6.dp,
-                    thumbSize = 12.dp,
-                    colors = SliderDefaults.colors(
-                        activeTrackColor = Theme.surfaceContentColorAsState().value,
-                        thumbColor = Theme.backgroundContentColorAsState().value
-                    )
-                )
-                Row(
-                    modifier = Modifier
-                        .width(this@BoxWithConstraints.maxWidth * 0.85f - 14.dp)
-                        .padding(top = 3.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    PlaybackPositionSliderText(
-                        progressState = remember {
-                            derivedStateOf {
-                                val raw = sliderTextPositionState.value
-                                if (changedValueState.value >= 0) {
-                                    changedValueState.value
-                                } else {
-                                    raw.inWholeMilliseconds / durationState.value.inWholeMilliseconds.toFloat()
-                                }
-                            }
-                        },
-                        durationState = durationState
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun RowScope.PlaybackPositionSliderText(
-    progressState: State<Float>,
-    durationState: State<Duration>
-) {
-
-    NoInline {
-        val duration = durationState.value
-        val progress = progressState.value
-        val formattedProgress: String = remember(progress, duration) {
-            val seconds =
-                if (duration.isNegative()) 0
-                else (duration.inWholeSeconds * progress).toLong()
-            if (seconds > 3600) {
-                String.format(
-                    "%02d:%02d:%02d",
-                    seconds / 3600,
-                    seconds % 3600 / 60,
-                    seconds % 60
-                )
-            } else {
-                String.format(
-                    "%02d:%02d",
-                    seconds / 60,
-                    seconds % 60
-                )
-            }
-        }
-
-        Text(
-            text = formattedProgress,
-            color = Theme.backgroundContentColorAsState().value,
-            style = MaterialTheme.typography.bodySmall
-        )
-    }
-
-    NoInline {
-        val duration = durationState.value
-        val formattedDuration: String = remember(duration) {
-            val seconds =
-                if (duration.isNegative() || duration.isInfinite()) 0
-                else duration.inWholeSeconds
-            if (seconds > 3600) {
-                String.format(
-                    "%02d:%02d:%02d",
-                    seconds / 3600,
-                    seconds % 3600 / 60,
-                    seconds % 60
-                )
-            } else {
-                String.format(
-                    "%02d:%02d",
-                    seconds / 60,
-                    seconds % 60
-                )
-            }
-        }
-        Text(
-            text = formattedDuration,
-            color = Theme.backgroundContentColorAsState().value,
-            style = MaterialTheme.typography.bodySmall
-        )
-    }
-}
 
 @Composable
 private fun BoxScope.Queue(
-    parent: RootPlaybackControlMainScope
+    parent: RootPlaybackControlComposition
 ) {
     BoxWithConstraints {
         if (!parent.showPlaybackQueue && parent.queueComposition == null) {
             return@BoxWithConstraints
         }
         parent.queueComposition = remember(parent) {
-            RootPlaybackControlQueueScope(parent)
+            RootPlaybackControlQueueScope(
+                parent,
+                parent.requestMoveQueueItemAsync,
+                parent.requestSeekAsync
+            )
         }.apply {
             parent.restoreQueueComposition(this)
             fullyVisibleHeightTarget = constraints.maxHeight
@@ -1244,30 +702,25 @@ private fun BoxScope.Queue(
 
 @Composable
 private fun BoxScope.PrimaryControlRow(
-    composition: RootPlaybackControlMainScope
+    composition: RootPlaybackControlComposition
 ) {
     // TODO: Tech Debt
-    val controller = composition.playbackController
     val coroutineScope = rememberCoroutineScope()
-
-    val rememberUpdatedController = rememberUpdatedState(newValue = controller)
 
     val propertiesState = remember {
         mutableStateOf(PlaybackConstants.PROPERTIES_UNSET)
     }
 
-    DisposableEffect(key1 = controller, effect = {
+    DisposableEffect(key1 = composition, effect = {
         val supervisor = SupervisorJob()
-        val observer = controller.createPlaybackObserver().createPropertiesCollector()
-            .apply {
-                coroutineScope.launch(supervisor) {
-                    startCollect().join()
-                    propertiesStateFlow.collect { propertiesState.value = it }
+        coroutineScope.launch(supervisor) {
+            composition.observePlaybackProperties()
+                .collect {
+                    propertiesState.value = it
                 }
-            }
+        }
         onDispose {
             supervisor.cancel()
-            observer.dispose()
             propertiesState.value = PlaybackConstants.PROPERTIES_UNSET
         }
     })
@@ -1282,31 +735,31 @@ private fun BoxScope.PrimaryControlRow(
         (PlaybackControlButtons(
         playbackPropertiesState = propertiesState,
         play = {
-            rememberUpdatedController.value.requestPlayAsync()
+            composition.requestPlayAsync()
         },
         pause = {
-            rememberUpdatedController.value.requestSetPlayWhenReadyAsync(false)
+            composition.requestPauseAsync()
         },
         next = {
-            rememberUpdatedController.value.requestSeekNextAsync(Duration.ZERO)
+            composition.requestSeekNextAsync()
         },
         previous = {
-            rememberUpdatedController.value.requestSeekPreviousAsync(Duration.ZERO)
+            composition.requestSeekPreviousAsync()
         },
         enableRepeat = {
-            rememberUpdatedController.value.requestSetRepeatModeAsync(RepeatMode.ONE)
+            composition.requestToggleRepeatAsync()
         },
         enableRepeatAll = {
-            rememberUpdatedController.value.requestSetRepeatModeAsync(RepeatMode.ALL)
+            composition.requestToggleRepeatAsync()
         },
         disableRepeat = {
-            rememberUpdatedController.value.requestSetRepeatModeAsync(RepeatMode.OFF)
+            composition.requestToggleRepeatAsync()
         },
         enableShuffle = {
-            rememberUpdatedController.value.requestSetShuffleModeAsync(ShuffleMode.ON)
+            composition.requestToggleShuffleAsync()
         },
         disableShuffle = {
-            rememberUpdatedController.value.requestSetShuffleModeAsync(ShuffleMode.OFF)
+            composition.requestToggleShuffleAsync()
         }
     ))
     }
@@ -1507,7 +960,7 @@ private fun PlaybackControlButtons(
 
 @Composable
 private fun BoxScope.SecondaryControl(
-    composition: RootPlaybackControlMainScope
+    composition: RootPlaybackControlComposition
 ) {
     Row(
         modifier = Modifier

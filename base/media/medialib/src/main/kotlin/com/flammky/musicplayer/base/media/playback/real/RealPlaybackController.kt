@@ -233,6 +233,14 @@ class RealPlaybackController(
 		TODO("Not yet implemented")
 	}
 
+	override suspend fun toggleRepeatMode(): Boolean {
+		TODO("Not yet implemented")
+	}
+
+	override suspend fun toggleShuffleMode(): Boolean {
+		TODO("Not yet implemented")
+	}
+
 	override suspend fun seekPosition(progress: Duration): Boolean {
 		TODO("Not yet implemented")
 	}

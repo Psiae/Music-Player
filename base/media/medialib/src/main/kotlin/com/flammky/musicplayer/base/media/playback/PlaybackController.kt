@@ -19,6 +19,8 @@ interface PlaybackController {
 	suspend fun setQueue(queue: OldPlaybackQueue): Boolean
 	suspend fun setRepeatMode(mode: RepeatMode): Boolean
 	suspend fun setShuffleMode(mode: ShuffleMode): Boolean
+	suspend fun toggleRepeatMode(): Boolean
+	suspend fun toggleShuffleMode(): Boolean
 	suspend fun seekPosition(progress: Duration): Boolean
 	suspend fun seekPosition(expectId: String, expectDuration: Duration, percent: Float): Boolean
 	suspend fun seekIndex(index: Int, startPosition: Duration): Boolean

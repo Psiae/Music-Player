@@ -111,6 +111,10 @@ internal abstract class PlaybackController(
 		coroutineContext: CoroutineContext = EmptyCoroutineContext
 	): Deferred<RequestResult>
 
+	abstract fun requestToggleRepeatModeAsync(): Deferred<RequestResult>
+
+	abstract fun requestToggleShuffleModeAsync(): Deferred<RequestResult>
+
 	abstract fun requestMoveAsync(
 		from: Int,
 		expectFromId: String,

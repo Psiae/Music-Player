@@ -68,6 +68,7 @@ interface PlaybackObserver {
 			handler: (
 				isEvent: Boolean,
 				progress: Duration,
+				bufferedProgress: Duration,
 				duration: Duration,
 				speed: Float
 			) -> Duration?

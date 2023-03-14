@@ -201,7 +201,7 @@ internal class ControlCompactCoordinator(
             try {
                 collector
                     .apply {
-                        setIntervalHandler { _, p, d, s ->
+                        setIntervalHandler { _, p, b, d, s ->
                             getNextInterval(p, d, s)
                         }
                         startCollectPosition().join()
@@ -224,7 +224,7 @@ internal class ControlCompactCoordinator(
             try {
                 collector
                     .apply {
-                        setIntervalHandler { _, p, d, s ->
+                        setIntervalHandler { _, p, b, d, s ->
                             getNextInterval(p, d, s)
                         }
                         startCollectPosition().join()

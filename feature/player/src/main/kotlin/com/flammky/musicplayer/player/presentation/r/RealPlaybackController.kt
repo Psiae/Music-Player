@@ -392,6 +392,58 @@ internal class RealPlaybackController(
 		}
 	}
 
+	override fun requestToggleRepeatModeAsync(): Deferred<RequestResult> {
+		return scope.async {
+			val success = runCatching {
+				playbackConnection.requestUserSessionAsync(user).await().controller.withLooperContext {
+					toggleRepeatMode()
+				}
+			}.getOrElse {
+				false
+			}
+			RequestResult(
+				success = success,
+				eventDispatch = if (success) {
+					launch {
+						val jobs = mutableListOf<Job>()
+						_observers.forEach {
+							jobs.add(it.updateRepeatMode())
+						}
+						jobs.joinAll()
+					}
+				} else {
+					null
+				}
+			)
+		}
+	}
+
+	override fun requestToggleShuffleModeAsync(): Deferred<RequestResult> {
+		return scope.async {
+			val success = runCatching {
+				playbackConnection.requestUserSessionAsync(user).await().controller.withLooperContext {
+					toggleShuffleMode()
+				}
+			}.getOrElse {
+				false
+			}
+			RequestResult(
+				success = success,
+				eventDispatch = if (success) {
+					launch {
+						val jobs = mutableListOf<Job>()
+						_observers.forEach {
+							jobs.add(it.updateShuffleMode())
+						}
+						jobs.joinAll()
+					}
+				} else {
+					null
+				}
+			)
+		}
+	}
+
 	override fun requestMoveAsync(
 		from: Int,
 		expectFromId: String,

@@ -14,19 +14,22 @@ import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.musicplayer.base.compose.SnapshotRead
 import com.flammky.musicplayer.base.compose.SnapshotWrite
 import com.flammky.musicplayer.base.media.playback.OldPlaybackQueue
+import com.flammky.musicplayer.base.media.playback.PlaybackProperties
 import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.player.presentation.controller.PlaybackController
-import com.flammky.musicplayer.player.presentation.main.PlaybackControlTrackMetadata
 import com.flammky.musicplayer.player.presentation.main.PlaybackControlViewModel
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlin.reflect.KMutableProperty
+import kotlin.time.Duration
 
 class RootPlaybackControlState internal constructor(
     internal val user: User,
     internal val viewModel: PlaybackControlViewModel
 ) {
 
-    internal var currentComposition: RootPlaybackControlMainScope? = null
+    internal var currentComposition: RootPlaybackControlComposition? = null
 
     private var restorationBundle: Bundle? = null
     private var compositionRestorationBundle: Bundle? = null
@@ -34,14 +37,23 @@ class RootPlaybackControlState internal constructor(
     private var restored = false
 
     internal val freezeState = mutableStateOf(false)
-    internal val showMainState = mutableStateOf(false)
+    internal val showSelfState = mutableStateOf(false)
 
     internal var dismissHandle: (() -> Boolean)? = null
+
+    internal val coordinator = RootPlaybackControlCoordinator(
+        state = this,
+        playbackController = viewModel.createUserPlaybackController(user),
+        observeArtwork = viewModel::observeMediaArtwork,
+        observeTrackMetadata = viewModel::observeMediaMetadata,
+        coroutineScope = CoroutineScope(Dispatchers.Main + SupervisorJob()),
+        coroutineDispatchScope = CoroutineScope(Dispatchers.Main.immediate + SupervisorJob())
+    )
 
     /**
      * state on whether the Layout is `visually` visible, false means that it's fully hidden
      */
-    val mainScreenVisible by derivedStateOf(policy = structuralEqualityPolicy()) {
+    val isVisible by derivedStateOf(policy = structuralEqualityPolicy()) {
         currentComposition
             ?.let { currentScope ->
                 currentScope.fullyVisibleHeightTarget
@@ -54,7 +66,7 @@ class RootPlaybackControlState internal constructor(
     /**
      * state on whether the Layout is `visually` fully visible
      */
-    val mainScreenFullyVisible by derivedStateOf(policy = structuralEqualityPolicy()) {
+    val isFullyVisible by derivedStateOf(policy = structuralEqualityPolicy()) {
         currentComposition
             ?.let { currentScope ->
                 currentScope.fullyVisibleHeightTarget
@@ -91,7 +103,7 @@ class RootPlaybackControlState internal constructor(
     } @SnapshotRead get
 
     val consumeBackPress by derivedStateOf(policy = structuralEqualityPolicy()) {
-        showMainState.value || currentComposition?.consumeBackPress == true
+        showSelfState.value || currentComposition?.consumeBackPress == true
     }
 
     @Composable
@@ -103,7 +115,7 @@ class RootPlaybackControlState internal constructor(
     }
 
     internal fun restoreComposition(
-        composition: RootPlaybackControlMainScope
+        composition: RootPlaybackControlComposition
     ) {
         compositionRestorationBundle?.let {
             compositionRestorationBundle = null
@@ -112,12 +124,12 @@ class RootPlaybackControlState internal constructor(
     }
 
     fun showSelf() {
-        showMainState.value = true
+        showSelfState.value = true
     }
 
     fun dismiss() {
         if (dismissHandle?.invoke() != false) {
-            showMainState.value = false
+            showSelfState.value = false
         }
     }
 
@@ -133,7 +145,7 @@ class RootPlaybackControlState internal constructor(
         check(!pendingRestore)
         check(!restored)
         restorationBundle = bundle
-        compositionRestorationBundle = bundle.getBundle(RootPlaybackControlMainScope::class.simpleName)
+        compositionRestorationBundle = bundle.getBundle(RootPlaybackControlComposition::class.simpleName)
         pendingRestore = true
     }
 
@@ -146,7 +158,7 @@ class RootPlaybackControlState internal constructor(
             return
         }
         check(pendingRestore)
-        showMainState.value = initialShowSelfState
+        showSelfState.value = initialShowSelfState
         freezeState.value = initialFreezeState
         restored = true
         pendingRestore = false
@@ -182,6 +194,273 @@ class RootPlaybackControlState internal constructor(
     }
 }
 
+internal class RootPlaybackControlCoordinator(
+    private val state: RootPlaybackControlState,
+    private val playbackController: PlaybackController,
+    private val observeArtwork: (String) -> Flow<Any?>,
+    private val observeTrackMetadata: (String) -> Flow<MediaMetadata?>,
+    private val coroutineScope: CoroutineScope,
+    private val coroutineDispatchScope: CoroutineScope,
+) {
+
+    val layoutComposition: RootPlaybackControlComposition
+
+    init {
+        @Suppress("SENSELESS_COMPARISON")
+        check(state.coordinator == null) {
+            "State Layout Coordinator should only be created by the state"
+        }
+        layoutComposition = RootPlaybackControlComposition(
+            showSelf = state.showSelfState::value,
+            requestSeekNextAsync = ::requestSeekNextAsync,
+            requestSeekPreviousAsync = ::requestSeekPreviousAsync,
+            requestSeekNextWithExpectAsync = ::requestSeekNextWithExpectAsync,
+            requestSeekPreviousWithExpectAsync = ::requestSeekPreviousWithExpectAsync,
+            requestSeekAsync = ::requestSeekAsync,
+            requestSeekPositionAsync = ::requestSeekPositionAsync,
+            requestMoveQueueItemAsync = ::requestMoveQueueItemAsync,
+            requestPlayAsync = ::requestPlayAsync,
+            requestPauseAsync = ::requestPauseAsync,
+            requestToggleRepeatAsync = ::requestToggleRepeatAsync,
+            requestToggleShuffleAsync = ::requestToggleShuffleAsync,
+            observeQueue = ::observeQueue,
+            observePlaybackProperties = ::observePlaybackProperties,
+            observePositionWithIntervalHandle = ::observePositionWithIntervalHandle,
+            observeTrackMetadata = observeTrackMetadata,
+            observeArtwork = observeArtwork,
+            dismiss = state::dismiss
+        )
+    }
+
+    private fun requestSeekNextAsync(): Deferred<Result<Boolean>> {
+        return coroutineDispatchScope.async {
+            runCatching {
+                playbackController.requestSeekNextAsync(Duration.ZERO).await()
+                    .run {
+                        eventDispatch?.join()
+                        success
+                    }
+            }
+        }
+    }
+
+    private fun requestSeekNextWithExpectAsync(
+        expectCurrentIndex: Int,
+        expectCurrentId: String,
+        expectNextId: String
+    ): Deferred<Result<Boolean>> {
+        return coroutineDispatchScope.async {
+            runCatching {
+                playbackController.requestSeekAsync(
+                    expectCurrentIndex,
+                    expectCurrentId,
+                    expectCurrentIndex + 1,
+                    expectNextId
+                ).await().run {
+                    eventDispatch?.join()
+                    success
+                }
+            }
+        }
+    }
+
+    private fun requestSeekPreviousAsync(): Deferred<Result<Boolean>> {
+        return coroutineDispatchScope.async {
+            runCatching {
+                playbackController.requestSeekPreviousAsync(Duration.ZERO).await()
+                    .run {
+                        eventDispatch?.join()
+                        success
+                    }
+            }
+        }
+    }
+
+    private fun requestSeekPreviousWithExpectAsync(
+        expectCurrentIndex: Int,
+        expectCurrentId: String,
+        expectPreviousId: String
+    ): Deferred<Result<Boolean>> {
+        return coroutineDispatchScope.async {
+            runCatching {
+                playbackController.requestSeekAsync(
+                    expectCurrentIndex,
+                    expectCurrentId,
+                    expectCurrentIndex - 1,
+                    expectPreviousId
+                ).await().run {
+                    eventDispatch?.join()
+                    success
+                }
+            }
+        }
+    }
+
+    private fun requestSeekPositionAsync(
+        expectFromId: String,
+        expectFromDuration: Duration,
+        percent: Float
+    ): Deferred<Result<Boolean>> {
+        return coroutineDispatchScope.async {
+            runCatching {
+                playbackController.requestSeekPositionAsync(
+                    expectFromId,
+                    expectFromDuration,
+                    percent
+                ).await().run {
+                    eventDispatch?.join()
+                    success
+                }
+            }
+        }
+    }
+
+    private fun requestMoveQueueItemAsync(
+        from: Int,
+        expectFromId: String,
+        to: Int,
+        expectToId: String
+    ): Deferred<Result<Boolean>> {
+        return coroutineDispatchScope.async {
+            runCatching {
+                playbackController.requestSeekAsync(
+                    from,
+                    expectFromId,
+                    to,
+                    expectToId
+                ).await().run {
+                    eventDispatch?.join()
+                    success
+                }
+            }
+        }
+    }
+
+    private fun requestSeekAsync(
+        expectFromIndex: Int,
+        expectFromId: String,
+        expectToIndex: Int,
+        expectToId: String
+    ): Deferred<Result<Boolean>> {
+        return coroutineDispatchScope.async {
+            runCatching {
+                playbackController.requestSeekAsync(
+                    expectFromIndex,
+                    expectFromId,
+                    expectToIndex,
+                    expectToId
+                ).await().run {
+                    eventDispatch?.join()
+                    success
+                }
+            }
+        }
+    }
+
+    private fun requestPlayAsync(): Deferred<Result<Boolean>> {
+        return coroutineDispatchScope.async {
+            runCatching {
+                playbackController.requestPlayAsync()
+                    .await()
+                    .run {
+                        eventDispatch?.join()
+                        success
+                    }
+            }
+        }
+    }
+
+    private fun requestPauseAsync(): Deferred<Result<Boolean>> {
+        return coroutineDispatchScope.async {
+            runCatching {
+                playbackController.requestSetPlayWhenReadyAsync(false)
+                    .await()
+                    .run {
+                        eventDispatch?.join()
+                        success
+                    }
+            }
+        }
+    }
+
+    private fun requestToggleRepeatAsync(): Deferred<Result<Boolean>> {
+        return coroutineDispatchScope.async {
+            runCatching {
+                playbackController.requestToggleRepeatModeAsync()
+                    .await()
+                    .run {
+                        eventDispatch?.join()
+                        success
+                    }
+            }
+        }
+    }
+
+    private fun requestToggleShuffleAsync(): Deferred<Result<Boolean>> {
+        return coroutineDispatchScope.async {
+            runCatching {
+                playbackController.requestToggleShuffleModeAsync()
+                    .await()
+                    .run {
+                        eventDispatch?.join()
+                        success
+                    }
+            }
+        }
+    }
+
+    private fun observeQueue(): Flow<OldPlaybackQueue> {
+        return flow {
+            val observer = playbackController.createPlaybackObserver()
+            try {
+                observer.createQueueCollector().apply {
+                    startCollect().join()
+                    queueStateFlow.collect(this@flow)
+                }
+            } finally {
+                observer.dispose()
+            }
+        }
+    }
+
+    private fun observePlaybackProperties(): Flow<PlaybackProperties> {
+        return flow {
+            val observer = playbackController.createPlaybackObserver()
+            try {
+                observer.createPropertiesCollector().apply {
+                    startCollect().join()
+                    propertiesStateFlow.collect(this@flow)
+                }
+            } finally {
+                observer.dispose()
+            }
+        }
+    }
+
+    private fun observePositionWithIntervalHandle(
+        getInterval: (
+            event: Boolean,
+            position: Duration,
+            bufferedPosition: Duration,
+            duration: Duration,
+            speed: Float
+        ) -> Duration
+    ): Flow<Nothing> {
+        return flow {
+            val observer = playbackController.createPlaybackObserver()
+            try {
+                observer.createProgressionCollector().apply {
+                    setIntervalHandler(getInterval)
+                    startCollectPosition().join()
+                    awaitCancellation()
+                }
+            } finally {
+                observer.dispose()
+            }
+        }
+    }
+}
+
 @Composable
 fun rememberRootPlaybackControlState(
     user: User,
@@ -196,7 +475,7 @@ fun rememberRootPlaybackControlState(
         RootPlaybackControlState(user, viewModel)
             .apply {
                 this.freezeState.value = initialFreezeState
-                this.showMainState.value = initialShowSelfState
+                this.showSelfState.value = initialShowSelfState
                 this.dismissHandle = dismissHandle
                 skipRestore()
             }
@@ -209,10 +488,52 @@ fun rememberRootPlaybackControlState(
     }
 }
 
-internal class RootPlaybackControlMainScope(
-    val state: RootPlaybackControlState,
-    val playbackController: PlaybackController,
-    val observeTrackSimpleMetadata: (String) -> Flow<PlaybackControlTrackMetadata>,
+internal class RootPlaybackControlComposition(
+    val showSelf: @SnapshotRead () -> Boolean,
+    val requestSeekNextAsync: () -> Deferred<Result<Boolean>>,
+    val requestSeekPreviousAsync: () -> Deferred<Result<Boolean>>,
+    val requestSeekNextWithExpectAsync: (
+        expectFromIndex: Int,
+        expectFromId: String,
+        expectPreviousId: String
+    ) -> Deferred<Result<Boolean>>,
+    val requestSeekPreviousWithExpectAsync: (
+        expectFromIndex: Int,
+        expectFromId: String,
+        expectPreviousId: String
+    ) -> Deferred<Result<Boolean>>,
+    val requestSeekAsync: (
+        expectFromIndex: Int,
+        expectFromId: String,
+        expectToIndex: Int,
+        expectToId: String
+    ) -> Deferred<Result<Boolean>>,
+    val requestSeekPositionAsync: (
+        expectFromId: String,
+        expectFromDuration: Duration,
+        percent: Float
+    ) -> Deferred<Result<Boolean>>,
+    val requestMoveQueueItemAsync: (
+        from: Int,
+        expectFromId: String,
+        to: Int,
+        expectToId: String
+    ) -> Deferred<Result<Boolean>>,
+    val requestPlayAsync: () -> Deferred<Result<Boolean>>,
+    val requestPauseAsync: () -> Deferred<Result<Boolean>>,
+    val requestToggleRepeatAsync: () -> Deferred<Result<Boolean>>,
+    val requestToggleShuffleAsync: () -> Deferred<Result<Boolean>>,
+    val observeQueue: () -> Flow<OldPlaybackQueue>,
+    val observePlaybackProperties: () -> Flow<PlaybackProperties>,
+    val observePositionWithIntervalHandle: (
+        getInterval: (
+            event: Boolean,
+            position: Duration,
+            bufferedPosition: Duration,
+            duration: Duration,
+            speed: Float
+        ) -> Duration
+    ) -> Flow<Nothing>,
     val observeTrackMetadata: (String) -> Flow<MediaMetadata?>,
     val observeArtwork: (String) -> Flow<Any?>,
     val dismiss: () -> Unit
@@ -232,7 +553,7 @@ internal class RootPlaybackControlMainScope(
         @SnapshotRead get
         @SnapshotWrite set
 
-    internal var currentPlaybackMetadata by mutableStateOf<PlaybackControlTrackMetadata?>(null)
+    internal var currentPlaybackMetadata by mutableStateOf<MediaMetadata?>(null)
         @SnapshotRead get
         @SnapshotWrite set
 
@@ -331,41 +652,24 @@ internal class RootPlaybackControlMainScope(
 
     companion object {
         // Saver ?
-        fun saver(
-            state: RootPlaybackControlState,
-            controller: PlaybackController,
-            dismiss: () -> Unit
-        ): Saver<RootPlaybackControlMainScope, Bundle> {
-            return Saver(
-                save = {
-                    Bundle()
-                        .apply {
-                            // TODO
-                        }
-                },
-                restore = {
-                    RootPlaybackControlMainScope(
-                        state,
-                        controller,
-                        state.viewModel::observeSimpleMetadata,
-                        state.viewModel::observeMediaMetadata,
-                        state.viewModel::observeMediaArtwork,
-                        dismiss
-                    ).apply {
-                        // TODO
-                    }
-                }
-            )
-        }
     }
 }
 
 internal class RootPlaybackControlQueueScope(
-    private val mainComposition: RootPlaybackControlMainScope
+    private val mainComposition: RootPlaybackControlComposition,
+    val requestMoveQueueItemAsync: (
+        from: Int,
+        expectFromId: String,
+        to: Int,
+        expectToId: String
+    ) -> Deferred<Result<Boolean>>,
+    val requestSeekIndexAsync: (
+        from: Int,
+        expectFromId: String,
+        to: Int,
+        expectToId: String,
+    ) -> Deferred<Result<Boolean>>
 ) {
-    val playbackController
-        get() = mainComposition.playbackController
-
     val currentQueue
         get() = mainComposition.currentQueue
 
@@ -422,23 +726,5 @@ internal class RootPlaybackControlQueueScope(
 
     companion object {
         // Saver ?
-        fun saver(
-            main: RootPlaybackControlMainScope
-        ): Saver<RootPlaybackControlQueueScope, Bundle> {
-            return Saver(
-                save = {
-                    Bundle()
-                        .apply {
-                            // TODO
-                        }
-                },
-                restore = {
-                    RootPlaybackControlQueueScope(main)
-                        .apply {
-                            // TODO
-                        }
-                }
-            )
-        }
     }
 }

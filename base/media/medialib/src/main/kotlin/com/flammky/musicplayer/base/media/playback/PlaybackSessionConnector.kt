@@ -398,6 +398,39 @@ class PlaybackSessionConnector internal constructor(
 			}
 		}
 
+		override suspend fun toggleRepeatMode(): Boolean {
+			return runCatching {
+				_deferredController?.await()
+					?.let { controller ->
+						controller.repeatMode = when (controller.repeatMode) {
+							Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ONE
+							Player.REPEAT_MODE_ONE -> Player.REPEAT_MODE_ALL
+							Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_OFF
+							else -> error("")
+						}
+						true
+					}
+					?: false
+			}.getOrElse { ex ->
+				if (ex !is CancellationException) throw ex
+				false
+			}
+		}
+
+		override suspend fun toggleShuffleMode(): Boolean {
+			return runCatching {
+				_deferredController?.await()
+					?.let { controller ->
+						controller.shuffleModeEnabled = !controller.shuffleModeEnabled
+						true
+					}
+					?: false
+			}.getOrElse { ex ->
+				if (ex !is CancellationException) throw ex
+				false
+			}
+		}
+
 		override suspend fun seekPosition(progress: Duration): Boolean {
 			return runCatching {
 				_deferredController?.await()

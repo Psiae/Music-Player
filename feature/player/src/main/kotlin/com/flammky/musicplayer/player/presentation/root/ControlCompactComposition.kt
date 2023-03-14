@@ -46,8 +46,8 @@ class ControlCompactComposition internal constructor(
         expectCurrentQueue: OldPlaybackQueue,
         expectFromIndex: Int,
         expectFromId: String,
-        expectPreviousIndex: Int,
-        expectPreviousId: String
+        expectNextIndex: Int,
+        expectNextId: String
     ) -> Deferred<Result<Boolean>>,
     private val coroutineScope: CoroutineScope
 ) {

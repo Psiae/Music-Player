@@ -355,6 +355,14 @@ internal class ExpectPlaybackControlPresenter(
 
 	private class EmptyPlaybackController(user: User) : PlaybackController(user) {
 
+		override fun requestToggleRepeatModeAsync(): Deferred<RequestResult> {
+			TODO("Not yet implemented")
+		}
+
+		override fun requestToggleShuffleModeAsync(): Deferred<RequestResult> {
+			TODO("Not yet implemented")
+		}
+
 		override fun requestSeekPositionAsync(
 			expectId: String,
 			expectDuration: Duration,
@@ -505,6 +513,7 @@ internal class ExpectPlaybackControlPresenter(
 					handler: (
 						isEvent: Boolean,
 						progress: Duration,
+						bufferedProgress: Duration,
 						duration: Duration,
 						speed: Float
 					) -> Duration?

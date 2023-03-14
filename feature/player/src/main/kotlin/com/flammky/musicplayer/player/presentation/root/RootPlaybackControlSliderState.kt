@@ -4,14 +4,13 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.*
 import androidx.compose.ui.unit.Dp
+import com.flammky.kotlin.common.time.Durations
 import com.flammky.musicplayer.base.compose.SnapshotRead
 import com.flammky.musicplayer.base.media.playback.OldPlaybackQueue
 import com.flammky.musicplayer.base.media.playback.PlaybackConstants
-import com.flammky.musicplayer.player.presentation.controller.PlaybackController
-import com.flammky.musicplayer.player.presentation.presenter.PlaybackObserver
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
-import timber.log.Timber
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -21,7 +20,16 @@ internal class SliderLayoutComposition(
     val onRequestSeek: suspend (
         expectDuration: Duration,
         percent: Float
-    ) -> Deferred<PlaybackController.RequestResult>
+    ) -> Deferred<Result<Boolean>>,
+    val observePositionWithIntervalHandle: (
+        getInterval: (
+            event: Boolean,
+            position: Duration,
+            bufferedPosition: Duration,
+            duration: Duration,
+            speed: Float
+        ) -> Duration
+    ) -> Flow<Nothing>
 ) {
 
     var readyForScrub by mutableStateOf(false)
@@ -32,6 +40,8 @@ internal class SliderLayoutComposition(
     var remoteSliderTextPlaybackPosition by mutableStateOf<Duration>(PlaybackConstants.POSITION_UNSET)
         private set
     var remotePlaybackDuration by mutableStateOf<Duration>(PlaybackConstants.DURATION_UNSET)
+        private set
+    var remoteSliderTextPlaybackDuration by mutableStateOf<Duration>(PlaybackConstants.DURATION_UNSET)
         private set
 
     val scrubbingResultStack = mutableStateListOf<ScrubbingResult>()
@@ -54,7 +64,7 @@ internal class SliderLayoutComposition(
         fun lock() { locked = true }
     }
 
-    fun setNewPlaybackDuration(duration: Duration) {
+    fun setNewSliderDuration(duration: Duration) {
         remotePlaybackDuration = duration
     }
 
@@ -64,6 +74,10 @@ internal class SliderLayoutComposition(
 
     fun setNewSliderTextPosition(duration: Duration) {
         remoteSliderTextPlaybackPosition = duration
+    }
+
+    fun setNewSliderTextDuration(duration: Duration) {
+        remoteSliderTextPlaybackDuration = duration
     }
 
     fun markToBeForgotten() {
@@ -206,7 +220,16 @@ internal class SliderLayoutComposition(
 }
 
 internal class RootPlaybackControlSliderState(
-    private val mainComposition: RootPlaybackControlMainScope
+    private val mainComposition: RootPlaybackControlComposition,
+    val observePositionWithIntervalHandle: (
+        getInterval: (
+            event: Boolean,
+            position: Duration,
+            bufferedPosition: Duration,
+            duration: Duration,
+            speed: Float
+        ) -> Duration
+    ) -> Flow<Nothing>
 ) {
 
     var layoutComposition by mutableStateOf<SliderLayoutComposition?>(null)
@@ -226,25 +249,19 @@ internal class RootPlaybackControlSliderState(
         expectId: String,
         expectDuration: Duration,
         percent: Float
-    ): Deferred<PlaybackController.RequestResult> {
-        return mainComposition.playbackController.requestSeekPositionAsync(
-            expectId,
-            expectDuration,
-            percent
-        )
-    }
-
-    fun createPlaybackObserver(): PlaybackObserver {
-        return mainComposition.playbackController.createPlaybackObserver()
-    }
+    ): Deferred<Result<Boolean>> = mainComposition.requestSeekPositionAsync(
+        expectId,
+        expectDuration,
+        percent
+    )
 }
 
 @Composable
 internal fun rememberRootPlaybackControlSliderState(
-    parentComposition: RootPlaybackControlMainScope
+    parentComposition: RootPlaybackControlComposition
 ): RootPlaybackControlSliderState {
     return remember(parentComposition) {
-        RootPlaybackControlSliderState(parentComposition)
+        RootPlaybackControlSliderState(parentComposition, parentComposition.observePositionWithIntervalHandle)
     }
 }
 
@@ -290,7 +307,8 @@ internal class RootPlaybackControlSliderApplier(
                                             expectDuration,
                                             percent
                                         )
-                                    }
+                                    },
+                                    observePositionWithIntervalHandle = state.observePositionWithIntervalHandle
                                 )
                         }
                     }
@@ -318,68 +336,42 @@ internal class RootPlaybackControlSliderApplier(
         DisposableEffect(
             this, composition,
             effect = {
-                val playbackObserver = state.createPlaybackObserver()
-                val durationCollector = playbackObserver.createDurationCollector()
-                val sliderPositionCollector = playbackObserver.createProgressionCollector()
-                val sliderTextPositionCollector = playbackObserver.createProgressionCollector()
+                val supervisor = SupervisorJob()
+                composition.run {
+                    coroutineScope.launch(supervisor) {
+                        snapshotFlow { composition.layoutWidthDp }
+                            .collect { sliderWidth ->
+                                observePositionWithIntervalHandle { _, position, _, duration, speed ->
+                                    setNewSliderPosition(position)
+                                    setNewSliderDuration(duration)
+                                    if (position == Duration.ZERO ||
+                                        duration == Duration.ZERO ||
+                                        speed == 0f
+                                    ) {
+                                        null
+                                    } else {
+                                        (duration.inWholeMilliseconds / sliderWidth.value / speed)
+                                            .toLong()
+                                            .takeIf { it > 100 }?.milliseconds
 
-                durationCollector
-                    .apply {
-                        composition.coroutineScope.launch {
-                            startCollect().join()
-                            durationStateFlow.collect { composition.setNewPlaybackDuration(it) }
-                        }
-                    }
-
-                sliderPositionCollector
-                    .apply {
-                        setCollectEvent(true)
-                        composition.coroutineScope.launch {
-                            snapshotFlow { composition.layoutWidthDp }
-                                .collect { sliderWidth ->
-                                    setIntervalHandler { _, progress, duration, speed ->
-                                        if (progress == Duration.ZERO ||
-                                            duration == Duration.ZERO ||
-                                            speed == 0f
-                                        ) {
-                                            null
-                                        } else {
-                                            (duration.inWholeMilliseconds / sliderWidth.value / speed)
-                                                .toLong()
-                                                .takeIf { it > 100 }?.milliseconds
-                                                ?: PlaybackConstants.DURATION_UNSET
-                                        }.also {
-                                            Timber.d("Playback_Slider_Debug: intervalHandler($it) param: $progress $duration $speed")
-                                        }
-                                    }
-                                }
-                        }
-                        composition.coroutineScope.launch {
-                            startCollectPosition().join()
-                            positionStateFlow.collect {
-                                composition.setNewSliderPosition(it)
+                                    } ?: PlaybackConstants.DURATION_UNSET
+                                }.collect {}
                             }
+                    }
+                    coroutineScope.launch(supervisor) {
+                        observePositionWithIntervalHandle { _, position, _, duration, speed ->
+                            setNewSliderTextPosition(position)
+                            setNewSliderTextDuration(duration)
+                            Durations.ONE_SECOND / speed.toDouble()
                         }
                     }
-
-                sliderTextPositionCollector
-                    .apply {
-                        setCollectEvent(true)
-                        composition.coroutineScope.launch {
-                            startCollectPosition().join()
-                            positionStateFlow.collect {
-                                composition.setNewSliderTextPosition(it)
-                            }
-                        }
+                    coroutineScope.launch(supervisor) {
+                        snapshotFlow { composition.remotePlaybackDuration }
+                            .first { it.isPositive() }
+                        composition.readyForScrub = true
                     }
-
-                composition.coroutineScope.launch {
-                    snapshotFlow { composition.remotePlaybackDuration }
-                        .first { it.isPositive() }
-                    composition.readyForScrub = true
                 }
-
-                onDispose { playbackObserver.dispose() }
+                onDispose { supervisor.cancel() }
             }
         )
     }

@@ -1269,7 +1269,7 @@ private fun PlaybackControlProgressSeekbar(
 				startCollectPosition().join()
 				sliderPositionCollectorReady.value = true
 			}
-			setIntervalHandler { _, progress, duration, speed ->
+			setIntervalHandler { _, progress, buf, duration, speed ->
 				if (progress == ZERO || duration == ZERO || speed == 0f) {
 					null
 				} else {

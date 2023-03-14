@@ -225,6 +225,7 @@ internal class RootPlaybackControlCoordinator(
             requestToggleShuffleAsync = ::requestToggleShuffleAsync,
             observeQueue = ::observeQueue,
             observePlaybackProperties = ::observePlaybackProperties,
+            observeDuration = ::observeDuration,
             observePositionWithIntervalHandle = ::observePositionWithIntervalHandle,
             observeTrackMetadata = observeTrackMetadata,
             observeArtwork = observeArtwork,
@@ -437,6 +438,23 @@ internal class RootPlaybackControlCoordinator(
         }
     }
 
+    private fun observeDuration(): Flow<Duration> {
+        return flow {
+            val observer = playbackController.createPlaybackObserver()
+            try {
+                observer.createDurationCollector()
+                    .apply {
+                        startCollect().join()
+                    }
+                    .run {
+                        durationStateFlow.collect(this@flow)
+                    }
+            } finally {
+                observer.dispose()
+            }
+        }
+    }
+
     private fun observePositionWithIntervalHandle(
         getInterval: (
             event: Boolean,
@@ -445,14 +463,14 @@ internal class RootPlaybackControlCoordinator(
             duration: Duration,
             speed: Float
         ) -> Duration
-    ): Flow<Nothing> {
+    ): Flow<Duration> {
         return flow {
             val observer = playbackController.createPlaybackObserver()
             try {
                 observer.createProgressionCollector().apply {
                     setIntervalHandler(getInterval)
                     startCollectPosition().join()
-                    awaitCancellation()
+                    positionStateFlow.collect(this@flow)
                 }
             } finally {
                 observer.dispose()
@@ -525,6 +543,7 @@ internal class RootPlaybackControlComposition(
     val requestToggleShuffleAsync: () -> Deferred<Result<Boolean>>,
     val observeQueue: () -> Flow<OldPlaybackQueue>,
     val observePlaybackProperties: () -> Flow<PlaybackProperties>,
+    val observeDuration: () -> Flow<Duration>,
     val observePositionWithIntervalHandle: (
         getInterval: (
             event: Boolean,
@@ -533,7 +552,7 @@ internal class RootPlaybackControlComposition(
             duration: Duration,
             speed: Float
         ) -> Duration
-    ) -> Flow<Nothing>,
+    ) -> Flow<Duration>,
     val observeTrackMetadata: (String) -> Flow<MediaMetadata?>,
     val observeArtwork: (String) -> Flow<Any?>,
     val dismiss: () -> Unit

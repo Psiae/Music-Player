@@ -6,11 +6,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.FlingBehavior
-import androidx.compose.foundation.gestures.ScrollScope
-import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
@@ -25,7 +21,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -34,36 +29,25 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.palette.graphics.Palette
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import com.flammky.android.medialib.common.mediaitem.AudioFileMetadata
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.android.medialib.providers.metadata.VirtualFileMetadata
 import com.flammky.androidx.content.context.findActivity
-import com.flammky.common.kotlin.comparable.clamp
-import com.flammky.common.kotlin.comparable.clampPositive
 import com.flammky.musicplayer.base.compose.NoInline
 import com.flammky.musicplayer.base.compose.NoInlineBox
-import com.flammky.musicplayer.base.media.playback.*
+import com.flammky.musicplayer.base.media.playback.PlaybackConstants
+import com.flammky.musicplayer.base.media.playback.PlaybackProperties
 import com.flammky.musicplayer.base.media.playback.RepeatMode
+import com.flammky.musicplayer.base.media.playback.ShuffleMode
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.*
 import com.flammky.musicplayer.player.R
 import com.flammky.musicplayer.player.presentation.PlaybackControlViewModel
 import com.flammky.musicplayer.player.presentation.controller.PlaybackController
-import com.flammky.musicplayer.player.presentation.main.PlaybackControlTrackMetadata
-import com.flammky.musicplayer.player.presentation.main.compose.Slider
-import com.flammky.musicplayer.player.presentation.main.compose.SliderDefaults
-import com.google.accompanist.pager.*
-import dev.chrisbanes.snapper.ExperimentalSnapperApi
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
-import timber.log.Timber
-import kotlin.math.abs
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
 import com.flammky.musicplayer.base.R as BaseResource
 
 @Composable
@@ -413,24 +397,27 @@ private fun RootPlaybackControlComposition.Layout(
                             try {
                                 composition.observeQueue()
                                     .collect {
-                                        it.list.getOrNull(it.currentIndex)
-                                            ?.let {
-                                                composition.observeArtwork(it)
-                                                    .collect collectArtwork@ { art ->
-                                                        latestTransformer?.cancel()
-                                                        if (art is Bitmap) {
-                                                            composition.currentPlaybackBitmap = art
-                                                            return@collectArtwork
+                                        latestTransformer?.cancel()
+                                        latestTransformer = launch {
+                                            it.list.getOrNull(it.currentIndex)
+                                                ?.let {
+                                                    composition.observeArtwork(it)
+                                                        .collect collectArtwork@ { art ->
+                                                            latestTransformer?.cancel()
+                                                            if (art is Bitmap) {
+                                                                composition.currentPlaybackBitmap = art
+                                                                return@collectArtwork
+                                                            }
+                                                            // else we need to collect the biggest layout viewport
+                                                            // within the composition and load the bitmap according to
+                                                            // the source kind
+                                                            composition.currentPlaybackBitmap = null
                                                         }
-                                                        // else we need to collect the biggest layout viewport
-                                                        // within the composition and load the bitmap according to
-                                                        // the source kind
-                                                        composition.currentPlaybackBitmap = null
-                                                    }
-                                            }
-                                            ?: run {
-                                                composition.currentPlaybackBitmap = null
-                                            }
+                                                }
+                                                ?: run {
+                                                    composition.currentPlaybackBitmap = null
+                                                }
+                                        }
                                     }
                             } finally {
                                 composition.currentQueueReaderCount--

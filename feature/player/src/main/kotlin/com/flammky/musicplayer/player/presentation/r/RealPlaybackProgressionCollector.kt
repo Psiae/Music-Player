@@ -29,17 +29,11 @@ internal class RealPlaybackProgressionCollector(
 
 	private var progressCollectorJob: Job? = null
 		set(value) {
-			require(value == null || scope.coroutineContext.job.children.contains(value)) {
-				"Job=$value is not attached to Scope=$scope"
-			}
 			field = value
 		}
 
 	private var eventCollectorJob: Job? = null
 		set(value) {
-			require(value == null || scope.coroutineContext.job.children.contains(value)) {
-				"Job=$value is not attached to Scope=$scope"
-			}
 			field = value
 		}
 
@@ -184,7 +178,7 @@ internal class RealPlaybackProgressionCollector(
 				_bufferedProgressStateFlow.update { buffered }
 				_progressStateFlow.update { progress }
 
-				val nextInterval = _intervalHandler(true, progress, duration, buffered, speed)
+				val nextInterval = _intervalHandler(true, progress, buffered, duration, speed)
 					?: run {
 						val currentProgress = session?.controller?.withLooperContext { progress }
 							?.takeIf { it != PlaybackConstants.POSITION_UNSET }
@@ -219,7 +213,7 @@ internal class RealPlaybackProgressionCollector(
 				_bufferedProgressStateFlow.update { buffered }
 				_progressStateFlow.update { progress }
 
-				nextInterval = _intervalHandler(false, progress, duration, buffered, speed)
+				nextInterval = _intervalHandler(false, progress, buffered, duration, speed)
 					?: run {
 						val currentProgress = session?.controller?.withLooperContext { progress }
 							?.takeIf { it != PlaybackConstants.POSITION_UNSET }

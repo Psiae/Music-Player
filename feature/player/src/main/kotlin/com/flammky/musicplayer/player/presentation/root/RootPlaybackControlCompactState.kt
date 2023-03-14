@@ -1202,8 +1202,7 @@ class CompactControlTimeBarState(
                                             return@collect
                                         }
                                         observeProgressWithIntervalHandle { progress, duration, speed ->
-                                            if (progress == Duration.ZERO ||
-                                                duration == Duration.ZERO ||
+                                            if (duration == Duration.ZERO ||
                                                 speed == 0f
                                             ) {
                                                 PlaybackConstants.DURATION_UNSET
@@ -1253,8 +1252,7 @@ class CompactControlTimeBarState(
                                             return@collect
                                         }
                                         observeBufferedProgressWithIntervalHandle { progress, duration, speed ->
-                                            if (progress == Duration.ZERO ||
-                                                duration == Duration.ZERO ||
+                                            if (duration == Duration.ZERO ||
                                                 speed == 0f
                                             ) {
                                                 PlaybackConstants.DURATION_UNSET

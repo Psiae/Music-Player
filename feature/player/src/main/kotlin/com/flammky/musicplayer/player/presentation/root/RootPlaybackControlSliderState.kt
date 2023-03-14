@@ -21,6 +21,7 @@ internal class SliderLayoutComposition(
         expectDuration: Duration,
         percent: Float
     ) -> Deferred<Result<Boolean>>,
+    val observeDuration: () -> Flow<Duration>,
     val observePositionWithIntervalHandle: (
         getInterval: (
             event: Boolean,
@@ -29,7 +30,7 @@ internal class SliderLayoutComposition(
             duration: Duration,
             speed: Float
         ) -> Duration
-    ) -> Flow<Nothing>
+    ) -> Flow<Duration>
 ) {
 
     var readyForScrub by mutableStateOf(false)
@@ -39,7 +40,7 @@ internal class SliderLayoutComposition(
         private set
     var remoteSliderTextPlaybackPosition by mutableStateOf<Duration>(PlaybackConstants.POSITION_UNSET)
         private set
-    var remotePlaybackDuration by mutableStateOf<Duration>(PlaybackConstants.DURATION_UNSET)
+    var remoteSliderPlaybackDuration by mutableStateOf<Duration>(PlaybackConstants.DURATION_UNSET)
         private set
     var remoteSliderTextPlaybackDuration by mutableStateOf<Duration>(PlaybackConstants.DURATION_UNSET)
         private set
@@ -65,7 +66,7 @@ internal class SliderLayoutComposition(
     }
 
     fun setNewSliderDuration(duration: Duration) {
-        remotePlaybackDuration = duration
+        remoteSliderPlaybackDuration = duration
     }
 
     fun setNewSliderPosition(duration: Duration) {
@@ -92,7 +93,7 @@ internal class SliderLayoutComposition(
                 it.currentProgress = value
             }
             ?: run {
-                val durationStart = remotePlaybackDuration
+                val durationStart = remoteSliderPlaybackDuration
                     .takeIf { it.inWholeMilliseconds >= 0f }
                     ?: /* error ? */ return
                 currentScrubbingInstance = ScrubbingInstance(durationStart, value)
@@ -146,10 +147,10 @@ internal class SliderLayoutComposition(
             ?: run {
                 if (
                     remoteSliderPlaybackPosition.isPositive() &&
-                    remotePlaybackDuration.isPositive()
+                    remoteSliderPlaybackDuration.isPositive()
                 ) {
                     val target = remoteSliderPlaybackPosition.inWholeMilliseconds.toFloat() /
-                            remotePlaybackDuration.inWholeMilliseconds
+                            remoteSliderPlaybackDuration.inWholeMilliseconds
                     if (consumeSliderValueAnimator) {
                         consumeSliderValueAnimator = false
                         return target
@@ -195,7 +196,7 @@ internal class SliderLayoutComposition(
             ?: run {
                 if (
                     remoteSliderPlaybackPosition.isPositive() &&
-                    remotePlaybackDuration.isPositive()
+                    remoteSliderPlaybackDuration.isPositive()
                 ) {
                     remoteSliderPlaybackPosition
                 } else {
@@ -213,7 +214,7 @@ internal class SliderLayoutComposition(
                 scrubbingResultStack.lastOrNull()?.duration
             }
             ?: run {
-                remotePlaybackDuration
+                remoteSliderPlaybackDuration
             }
         return switch.coerceAtLeast(Duration.ZERO)
     }
@@ -221,6 +222,7 @@ internal class SliderLayoutComposition(
 
 internal class RootPlaybackControlSliderState(
     private val mainComposition: RootPlaybackControlComposition,
+    val observeDuration: () -> Flow<Duration>,
     val observePositionWithIntervalHandle: (
         getInterval: (
             event: Boolean,
@@ -229,7 +231,7 @@ internal class RootPlaybackControlSliderState(
             duration: Duration,
             speed: Float
         ) -> Duration
-    ) -> Flow<Nothing>
+    ) -> Flow<Duration>
 ) {
 
     var layoutComposition by mutableStateOf<SliderLayoutComposition?>(null)
@@ -261,7 +263,11 @@ internal fun rememberRootPlaybackControlSliderState(
     parentComposition: RootPlaybackControlComposition
 ): RootPlaybackControlSliderState {
     return remember(parentComposition) {
-        RootPlaybackControlSliderState(parentComposition, parentComposition.observePositionWithIntervalHandle)
+        RootPlaybackControlSliderState(
+            parentComposition,
+            parentComposition.observeDuration,
+            parentComposition.observePositionWithIntervalHandle,
+        )
     }
 }
 
@@ -308,6 +314,7 @@ internal class RootPlaybackControlSliderApplier(
                                             percent
                                         )
                                     },
+                                    observeDuration = state.observeDuration,
                                     observePositionWithIntervalHandle = state.observePositionWithIntervalHandle
                                 )
                         }
@@ -339,34 +346,53 @@ internal class RootPlaybackControlSliderApplier(
                 val supervisor = SupervisorJob()
                 composition.run {
                     coroutineScope.launch(supervisor) {
-                        snapshotFlow { composition.layoutWidthDp }
-                            .collect { sliderWidth ->
-                                observePositionWithIntervalHandle { _, position, _, duration, speed ->
-                                    setNewSliderPosition(position)
-                                    setNewSliderDuration(duration)
-                                    if (position == Duration.ZERO ||
-                                        duration == Duration.ZERO ||
-                                        speed == 0f
-                                    ) {
-                                        null
-                                    } else {
-                                        (duration.inWholeMilliseconds / sliderWidth.value / speed)
-                                            .toLong()
-                                            .takeIf { it > 100 }?.milliseconds
+                        var latestWidthCollector: Job? = null
+                        observeDuration()
+                            .collect { duration ->
+                                latestWidthCollector?.cancel()
+                                latestWidthCollector = launch {
+                                    var latestJob: Job? = null
+                                    snapshotFlow { composition.layoutWidthDp }
+                                        .collect { sliderWidth ->
+                                            latestJob?.cancel()
+                                            latestJob = launch {
+                                                setNewSliderDuration(duration)
+                                                observePositionWithIntervalHandle { _, position, _, duration, speed ->
+                                                    if (duration == Duration.ZERO ||
+                                                        speed == 0f
+                                                    ) {
+                                                        null
+                                                    } else {
+                                                        (duration.inWholeMilliseconds / sliderWidth.value / speed)
+                                                            .toLong()
+                                                            .takeIf { it > 100 }?.milliseconds
 
-                                    } ?: PlaybackConstants.DURATION_UNSET
-                                }.collect {}
+                                                    } ?: PlaybackConstants.DURATION_UNSET
+                                                }.collect {
+                                                    setNewSliderPosition(it)
+                                                }
+                                            }
+                                        }
+                                }
                             }
                     }
                     coroutineScope.launch(supervisor) {
-                        observePositionWithIntervalHandle { _, position, _, duration, speed ->
-                            setNewSliderTextPosition(position)
-                            setNewSliderTextDuration(duration)
-                            Durations.ONE_SECOND / speed.toDouble()
-                        }
+                        var latestJob: Job? = null
+                        observeDuration()
+                            .collect { duration ->
+                                latestJob?.cancel()
+                                latestJob = launch {
+                                    setNewSliderTextDuration(duration)
+                                    observePositionWithIntervalHandle { _, position, _, duration, speed ->
+                                        Durations.ONE_SECOND / speed.toDouble()
+                                    }.collect {
+                                        setNewSliderTextPosition(it)
+                                    }
+                                }
+                            }
                     }
                     coroutineScope.launch(supervisor) {
-                        snapshotFlow { composition.remotePlaybackDuration }
+                        snapshotFlow { composition.remoteSliderPlaybackDuration }
                             .first { it.isPositive() }
                         composition.readyForScrub = true
                     }

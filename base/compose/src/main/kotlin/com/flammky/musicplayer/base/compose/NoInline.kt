@@ -10,6 +10,17 @@ import androidx.compose.ui.Modifier
 fun NoInline(content: @Composable () -> Unit) = content()
 
 @Composable
+fun SubCompose(block: @Composable () -> Unit) = block()
+
+@Composable
+fun SubComposeBox(
+	modifier: Modifier = Modifier,
+	contentAlignment: Alignment = Alignment.TopStart,
+	propagateMinConstraints: Boolean = false,
+	content: @Composable BoxScope.() -> Unit
+) = Box(modifier, contentAlignment, propagateMinConstraints, content)
+
+@Composable
 fun NoInlineBox(modifier: Modifier) = Box(modifier)
 
 @Composable

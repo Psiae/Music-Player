@@ -54,7 +54,7 @@ internal fun RootPlaybackControlSlider(
                 enabled = composition.readyForScrub,
                 value = composition.sliderDisplayValue(),
                 onValueChange = remember(composition) {
-                    { value ->  composition.onValueChange(value) }
+                    { value -> composition.onValueChange(value) }
                 },
                 onValueChangeFinished = remember(composition) {
                     { composition.onValueChangeFinished() }

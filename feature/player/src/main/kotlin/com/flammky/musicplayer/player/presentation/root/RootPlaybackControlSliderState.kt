@@ -11,7 +11,6 @@ import com.flammky.musicplayer.base.media.playback.PlaybackConstants
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
-import timber.log.Timber
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -124,7 +123,6 @@ internal class SliderLayoutComposition(
     fun sliderDisplayValue(): Float {
         val switch = currentScrubbingInstance
             ?.let { instance ->
-                consumeSliderValueAnimator = true
                 if (
                     instance.currentProgress > 0f &&
                     instance.startInDuration.isPositive()
@@ -137,7 +135,6 @@ internal class SliderLayoutComposition(
             ?: run {
                 scrubbingResultStack.lastOrNull()
                     ?.let { scrubbingResult ->
-                        consumeSliderValueAnimator = true
                         if (scrubbingResult.duration.isPositive()) {
                             scrubbingResult.progress
                         } else {
@@ -152,10 +149,6 @@ internal class SliderLayoutComposition(
                 ) {
                     val target = remoteSliderPlaybackPosition.inWholeMilliseconds.toFloat() /
                             remoteSliderPlaybackDuration.inWholeMilliseconds
-                    if (consumeSliderValueAnimator) {
-                        consumeSliderValueAnimator = false
-                        return target
-                    }
                     animateFloatAsState(
                         targetValue = target,
                         animationSpec = remember { tween(200) }

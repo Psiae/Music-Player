@@ -108,7 +108,6 @@ internal class RootPlaybackControlBackgroundState(
 
             @SuppressLint("ModifierFactoryExtensionFunction")
             fun CompositionScope.animatedRadialBackgroundModifier(
-                scope: CompositionScope,
                 spec: AnimationSpec<Color>,
                 dark: Boolean,
                 center: Offset,
@@ -116,6 +115,7 @@ internal class RootPlaybackControlBackgroundState(
             ): Modifier {
                 return Modifier.composed {
                     val backgroundColor = Theme.backgroundColorAsState().value
+                    val scope = this@animatedRadialBackgroundModifier
 
                     val animatable = remember {
                         Animatable(

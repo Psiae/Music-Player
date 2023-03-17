@@ -17,7 +17,7 @@ import kotlin.time.Duration.Companion.milliseconds
 internal class SliderLayoutComposition(
     val queueData: OldPlaybackQueue,
     val coroutineScope: CoroutineScope,
-    val onRequestSeek: suspend (
+    val onRequestSeek: (
         expectDuration: Duration,
         percent: Float
     ) -> Deferred<Result<Boolean>>,
@@ -241,7 +241,7 @@ internal class RootPlaybackControlSliderState(
         mainComposition.currentQueueReaderCount--
     }
 
-    suspend fun requestSeekPositionAsync(
+    fun requestSeekPositionAsync(
         expectId: String,
         expectDuration: Duration,
         percent: Float

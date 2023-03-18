@@ -61,7 +61,7 @@ fun CompactControlPager(
 }
 
 @Composable
-fun PagerItem(
+private fun PagerItem(
     metadataFlow: Flow<MediaMetadata?>,
     darkSurface: @SnapshotRead () -> Boolean
 ) {

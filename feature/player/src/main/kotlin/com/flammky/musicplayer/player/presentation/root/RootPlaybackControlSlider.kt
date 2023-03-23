@@ -19,7 +19,7 @@ import kotlin.time.Duration
 
 @Composable
 internal fun RootPlaybackControlSlider(
-    state: RootPlaybackControlSliderState
+    state: PlaybackControlSliderState
 ) {
     val coroutineScope = rememberCoroutineScope()
     val applier = remember(state) {

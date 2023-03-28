@@ -45,6 +45,8 @@ import com.flammky.musicplayer.base.theme.compose.*
 import com.flammky.musicplayer.player.R
 import com.flammky.musicplayer.player.presentation.PlaybackControlViewModel
 import com.flammky.musicplayer.player.presentation.controller.PlaybackController
+import com.flammky.musicplayer.player.presentation.root.main.PlaybackControlTimeBar
+import com.flammky.musicplayer.player.presentation.root.main.PlaybackControlTimeBarState
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -206,15 +208,30 @@ private fun RootPlaybackControlComposition.TransitioningContentLayout() {
                 },
                 pager = {
                     RootPlaybackControlPager(
-                        state = rememberRootPlaybackControlPagerState(composition = it)
+                        state = remember(it) {
+                            RootPlaybackControlPagerState(
+                                observeQueue = it.observeQueue,
+                                observeMetadata = it.observeTrackMetadata,
+                                observeArtwork = it.observeArtwork,
+                                requestSeekNextWithExpectAsync = requestSeekNextWithExpectAsync,
+                                requestSeekPreviousWithExpectAsync = requestSeekPreviousWithExpectAsync,
+                            )
+                        }
                     )
                 },
                 description = {
                     Description(composition = it)
                 },
                 seekbar = {
-                    RootPlaybackControlSlider(
-                        state = rememberRootPlaybackControlSliderState(parentComposition = it)
+                    PlaybackControlTimeBar(
+                        state = remember(it) {
+                            PlaybackControlTimeBarState(
+                                observeQueue = it.observeQueue,
+                                onRequestSeek = it.requestSeekPositionAsync,
+                                observeDuration = it.observeDuration,
+                                observeProgressWithIntervalHandle = it.observePositionWithIntervalHandle,
+                            )
+                        }
                     )
                 },
                 primaryControlRow = {
@@ -823,7 +840,7 @@ private fun PlaybackControlButtons(
                         indication = null,
                         onClick = { previous() }
                     ),
-                painter = painterResource(id = R.drawable.ios_glyph_seek_previos_100),
+                painter = painterResource(id = R.drawable.ios_glyph_seek_previous_100),
                 contentDescription = "previous",
                 tint = Theme.backgroundContentColorAsState().value
             )

@@ -5,7 +5,7 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 
 @Deprecated("Slowly integrate snapshot_id and queue-based identifier")
-data class OldPlaybackQueue(
+class OldPlaybackQueue(
 	val list: ImmutableList<String>,
 	val currentIndex: Int
 ) {
@@ -21,6 +21,13 @@ data class OldPlaybackQueue(
 				"currentIndex=$currentIndex must be within the list range=${list.indices}"
 			}
 		}
+	}
+
+	fun copy(
+		list: ImmutableList<String> = this.list,
+		currentIndex: Int = this.currentIndex
+	): OldPlaybackQueue {
+		return OldPlaybackQueue(list, currentIndex)
 	}
 
 	data class Item(

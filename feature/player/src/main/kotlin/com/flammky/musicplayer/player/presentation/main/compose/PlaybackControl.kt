@@ -1117,7 +1117,7 @@ private fun PlaybackControlButtons(
 						onClick = { previous() }
 					)
 				,
-				painter = painterResource(id = R.drawable.ios_glyph_seek_previos_100),
+				painter = painterResource(id = R.drawable.ios_glyph_seek_previous_100),
 				contentDescription = "previous",
 				tint = Theme.backgroundContentColorAsState().value
 			)

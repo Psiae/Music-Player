@@ -47,6 +47,8 @@ import com.flammky.musicplayer.player.presentation.PlaybackControlViewModel
 import com.flammky.musicplayer.player.presentation.controller.PlaybackController
 import com.flammky.musicplayer.player.presentation.root.main.PlaybackControlTimeBar
 import com.flammky.musicplayer.player.presentation.root.main.PlaybackControlTimeBarState
+import com.flammky.musicplayer.player.presentation.root.main.PlaybackControlToolBar
+import com.flammky.musicplayer.player.presentation.root.main.PlaybackControlToolBarState
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -204,7 +206,13 @@ private fun RootPlaybackControlComposition.TransitioningContentLayout() {
                     RadialPlaybackBackground(composition = it)
                 },
                 toolbar = {
-                    Toolbar(composition = it)
+                    PlaybackControlToolBar(
+                        state = remember(it) {
+                            PlaybackControlToolBarState(
+                                onDismissClick = it.dismiss
+                            )
+                        }
+                    )
                 },
                 pager = {
                     RootPlaybackControlPager(
@@ -288,7 +296,7 @@ private fun RootPlaybackControlComposition.Layout(
             ) {
                 toolbar(composition)
             }
-            Spacer(modifier = Modifier.height(15.dp))
+            Spacer(modifier = Modifier.height(5.dp))
             Box(
                 modifier = Modifier
                     .fillMaxWidth()

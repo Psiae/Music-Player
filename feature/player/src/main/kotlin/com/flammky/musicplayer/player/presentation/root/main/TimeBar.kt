@@ -9,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
@@ -17,7 +18,9 @@ import com.flammky.musicplayer.base.media.playback.OldPlaybackQueue
 import com.flammky.musicplayer.base.media.playback.PlaybackConstants
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.backgroundContentColorAsState
+import com.flammky.musicplayer.base.theme.compose.surfaceContentColorAsState
 import com.flammky.musicplayer.player.presentation.main.compose.Slider
+import com.flammky.musicplayer.player.presentation.main.compose.SliderDefaults
 import dev.flammky.compose_components.core.SnapshotRead
 import dev.flammky.compose_components.core.SnapshotReader
 import kotlinx.coroutines.Deferred
@@ -36,7 +39,9 @@ fun PlaybackControlTimeBar(
     state: PlaybackControlTimeBarState
 ) = state.coordinator.ComposeContent(
     slider = @SnapshotRead {
-        RenderSlider { modifier ->
+        sliderRenderFactory { modifier ->
+            val trackColor = trackColor()
+            val thumbColor = thumbColor()
             val thumbSize = thumbSize()
             Slider(
                 modifier = modifier.width(trackWidth() + thumbSize),
@@ -45,13 +50,17 @@ fun PlaybackControlTimeBar(
                 onValueChangeFinished = eventSink.onUserScrubFinished,
                 trackHeight = trackHeight(),
                 thumbSize = thumbSize,
-                enabled = scrubEnabled()
+                enabled = scrubEnabled(),
+                colors = SliderDefaults.colors(
+                    thumbColor = thumbColor,
+                    activeTrackColor = trackColor
+                )
             )
         }
     },
     progressText = @SnapshotRead {
         // TODO: Coordinator should provide the text color and the text property
-        RenderPositionText { modifier ->
+        positionTextRenderFactory { modifier ->
             Text(
                 modifier = modifier,
                 text = positionString(),
@@ -59,7 +68,7 @@ fun PlaybackControlTimeBar(
                 style = MaterialTheme.typography.bodySmall
             )
         }
-        RenderDurationText { modifier ->
+        durationTextRenderFactory { modifier ->
             Text(
                 modifier = modifier,
                 text = durationString(),
@@ -178,7 +187,7 @@ class PlaybackControlTimeBarCoordinator(
     }
 
     interface SliderScope {
-        fun RenderSlider(
+        fun sliderRenderFactory(
             content: @Composable SliderRenderScope.(Modifier) -> Unit
         )
     }
@@ -200,15 +209,21 @@ class PlaybackControlTimeBarCoordinator(
 
         @Composable
         fun scrubEnabled(): Boolean
+
+        @Composable
+        fun trackColor(): Color
+
+        @Composable
+        fun thumbColor(): Color
     }
 
     interface ProgressTextScope {
 
-        fun RenderPositionText(
+        fun positionTextRenderFactory(
             content: @Composable TextPositionRenderScope.(Modifier) -> Unit
         )
 
-        fun RenderDurationText(
+        fun durationTextRenderFactory(
             content: @Composable TextDurationRenderScope.(Modifier) -> Unit
         )
     }
@@ -387,6 +402,12 @@ class PlaybackControlTimeBarCoordinator(
 
         @Composable
         override fun scrubEnabled(): Boolean = canScrub
+
+        @Composable
+        override fun trackColor(): Color = Theme.surfaceContentColorAsState().value
+
+        @Composable
+        override fun thumbColor(): Color = Theme.backgroundContentColorAsState().value
     }
 
     private class SliderScopeImpl(
@@ -403,7 +424,7 @@ class PlaybackControlTimeBarCoordinator(
         var sliderContent by mutableStateOf<@Composable () -> Unit>({})
             private set
 
-        var latestScrubConsumer by mutableStateOf<ScrubConsumer?>(null)
+        var overridingScrubConsumer by mutableStateOf<ScrubConsumer?>(null)
             private set
 
         private var getSliderModifier by mutableStateOf<Modifier.() -> Modifier>({ Modifier })
@@ -426,7 +447,7 @@ class PlaybackControlTimeBarCoordinator(
             this.getThumbSize = getThumbSize
         }
 
-        override fun RenderSlider(content: @Composable SliderRenderScope.(Modifier) -> Unit) {
+        override fun sliderRenderFactory(content: @Composable SliderRenderScope.(Modifier) -> Unit) {
             sliderContent = @Composable { observeForRenderScope().content(Modifier.getSliderModifier()) }
         }
 
@@ -460,7 +481,7 @@ class PlaybackControlTimeBarCoordinator(
             val renderDuration = renderDurationState.value
 
             SideEffect {
-                this.latestScrubConsumer =
+                this.overridingScrubConsumer =
                     queuedScrubConsumers.lastOrNull() ?: currentScrubConsumer.value
             }
 
@@ -499,10 +520,10 @@ class PlaybackControlTimeBarCoordinator(
                     onDispose {
                         supervisor.cancel()
                         if (
-                            latestScrubConsumer ==
+                            overridingScrubConsumer ==
                             (queuedScrubConsumers.lastOrNull() ?: currentScrubConsumer.value)
                         ) {
-                            latestScrubConsumer = null
+                            overridingScrubConsumer = null
                         }
                     }
                 }
@@ -539,7 +560,14 @@ class PlaybackControlTimeBarCoordinator(
                     )
                 },
                 positionContinuationKey = positionContinuationKeyState.value,
-                canScrub = renderDuration > Duration.ZERO,
+                canScrub = remember {
+                    mutableStateOf(positionContinuationKeyState.value)
+                }.run {
+                    val enabled = renderDuration > Duration.ZERO &&
+                            value == positionContinuationKeyState.value
+                    value = positionContinuationKeyState.value
+                    enabled
+                },
                 currentScrubbingRatio = currentScrubConsumer.value.let {
                     check(!it.finished)
                     if (it.started) it.latestRatio else null
@@ -586,7 +614,7 @@ class PlaybackControlTimeBarCoordinator(
             this.getDurationTextModifier = durationTextModifier
         }
 
-        override fun RenderPositionText(
+        override fun positionTextRenderFactory(
             content: @Composable TextPositionRenderScope.(Modifier) -> Unit
         ) {
             positionTextContent = @Composable {
@@ -596,7 +624,7 @@ class PlaybackControlTimeBarCoordinator(
             }
         }
 
-        override fun RenderDurationText(
+        override fun durationTextRenderFactory(
             content: @Composable TextDurationRenderScope.(Modifier) -> Unit
         ) {
            durationTextContent = @Composable {
@@ -713,7 +741,7 @@ class PlaybackControlTimeBarCoordinator(
                 },
                 durationFlow = state.observeDuration,
                 positionOverrideState = derivedStateOf {
-                    updatedSlider.value.latestScrubConsumer?.let { consumer ->
+                    updatedSlider.value.overridingScrubConsumer?.let { consumer ->
                         if (consumer.started) {
                             (consumer.latestDuration!!.inWholeMilliseconds *
                                     consumer.latestRatio!!).toDouble().milliseconds
@@ -723,7 +751,7 @@ class PlaybackControlTimeBarCoordinator(
                     }
                 },
                 durationOverrideState = derivedStateOf {
-                    updatedSlider.value.latestScrubConsumer?.let { consumer ->
+                    updatedSlider.value.overridingScrubConsumer?.let { consumer ->
                         if (consumer.started) {
                             consumer.latestDuration
                         } else {

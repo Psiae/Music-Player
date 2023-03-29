@@ -265,21 +265,21 @@ internal class RootPlaybackControlPagerState(
 
             @Composable
             fun CompositionScope.contentAlpha(): Float {
-                ancestor?.let {
-                    if (it.initialPageCorrectionAtPageJob.isCompleted) {
-                        return 1f
-                    }
-                }
                 val state = remember(this) {
-                    mutableStateOf(0f)
-                }
-                LaunchedEffect(
-                    key1 = state,
-                    block = {
-                        initialPageCorrectionAtPageJob.join()
-                        state.value = 1f
+                    mutableStateOf(0f).apply {
+                        initialPageCorrectionAtPageJob.invokeOnCompletion { value = 1f }
                     }
-                )
+                }.apply {
+                    if (!initialPageCorrectionAtPageJob.isCompleted) {
+                        ancestor?.let {
+                            if (pagerLayoutState.currentPage == it.queueData.currentIndex ||
+                                pagerLayoutState.currentPage == queueData.currentIndex
+                            ) {
+                                return 1f
+                            }
+                        }
+                    }
+                }
                 return state.value
             }
 

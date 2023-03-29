@@ -21,8 +21,12 @@ import coil.request.ImageRequest as CoilImageRequest
 @Composable
 fun QueuePager(
     state: QueuePagerState
-) = state.coordinator.SetContent(
-    pager = { RenderPager { PagerLayout() } }
+) = state.coordinator.ComposeContent(
+    pager = {
+        RenderPager {
+            PagerLayout()
+        }
+    }
 )
 
 @OptIn(ExperimentalPagerApi::class)
@@ -217,7 +221,7 @@ class QueuePagerCoordinator() {
     }
 
     @Composable
-    fun SetContent(
+    fun ComposeContent(
         pager: PagerLayoutScope.() -> Unit
     ) {
         observeForCompositionInstance()

@@ -45,10 +45,7 @@ import com.flammky.musicplayer.base.theme.compose.*
 import com.flammky.musicplayer.player.R
 import com.flammky.musicplayer.player.presentation.PlaybackControlViewModel
 import com.flammky.musicplayer.player.presentation.controller.PlaybackController
-import com.flammky.musicplayer.player.presentation.root.main.PlaybackControlTimeBar
-import com.flammky.musicplayer.player.presentation.root.main.PlaybackControlTimeBarState
-import com.flammky.musicplayer.player.presentation.root.main.PlaybackControlToolBar
-import com.flammky.musicplayer.player.presentation.root.main.PlaybackControlToolBarState
+import com.flammky.musicplayer.player.presentation.root.main.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -243,7 +240,19 @@ private fun RootPlaybackControlComposition.TransitioningContentLayout() {
                     )
                 },
                 primaryControlRow = {
-                    PrimaryControlRow(composition = it)
+                    PlaybackPropertyControl(
+                        state = remember(it) {
+                            PlaybackPropertyControlState(
+                                propertiesFlow = it.observePlaybackProperties,
+                                play = { it.requestPlayAsync() },
+                                pause = { it.requestPauseAsync() },
+                                toggleShuffleMode = { it.requestToggleShuffleAsync() },
+                                toggleRepeatMode = { it.requestToggleRepeatAsync() },
+                                seekNext = { it.requestSeekNextAsync() },
+                                seekPrevious = { it.requestSeekPreviousAsync() }
+                            )
+                        }
+                    )
                 },
                 secondaryControlRow = {
                     SecondaryControl(composition = it)

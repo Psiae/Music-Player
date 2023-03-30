@@ -39,7 +39,7 @@ fun PlaybackControlTimeBar(
     state: PlaybackControlTimeBarState
 ) = state.coordinator.ComposeContent(
     slider = @SnapshotRead {
-        sliderRenderFactory { modifier ->
+        provideSliderRenderFactory { modifier ->
             val trackColor = trackColor()
             val thumbColor = thumbColor()
             val thumbSize = thumbSize()
@@ -60,7 +60,7 @@ fun PlaybackControlTimeBar(
     },
     progressText = @SnapshotRead {
         // TODO: Coordinator should provide the text color and the text property
-        positionTextRenderFactory { modifier ->
+        providePositionTextRenderFactory { modifier ->
             Text(
                 modifier = modifier,
                 text = positionString(),
@@ -68,7 +68,7 @@ fun PlaybackControlTimeBar(
                 style = MaterialTheme.typography.bodySmall
             )
         }
-        durationTextRenderFactory { modifier ->
+        provideDurationTextRenderFactory { modifier ->
             Text(
                 modifier = modifier,
                 text = durationString(),
@@ -187,7 +187,7 @@ class PlaybackControlTimeBarCoordinator(
     }
 
     interface SliderScope {
-        fun sliderRenderFactory(
+        fun provideSliderRenderFactory(
             content: @Composable SliderRenderScope.(Modifier) -> Unit
         )
     }
@@ -219,11 +219,11 @@ class PlaybackControlTimeBarCoordinator(
 
     interface ProgressTextScope {
 
-        fun positionTextRenderFactory(
+        fun providePositionTextRenderFactory(
             content: @Composable TextPositionRenderScope.(Modifier) -> Unit
         )
 
-        fun durationTextRenderFactory(
+        fun provideDurationTextRenderFactory(
             content: @Composable TextDurationRenderScope.(Modifier) -> Unit
         )
     }
@@ -447,7 +447,7 @@ class PlaybackControlTimeBarCoordinator(
             this.getThumbSize = getThumbSize
         }
 
-        override fun sliderRenderFactory(content: @Composable SliderRenderScope.(Modifier) -> Unit) {
+        override fun provideSliderRenderFactory(content: @Composable SliderRenderScope.(Modifier) -> Unit) {
             sliderContent = @Composable { observeForRenderScope().content(Modifier.getSliderModifier()) }
         }
 
@@ -614,7 +614,7 @@ class PlaybackControlTimeBarCoordinator(
             this.getDurationTextModifier = durationTextModifier
         }
 
-        override fun positionTextRenderFactory(
+        override fun providePositionTextRenderFactory(
             content: @Composable TextPositionRenderScope.(Modifier) -> Unit
         ) {
             positionTextContent = @Composable {
@@ -624,7 +624,7 @@ class PlaybackControlTimeBarCoordinator(
             }
         }
 
-        override fun durationTextRenderFactory(
+        override fun provideDurationTextRenderFactory(
             content: @Composable TextDurationRenderScope.(Modifier) -> Unit
         ) {
            durationTextContent = @Composable {

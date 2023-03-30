@@ -1,7 +1,6 @@
 package com.flammky.musicplayer.player.presentation.root.main
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
@@ -22,23 +21,33 @@ fun PlaybackControlToolBar(
     state: PlaybackControlToolBarState
 ) = state.coordinator.ComposeContent(
     dismissContents = {
-        dismissIconRenderFactory { modifier ->
-            Icon(
-                modifier = modifier,
-                painter = painterResource(id = R.drawable.ios_glyph_expand_arrow_down_100),
-                contentDescription = "close",
-                tint = tint()
-            )
+        provideDismissButtonRenderFactory { modifier ->
+            Box(
+                modifier = modifier.containerModifier(),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    modifier = Modifier
+                        .iconModifier()
+                        .align(Alignment.Center),
+                    painter = painterResource(id = R.drawable.ios_glyph_expand_arrow_down_100),
+                    contentDescription = "close",
+                    tint = iconTint()
+                )
+            }
         }
     },
     menuContents = {
-        moreMenuIconRenderFactory { modifier ->
-            Icon(
-                modifier = modifier,
-                painter = painterResource(id = com.flammky.musicplayer.base.R.drawable.more_vert_48px),
-                contentDescription = "more",
-                tint = tint()
-            )
+        provideMoreMenuButtonRenderFactory { modifier ->
+            Box(modifier = modifier) {
+                Icon(
+                    modifier = Modifier
+                        .iconModifier(),
+                    painter = painterResource(id = com.flammky.musicplayer.base.R.drawable.more_vert_48px),
+                    contentDescription = "more",
+                    tint = tint()
+                )
+            }
         }
     }
 )
@@ -55,33 +64,59 @@ class PlaybackControlToolBarCoordinator(
 ) {
 
     interface DismissContentScope {
-        fun dismissIconRenderFactory(
-            content: @Composable DismissIconRenderScope.(modifier: Modifier) -> Unit
+        fun provideDismissButtonRenderFactory(
+            content: @Composable DismissButtonRenderScope.(modifier: Modifier) -> Unit
         )
     }
 
-    interface DismissIconRenderScope {
+    interface DismissButtonRenderScope {
+
+        fun Modifier.containerModifier(): Modifier
+
+        fun Modifier.iconModifier(): Modifier
+
         @Composable
-        fun tint(): Color
+        fun iconTint(): Color
     }
 
     interface MenuContentScope {
-        fun moreMenuIconRenderFactory(
+        fun provideMoreMenuButtonRenderFactory(
             content: @Composable MoreMenuIconRenderScope.(modifier: Modifier) -> Unit
         )
     }
 
     interface MoreMenuIconRenderScope {
+        fun Modifier.iconModifier(): Modifier
         @Composable
         fun tint(): Color
     }
 
-    private class DismissContentRenderScopeImpl() {
+    private class DismissContentRenderScopeImpl(
+        private val onDismissClicked: () -> Unit,
+    ) {
 
-        val icon = object : DismissIconRenderScope {
+        val button = object : DismissButtonRenderScope {
+
+            val interactionSource = MutableInteractionSource()
+
+            override fun Modifier.containerModifier(): Modifier {
+                return size(40.dp)
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = null,
+                        enabled = true,
+                        onClick = onDismissClicked
+                    )
+            }
+
+            override fun Modifier.iconModifier(): Modifier {
+                return composed {
+                    size(if (interactionSource.collectIsPressedAsState().value) 26.dp else 28.dp)
+                }
+            }
 
             @Composable
-            override fun tint(): Color = Theme.backgroundContentColorAsState().value
+            override fun iconTint(): Color = Theme.backgroundContentColorAsState().value
         }
     }
 
@@ -89,30 +124,38 @@ class PlaybackControlToolBarCoordinator(
 
         val icon = object : MoreMenuIconRenderScope {
 
+            override fun Modifier.iconModifier(): Modifier {
+                return composed { size(28.dp) }
+            }
+
             @Composable
             override fun tint(): Color = Theme.backgroundContentColorAsState().value
         }
     }
 
-    private class DismissContentScopeImpl(): DismissContentScope {
+    private class DismissContentScopeImpl(
+        onDismissClick: (() -> Unit)?
+    ): DismissContentScope {
 
-        private val renderScope = DismissContentRenderScopeImpl()
+        private val renderScope = DismissContentRenderScopeImpl(onDismissClick ?: {})
 
-        var dismissIcon by mutableStateOf<@Composable () -> Unit>({})
+        var button by mutableStateOf<@Composable () -> Unit>({})
             private set
 
-        private var getDismissIconLayoutModifier by mutableStateOf<Modifier.() -> Modifier>({ Modifier })
+        private var getDismissButtonLayoutModifier by mutableStateOf<Modifier.() -> Modifier>({ Modifier })
 
         fun attachLayoutHandle(
             getDismissIconLayoutModifier: Modifier.() -> Modifier
         ) {
-            this.getDismissIconLayoutModifier = getDismissIconLayoutModifier
+            this.getDismissButtonLayoutModifier = getDismissIconLayoutModifier
         }
 
-        override fun dismissIconRenderFactory(
-            content: @Composable DismissIconRenderScope.(modifier: Modifier) -> Unit
+        override fun provideDismissButtonRenderFactory(
+            content: @Composable DismissButtonRenderScope.(modifier: Modifier) -> Unit
         ) {
-            dismissIcon = @Composable { renderScope.icon.content(Modifier.getDismissIconLayoutModifier()) }
+            button = @Composable {
+                renderScope.button.content(Modifier.getDismissButtonLayoutModifier())
+            }
         }
     }
 
@@ -120,7 +163,7 @@ class PlaybackControlToolBarCoordinator(
 
         private val renderScope = MenuContentRenderScopeImpl()
 
-        var moreMenuIcon by mutableStateOf<@Composable () -> Unit>({})
+        var moreMenu by mutableStateOf<@Composable () -> Unit>({})
             private set
 
         private var getMoreMenuIconLayoutModifier by mutableStateOf<Modifier.() -> Modifier>({ Modifier })
@@ -131,10 +174,10 @@ class PlaybackControlToolBarCoordinator(
             this.getMoreMenuIconLayoutModifier = getMoreMenuIconLayoutModifier
         }
 
-        override fun moreMenuIconRenderFactory(
+        override fun provideMoreMenuButtonRenderFactory(
             content: @Composable MoreMenuIconRenderScope.(modifier: Modifier) -> Unit
         ) {
-            moreMenuIcon = @Composable { renderScope.icon.content(Modifier.getMoreMenuIconLayoutModifier()) }
+            moreMenu = @Composable { renderScope.icon.content(Modifier.getMoreMenuIconLayoutModifier()) }
         }
     }
 
@@ -149,28 +192,26 @@ class PlaybackControlToolBarCoordinator(
             val dismissContentScope = rememberDismissContentScope().apply(dismissContents)
             val menuContentScope = rememberMenuContentScope().apply(menuContents)
             PlaceToolbar(
-                dismissContents = {
+                dismissButton = {
                     dismissContentScope.attachLayoutHandle(
                         getDismissIconLayoutModifier = { dismissIconLayoutModifier() }
                     )
-                    setDismissClickListener(onDismissClick)
-                    setDismissIconFactory { dismissContentScope.dismissIcon() }
+                    provideLayoutData(button = dismissContentScope.button)
                 },
-                menuContents = {
+                moreMenuButton = {
                     menuContentScope.attachLayoutHandle(
                         getMoreMenuIconLayoutModifier = { moreMenuIconLayoutModifier() }
                     )
-                    setMoreMenuIconFactory { menuContentScope.moreMenuIcon() }
+                    provideLayoutData(menuContentScope.moreMenu)
                 }
             )
         }
     }
 
-
     @Composable
     private fun rememberDismissContentScope(): DismissContentScopeImpl {
         return remember(this) {
-            DismissContentScopeImpl()
+            DismissContentScopeImpl(onDismissClick)
         }
     }
 
@@ -186,86 +227,64 @@ class PlaybackControlToolBarLayoutCoordinator {
 
     interface DismissButtonLayoutScope {
         fun Modifier.dismissIconLayoutModifier(): Modifier
-        fun setDismissClickListener(onDismissClick: () -> Unit)
-        fun setDismissIconFactory(content: @Composable () -> Unit)
+        fun provideLayoutData(
+            button: @Composable () -> Unit
+        )
     }
 
     interface MenuButtonLayoutScope {
         fun Modifier.moreMenuIconLayoutModifier(): Modifier
-        fun setMoreMenuIconFactory(content: @Composable () -> Unit)
+        fun provideLayoutData(
+            moreMenuButton: @Composable () -> Unit
+        )
     }
 
-    private class DismissContentScopeImpl(
-        val interactionSource: InteractionSource,
-    ): DismissButtonLayoutScope {
+    private class DismissLayoutData(
+        val button: @Composable () -> Unit
+    )
 
-        private var _dismissIconFactory by mutableStateOf<@Composable () -> Unit>({})
+    private class MenuLayoutData(
+        val menu: @Composable () -> Unit
+    )
 
-        private var _dismissClickListener by mutableStateOf<() -> Unit>({})
+    private class DismissContentScopeImpl( ): DismissButtonLayoutScope {
 
-        val dismissIconFactory
-            get() = _dismissIconFactory
-
-        val dismissClickListener
-            get() = _dismissClickListener
-
+        var layoutData by mutableStateOf<DismissLayoutData?>(null)
 
         override fun Modifier.dismissIconLayoutModifier(): Modifier {
-            return composed {
-                if (interactionSource.collectIsPressedAsState().value) {
-                    size(24.dp)
-                } else {
-                    size(26.dp)
-                }
-            }
+            return composed { this }
         }
 
-        override fun setDismissClickListener(onDismissClick: () -> Unit) {
-            this._dismissClickListener = onDismissClick
-        }
-
-        override fun setDismissIconFactory(content: @Composable () -> Unit) {
-            this._dismissIconFactory = @Composable { content() }
+        override fun provideLayoutData(
+            button: @Composable () -> Unit
+        ) {
+            this.layoutData = DismissLayoutData(button = button)
         }
     }
 
-    private class MenuContentScopeImpl(
-       val moreMenuInteractionSource: InteractionSource
-    ): MenuButtonLayoutScope {
+    private class MenuContentScopeImpl(): MenuButtonLayoutScope {
 
-        var menuIconFactory by mutableStateOf<@Composable () -> Unit>({})
+        var layoutData by mutableStateOf<MenuLayoutData?>(null)
             private set
 
         override fun Modifier.moreMenuIconLayoutModifier(): Modifier {
-            return composed {
-                if (moreMenuInteractionSource.collectIsPressedAsState().value) {
-                    size(24.dp)
-                } else {
-                    size(26.dp)
-                }
-            }
+            return composed { this }
         }
 
-        override fun setMoreMenuIconFactory(content: @Composable () -> Unit) {
-            this.menuIconFactory = @Composable { content() }
+        override fun provideLayoutData(
+            moreMenuButton: @Composable () -> Unit
+        ) {
+            this.layoutData = MenuLayoutData(menu = moreMenuButton)
         }
     }
 
     @Composable
     fun PlaceToolbar(
-        dismissContents: DismissButtonLayoutScope.() -> Unit,
-        menuContents: MenuButtonLayoutScope.() -> Unit
+        dismissButton: DismissButtonLayoutScope.() -> Unit,
+        moreMenuButton: MenuButtonLayoutScope.() -> Unit
     ) = BoxWithConstraints(Modifier.fillMaxWidth()) {
-        val dismissContentScope = remember {
-            DismissContentScopeImpl(
-                interactionSource = MutableInteractionSource()
-            )
-        }.apply(dismissContents)
-        val menuContentsScope = remember {
-            MenuContentScopeImpl(
-                moreMenuInteractionSource = MutableInteractionSource()
-            )
-        }.apply(menuContents)
+        val dismissContentScope = remember { DismissContentScopeImpl() }.apply(dismissButton)
+        val menuContentsScope = remember { MenuContentScopeImpl() }.apply(moreMenuButton)
         Row(
             modifier = Modifier
                 .height(56.dp)
@@ -274,23 +293,9 @@ class PlaybackControlToolBarLayoutCoordinator {
                 .padding(horizontal = 15.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(35.dp)
-                    .clickable(
-                        interactionSource = dismissContentScope.interactionSource as MutableInteractionSource,
-                        indication = null,
-                        enabled = true,
-                        onClickLabel = null,
-                        role = null,
-                        onClick = dismissContentScope.dismissClickListener
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                dismissContentScope.dismissIconFactory()
-            }
+            dismissContentScope.layoutData?.button?.let { it() }
             Spacer(modifier = Modifier.weight(2f))
-            menuContentsScope.menuIconFactory()
+            menuContentsScope.layoutData?.menu?.let { it() }
         }
     }
 }

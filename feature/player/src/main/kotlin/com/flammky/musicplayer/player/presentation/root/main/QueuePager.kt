@@ -150,6 +150,7 @@ class QueuePagerCoordinator(
     ): PagerItemScope {
 
         var image by mutableStateOf<@Composable () -> Unit>({})
+            private set
 
         override fun provideImageStateRenderer(image: @Composable () -> Unit) {
             this.image = image
@@ -347,7 +348,7 @@ class QueuePagerCoordinator(
         }
 
         suspend fun prepare() {
-            withContext(currentCoroutineContext()) {
+            supervisorScope {
                 launch(lifetime) { installIsUserDraggingListener() }
                 launch(lifetime) { doInitialLayoutPageCorrection() }
                 launch(lifetime) { installUserSwipeListener() }
@@ -390,10 +391,10 @@ class QueuePagerCoordinator(
             check(!initialPageCorrectionAtPageJob.isCompleted)
             check(!initialPageCorrectionFullyAtPageJob.isCompleted)
             val targetPage = initialTargetPage
-            val spread = (pageCount - 2) ..(pageCount + 2)
+            val spread = (initialTargetPage - 2) ..(initialTargetPage + 2)
             supervisorScope {
                 val correctorDispatchJob = Job()
-                val correctorJob = launch {
+                val correctorJob = uiCoroutineScope.launch {
                     dragListenerInstallJob.join()
                     if (ancestor?.isUserDragging == true) {
                         pagerState.stopScroll(MutatePriority.PreventUserInput)
@@ -445,7 +446,7 @@ class QueuePagerCoordinator(
                                     )
                                 scrollInstanceStack.add(scroll)
                                 activeUserScrollInstance.add(scroll)
-                                CoroutineScope(currentCoroutineContext()).launch {
+                                uiCoroutineScope.launch {
                                     launch {
                                         runCatching {
                                             scroll.drag.inLifetime {
@@ -558,6 +559,7 @@ class QueuePagerCoordinator(
                     .receiveAsFlow()
                     .onStart { swipeToSeekIntentListenerInstallJob.complete() }
                     .collect { scroll ->
+                        Timber.d("MainQueuePager: swipe={${scroll.startPage}, ${scroll.currentPage}, $initialTargetPage}")
                         if (scroll.startPage != initialTargetPage) {
                             dispatchSnapPageCorrection().join()
                             return@collect
@@ -640,7 +642,7 @@ class QueuePagerCoordinator(
                 key1 = this,
                 effect = {
 
-                    coroutineScope.launch(lifetime) {
+                    coroutineScope.launch(lifetime + Dispatchers.Main.immediate) {
                         pCont.prepare()
                     }
 
@@ -765,7 +767,10 @@ class QueuePagerCoordinator(
         pager: QueuePagerScope.() -> Unit
     ) {
         with(layoutCoordinator) {
-            val scope = rememberPagerScope().apply(pager)
+            val scope = rememberPagerScope()
+                .runRemember(pager) {
+                    derivedStateOf { apply(pager) }
+                }.value
             PlacePager(
                 pager = {
                     provideLayoutData { scope.pagerRenderer() }

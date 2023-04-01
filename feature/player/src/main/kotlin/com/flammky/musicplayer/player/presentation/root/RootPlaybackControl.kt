@@ -48,6 +48,7 @@ import com.flammky.musicplayer.player.presentation.controller.PlaybackController
 import com.flammky.musicplayer.player.presentation.root.main.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import com.flammky.musicplayer.base.R as BaseResource
 
@@ -224,7 +225,22 @@ private fun RootPlaybackControlComposition.TransitioningContentLayout() {
                     )
                 },
                 description = {
-                    Description(composition = it)
+                    PlaybackDescription(
+                        state = remember(it) {
+                            PlaybackDescriptionState(
+                                observeCurrentMetadata = {
+                                    flow {
+                                        it.currentMetadataReaderCount++
+                                        runCatching {
+                                            snapshotFlow { it.currentPlaybackMetadata }
+                                                .collect(this)
+                                        }
+                                        it.currentMetadataReaderCount--
+                                    }
+                                }
+                            )
+                        }
+                    )
                 },
                 seekbar = {
                     PlaybackControlTimeBar(

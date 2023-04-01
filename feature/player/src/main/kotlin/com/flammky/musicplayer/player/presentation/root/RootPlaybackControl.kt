@@ -212,14 +212,13 @@ private fun RootPlaybackControlComposition.TransitioningContentLayout() {
                     )
                 },
                 pager = {
-                    RootPlaybackControlPager(
+                    QueuePager(
                         state = remember(it) {
-                            RootPlaybackControlPagerState(
+                            QueuePagerState(
                                 observeQueue = it.observeQueue,
-                                observeMetadata = it.observeTrackMetadata,
                                 observeArtwork = it.observeArtwork,
-                                requestSeekNextWithExpectAsync = requestSeekNextWithExpectAsync,
-                                requestSeekPreviousWithExpectAsync = requestSeekPreviousWithExpectAsync,
+                                requestSeekNextWithExpectAsync = it.requestSeekNextWithExpectAsync,
+                                requestSeekPreviousWithExpectAsync = it.requestSeekPreviousWithExpectAsync
                             )
                         }
                     )

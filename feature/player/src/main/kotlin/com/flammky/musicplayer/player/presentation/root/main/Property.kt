@@ -28,8 +28,8 @@ fun PlaybackPropertyControl(
     state: PlaybackPropertyControlState
 ) = state.coordinator.ComposeContent(
     buttons = {
-        provideShuffleButtonRenderFactory { modifier ->
-            Box(modifier = modifier.containerModifier()) {
+        provideShuffleButtonRenderer { modifier ->
+            Box(modifier = modifier.buttonModifier()) {
                 Icon(
                     modifier = Modifier.iconModifier().align(Alignment.Center),
                     painter = painterResource(
@@ -40,7 +40,7 @@ fun PlaybackPropertyControl(
                 )
             }
         }
-        provideSeekPreviousButtonRenderFactory { modifier ->
+        provideSeekPreviousButtonRenderer { modifier ->
             Box(modifier = modifier.containerModifier()) {
                 Icon(
                     modifier = Modifier.iconModifier().align(Alignment.Center),
@@ -52,7 +52,7 @@ fun PlaybackPropertyControl(
                 )
             }
         }
-        providePlayWhenReadyButtonRenderFactory { modifier ->
+        providePlayWhenReadyButtonRenderer { modifier ->
             Box(modifier = modifier.containerModifier()) {
                 Icon(
                     modifier = Modifier.iconModifier().align(Alignment.Center),
@@ -68,7 +68,7 @@ fun PlaybackPropertyControl(
                 )
             }
         }
-        provideSeekNextButtonRenderFactory { modifier ->
+        provideSeekNextButtonRenderer { modifier ->
             Box(modifier = modifier.containerModifier()) {
                 Icon(
                     modifier = Modifier.iconModifier().align(Alignment.Center),
@@ -80,7 +80,7 @@ fun PlaybackPropertyControl(
                 )
             }
         }
-        provideRepeatButtonRenderFactory { modifier ->
+        provideRepeatButtonRenderer { modifier ->
             Box(modifier = modifier.containerModifier()) {
                 Icon(
                     modifier = Modifier.iconModifier().align(Alignment.Center),
@@ -132,7 +132,7 @@ class PlaybackPropertyControlCoordinator(
 
     interface ShuffleButtonRenderScope {
 
-        fun Modifier.containerModifier(): Modifier
+        fun Modifier.buttonModifier(): Modifier
 
         fun Modifier.iconModifier(): Modifier
 
@@ -190,19 +190,19 @@ class PlaybackPropertyControlCoordinator(
 
     interface PropertyControlScope {
 
-        fun provideShuffleButtonRenderFactory(
+        fun provideShuffleButtonRenderer(
             content: @Composable ShuffleButtonRenderScope.(Modifier) -> Unit
         )
-        fun provideSeekPreviousButtonRenderFactory(
+        fun provideSeekPreviousButtonRenderer(
             content: @Composable SeekPreviousRenderScope.(Modifier) -> Unit
         )
-        fun providePlayWhenReadyButtonRenderFactory(
+        fun providePlayWhenReadyButtonRenderer(
             content: @Composable PlayWhenReadyRenderScope.(Modifier) -> Unit
         )
-        fun provideSeekNextButtonRenderFactory(
+        fun provideSeekNextButtonRenderer(
             content: @Composable SeekNextRenderScope.(Modifier) -> Unit
         )
-        fun provideRepeatButtonRenderFactory(
+        fun provideRepeatButtonRenderer(
             content: @Composable RepeatButtonRenderScope.(Modifier) -> Unit
         )
     }
@@ -261,7 +261,7 @@ class PlaybackPropertyControlCoordinator(
             this.repeatButtonModifierFactory = repeatButtonModifierFactory
         }
 
-        override fun provideShuffleButtonRenderFactory(
+        override fun provideShuffleButtonRenderer(
             content: @Composable ShuffleButtonRenderScope.(Modifier) -> Unit
         ) {
             shuffleButton = @Composable {
@@ -270,7 +270,7 @@ class PlaybackPropertyControlCoordinator(
             }
         }
 
-        override fun provideSeekPreviousButtonRenderFactory(
+        override fun provideSeekPreviousButtonRenderer(
             content: @Composable SeekPreviousRenderScope.(Modifier) -> Unit
         ) {
             previousButton = @Composable {
@@ -279,7 +279,7 @@ class PlaybackPropertyControlCoordinator(
             }
         }
 
-        override fun providePlayWhenReadyButtonRenderFactory(
+        override fun providePlayWhenReadyButtonRenderer(
             content: @Composable PlayWhenReadyRenderScope.(Modifier) -> Unit
         ) {
             playWhenReadyButton = @Composable {
@@ -288,7 +288,7 @@ class PlaybackPropertyControlCoordinator(
             }
         }
 
-        override fun provideSeekNextButtonRenderFactory(
+        override fun provideSeekNextButtonRenderer(
             content: @Composable SeekNextRenderScope.(Modifier) -> Unit
         ) {
             nextButton = @Composable {
@@ -297,7 +297,7 @@ class PlaybackPropertyControlCoordinator(
             }
         }
 
-        override fun provideRepeatButtonRenderFactory(
+        override fun provideRepeatButtonRenderer(
             content: @Composable RepeatButtonRenderScope.(Modifier) -> Unit
         ) {
             repeatButton = @Composable {
@@ -349,7 +349,7 @@ class PlaybackPropertyControlCoordinator(
                 val canToggle = allowToggleShuffleModeState.value
                 val on = shuffleModeState.value
 
-                override fun Modifier.containerModifier(): Modifier {
+                override fun Modifier.buttonModifier(): Modifier {
                     return composed {
                         size(40.dp)
                             .clickable(
@@ -366,7 +366,7 @@ class PlaybackPropertyControlCoordinator(
                 override fun Modifier.iconModifier(): Modifier {
                     return composed {
                         size(
-                            if (interactionSource.collectIsPressedAsState().value) 32.dp else 35.dp
+                            if (interactionSource.collectIsPressedAsState().value) 27.dp else 30.dp
                         )
                     }
                 }

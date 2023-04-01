@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.backgroundContentColorAsState
 import com.flammky.musicplayer.player.R
+import com.flammky.musicplayer.player.presentation.root.runRemember
 
 @Composable
 fun PlaybackControlToolBar(
@@ -22,10 +23,7 @@ fun PlaybackControlToolBar(
 ) = state.coordinator.ComposeContent(
     dismissContents = {
         provideDismissButtonRenderFactory { modifier ->
-            Box(
-                modifier = modifier.containerModifier(),
-                contentAlignment = Alignment.Center
-            ) {
+            Box(modifier = modifier.containerModifier()) {
                 Icon(
                     modifier = Modifier
                         .iconModifier()
@@ -42,7 +40,8 @@ fun PlaybackControlToolBar(
             Box(modifier = modifier) {
                 Icon(
                     modifier = Modifier
-                        .iconModifier(),
+                        .iconModifier()
+                        .align(Alignment.Center),
                     painter = painterResource(id = com.flammky.musicplayer.base.R.drawable.more_vert_48px),
                     contentDescription = "more",
                     tint = tint()
@@ -247,7 +246,7 @@ class PlaybackControlToolBarLayoutCoordinator {
         val menu: @Composable () -> Unit
     )
 
-    private class DismissContentScopeImpl( ): DismissButtonLayoutScope {
+    private class DismissContentScopeImpl(): DismissButtonLayoutScope {
 
         var layoutData by mutableStateOf<DismissLayoutData?>(null)
 
@@ -283,8 +282,16 @@ class PlaybackControlToolBarLayoutCoordinator {
         dismissButton: DismissButtonLayoutScope.() -> Unit,
         moreMenuButton: MenuButtonLayoutScope.() -> Unit
     ) = BoxWithConstraints(Modifier.fillMaxWidth()) {
-        val dismissContentScope = remember { DismissContentScopeImpl() }.apply(dismissButton)
-        val menuContentsScope = remember { MenuContentScopeImpl() }.apply(moreMenuButton)
+        val dismissContentScope = remember(this) {
+            DismissContentScopeImpl()
+        }.runRemember(dismissButton) {
+            derivedStateOf { apply(dismissButton) }
+        }.value
+        val menuContentsScope = remember(this) {
+            MenuContentScopeImpl()
+        }.runRemember(moreMenuButton) {
+            derivedStateOf { apply(moreMenuButton) }
+        }.value
         Row(
             modifier = Modifier
                 .height(56.dp)

@@ -529,21 +529,30 @@ class PlaybackControlTimeBarCoordinator(
                 }
             )
 
+            val pCont = positionContinuationKeyState.value
+
             return SliderRenderScopeImpl(
                 eventSink = remember(
                     currentScrubConsumer.value,
                     renderDuration,
                     positionContinuationKeyState.value
                 ) {
-                    val consumer = currentScrubConsumer.value
-                    val id = positionContinuationKeyState.value.let {
-                        it.list.getOrNull(it.currentIndex)
-                    }
+                    val id = pCont.let { it.list.getOrNull(it.currentIndex) }
                     SliderEventSink(
+                        // there's chance that we might get additional scrub before new consumer is
+                        // rendered
                         onUserScrubToRatio = { ratio ->
-                            consumer.consumePosition(ratio, renderDuration)
+                            if (positionContinuationKeyState.value == pCont) {
+                                currentScrubConsumer.value.consumePosition(ratio, renderDuration)
+                            }
                         },
                         onUserScrubFinished = {
+                            val consumer = if (positionContinuationKeyState.value == pCont) {
+                                currentScrubConsumer.value.takeIf { it.started }
+                                    ?: return@SliderEventSink
+                            } else {
+                                return@SliderEventSink
+                            }
                             consumer.finish()
                             queuedScrubConsumers.add(consumer)
                             currentScrubConsumer.value = ScrubConsumer()
@@ -559,9 +568,9 @@ class PlaybackControlTimeBarCoordinator(
                         }
                     )
                 },
-                positionContinuationKey = positionContinuationKeyState.value,
+                positionContinuationKey = pCont,
                 canScrub = remember {
-                    mutableStateOf(positionContinuationKeyState.value)
+                    mutableStateOf(pCont)
                 }.run {
                     val enabled = renderDuration > Duration.ZERO &&
                             value == positionContinuationKeyState.value

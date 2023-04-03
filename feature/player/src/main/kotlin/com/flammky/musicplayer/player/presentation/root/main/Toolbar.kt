@@ -12,16 +12,18 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import com.flammky.musicplayer.base.compose.SnapshotReader
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.backgroundContentColorAsState
 import com.flammky.musicplayer.player.R
 import com.flammky.musicplayer.player.presentation.root.runRemember
+import dev.flammky.compose_components.core.SnapshotRead
 
 @Composable
 fun PlaybackControlToolBar(
     state: PlaybackControlToolBarState
 ) = state.coordinator.ComposeContent(
-    dismissContents = {
+    dismissContents = @SnapshotRead {
         provideDismissButtonRenderFactory { modifier ->
             Box(modifier = modifier.containerModifier()) {
                 Icon(
@@ -35,7 +37,7 @@ fun PlaybackControlToolBar(
             }
         }
     },
-    menuContents = {
+    menuContents = @SnapshotRead {
         provideMoreMenuButtonRenderFactory { modifier ->
             Box(modifier = modifier) {
                 Icon(
@@ -184,20 +186,28 @@ class PlaybackControlToolBarCoordinator(
 
     @Composable
     fun ComposeContent(
-        dismissContents: DismissContentScope.() -> Unit,
-        menuContents: MenuContentScope.() -> Unit,
+        dismissContents: @SnapshotReader DismissContentScope.() -> Unit,
+        menuContents: @SnapshotReader MenuContentScope.() -> Unit,
     ) {
+        val upDismissContents = rememberUpdatedState(dismissContents)
+        val upMenuContents = rememberUpdatedState(menuContents)
+        val dismissContentScope = remember(this) {
+            val impl = DismissContentScopeImpl(onDismissClick)
+            derivedStateOf { impl.apply(upDismissContents.value) }
+        }.value
+        val menuContentScope = remember(this) {
+            val impl = MenuContentScopeImpl()
+            derivedStateOf { impl.apply(upMenuContents.value) }
+        }.value
         with(layoutCoordinator) {
-            val dismissContentScope = rememberDismissContentScope().apply(dismissContents)
-            val menuContentScope = rememberMenuContentScope().apply(menuContents)
             PlaceToolbar(
-                dismissButton = {
+                dismissButton = @SnapshotRead {
                     dismissContentScope.attachLayoutHandle(
                         getDismissIconLayoutModifier = { dismissIconLayoutModifier() }
                     )
                     provideLayoutData(button = dismissContentScope.button)
                 },
-                moreMenuButton = {
+                moreMenuButton = @SnapshotRead {
                     menuContentScope.attachLayoutHandle(
                         getMoreMenuIconLayoutModifier = { moreMenuIconLayoutModifier() }
                     )
@@ -279,8 +289,8 @@ class PlaybackControlToolBarLayoutCoordinator {
 
     @Composable
     fun PlaceToolbar(
-        dismissButton: DismissButtonLayoutScope.() -> Unit,
-        moreMenuButton: MenuButtonLayoutScope.() -> Unit
+        dismissButton: @SnapshotReader DismissButtonLayoutScope.() -> Unit,
+        moreMenuButton: @SnapshotReader MenuButtonLayoutScope.() -> Unit
     ) = BoxWithConstraints(Modifier.fillMaxWidth()) {
         val dismissContentScope = remember(this) {
             DismissContentScopeImpl()

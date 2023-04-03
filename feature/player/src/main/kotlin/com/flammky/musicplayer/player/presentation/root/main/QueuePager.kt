@@ -12,11 +12,12 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.flammky.musicplayer.base.compose.SnapshotRead
+import com.flammky.musicplayer.base.compose.SnapshotReader
 import com.flammky.musicplayer.base.media.playback.OldPlaybackQueue
 import com.flammky.musicplayer.player.presentation.root.runRemember
 import com.google.accompanist.pager.*
 import dev.chrisbanes.snapper.ExperimentalSnapperApi
-import dev.flammky.compose_components.core.SnapshotRead
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
@@ -29,7 +30,7 @@ import coil.request.ImageRequest as CoilImageRequest
 fun QueuePager(
     state: QueuePagerState
 ) = state.coordinator.ComposeContent(
-    pager = {
+    pager = @SnapshotRead {
         providePagerStateRenderer { PagerLayout() }
     }
 )
@@ -37,16 +38,18 @@ fun QueuePager(
 @OptIn(ExperimentalPagerApi::class)
 @Composable
 private fun QueuePagerCoordinator.QueuePagerRenderScope.PagerLayout() {
+    val scrollEnabled = userScrollEnabled()
     HorizontalPager(
+        modifier = Modifier.fillMaxSize(),
         count = pageCount(),
         state = pagerState(),
         flingBehavior = flingBehavior(),
         key = { pageKey(page = it) },
-        userScrollEnabled = userScrollEnabled()
+        userScrollEnabled = scrollEnabled
     ) { index ->
         PageItem(
             index = index,
-            content = {
+            content = @SnapshotRead {
                 provideImageStateRenderer {
                     AsyncImage(
                         modifier = Modifier.fillMaxSize(),
@@ -207,16 +210,22 @@ class QueuePagerCoordinator(
         @Composable
         override fun PagerScope.PageItem(
             index: Int,
-            content: PagerItemScope.() -> Unit
+            content: @SnapshotReader PagerItemScope.() -> Unit
         ) {
-            val scope = remember(this@QueuePagerRenderScopeImpl, this@PageItem, index) {
-                PagerItemScopeImpl(
+            val upContent = rememberUpdatedState(content)
+            val scopeState = remember(
+                this@QueuePagerRenderScopeImpl,
+                this@PageItem, index
+            ) {
+                val impl = PagerItemScopeImpl(
                     mediaIds[index],
                     observeArtwork
                 )
-            }.apply(content)
+                derivedStateOf { impl.apply(upContent.value) }
+            }
             with(layoutCoordinator) {
-                PlacePagerItem {
+                PlacePagerItem @SnapshotRead {
+                    val scope = scopeState.value
                     provideLayoutData(image = scope.image)
                 }
             }
@@ -256,6 +265,13 @@ class QueuePagerCoordinator(
             return withContext(lifetime) { block() }
         }
     }
+
+    class UserSwipeInstance(
+        val scroll: UserScrollInstance,
+        val requestSeekNextWithExpectAsync: () -> Deferred<Result<Boolean>>,
+        val requestSeekPreviousWithExpectAsync: () -> Deferred<Result<Boolean>>,
+        val dispatchSnapPageCorrection: () -> Job
+    )
 
     class UserScrollInstance(
         val drag: UserDragInstance
@@ -300,42 +316,27 @@ class QueuePagerCoordinator(
 
     private class PagerContinuation(
         val ancestor: PagerContinuation?,
+        val pagerState: PagerState,
         val pageCount: Int,
         val initialTargetPage: Int,
-        private val uiCoroutineScope: CoroutineScope,
-        private val requestSeekNextWithExpectAsync: (expectFromIndex: Int) -> Deferred<Result<Boolean>>,
-        private val requestSeekPreviousWithExpectAsync: (expectFromIndex: Int) -> Deferred<Result<Boolean>>,
+        val uiCoroutineScope: CoroutineScope,
+        val requestSeekNextWithExpectAsync: (expectFromIndex: Int) -> Deferred<Result<Boolean>>,
+        val requestSeekPreviousWithExpectAsync: (expectFromIndex: Int) -> Deferred<Result<Boolean>>,
+        val scrollEnabledState: State<Boolean>,
+        val userDraggingState: State<Boolean>
     ) {
 
+        private val _renderJob = Job()
         private val lifetime = SupervisorJob()
 
-        private val dragListenerInstallJob = Job()
-        private val initialPageCorrectionAtPageJob = Job()
-        private val initialPageCorrectionFullyAtPageJob = Job()
-        private val swipeListenerInstallJob = Job()
-        private val swipeToSeekIntentListenerInstallJob = Job()
+        val isUserDragging by derivedStateOf { userDraggingState.value }
+        val readyForUserScroll by derivedStateOf { scrollEnabledState.value }
 
-        val pagerState: PagerState =
-            ancestor?.pagerState ?: PagerState(initialTargetPage)
-
-        var initialPageCorrected by mutableStateOf(false)
-            private set
-
-        var prepared by mutableStateOf(false)
-            private set
-
-        var isUserDragging by mutableStateOf(false)
-            private set
-
-        var readyForUserScroll by mutableStateOf(false)
-            private set
-
-        val userSwipeChannel = Channel<UserScrollInstance>(
-            capacity = Channel.UNLIMITED,
-            onUndeliveredElement = {
-                error("Undelivered Element on Unlimited Buffer")
-            }
-        )
+        fun invokeAfterFirstRender(
+            block: () -> Unit
+        ) {
+            _renderJob.invokeOnCompletion { if (it != null) block() }
+        }
 
         val activeUserScrollInstance = mutableStateListOf<UserScrollInstance>()
 
@@ -347,91 +348,203 @@ class QueuePagerCoordinator(
             lifetime.cancel()
         }
 
-        suspend fun prepare() {
-            supervisorScope {
-                launch(lifetime) { installIsUserDraggingListener() }
-                launch(lifetime) { doInitialLayoutPageCorrection() }
-                launch(lifetime) { installUserSwipeListener() }
-                launch(lifetime) { installUserSwipeToSeekIntentListener() }
-                launch(lifetime) {
-                    swipeToSeekIntentListenerInstallJob.join()
-                    readyForUserScroll = true
-                }
+        suspend fun <R> withLifetime(
+            block: suspend CoroutineScope.() -> R
+        ): R = withContext(lifetime) { block() }
+
+        suspend fun onRendered() {
+            // TODO: I don't think we should install per continuation
+            _renderJob.complete()
+        }
+    }
+
+    private class PagerContinuationSupervisor(
+        private val uiCoroutineScope: CoroutineScope,
+    ) {
+        private var supervised by mutableStateOf<PagerContinuation?>(null)
+        private val lifetime = SupervisorJob()
+
+        private var prepared = false
+        private var isUserDragging by mutableStateOf(false)
+        private val activeUserScrollInstance = mutableListOf<UserScrollInstance>()
+
+        private var swipeListenerInstalled by mutableStateOf(false)
+
+        fun next(
+            pageCount: Int,
+            initialTargetPage: Int,
+            swipeNext: (Int) -> Deferred<Result<Boolean>>,
+            swipePrevious: (Int) -> Deferred<Result<Boolean>>,
+        ) {
+            check(lifetime.isActive)
+            val anc = supervised?.apply { onSucceeded() }
+            supervised = PagerContinuation(
+                anc,
+                anc?.pagerState ?: PagerState(initialTargetPage),
+                pageCount,
+                initialTargetPage,
+                uiCoroutineScope,
+                { i -> swipeNext(i) },
+                { i -> swipePrevious(i) },
+                derivedStateOf { swipeListenerInstalled },
+                derivedStateOf { isUserDragging }
+            )
+            if (!prepared) {
+                prepareInitialContinuation()
             }
+            prepareNewContinuation()
         }
 
-        private suspend fun installIsUserDraggingListener() {
-            check(!dragListenerInstallJob.isCompleted)
-            val stack = mutableListOf<DragInteraction>()
-            pagerState.interactionSource.interactions
-                .onStart {
-                    check(!dragListenerInstallJob.isCompleted)
-                    dragListenerInstallJob.complete()
-                }
-                .collect { interaction ->
-                    // pretty sure the pager only emits DragInteraction, maybe assert ?
-                    if (interaction !is DragInteraction) return@collect
-                    when (interaction) {
-                        is DragInteraction.Start -> {
-                            check(readyForUserScroll)
-                            stack.add(interaction)
-                        }
-                        is DragInteraction.Cancel -> {
-                            stack.remove(interaction.start)
-                        }
-                        is DragInteraction.Stop -> {
-                            stack.remove(interaction.start)
-                        }
-                    }
-                    isUserDragging = stack.isNotEmpty()
-                }
+        fun current(): PagerContinuation {
+            return supervised ?:
+                PagerContinuation(
+                    null,
+                    PagerState(0),
+                    0,
+                    0,
+                    CoroutineScope(EmptyCoroutineContext).apply { cancel() },
+                    requestSeekNextWithExpectAsync = { CompletableDeferred<Result<Boolean>>().apply { cancel() } },
+                    requestSeekPreviousWithExpectAsync = { CompletableDeferred<Result<Boolean>>().apply { cancel() } },
+                    derivedStateOf { false },
+                    derivedStateOf { false }
+                )
         }
 
-        private suspend fun doInitialLayoutPageCorrection() {
-            check(!initialPageCorrectionAtPageJob.isCompleted)
-            check(!initialPageCorrectionFullyAtPageJob.isCompleted)
-            val targetPage = initialTargetPage
-            val spread = (initialTargetPage - 2) ..(initialTargetPage + 2)
-            supervisorScope {
-                val correctorDispatchJob = Job()
-                val correctorJob = uiCoroutineScope.launch {
+        fun dispose() {
+            lifetime.cancel()
+            supervised?.onDisposed()
+        }
+
+
+        private fun prepareInitialContinuation() {
+            check(!prepared)
+            val pCont = requireNotNull(supervised)
+            uiCoroutineScope.launch {
+                val dragListenerInstallJob = Job()
+                val swipeListenerInstallJob = Job()
+                val swipeToSeekIntentListenerInstallJob = Job()
+                val swipeChannel = Channel<UserSwipeInstance>(Channel.UNLIMITED)
+                launch {
+                    installUserDraggingListener(
+                        pCont.pagerState,
+                        onInstalled = { dragListenerInstallJob.complete() }
+                    )
+                }
+                launch {
+                    installUserSwipeListener(
+                        swipeChannel,
+                        pCont.pagerState,
+                        onInstalled = { swipeListenerInstallJob.complete() },
+                        onFailure = { error("") }
+                    )
+                }
+                launch {
+                    installUserSwipeToSeekIntentListener(
+                        swipeChannel,
+                        onInstalled = { swipeToSeekIntentListenerInstallJob.complete() },
+                        onFailure = { error("") }
+                    )
+                }
+                launch {
                     dragListenerInstallJob.join()
-                    if (ancestor?.isUserDragging == true) {
-                        pagerState.stopScroll(MutatePriority.PreventUserInput)
-                    }
-                    correctorDispatchJob.complete()
-                    if (ancestor != null && targetPage in spread) {
-                        pagerState.animateScrollToPage(targetPage)
-                    } else {
-                        pagerState.scrollToPage(targetPage)
-                    }
+                    swipeListenerInstallJob.join()
+                    swipeToSeekIntentListenerInstallJob.join()
+                    swipeListenerInstalled = true
                 }
-                val atPage = launch {
-                    correctorDispatchJob.join()
-                    snapshotFlow { pagerState.currentPage }.first { it == targetPage }
-                    initialPageCorrectionAtPageJob.complete()
-                }
-                atPage.join()
-                correctorJob.join()
-                initialPageCorrectionFullyAtPageJob.complete()
+            }
+            prepared = true
+        }
+
+        private fun prepareNewContinuation() {
+            val pCont = supervised!!
+            val initialPageCorrectionAtPageJob = Job()
+            val initialPageCorrectionFullyAtPageJob = Job()
+            pCont.invokeAfterFirstRender {
+                uiCoroutineScope.launch { pCont.withLifetime {
+                    val targetPage = pCont.initialTargetPage
+                    val spread = (pCont.initialTargetPage - 2) ..(pCont.initialTargetPage + 2)
+                    supervisorScope {
+                        val correctorDispatchJob = Job()
+                        val correctorJob = launch(lifetime) {
+                            if (isUserDragging) {
+                                pCont.pagerState.stopScroll(MutatePriority.PreventUserInput)
+                                if (isUserDragging) snapshotFlow { isUserDragging }.first { !it }
+                            }
+                            correctorDispatchJob.complete()
+                            if (pCont.ancestor != null && pCont.pagerState.currentPage in spread) {
+                                pCont.pagerState.animateScrollToPage(targetPage)
+                            } else {
+                                pCont.pagerState.scrollToPage(targetPage)
+                            }
+                        }
+                        val atPage = launch(lifetime) {
+                            correctorDispatchJob.join()
+                            snapshotFlow { pCont.pagerState.currentPage }.first { it == targetPage }
+                        }
+                        runCatching {
+                            atPage.join()
+                        }.onFailure {
+                            initialPageCorrectionAtPageJob.cancel()
+                        }.onSuccess {
+                            initialPageCorrectionAtPageJob.complete()
+                            runCatching {
+                                correctorJob.join()
+                            }.onSuccess {
+                                initialPageCorrectionFullyAtPageJob.complete()
+                            }.onFailure {
+                                initialPageCorrectionFullyAtPageJob.cancel()
+                            }
+                        }
+                    }
+                } }
             }
         }
 
-        private suspend fun installUserSwipeListener() {
-            check(!swipeListenerInstallJob.isCompleted)
-            // TODO: should not be a stack
+
+        private suspend fun installUserDraggingListener(
+            pagerState: PagerState,
+            onInstalled: () -> Unit
+        ) {
+            val dragStack = mutableListOf<DragInteraction.Start>()
+            pagerState.interactionSource.interactions
+                .onStart { onInstalled() }
+                .collect { drag ->
+                    when (drag) {
+                        is DragInteraction.Start -> dragStack.add(drag)
+                        is DragInteraction.Stop -> dragStack.remove(drag.start)
+                        is DragInteraction.Cancel -> dragStack.remove(drag.start)
+                        else -> error("received non-drag interaction")
+                    }
+                    check(dragStack.size <= 1)
+                    isUserDragging = dragStack.isNotEmpty()
+                }
+        }
+
+        private suspend fun installUserSwipeListener(
+            swipeChannel: Channel<UserSwipeInstance>,
+            pagerState: PagerState,
+            onInstalled: () -> Unit,
+            onFailure: () -> Unit
+        ) {
+            var installed = false
             val scrollInstanceStack = mutableListOf<UserScrollInstance>()
             runCatching {
                 pagerState.interactionSource.interactions
-                    .onStart { swipeListenerInstallJob.complete() }
+                    .onStart {
+                        installed = true
+                        onInstalled()
+                    }
                     .collect { interaction ->
                         // pretty sure the pager only emits DragInteraction, maybe assert ?
-                        if (interaction !is DragInteraction) return@collect
+                        if (interaction !is DragInteraction) {
+                            return@collect
+                        }
+                        val pCont = supervised!!
                         when (interaction) {
                             is DragInteraction.Start -> {
                                 Timber.d(
                                     "PagerCont@${System.identityHashCode(this)}, " +
-                                            "DragInteraction.Start"
+                                            "DragInteraction.Start=$interaction"
                                 )
                                 check(scrollInstanceStack.size <= 1)
                                 check(scrollInstanceStack.none { it.drag.interactionStart == interaction })
@@ -446,7 +559,7 @@ class QueuePagerCoordinator(
                                     )
                                 scrollInstanceStack.add(scroll)
                                 activeUserScrollInstance.add(scroll)
-                                uiCoroutineScope.launch {
+                                uiCoroutineScope.launch { pCont.withLifetime {
                                     launch {
                                         runCatching {
                                             scroll.drag.inLifetime {
@@ -457,6 +570,10 @@ class QueuePagerCoordinator(
                                             }
                                         }.onFailure {
                                             if (it !is CancellationException) throw it
+                                            Timber.d(
+                                                "PagerCont@${System.identityHashCode(this)}, " +
+                                                        "DragInteraction.Start=$interaction fail observe drag current page"
+                                            )
                                         }
                                     }
                                     launch {
@@ -469,6 +586,10 @@ class QueuePagerCoordinator(
                                             }
                                         }.onFailure {
                                             if (it !is CancellationException) throw it
+                                            Timber.d(
+                                                "PagerCont@${System.identityHashCode(this)}, " +
+                                                        "DragInteraction.Start=$interaction fail observe scroll current page"
+                                            )
                                         }
                                     }
                                     launch {
@@ -480,6 +601,10 @@ class QueuePagerCoordinator(
                                             }
                                         }.onFailure {
                                             if (it !is CancellationException) throw it
+                                            Timber.d(
+                                                "PagerCont@${System.identityHashCode(this)}, " +
+                                                        "DragInteraction.Start=$interaction fail observe scroll progress"
+                                            )
                                         }
                                     }
                                     launch {
@@ -493,10 +618,29 @@ class QueuePagerCoordinator(
                                             }
                                         }
                                         if (!scroll.isCancelled()) {
-                                            userSwipeChannel.send(scroll)
+                                            val swipe = UserSwipeInstance(
+                                                scroll,
+                                                requestSeekPreviousWithExpectAsync = {
+                                                    pCont.requestSeekPreviousWithExpectAsync(scroll.startPage)
+                                                },
+                                                requestSeekNextWithExpectAsync = {
+                                                    pCont.requestSeekNextWithExpectAsync(scroll.startPage)
+                                                },
+                                                dispatchSnapPageCorrection = {
+                                                    uiCoroutineScope.launch {
+                                                        pCont.withLifetime {
+                                                            pagerState.stopScroll(MutatePriority.PreventUserInput)
+                                                            if (isUserDragging) snapshotFlow { isUserDragging }.first { !it }
+                                                            check(activeUserScrollInstance.isEmpty())
+                                                            pagerState.scrollToPage(pCont.initialTargetPage)
+                                                        }
+                                                    }
+                                                }
+                                            )
+                                            swipeChannel.send(swipe)
                                         }
                                     }
-                                }
+                                } }
                             }
                             is DragInteraction.Cancel -> {
                                 Timber.d(
@@ -541,7 +685,7 @@ class QueuePagerCoordinator(
                         }
                     }
             }.onFailure {
-                if (!swipeListenerInstallJob.isCompleted) swipeListenerInstallJob.cancel()
+                if (!installed) onFailure()
                 if (it !is CancellationException) throw it
                 scrollInstanceStack.forEach { instance ->
                     instance.onCancelled()
@@ -551,57 +695,91 @@ class QueuePagerCoordinator(
             }
         }
 
-        private suspend fun installUserSwipeToSeekIntentListener() {
-            check(!swipeToSeekIntentListenerInstallJob.isCompleted)
+        private suspend fun installUserSwipeToSeekIntentListener(
+            swipeChannel: Channel<UserSwipeInstance>,
+            onInstalled: () -> Unit,
+            onFailure: () -> Unit
+        ) {
+            var installed = false
             runCatching {
-                swipeListenerInstallJob.join()
-                userSwipeChannel
+                swipeChannel
                     .receiveAsFlow()
-                    .onStart { swipeToSeekIntentListenerInstallJob.complete() }
-                    .collect { scroll ->
-                        Timber.d("MainQueuePager: swipe={${scroll.startPage}, ${scroll.currentPage}, $initialTargetPage}")
-                        if (scroll.startPage != initialTargetPage) {
-                            dispatchSnapPageCorrection().join()
-                            return@collect
-                        }
+                    .onStart {
+                        installed = true
+                        onInstalled()
+                    }
+                    .collect { swipe ->
+                        val scroll = swipe.scroll
+                        Timber.d("MainQueuePager: swipe={${scroll.startPage}, ${scroll.currentPage}")
                         when (scroll.currentPage) {
-                            initialTargetPage -1 -> {
-                                val accepted = requestSeekPreviousWithExpectAsync(
-                                    scroll.startPage,
-                                ).await().getOrElse { false }
+                            scroll.startPage -1 -> {
+                                val accepted = swipe.requestSeekPreviousWithExpectAsync()
+                                    .await()
+                                    .getOrElse { false }
                                 if (!accepted) {
-                                    dispatchSnapPageCorrection().join()
+                                    swipe.dispatchSnapPageCorrection().join()
                                 }
                             }
-                            initialTargetPage +1 -> {
-                                val accepted = requestSeekNextWithExpectAsync(
-                                    scroll.startPage,
-                                ).await().getOrElse { false }
+                            scroll.startPage +1 -> {
+                                val accepted = swipe.requestSeekNextWithExpectAsync()
+                                    .await()
+                                    .getOrElse { false }
                                 if (!accepted) {
-                                    dispatchSnapPageCorrection().join()
+                                    swipe.dispatchSnapPageCorrection().join()
                                 }
                             }
-                            else -> dispatchSnapPageCorrection().join()
+                            else -> swipe.dispatchSnapPageCorrection().join()
                         }
                     }
             }.onFailure {
-                if (!swipeListenerInstallJob.isCompleted) swipeListenerInstallJob.cancel()
+                if (!installed) onFailure()
                 throw it
-            }
-        }
-
-        private suspend fun dispatchSnapPageCorrection(): Job {
-            return uiCoroutineScope.launch(lifetime) {
-                dragListenerInstallJob.join()
-                pagerState.stopScroll(MutatePriority.PreventUserInput)
-                if (isUserDragging) snapshotFlow { isUserDragging }.first { !it }
-                check(activeUserScrollInstance.isEmpty())
-                pagerState.scrollToPage(initialTargetPage)
             }
         }
     }
 
-    private class PagerContinuationSnapshot()
+    private class PagerCompositionSupervisor {
+        private var supervised by mutableStateOf<PagerComposition?>(null)
+        private val lifetime = SupervisorJob()
+
+        fun next(
+            layoutCoordinator: QueuePagerLayoutCoordinator,
+            pCont: PagerContinuation,
+            queueData: OldPlaybackQueue,
+            observeArtwork: (String) -> Flow<Any?>,
+        ) {
+            supervised = PagerComposition(
+                layoutCoordinator,
+                pCont,
+                queueData,
+                observeArtwork,
+            )
+        }
+
+        fun current(): PagerComposition {
+            return supervised
+                ?: PagerComposition(
+                    QueuePagerLayoutCoordinator(),
+                    pCont = PagerContinuation(
+                        null,
+                        PagerState(0),
+                        0,
+                        0,
+                        CoroutineScope(EmptyCoroutineContext),
+                        { CompletableDeferred<Result<Boolean>>().apply { cancel() } },
+                        { CompletableDeferred<Result<Boolean>>().apply { cancel() } },
+                        derivedStateOf { false },
+                        derivedStateOf { false }
+                    ),
+                    queueData = OldPlaybackQueue.UNSET,
+                    observeArtwork = { emptyFlow() },
+                )
+        }
+
+        fun dispose() {
+
+        }
+    }
 
     private class PagerComposition(
         val layoutCoordinator: QueuePagerLayoutCoordinator,
@@ -613,12 +791,10 @@ class QueuePagerCoordinator(
         private val lifetime = SupervisorJob()
 
         fun onDisposed() {
-            pCont.onDisposed()
             lifetime.cancel()
         }
 
         fun onSucceeded() {
-            pCont.onSucceeded()
             lifetime.cancel()
         }
 
@@ -637,13 +813,22 @@ class QueuePagerCoordinator(
 
         @Composable
         fun OnRendered(scope: QueuePagerRenderScopeImpl) {
+            Timber.d(
+                """
+                    RootMainPlaybackControl@${System.identityHashCode(this)}, QueuePager onRendered.
+                    proposed count = ${scope.pageCount},
+                    rendered = ${scope.pagerState.pageCount}
+                    userScrollEnabled = ${scope.userScrollEnabled}
+                """.trimIndent()
+            )
+
             val coroutineScope = rememberCoroutineScope()
             DisposableEffect(
                 key1 = this,
                 effect = {
 
-                    coroutineScope.launch(lifetime + Dispatchers.Main.immediate) {
-                        pCont.prepare()
+                    coroutineScope.launch(lifetime) {
+                        pCont.onRendered()
                     }
 
                     onDispose {  }
@@ -686,25 +871,17 @@ class QueuePagerCoordinator(
         @Composable
         private fun observePagerComposition(): PagerComposition {
 
-            val returns = remember(this) {
-                mutableStateOf(
-                    PagerComposition(
-                        QueuePagerLayoutCoordinator(),
-                        pCont = PagerContinuation(
-                            null,
-                            0,
-                            0,
-                            CoroutineScope(EmptyCoroutineContext),
-                            { CompletableDeferred<Result<Boolean>>().apply { cancel() } },
-                            { CompletableDeferred<Result<Boolean>>().apply { cancel() } }
-                        ),
-                        queueData = OldPlaybackQueue.UNSET,
-                        observeArtwork = { emptyFlow() },
-                    )
+            val uiCoroutineScope = rememberCoroutineScope()
+
+            val pContSupervisor = remember(this) {
+                PagerContinuationSupervisor(
+                    uiCoroutineScope,
                 )
             }
 
-            val uiCoroutineScope = rememberCoroutineScope()
+            val pCompSupervisor = remember(this) {
+                PagerCompositionSupervisor()
+            }
 
             DisposableEffect(
                 key1 = this,
@@ -712,67 +889,67 @@ class QueuePagerCoordinator(
                     val supervisor = SupervisorJob()
 
                     uiCoroutineScope.launch(supervisor) {
-                        var initial = true
                         observeQueue().collect { queue ->
-                            val current = returns.value
-                            val next = PagerComposition(
-                                layoutCoordinator = layoutCoordinator,
-                                pCont = PagerContinuation(
-                                    ancestor = if (initial) null else current.pCont,
-                                    pageCount = queue.list.size,
-                                    initialTargetPage = queue.currentIndex.coerceAtLeast(0),
-                                    uiCoroutineScope = CoroutineScope(
-                                        uiCoroutineScope.coroutineContext +
-                                                SupervisorJob(supervisor)
-                                    ),
-                                    requestSeekNextWithExpectAsync = { i ->
-                                        requestSeekNextWithExpectAsync(
-                                            i,
-                                            queue.list[i],
-                                            queue.list[i + 1]
-                                        )
-                                    },
-                                    requestSeekPreviousWithExpectAsync = { i ->
-                                        requestSeekPreviousWithExpectAsync(
-                                            i,
-                                            queue.list[i],
-                                            queue.list[i - 1]
-                                        )
-                                    }
-                                ),
-                                queueData = queue,
-                                observeArtwork = observeArtwork
+                            Timber.d(
+                                """
+                                    RootMainPlaybackControl, Pager, newQueue=$queue
+                                """.trimIndent()
                             )
-                            if (!initial) {
-                                current.apply { onSucceeded() }
-                            }
-                            initial = false
-                            returns.value = next
+                            val pCont = pContSupervisor
+                                .apply {
+                                    next(
+                                        pageCount = queue.list.size,
+                                        initialTargetPage = queue.currentIndex.coerceAtLeast(0),
+                                        swipeNext = { index ->
+                                            requestSeekNextWithExpectAsync(
+                                                queue.currentIndex,
+                                                queue.list[index],
+                                                queue.list[index + 1]
+                                            )
+                                        },
+                                        swipePrevious = { index ->
+                                            requestSeekPreviousWithExpectAsync(
+                                                queue.currentIndex,
+                                                queue.list[index],
+                                                queue.list[index - 1]
+                                            )
+                                        }
+                                    )
+                                }
+                                .current()
+                            pCompSupervisor.next(
+                                layoutCoordinator,
+                                pCont,
+                                queue,
+                                observeArtwork
+                            )
                         }
                     }
-
                     onDispose {
                         supervisor.cancel()
-                        returns.value.apply { onDisposed() }
+                        pContSupervisor.dispose()
+                        pCompSupervisor.dispose()
                     }
                 }
             )
 
-            return returns.value
+            return pCompSupervisor.current()
         }
     }
 
     @Composable
     fun ComposeContent(
-        pager: QueuePagerScope.() -> Unit
+        pager: @SnapshotReader QueuePagerScope.() -> Unit
     ) {
+        val upPagerApplier = rememberUpdatedState(pager)
         with(layoutCoordinator) {
-            val scope = rememberPagerScope()
-                .runRemember(pager) {
-                    derivedStateOf { apply(pager) }
-                }.value
+            val scopeState = rememberPagerScope()
+                .runRemember {
+                    derivedStateOf { apply(upPagerApplier.value) }
+                }
             PlacePager(
-                pager = {
+                pager = @SnapshotRead {
+                    val scope = scopeState.value
                     provideLayoutData { scope.pagerRenderer() }
                 }
             )
@@ -831,23 +1008,23 @@ class QueuePagerLayoutCoordinator {
 
     @Composable
     fun PlacePager(
-        pager: PagerLayoutScope.() -> Unit
+        pager: @SnapshotReader PagerLayoutScope.() -> Unit
     ) = BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
             .height(300.dp)
     ) {
-        val scope = remember(this@QueuePagerLayoutCoordinator) {
+        val upPagerApplier = rememberUpdatedState(pager)
+        remember(this@QueuePagerLayoutCoordinator) {
             PagerLayoutScopeImpl()
-        }.runRemember(pager) {
-            derivedStateOf { apply(pager) }
-        }.value
-        scope.pagerContent()
+        }.runRemember {
+            derivedStateOf { apply(upPagerApplier.value) }
+        }.value.pagerContent()
     }
 
     @Composable
     fun PlacePagerItem(
-        item: PagerLayoutItemScope.() -> Unit
+        item: @SnapshotReader PagerLayoutItemScope.() -> Unit
     ) = BoxWithConstraints(
         modifier = Modifier
             .height(280.dp)
@@ -858,7 +1035,6 @@ class QueuePagerLayoutCoordinator {
             PagerLayoutItemScopeImpl()
         }.runRemember(item) {
             derivedStateOf { apply(item) }
-        }.value
-        scope.imageContent()
+        }.value.imageContent()
     }
 }

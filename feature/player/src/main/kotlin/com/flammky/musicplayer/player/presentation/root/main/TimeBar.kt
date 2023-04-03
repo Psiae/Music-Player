@@ -21,6 +21,7 @@ import com.flammky.musicplayer.base.theme.compose.backgroundContentColorAsState
 import com.flammky.musicplayer.base.theme.compose.surfaceContentColorAsState
 import com.flammky.musicplayer.player.presentation.main.compose.Slider
 import com.flammky.musicplayer.player.presentation.main.compose.SliderDefaults
+import com.flammky.musicplayer.player.presentation.root.runRemember
 import dev.flammky.compose_components.core.SnapshotRead
 import dev.flammky.compose_components.core.SnapshotReader
 import kotlinx.coroutines.Deferred
@@ -649,15 +650,20 @@ class PlaybackControlTimeBarCoordinator(
         slider: @SnapshotReader SliderScope.() -> Unit,
         progressText: @SnapshotReader ProgressTextScope.() -> Unit
     ) {
+        val upSlider = rememberUpdatedState(slider)
+        val upProgressText = rememberUpdatedState(progressText)
         with(layoutCoordinator) {
-            val sliderScope = rememberSliderScope().apply(slider)
-            val textScope = rememberTextScope(sliderScope).apply(progressText)
+            val sliderScopeState = rememberSliderScope()
+                .runRemember { derivedStateOf { apply(upSlider.value) } }
+            val textScopeState = rememberTextScope(sliderScopeState.value)
+                .runRemember { derivedStateOf { apply(upProgressText.value) } }
             PlaceTimeBar(
-                slider = {
+                slider = @SnapshotRead {
                     setSliderContent {
                         val updatedTrackWidth = rememberUpdatedState(newValue = trackWidth())
                         val updatedTrackHeight = rememberUpdatedState(newValue = trackHeight())
                         val updatedThumbSize = rememberUpdatedState(newValue = thumbSize())
+                        val sliderScope = sliderScopeState.value
                         sliderScope.attachLayoutHandle(
                             getSliderModifier = remember(this) {
                                 { sliderModifier() }
@@ -675,8 +681,9 @@ class PlaybackControlTimeBarCoordinator(
                         sliderScope.sliderContent()
                     }
                 },
-                progress = {
+                progress = @SnapshotRead {
                     setPositionContent {
+                        val textScope = textScopeState.value
                         textScope.attachPositionTextLayoutHandle(
                             positionTextModifier = remember(this) {
                                 { positionTextModifier() }
@@ -685,6 +692,7 @@ class PlaybackControlTimeBarCoordinator(
                         textScope.positionTextContent()
                     }
                     setDurationContent {
+                        val textScope = textScopeState.value
                         textScope.attachDurationTextLayoutHandle(
                             durationTextModifier = remember(this) {
                                 { durationTextModifier() }

@@ -11,6 +11,7 @@ import com.flammky.musicplayer.core.common.sync
 import com.flammky.musicplayer.player.presentation.controller.PlaybackController
 import com.flammky.musicplayer.player.presentation.presenter.PlaybackObserver
 import kotlinx.coroutines.*
+import timber.log.Timber
 import kotlin.coroutines.CoroutineContext
 import kotlin.time.Duration
 
@@ -157,6 +158,7 @@ internal class RealPlaybackController(
 		startPosition: Duration,
 		coroutineContext: CoroutineContext
 	): Deferred<RequestResult> {
+		Timber.d("RealPlaybackController, requestSeekAsync($expectFromIndex, $expectFromId $expectToIndex, $expectToId)")
 		return scope.async(coroutineContext.minusKey(CoroutineDispatcher)) {
 			val success = runCatching {
 				playbackConnection.requestUserSessionAsync(user).await().controller.withLooperContext {
@@ -169,11 +171,11 @@ internal class RealPlaybackController(
 				success = success,
 				eventDispatch = if (success) {
 					scope.launch {
-						val jobs = mutableListOf<Job>()
+						/*val jobs = mutableListOf<Job>()
 						_observers.forEach {
 							jobs.add(it.updateQueue())
 						}
-						jobs.joinAll()
+						jobs.joinAll()*/
 					}
 				} else {
 					null

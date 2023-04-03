@@ -13,6 +13,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import com.flammky.musicplayer.base.compose.SnapshotRead
+import com.flammky.musicplayer.base.compose.SnapshotReader
 import com.flammky.musicplayer.base.media.playback.PlaybackProperties
 import com.flammky.musicplayer.base.media.playback.RepeatMode
 import com.flammky.musicplayer.base.media.playback.ShuffleMode
@@ -27,11 +29,13 @@ import kotlinx.coroutines.launch
 fun PlaybackPropertyControl(
     state: PlaybackPropertyControlState
 ) = state.coordinator.ComposeContent(
-    buttons = {
+    buttons = @SnapshotRead {
         provideShuffleButtonRenderer { modifier ->
             Box(modifier = modifier.buttonModifier()) {
                 Icon(
-                    modifier = Modifier.iconModifier().align(Alignment.Center),
+                    modifier = Modifier
+                        .iconModifier()
+                        .align(Alignment.Center),
                     painter = painterResource(
                         id = R.drawable.ios_glyph_shuffle_100
                     ),
@@ -43,7 +47,9 @@ fun PlaybackPropertyControl(
         provideSeekPreviousButtonRenderer { modifier ->
             Box(modifier = modifier.containerModifier()) {
                 Icon(
-                    modifier = Modifier.iconModifier().align(Alignment.Center),
+                    modifier = Modifier
+                        .iconModifier()
+                        .align(Alignment.Center),
                     painter = painterResource(
                         id = R.drawable.ios_glyph_seek_previous_100
                     ),
@@ -55,7 +61,9 @@ fun PlaybackPropertyControl(
         providePlayWhenReadyButtonRenderer { modifier ->
             Box(modifier = modifier.containerModifier()) {
                 Icon(
-                    modifier = Modifier.iconModifier().align(Alignment.Center),
+                    modifier = Modifier
+                        .iconModifier()
+                        .align(Alignment.Center),
                     painter = painterResource(
                         id = if (drawPauseButton) {
                             R.drawable.ios_glyph_pause_100
@@ -71,7 +79,9 @@ fun PlaybackPropertyControl(
         provideSeekNextButtonRenderer { modifier ->
             Box(modifier = modifier.containerModifier()) {
                 Icon(
-                    modifier = Modifier.iconModifier().align(Alignment.Center),
+                    modifier = Modifier
+                        .iconModifier()
+                        .align(Alignment.Center),
                     painter = painterResource(
                         id = R.drawable.ios_glyph_seek_next_100
                     ),
@@ -83,7 +93,9 @@ fun PlaybackPropertyControl(
         provideRepeatButtonRenderer { modifier ->
             Box(modifier = modifier.containerModifier()) {
                 Icon(
-                    modifier = Modifier.iconModifier().align(Alignment.Center),
+                    modifier = Modifier
+                        .iconModifier()
+                        .align(Alignment.Center),
                     painter = painterResource(
                         if (drawRepeatOne) R.drawable.ios_glyph_repeat_one_100
                         else R.drawable.ios_glyph_repeat_100
@@ -665,12 +677,25 @@ class PlaybackPropertyControlCoordinator(
 
     @Composable
     fun ComposeContent(
-        buttons: PropertyControlScope.() -> Unit
+        buttons: @SnapshotReader PropertyControlScope.() -> Unit
     ) {
+        val upButtons = rememberUpdatedState(buttons)
+        val scopeState = remember(this) {
+            val impl = PropertyControlScopeImpl(
+                propertiesFlow,
+                play,
+                pause,
+                toggleShuffleMode,
+                toggleRepeatMode,
+                seekNext,
+                seekPrevious
+            )
+            derivedStateOf { impl.apply(upButtons.value) }
+        }
         with(layoutCoordinator) {
-            val scope = rememberPropertyControlScope().apply(buttons)
             PlaceButtons(
-                buttons = {
+                buttons = @SnapshotRead {
+                    val scope = scopeState.value
                     provideButtonPlaceable(
                         shuffleButton = scope.shuffleButton,
                         previousButton = scope.previousButton,
@@ -738,11 +763,16 @@ class PlaybackPropertyControlLayoutCoordinator() {
 
     @Composable
     fun PlaceButtons(
-        buttons: ButtonsLayoutScope.() -> Unit
+        buttons: @SnapshotReader ButtonsLayoutScope.() -> Unit
     ) = BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-        val scope = remember { ButtonsLayoutScopeImpl() }.apply(buttons)
+        val scope = remember(this@PlaybackPropertyControlLayoutCoordinator) {
+            val impl = ButtonsLayoutScopeImpl()
+            derivedStateOf { impl.apply(buttons) }
+        }.value
         Row(
-            modifier = Modifier.fillMaxWidth(0.8f).align(Alignment.TopCenter),
+            modifier = Modifier
+                .fillMaxWidth(0.8f)
+                .align(Alignment.TopCenter),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             scope.layoutData?.let {

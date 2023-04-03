@@ -93,7 +93,7 @@ internal class RealPlaybackQueueCollector(
 		if (queueCollectorJob?.isActive == true) {
 			return
 		}
-		_queueStateFlow.emit(OldPlaybackQueue.UNSET)
+		_queueStateFlow.emit(localUNSET)
 		queueCollectorJob = scope.launch {
 			val owner = Any()
 			playbackConnection.requestUserSessionAsync(user).await().controller

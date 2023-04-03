@@ -13,10 +13,10 @@ import com.flammky.android.medialib.common.mediaitem.AudioFileMetadata
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.android.medialib.providers.metadata.VirtualFileMetadata
+import com.flammky.musicplayer.base.compose.SnapshotRead
+import com.flammky.musicplayer.base.compose.SnapshotReader
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.surfaceContentColorAsState
-import dev.flammky.compose_components.core.SnapshotRead
-import dev.flammky.compose_components.core.SnapshotReader
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
@@ -222,12 +222,12 @@ class PlaybackDescriptionCoordinator(
     fun ComposeLayout(
         text: @SnapshotReader TextDescriptionScope.() -> Unit
     ) {
-        val renderer = remember() {
+        val upText = rememberUpdatedState(text)
+        val renderer = remember(this) {
             val impl = TextDescriptionScopeImpl(observeCurrentMetadata)
-            derivedStateOf { impl.apply(text) }
+            derivedStateOf { impl.apply(upText.value) }
         }.value.attachCompositionTree()
         with(layoutCoordinator) {
-
             PlaceLayout(
                 layout = {
                     provideLayoutData(

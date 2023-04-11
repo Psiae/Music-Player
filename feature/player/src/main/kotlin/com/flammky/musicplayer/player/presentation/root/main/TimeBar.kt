@@ -36,7 +36,37 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 @Composable
-fun PlaybackControlTimeBar(
+fun rememberPlaybackControlTimeBarState(
+    key: Any,
+    observeQueue: () -> Flow<OldPlaybackQueue>,
+    onRequestSeek: (
+        expectFromId: String,
+        expectDuration: Duration,
+        percent: Float
+    ) -> Deferred<Result<Boolean>>,
+    observeDuration: () -> Flow<Duration>,
+    observeProgressWithIntervalHandle: (
+        getInterval: (
+            event: Boolean,
+            position: Duration,
+            bufferedPosition: Duration,
+            duration: Duration,
+            speed: Float
+        ) -> Duration
+    ) -> Flow<Duration>
+): PlaybackControlTimeBarState {
+    return remember(key) {
+        PlaybackControlTimeBarState(
+            observeQueue,
+            onRequestSeek,
+            observeDuration,
+            observeProgressWithIntervalHandle
+        )
+    }
+}
+
+@Composable
+fun PlaybackTimeBar(
     state: PlaybackControlTimeBarState
 ) = state.coordinator.ComposeContent(
     slider = @SnapshotRead {

@@ -225,7 +225,7 @@ private fun RootPlaybackControlComposition.TransitioningContentLayout() {
                     )
                 },
                 description = {
-                    PlaybackDescription(
+                    PlaybackTrackDescription(
                         state = remember(it) {
                             PlaybackDescriptionState(
                                 observeCurrentMetadata = {
@@ -243,7 +243,7 @@ private fun RootPlaybackControlComposition.TransitioningContentLayout() {
                     )
                 },
                 seekbar = {
-                    PlaybackControlTimeBar(
+                    PlaybackTimeBar(
                         state = remember(it) {
                             PlaybackControlTimeBarState(
                                 observeQueue = it.observeQueue,

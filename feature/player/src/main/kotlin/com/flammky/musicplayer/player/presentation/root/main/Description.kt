@@ -23,7 +23,17 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 
 @Composable
-fun PlaybackDescription(
+fun rememberPlaybackTrackDescriptionState(
+    key: Any,
+    observeCurrentMetadata: () -> Flow<MediaMetadata?>
+): PlaybackDescriptionState {
+    return remember(key) {
+        PlaybackDescriptionState(observeCurrentMetadata)
+    }
+}
+
+@Composable
+fun PlaybackTrackDescription(
     state: PlaybackDescriptionState
 ) = state.coordinator.ComposeLayout(
     text = @SnapshotRead {
@@ -279,7 +289,10 @@ class PlaybackDescriptionLayoutCoordinator() {
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
             Column(
                 modifier = remember {
-                    Modifier.fillMaxHeight().fillMaxWidth(0.8f).align(Alignment.Center)
+                    Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(0.8f)
+                        .align(Alignment.Center)
                 },
                 horizontalAlignment = Alignment.Start,
                 verticalArrangement = Arrangement.spacedBy(5.dp)

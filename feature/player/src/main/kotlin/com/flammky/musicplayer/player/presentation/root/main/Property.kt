@@ -26,6 +26,30 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 
 @Composable
+fun rememberPlaybackPropertyControlState(
+    key: Any,
+    propertiesFlow: () -> Flow<PlaybackProperties>,
+    play: () -> Unit,
+    pause: () -> Unit,
+    toggleShuffleMode: () -> Unit,
+    toggleRepeatMode: () -> Unit,
+    seekNext: () -> Unit,
+    seekPrevious: () -> Unit
+): PlaybackPropertyControlState {
+    return remember(key) {
+        PlaybackPropertyControlState(
+            propertiesFlow,
+            play,
+            pause,
+            toggleShuffleMode,
+            toggleRepeatMode,
+            seekNext,
+            seekPrevious
+        )
+    }
+}
+
+@Composable
 fun PlaybackPropertyControl(
     state: PlaybackPropertyControlState
 ) = state.coordinator.ComposeContent(

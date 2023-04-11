@@ -27,6 +27,32 @@ import kotlin.coroutines.EmptyCoroutineContext
 import coil.request.ImageRequest as CoilImageRequest
 
 @Composable
+fun rememberQueuePagerState(
+    key: Any,
+    observeQueue: () -> Flow<OldPlaybackQueue>,
+    observeArtwork: (String) -> Flow<Any?>,
+    requestSeekNextWithExpectAsync: (
+        expectFromIndex: Int,
+        expectFromId: String,
+        expectPreviousId: String
+    ) -> Deferred<Result<Boolean>>,
+    requestSeekPreviousWithExpectAsync: (
+        expectFromIndex: Int,
+        expectFromId: String,
+        expectPreviousId: String
+    ) -> Deferred<Result<Boolean>>,
+): QueuePagerState {
+    return remember(key) {
+        QueuePagerState(
+            observeQueue = observeQueue,
+            observeArtwork = observeArtwork,
+            requestSeekNextWithExpectAsync = requestSeekNextWithExpectAsync,
+            requestSeekPreviousWithExpectAsync = requestSeekPreviousWithExpectAsync
+        )
+    }
+}
+
+@Composable
 fun QueuePager(
     state: QueuePagerState
 ) = state.coordinator.ComposeContent(
@@ -322,7 +348,6 @@ class QueuePagerCoordinator(
         val uiCoroutineScope: CoroutineScope,
         val requestSeekNextWithExpectAsync: (expectFromIndex: Int) -> Deferred<Result<Boolean>>,
         val requestSeekPreviousWithExpectAsync: (expectFromIndex: Int) -> Deferred<Result<Boolean>>,
-        val scrollEnabledState: State<Boolean>,
         val userDraggingState: State<Boolean>
     ) {
 
@@ -330,12 +355,22 @@ class QueuePagerCoordinator(
         private val lifetime = SupervisorJob()
 
         val isUserDragging by derivedStateOf { userDraggingState.value }
-        val readyForUserScroll by derivedStateOf { scrollEnabledState.value }
+
+        var readyForUserScroll by mutableStateOf(false)
+            private set
+
+        fun initialPageCorrected() {
+            readyForUserScroll = true
+        }
+
+        fun disableScroll() {
+            readyForUserScroll = false
+        }
 
         fun invokeAfterFirstRender(
             block: () -> Unit
         ) {
-            _renderJob.invokeOnCompletion { if (it != null) block() }
+            _renderJob.invokeOnCompletion { if (it == null) block() }
         }
 
         val activeUserScrollInstance = mutableStateListOf<UserScrollInstance>()
@@ -386,7 +421,6 @@ class QueuePagerCoordinator(
                 uiCoroutineScope,
                 { i -> swipeNext(i) },
                 { i -> swipePrevious(i) },
-                derivedStateOf { swipeListenerInstalled },
                 derivedStateOf { isUserDragging }
             )
             if (!prepared) {
@@ -406,7 +440,6 @@ class QueuePagerCoordinator(
                     requestSeekNextWithExpectAsync = { CompletableDeferred<Result<Boolean>>().apply { cancel() } },
                     requestSeekPreviousWithExpectAsync = { CompletableDeferred<Result<Boolean>>().apply { cancel() } },
                     derivedStateOf { false },
-                    derivedStateOf { false }
                 )
         }
 
@@ -459,6 +492,10 @@ class QueuePagerCoordinator(
             val pCont = supervised!!
             val initialPageCorrectionAtPageJob = Job()
             val initialPageCorrectionFullyAtPageJob = Job()
+            if (pCont.initialTargetPage == pCont.pagerState.currentPage) {
+                pCont.initialPageCorrected()
+                return
+            }
             pCont.invokeAfterFirstRender {
                 uiCoroutineScope.launch { pCont.withLifetime {
                     val targetPage = pCont.initialTargetPage
@@ -470,6 +507,7 @@ class QueuePagerCoordinator(
                                 pCont.pagerState.stopScroll(MutatePriority.PreventUserInput)
                                 if (isUserDragging) snapshotFlow { isUserDragging }.first { !it }
                             }
+                            check(activeUserScrollInstance.isEmpty())
                             correctorDispatchJob.complete()
                             if (pCont.ancestor != null && pCont.pagerState.currentPage in spread) {
                                 pCont.pagerState.animateScrollToPage(targetPage)
@@ -480,6 +518,8 @@ class QueuePagerCoordinator(
                         val atPage = launch(lifetime) {
                             correctorDispatchJob.join()
                             snapshotFlow { pCont.pagerState.currentPage }.first { it == targetPage }
+                            check(!isUserDragging)
+                            pCont.initialPageCorrected()
                         }
                         runCatching {
                             atPage.join()
@@ -617,6 +657,7 @@ class QueuePagerCoordinator(
                                                     .first { it != scroll.startPage }
                                             }
                                         }
+                                        ensureActive()
                                         if (!scroll.isCancelled()) {
                                             val swipe = UserSwipeInstance(
                                                 scroll,
@@ -769,7 +810,6 @@ class QueuePagerCoordinator(
                         { CompletableDeferred<Result<Boolean>>().apply { cancel() } },
                         { CompletableDeferred<Result<Boolean>>().apply { cancel() } },
                         derivedStateOf { false },
-                        derivedStateOf { false }
                     ),
                     queueData = OldPlaybackQueue.UNSET,
                     observeArtwork = { emptyFlow() },
@@ -777,7 +817,8 @@ class QueuePagerCoordinator(
         }
 
         fun dispose() {
-
+            lifetime.cancel()
+            supervised?.onDisposed()
         }
     }
 

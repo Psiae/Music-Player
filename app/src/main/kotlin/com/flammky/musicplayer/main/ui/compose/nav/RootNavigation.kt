@@ -19,9 +19,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -34,9 +36,8 @@ import com.flammky.musicplayer.base.nav.compose.ComposeRootNavigation
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.*
 import com.flammky.musicplayer.base.user.User
-import com.flammky.musicplayer.player.presentation.root.rememberRootCompactPlaybackControlState
-import com.flammky.musicplayer.player.presentation.root.rememberRootPlaybackControlState
-import timber.log.Timber
+import com.flammky.musicplayer.player.presentation.root.main.RootPlaybackControl
+import com.flammky.musicplayer.player.presentation.root.main.rememberRootPlaybackControlState
 
 @Composable
 internal fun RootNavigation(user: User) {
@@ -72,30 +73,19 @@ private class RootNavigationState(
 		modifier: Modifier = Modifier,
 		withBackground: Boolean = false
 	) {
-		val contentBottomOffsetState = remember {
+		val compactBottomPadding = remember {
 			mutableStateOf(0.dp)
 		}
 		// I think the compact version can just be part of the main one ?
 		val playbackControlState =
 			rememberRootPlaybackControlState(
 				user,
-				initialFreezeState = false,
-				initialShowSelfState = rememberShowFullPlaybackControllerState.value,
-				dismissHandle = { rememberShowFullPlaybackControllerState.value = false ; true }
-			)
-		val compactPlaybackControlState =
-			rememberRootCompactPlaybackControlState(
-				bottomOffsetState = contentBottomOffsetState,
-				freezeState = rememberShowFullPlaybackControllerState,
-				onArtworkClicked = {
-					rememberShowFullPlaybackControllerState.value = true
-					playbackControlState.showSelf()
-				},
-				onBackgroundClicked = {
-					rememberShowFullPlaybackControllerState.value = true
-					playbackControlState.showSelf()
-				}
-			)
+				LocalViewModelStoreOwner.current!!
+			).apply {
+				updateBottomBarHeight(
+					with(LocalDensity.current) { compactBottomPadding.value.roundToPx() }
+				)
+			}
 		val localBackgroundColorState = Theme.backgroundColorAsState()
 		BoxWithConstraints(
 			modifier = remember(
@@ -116,7 +106,7 @@ private class RootNavigationState(
 					BottomNavigation(navController = navController)
 				}
 			) { contentPadding ->
-				contentBottomOffsetState
+				compactBottomPadding
 					.apply {
 						value = contentPadding.calculateBottomPadding()
 					}
@@ -134,7 +124,6 @@ private class RootNavigationState(
 					value = maxOf(
 						LocalLayoutVisibility.LocalBottomBar.current,
 						contentPadding.calculateBottomPadding(),
-						compactPlaybackControlState.layoutVisibleHeight
 					)
 				}
 				CompositionLocalProvider(
@@ -150,17 +139,13 @@ private class RootNavigationState(
 							it.addRootDestination(this, navController)
 						}
 					}
-					BackHandler(playbackControlState.consumeBackPress) {
-						playbackControlState.backPress()
-					}
+					BackHandler(
+						playbackControlState.hasBackPressConsumer,
+						playbackControlState::consumeBackPress
+					)
 				}
 			} // Scaffold Layout End
-			compactPlaybackControlState.run {
-				Layout()
-			}
-			playbackControlState.run {
-				Compose()
-			}
+			RootPlaybackControl(state = playbackControlState)
 		}
 	}
 
@@ -231,7 +216,7 @@ private fun BottomNavigation(
 	NoRippleColor {
 
 		val absBackgroundColor = Theme.backgroundColorAsState().value
-		val alpha = (/* preference */ 1f).coerceAtLeast(0.3f)
+		val alpha = ( /*preference*/ 1f).coerceAtLeast(0.3f)
 		val backgroundColor = Theme
 			.elevatedTonalPrimarySurfaceAsState(elevation = 5.dp).value
 			.copy(alpha = alpha)

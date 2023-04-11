@@ -20,6 +20,18 @@ import com.flammky.musicplayer.player.presentation.root.runRemember
 import dev.flammky.compose_components.core.SnapshotRead
 
 @Composable
+fun rememberPlaybackControlToolBarState(
+    dismiss: () -> Unit,
+): PlaybackControlToolBarState {
+    val upDismiss = rememberUpdatedState(dismiss)
+    return remember {
+        PlaybackControlToolBarState(
+            onDismissClick = { upDismiss.value }
+        )
+    }
+}
+
+@Composable
 fun PlaybackControlToolBar(
     state: PlaybackControlToolBarState
 ) = state.coordinator.ComposeContent(
@@ -205,7 +217,7 @@ class PlaybackControlToolBarCoordinator(
                     dismissContentScope.attachLayoutHandle(
                         getDismissIconLayoutModifier = { dismissIconLayoutModifier() }
                     )
-                    provideLayoutData(button = dismissContentScope.button)
+                    provideLayoutData(dismissContentScope.button)
                 },
                 moreMenuButton = @SnapshotRead {
                     menuContentScope.attachLayoutHandle(
@@ -214,20 +226,6 @@ class PlaybackControlToolBarCoordinator(
                     provideLayoutData(menuContentScope.moreMenu)
                 }
             )
-        }
-    }
-
-    @Composable
-    private fun rememberDismissContentScope(): DismissContentScopeImpl {
-        return remember(this) {
-            DismissContentScopeImpl(onDismissClick)
-        }
-    }
-
-    @Composable
-    private fun rememberMenuContentScope(): MenuContentScopeImpl {
-        return remember(this) {
-            MenuContentScopeImpl()
         }
     }
 }

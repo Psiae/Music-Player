@@ -26,7 +26,7 @@ class MainContainerTransitionState(
     private val isRestoredInstance: Boolean = false
 ) {
 
-    private var saved = false
+    private var saveCount = 0
 
     private var stagingJob: Job = Job().apply { cancel() }
     private var constraints by mutableStateOf(Constraints.fixed(0,0))
@@ -153,12 +153,12 @@ class MainContainerTransitionState(
             uiCoroutineScope: CoroutineScope
         ): Saver<MainContainerTransitionState, Bundle> = Saver(
             save = { self ->
-                check(!self.saved) {
+                check(self.saveCount <= 2) {
                     "cannot save an already saved instance"
                 }
                 self
                     .apply {
-                        saved = true
+                        saveCount++
                     }
                 Bundle()
                     .apply {

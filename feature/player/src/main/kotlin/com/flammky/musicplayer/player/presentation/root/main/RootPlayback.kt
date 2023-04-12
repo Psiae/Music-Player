@@ -77,16 +77,20 @@ fun RootPlaybackControl(
                 },
                 source = remember(sourceKey) {
                     PlaybackControlScreenDataSource(
-                        observeQueue,
-                        observePlaybackProperties,
-                        observeDuration,
-                        observePositionWithIntervalHandle,
-                        observeTrackMetadata,
-                        observeArtwork
+                        user = user,
+                        observeQueue = observeQueue,
+                        observePlaybackProperties = observePlaybackProperties,
+                        observeDuration = observeDuration,
+                        observePositionWithIntervalHandle = observePositionWithIntervalHandle,
+                        observeTrackMetadata = observeTrackMetadata,
+                        observeArtwork = observeArtwork
                     )
-                }
+                },
+                backPressRegistry = backPressRegistry
             ).apply {
-                if (showSelf) requestShow() else requestHide()
+                remember(showSelf) {
+                    if (showSelf) requestShow() else requestHide()
+                }
             }
         )
     },
@@ -166,11 +170,15 @@ internal class PlaybackControlCoordinator(
 
     private val layoutCoordinator = PlaybackControlLayoutCoordinator()
 
+    private var currentScreenScope by mutableStateOf<ScreenScopeImpl?>(null)
+
     var bottomBarSpacing by mutableStateOf(0)
         private set
 
-    var hasBackPressConsumer by mutableStateOf(false)
-        private set
+    val hasBackPressConsumer by derivedStateOf {
+        val screen = currentScreenScope?.state?.hasBackPressConsumer() == true
+        screen
+    }
 
     fun updateBottomBarHeight(height: Int) {
         Timber.d("player.presentation.root.main.RootPlayback.kt PlaybackControlCoordinator@${System.identityHashCode(this)}.updateBottomBarHeight($height)")
@@ -178,13 +186,52 @@ internal class PlaybackControlCoordinator(
     }
 
     fun consumeBackPress() {
+        currentScreenScope?.state?.backPress()
+    }
 
+    @Composable
+    fun ComposeLayout(
+        screen: @Composable ScreenRenderScope.() -> Unit,
+        compact: @Composable CompactRenderScope.() -> Unit
+    ) {
+        state.updateCoordinator(this)
+        val upScreen = rememberUpdatedState(screen)
+        val upCompact = rememberUpdatedState(compact)
+        val screenScope = presentScreen()
+        val compactScope = presentCompact(screenScope)
+        with(layoutCoordinator) {
+            PlaceLayout(
+                screen = remember(screenScope) {
+                    PlaybackControlLayoutCoordinator.ScreenPlacement {
+                        with(upScreen) {
+                            screenScope.observeRenderScope().value()
+                        }
+                    }
+                },
+                compact = remember(compactScope) {
+                    PlaybackControlLayoutCoordinator.CompactPlacement {
+                        with(upCompact) {
+                            compactScope.value()
+                        }
+                    }
+                }
+            )
+        }
+    }
+
+    private fun updateScreenScope(
+        scope: ScreenScopeImpl
+    ) {
+        if (currentScreenScope == scope) return
+        currentScreenScope = scope
     }
 
     interface ScreenRenderScope {
         val showSelf: Boolean
         val sourceKey: Any
         val intentsKey: Any
+        val user: User
+        val backPressRegistry: BackPressRegistry
         val dismiss: () -> Unit
         val requestSeekNextAsync: () -> Deferred<Result<Boolean>>
         val requestSeekPreviousAsync: () -> Deferred<Result<Boolean>>
@@ -244,6 +291,8 @@ internal class PlaybackControlCoordinator(
 
     private class ScreenState() {
 
+        val backPressRegistry = BackPressRegistry()
+
         var showSelf by mutableStateOf(false)
             private set
 
@@ -260,10 +309,19 @@ internal class PlaybackControlCoordinator(
             )
             showSelf = false
         }
+
+        fun hasBackPressConsumer(): Boolean {
+            return backPressRegistry.hasBackPressConsumer()
+        }
+
+        fun backPress() {
+            backPressRegistry.consumeBackPress()
+        }
     }
 
 
     private class ScreenScopeImpl(
+        private val user: User,
         private val playbackController: PlaybackController,
         private val observeArtwork: (String) -> Flow<Any?>,
         private val observeTrackMetadata: (String) -> Flow<MediaMetadata?>,
@@ -279,6 +337,8 @@ internal class PlaybackControlCoordinator(
                 showSelf = state.showSelf,
                 sourceKey = this,
                 intentsKey = this,
+                backPressRegistry = state.backPressRegistry,
+                user = user,
                 dismiss = state::dismiss,
                 requestSeekNextAsync = ::requestSeekNextAsync,
                 requestSeekPreviousAsync = ::requestSeekPreviousAsync,
@@ -551,7 +611,9 @@ internal class PlaybackControlCoordinator(
     private class ScreenRenderScopeImpl(
         override val sourceKey: Any,
         override val intentsKey: Any,
+        override val user: User,
         override val showSelf: Boolean,
+        override val backPressRegistry: BackPressRegistry,
         override val dismiss: () -> Unit,
         override val observeArtwork: (String) -> Flow<Any?>,
         override val observePlaybackProperties: () -> Flow<PlaybackProperties>,
@@ -610,36 +672,6 @@ internal class PlaybackControlCoordinator(
     ) : CompactRenderScope
 
     @Composable
-    fun ComposeLayout(
-        screen: @Composable ScreenRenderScope.() -> Unit,
-        compact: @Composable CompactRenderScope.() -> Unit
-    ) {
-        state.updateCoordinator(this)
-        val upScreen = rememberUpdatedState(screen)
-        val upCompact = rememberUpdatedState(compact)
-        val screenScope = presentScreen()
-        val compactScope = presentCompact(screenScope)
-        with(layoutCoordinator) {
-            PlaceLayout(
-                screen = remember(screenScope) {
-                    PlaybackControlLayoutCoordinator.ScreenPlacement {
-                        with(upScreen) {
-                            screenScope.observeRenderScope().value()
-                        }
-                    }
-                },
-                compact = remember(compactScope) {
-                    PlaybackControlLayoutCoordinator.CompactPlacement {
-                        with(upCompact) {
-                            compactScope.value()
-                        }
-                    }
-                }
-            )
-        }
-    }
-
-    @Composable
     private fun presentScreen(): ScreenScopeImpl {
         val screenImpl = rememberSaveable(
             this,
@@ -651,6 +683,7 @@ internal class PlaybackControlCoordinator(
                     },
                     restore = { bundle ->
                         ScreenScopeImpl(
+                            user,
                             playbackController,
                             observeArtwork,
                             observeTrackMetadata,
@@ -664,6 +697,7 @@ internal class PlaybackControlCoordinator(
             }
         ) {
             ScreenScopeImpl(
+                user,
                 playbackController,
                 observeArtwork,
                 observeTrackMetadata,
@@ -671,6 +705,7 @@ internal class PlaybackControlCoordinator(
                 coroutineDispatchScope
             )
         }
+        currentScreenScope = screenImpl
         return screenImpl
     }
 

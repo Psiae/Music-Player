@@ -77,31 +77,33 @@ fun PlaybackControlScreenCoordinator.MainRenderScope.MainScreenContent(
                 )
             )
         },
-        extra = { showQueue ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth(0.8f)
-                    .height(30.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Box(modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f))
-                Box(
+        extra = {
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Row(
                     modifier = Modifier
-                        .size(30.dp)
-                        .clickable {
-                            showQueue()
-                        }
+                        .fillMaxWidth(0.8f)
+                        .height(30.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Icon(
+                    Box(modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f))
+                    Box(
                         modifier = Modifier
-                            .size(24.dp)
-                            .align(Alignment.Center),
-                        painter = painterResource(id = R.drawable.glyph_playlist_100px),
-                        contentDescription = "queue",
-                        tint = Theme.backgroundContentColorAsState().value
-                    )
+                            .size(30.dp)
+                            .clickable {
+                                intents.showQueue()
+                            }
+                    ) {
+                        Icon(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .align(Alignment.Center),
+                            painter = painterResource(id = R.drawable.glyph_playlist_100px),
+                            contentDescription = "queue",
+                            tint = Theme.backgroundContentColorAsState().value
+                        )
+                    }
                 }
             }
         }
@@ -190,7 +192,7 @@ private fun PlaceContents(
     description: @Composable () -> Unit,
     timeBar: @Composable () -> Unit,
     properties: @Composable () -> Unit,
-    extra: @Composable (showQueue: () -> Unit) -> Unit
+    extra: @Composable () -> Unit
 ) {
     val animatedAlpha by animateFloatAsState(
         targetValue = if (transitionState.rememberFullTransitionRendered) 1f else 0f,
@@ -198,7 +200,9 @@ private fun PlaceContents(
             if (transitionState.rememberFullTransitionRendered && Theme.isDarkAsState().value) 150 else 0
         )
     )
-    Column(modifier = modifier.fillMaxSize().alpha(animatedAlpha)) {
+    Column(modifier = modifier
+        .fillMaxSize()
+        .alpha(animatedAlpha)) {
 
         Spacer(modifier = Modifier.height(5.dp))
         Box(
@@ -243,6 +247,7 @@ private fun PlaceContents(
                 .height(40.dp)
                 .alpha(animatedAlpha)
         ) {
+            extra()
         }
     }
 }

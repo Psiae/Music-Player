@@ -1,4 +1,4 @@
-package com.flammky.musicplayer.player.presentation.root.main
+package com.flammky.musicplayer.player.presentation.root.main.queue
 
 import android.os.Bundle
 import androidx.compose.animation.core.*
@@ -17,15 +17,16 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.absoluteBackgroundColorAsState
+import com.flammky.musicplayer.player.presentation.root.main.MainContainerTransitionState
 import kotlinx.coroutines.*
 import timber.log.Timber
 
-class MainContainerTransitionState(
+class QueueContainerTransitionState(
+    private val parent: MainContainerTransitionState,
     private val uiCoroutineScope: CoroutineScope,
     private val initialRememberFullTransitionRendered: Boolean = false,
     private val isRestoredInstance: Boolean = false
 ) {
-
     private var saveCount = 0
 
     private var stagingJob: Job = Job().apply { cancel() }
@@ -64,7 +65,7 @@ class MainContainerTransitionState(
 
     fun show() {
         Timber.d(
-            "player.root.main.MainTransition.kt: MainContainerTransitionState@${System.identityHashCode(this)}_show()"
+            "player.root.main.queue.MainTransition.kt: QueueContainerTransitionState@${System.identityHashCode(this)}_show()"
         )
         if (show) {
             return
@@ -75,7 +76,7 @@ class MainContainerTransitionState(
 
     fun hide() {
         Timber.d(
-            "player.root.main.MainTransition.kt: MainContainerTransitionState@${System.identityHashCode(this)}_hide()"
+            "player.root.queue.MainTransition.kt: QueueContainerTransitionState@${System.identityHashCode(this)}_hide()"
         )
         if (!show) {
             return
@@ -102,7 +103,7 @@ class MainContainerTransitionState(
     }
 
     private fun onNewConstraints() {
-        Timber.d("player.root.main.MainTransition.kt: MainTransitionContainerState new constraints=$constraints")
+        Timber.d("player.root.main.queue.MainTransition.kt: QueueContainerTransitionState new constraints=$constraints")
         this.targetHeightPx = constraints.maxHeight
         invalidateTarget()
     }
@@ -123,9 +124,9 @@ class MainContainerTransitionState(
                     snapshotFlow { animatable.value }
                         .collect { value ->
                             Timber.d(
-                                    "player.root.main.MainTransition.kt: " +
-                                    "MainContainerTransitionState@${System.identityHashCode(this@MainContainerTransitionState)} " +
-                                    "new staged height px=$value, show=$show, constraints=$constraints"
+                                "player.root.main.queue.MainTransition.kt: " +
+                                        "QueueContainerTransitionState@${System.identityHashCode(this@QueueContainerTransitionState)} " +
+                                        "new staged height px=$value, show=$show, constraints=$constraints"
                             )
                             stagedHeightPx = value
                         }
@@ -152,13 +153,11 @@ class MainContainerTransitionState(
 
         @Suppress("FunctionName")
         fun Saver(
+            parent: MainContainerTransitionState,
             uiCoroutineScope: CoroutineScope
-        ): Saver<MainContainerTransitionState, Bundle> = Saver(
+        ): Saver<QueueContainerTransitionState, Bundle> = Saver(
             save = { self ->
-                Timber.d("player.root.main.MainTransition.kt MainContainerTransitionState.Companion_Saver save($self, ${self.saveCount})")
-
-                // expect that instance saving only happen once
-                // as for the count threshold see androidx.compose.ui.platform.DisposableSaveableStateRegistry.android.kt:81 (1.3.0-alpha01)
+                Timber.d("player.root.main.queue.MainTransition.kt: QueueContainerTransitionState.Companion_Saver save($self, ${self.saveCount})")
                 Bundle()
                     .apply {
                         if (self.show) {
@@ -170,8 +169,9 @@ class MainContainerTransitionState(
                     }
             },
             restore = { bundledSelf ->
-                Timber.d("player.root.main.MainTransition.kt MainContainerTransitionState.Companion_Saver restore($bundledSelf})")
-                MainContainerTransitionState(
+                Timber.d("player.root.main.queue.MainTransition.kt: QueueContainerTransitionState.Companion_Saver restore($bundledSelf})")
+                QueueContainerTransitionState(
+                    parent,
                     uiCoroutineScope = uiCoroutineScope,
                     initialRememberFullTransitionRendered = run rememberTransition@ {
                         val prop = MainContainerTransitionState::rememberFullTransitionRendered
@@ -185,8 +185,8 @@ class MainContainerTransitionState(
 }
 
 @Composable
-fun MainTransition(
-    state: MainContainerTransitionState,
+fun QueueTransition(
+    state: QueueContainerTransitionState,
     content: @Composable () -> Unit
 ) = PlaceContents(
     container = { AnimatedTransitionContainer(state, content) }
@@ -214,7 +214,7 @@ private fun InteractionBlocker(
 
 @Composable
 private fun AnimatedTransitionContainer(
-    state: MainContainerTransitionState,
+    state: QueueContainerTransitionState,
     content: @Composable () -> Unit
 ) = BoxWithConstraints {
     state.apply {
@@ -233,7 +233,7 @@ private fun AnimatedTransitionContainer(
                     y = (constraints.maxHeight - height).coerceAtLeast(0)
                 )
             }
-            .background(Theme.absoluteBackgroundColorAsState().value.copy(alpha = 0.94f))
+            .background(Theme.absoluteBackgroundColorAsState().value)
             .onGloballyPositioned { state.onRender(height) }
     ) {
         if (height > 0) {

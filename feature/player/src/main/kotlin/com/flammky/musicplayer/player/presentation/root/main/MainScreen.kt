@@ -37,9 +37,7 @@ fun PlaybackControlScreenCoordinator.MainRenderScope.PlaybackControlMainScreen()
             )
         },
         toolbar = @Composable {
-            MainScreenToolBar(
-                dismiss = intents.dismiss
-            )
+            MainScreenToolBar(dismiss = intents.dismiss)
         },
         content = @Composable {
             MainScreenContent()

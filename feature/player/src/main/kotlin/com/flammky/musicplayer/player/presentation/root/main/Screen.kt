@@ -13,8 +13,11 @@ import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.musicplayer.base.compose.SnapshotRead
 import com.flammky.musicplayer.base.media.playback.OldPlaybackQueue
 import com.flammky.musicplayer.base.media.playback.PlaybackProperties
+import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.player.presentation.root.main.PlaybackControlScreenLayoutCoordinator.Companion.restore
 import com.flammky.musicplayer.player.presentation.root.main.PlaybackControlScreenLayoutCoordinator.Companion.saveAsBundle
+import com.flammky.musicplayer.player.presentation.root.main.queue.PlaybackQueueScreen
+import com.flammky.musicplayer.player.presentation.root.main.queue.QueueContainerTransitionState
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -59,6 +62,7 @@ data class PlaybackControlScreenIntents(
 )
 
 data class PlaybackControlScreenDataSource(
+    val user: User,
     val observeQueue: () -> Flow<OldPlaybackQueue>,
     val observePlaybackProperties: () -> Flow<PlaybackProperties>,
     val observeDuration: () -> Flow<Duration>,
@@ -95,6 +99,7 @@ data class MainScreenDataSource(
 
 data class MainScreenIntents(
     val dismiss: () -> Unit,
+    val showQueue: () -> Unit,
     val requestSeekNextAsync: () -> Deferred<Result<Boolean>>,
     val requestSeekPreviousAsync: () -> Deferred<Result<Boolean>>,
     val requestSeekNextWithExpectAsync: (
@@ -124,13 +129,36 @@ data class MainScreenIntents(
     val requestToggleShuffleAsync: () -> Deferred<Result<Boolean>>,
 )
 
+data class QueueScreenDataSource(
+    val user: User,
+    val observeQueue: () -> Flow<OldPlaybackQueue>,
+    val observeTrackMetadata: (String) -> Flow<MediaMetadata?>,
+    val observeArtwork: (String) -> Flow<Any?>,
+)
+
+data class QueueScreenIntents(
+    val requestMoveQueueItemAsync: (
+        from: Int,
+        expectFromId: String,
+        to: Int,
+        expectToId: String
+    ) -> Deferred<Result<Boolean>>,
+    val requestSeekIndexAsync: (
+        from: Int,
+        expectFromId: String,
+        to: Int,
+        expectToId: String,
+    ) -> Deferred<Result<Boolean>>
+)
+
 @Composable
 fun rememberPlaybackControlScreenState(
     intents: PlaybackControlScreenIntents,
     source: PlaybackControlScreenDataSource,
+    backPressRegistry: BackPressRegistry
 ): PlaybackControlScreenState {
-    return remember(intents, source) {
-        PlaybackControlScreenState(intents, source)
+    return remember(intents, source, backPressRegistry) {
+        PlaybackControlScreenState(intents, source, backPressRegistry)
     }
 }
 
@@ -145,13 +173,15 @@ fun PlaybackControlScreen(
         PlaybackControlMainScreen()
     },
     queue = {
-
+        // should queue be inside main ?
+        PlaybackQueueScreen()
     }
 )
 
 class PlaybackControlScreenState(
     internal val intents: PlaybackControlScreenIntents,
-    internal val source: PlaybackControlScreenDataSource
+    internal val source: PlaybackControlScreenDataSource,
+    internal val backPressRegistry: BackPressRegistry
 ) {
 
     private var currentCoordinator by mutableStateOf<PlaybackControlScreenCoordinator?>(null)
@@ -242,8 +272,10 @@ class PlaybackControlScreenCoordinator(
     }
 
 
-    interface QueueRenderScope {
+    interface QueueScreenRenderScope {
         val transitionState: QueueContainerTransitionState
+        val dataSource: QueueScreenDataSource
+        val intents: QueueScreenIntents
     }
 
     class MainRenderScopeImpl(
@@ -255,9 +287,11 @@ class PlaybackControlScreenCoordinator(
 
     }
 
-    class QueueRenderScopeImpl(
-        override val transitionState: QueueContainerTransitionState
-    ) : QueueRenderScope {
+    class QueueScreenRenderScopeImpl(
+        override val transitionState: QueueContainerTransitionState,
+        override val intents: QueueScreenIntents,
+        override val dataSource: QueueScreenDataSource
+    ) : QueueScreenRenderScope {
 
     }
 
@@ -265,13 +299,29 @@ class PlaybackControlScreenCoordinator(
     @Composable
     fun ComposeLayout(
         main: @Composable MainRenderScope.() -> Unit,
-        queue: @Composable QueueRenderScope.() -> Unit
+        queue: @Composable QueueScreenRenderScope.() -> Unit
     ) {
         state.updateCoordinator(this)
         with(layoutCoordinator) {
+            val uiCoroutineScope = rememberCoroutineScope()
+            val mainTransition = rememberSaveable(
+                this@PlaybackControlScreenCoordinator,
+                saver = MainContainerTransitionState.Saver(uiCoroutineScope)
+            ) init@ {
+                MainContainerTransitionState(uiCoroutineScope)
+            }
+            val queueTransition = rememberSaveable(
+                this@PlaybackControlScreenCoordinator,
+                saver = QueueContainerTransitionState.Saver(mainTransition, uiCoroutineScope)
+            ) init@ {
+                QueueContainerTransitionState(mainTransition, uiCoroutineScope)
+            }
             PlaceLayout(
                 main = run {
-                    val render = observeMainRenderScope()
+                    val render = observeMainRenderScope(
+                        mainTransition,
+                        queueTransition
+                    )
                     remember(render) {
                         PlaybackControlScreenLayoutCoordinator.MainPlacement(
                             composable = @Composable { render.main() },
@@ -280,7 +330,9 @@ class PlaybackControlScreenCoordinator(
                     }
                 },
                 queue = run {
-                    val render = observeQueueRenderScope()
+                    val render = observeQueueRenderScope(
+                        queueTransition
+                    )
                     remember(render) {
                         PlaybackControlScreenLayoutCoordinator.QueuePlacement(
                             composable = @Composable { render.queue() },
@@ -289,24 +341,40 @@ class PlaybackControlScreenCoordinator(
                     }
                 }
             )
+            DisposableEffect(
+                key1 = mainTransition.show, queueTransition.show,
+                effect = {
+                    if (!mainTransition.show && !mainTransition.show) {
+                        return@DisposableEffect onDispose {  }
+                    }
+                    val backPressConsumer = BackPressRegistry.BackPressConsumer {
+                        if (queueTransition.show) {
+                            queueTransition.hide()
+                            return@BackPressConsumer
+                        }
+                        if (mainTransition.show) {
+                            state.intents.dismiss()
+                        }
+                    }
+                    state.backPressRegistry.registerBackPressConsumer(backPressConsumer)
+                    onDispose { state.backPressRegistry.unregisterBackPressConsumer(backPressConsumer) }
+                }
+            )
         }
     }
 
     @Composable
-    private fun observeMainRenderScope(): MainRenderScope {
-        val uiCoroutineScope = rememberCoroutineScope()
-        val transitionState = rememberSaveable(
-            this,
-            saver = MainContainerTransitionState.Saver(uiCoroutineScope)
-        ) init@ {
-            MainContainerTransitionState(uiCoroutineScope)
-        }
+    private fun observeMainRenderScope(
+        transitionState: MainContainerTransitionState,
+        queueTransitionState: QueueContainerTransitionState
+    ): MainRenderScope {
         return MainRenderScopeImpl(
             modifier = Modifier,
             transitionState = transitionState,
             intents = remember(state) {
                 MainScreenIntents(
                     dismiss = state.intents.dismiss,
+                    showQueue = queueTransitionState::show,
                     requestSeekNextAsync = state.intents.requestSeekNextAsync,
                     requestSeekPreviousAsync = state.intents.requestSeekPreviousAsync,
                     requestSeekNextWithExpectAsync = state.intents.requestSeekNextWithExpectAsync,
@@ -316,7 +384,7 @@ class PlaybackControlScreenCoordinator(
                     requestPlayAsync = state.intents.requestPlayAsync,
                     requestPauseAsync = state.intents.requestPauseAsync,
                     requestToggleRepeatAsync = state.intents.requestToggleRepeatAsync,
-                    requestToggleShuffleAsync = state.intents.requestToggleShuffleAsync
+                    requestToggleShuffleAsync = state.intents.requestToggleShuffleAsync,
                 )
             },
             dataSource = run {
@@ -343,9 +411,22 @@ class PlaybackControlScreenCoordinator(
     }
 
     @Composable
-    private fun observeQueueRenderScope(): QueueRenderScope {
-        val transitionState = remember { QueueContainerTransitionState() }
-        return QueueRenderScopeImpl(transitionState)
+    private fun observeQueueRenderScope(
+        transitionState: QueueContainerTransitionState,
+    ): QueueScreenRenderScope {
+        return QueueScreenRenderScopeImpl(
+            transitionState,
+            intents = QueueScreenIntents(
+                state.intents.requestMoveQueueItemAsync,
+                state.intents.requestSeekAsync,
+            ),
+            dataSource = QueueScreenDataSource(
+                state.source.user,
+                state.source.observeQueue,
+                state.source.observeTrackMetadata,
+                state.source.observeArtwork
+            )
+        )
     }
 
     @Composable

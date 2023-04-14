@@ -124,6 +124,7 @@ private class RootNavigationState(
 					value = maxOf(
 						LocalLayoutVisibility.LocalBottomBar.current,
 						contentPadding.calculateBottomPadding(),
+						with(LocalDensity.current) { playbackControlState.compactTopPositionFromAnchor.toDp() }
 					)
 				}
 				CompositionLocalProvider(

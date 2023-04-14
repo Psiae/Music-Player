@@ -1,16 +1,54 @@
 package com.flammky.musicplayer.player.presentation.root.main.queue
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import com.flammky.musicplayer.player.presentation.root.RootPlaybackControlCompact
+import com.flammky.musicplayer.base.theme.Theme
+import com.flammky.musicplayer.base.theme.compose.isDarkAsState
+import com.flammky.musicplayer.base.theme.compose.surfaceVariantColorAsState
 import com.flammky.musicplayer.player.presentation.root.main.PlaybackControlScreenCoordinator
-import com.flammky.musicplayer.player.presentation.root.rememberRootPlaybackControlCompactState
 
 @Composable
 fun PlaybackControlScreenCoordinator.QueueScreenRenderScope.PlaybackQueueScreen() {
+    val dataSourceKey = remember(dataSource) { Any() }
+    val intentsKey = remember(intents) { Any() }
+    val compactState = rememberCompactControlState(
+        intents = remember(intentsKey) {
+            CompactControlIntents(
+                seekNext = { intents.requestSeekNextAsync() },
+                seekPrevious = { intents.requestSeekPreviousAsync() },
+                play = { intents.requestPlayAsync() },
+                pause = { intents.requestPauseAsync() }
+            )
+        },
+        dataSource = remember(dataSourceKey) {
+            CompactControlDataSource(
+                dataSource.observeQueue,
+                dataSource.observePlaybackProperties,
+                dataSource.observeArtwork,
+                dataSource.observeTrackMetadata
+            )
+        },
+    )
+    val queueState = rememberReorderableQueueLazyColumnState(
+        intents = remember(intentsKey) {
+            ReorderableQueueLazyColumnIntents(
+                requestSeekIndexAsync = intents.requestSeekIndexAsync,
+                requestMoveQueueItemAsync = intents.requestMoveQueueItemAsync
+            )
+        },
+        dataSource = remember(dataSourceKey) {
+            ReorderableQueueLazyColumnDataSource(
+                observeQueue = dataSource.observeQueue,
+                observeTrackMetadata = dataSource.observeTrackMetadata,
+                observeTrackArtwork = dataSource.observeArtwork
+            )
+        }
+    )
     PlaceContents(
         container = @Composable { state, content ->
             QueueTransition(
@@ -22,27 +60,21 @@ fun PlaybackControlScreenCoordinator.QueueScreenRenderScope.PlaybackQueueScreen(
             QueueScreenBackground()
         },
         compact = @Composable {
-            RootPlaybackControlCompact(
-                state = rememberRootPlaybackControlCompactState(
-                    user = dataSource.user,
-                    onBaseClicked = null,
-                    onArtworkClicked = null
-                ).apply {
-                    bottomSpacing = with(LocalDensity.current) {
-                        WindowInsets.navigationBars.getBottom(this).toDp()
-                    }
-                }
-            )
+            CompactControl(state = compactState, transitionState = transitionState)
         },
         queue = @Composable { transitionState ->
             val statusBarInset = with(LocalDensity.current) {
                 WindowInsets.statusBars.getTop(this).toDp()
             }
+            val navigationBarInset = with(LocalDensity.current) {
+                WindowInsets.navigationBars.getBottom(this).toDp()
+            }
             ReorderableQueueLazyColumn(
-                // TODO:
-                getPlaybackControlContentPadding = { PaddingValues(bottom = 55.dp) },
-                getStatusBarInset = { statusBarInset },
-                transitionState = transitionState
+                transitionState = transitionState,
+                state = queueState.apply {
+                    topContentPadding = maxOf(statusBarInset, compactState.stagedLayoutHeight)
+                    bottomContentPadding = navigationBarInset
+                }
             )
         }
     )
@@ -58,6 +90,16 @@ private fun PlaybackControlScreenCoordinator.QueueScreenRenderScope.PlaceContent
     container(transitionState) {
         background()
         queue(transitionState)
-        compact()
+        Column {
+            compact()
+            if (transitionState.rememberFullTransitionRendered && !Theme.isDarkAsState().value) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(Theme.surfaceVariantColorAsState().value)
+                )
+            }
+        }
     }
 }

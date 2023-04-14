@@ -134,6 +134,7 @@ data class QueueScreenDataSource(
     val observeQueue: () -> Flow<OldPlaybackQueue>,
     val observeTrackMetadata: (String) -> Flow<MediaMetadata?>,
     val observeArtwork: (String) -> Flow<Any?>,
+    val observePlaybackProperties: () -> Flow<PlaybackProperties>
 )
 
 data class QueueScreenIntents(
@@ -148,7 +149,11 @@ data class QueueScreenIntents(
         expectFromId: String,
         to: Int,
         expectToId: String,
-    ) -> Deferred<Result<Boolean>>
+    ) -> Deferred<Result<Boolean>>,
+    val requestSeekPreviousAsync: () -> Deferred<Result<Boolean>>,
+    val requestSeekNextAsync: () -> Deferred<Result<Boolean>>,
+    val requestPlayAsync: () -> Deferred<Result<Boolean>>,
+    val requestPauseAsync: () -> Deferred<Result<Boolean>>
 )
 
 @Composable
@@ -417,14 +422,19 @@ class PlaybackControlScreenCoordinator(
         return QueueScreenRenderScopeImpl(
             transitionState,
             intents = QueueScreenIntents(
-                state.intents.requestMoveQueueItemAsync,
-                state.intents.requestSeekAsync,
+                requestMoveQueueItemAsync = state.intents.requestMoveQueueItemAsync,
+                requestSeekIndexAsync = state.intents.requestSeekAsync,
+                requestSeekPreviousAsync = state.intents.requestSeekPreviousAsync,
+                requestSeekNextAsync = state.intents.requestSeekNextAsync,
+                requestPlayAsync = state.intents.requestPlayAsync,
+                requestPauseAsync = state.intents.requestPauseAsync
             ),
             dataSource = QueueScreenDataSource(
-                state.source.user,
-                state.source.observeQueue,
-                state.source.observeTrackMetadata,
-                state.source.observeArtwork
+                user = state.source.user,
+                observeQueue = state.source.observeQueue,
+                observeTrackMetadata = state.source.observeTrackMetadata,
+                observeArtwork = state.source.observeArtwork,
+                observePlaybackProperties = state.source.observePlaybackProperties
             )
         )
     }

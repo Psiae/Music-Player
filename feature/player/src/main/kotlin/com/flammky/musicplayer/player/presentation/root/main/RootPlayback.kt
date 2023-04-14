@@ -55,57 +55,65 @@ fun rememberRootPlaybackControlState(
 @Composable
 fun RootPlaybackControl(
     state: RootPlaybackControlState
-) = remember(state) { PlaybackControlCoordinator(state) }.ComposeLayout(
-    screen = @Composable {
-        PlaybackControlScreen(
-            state = rememberPlaybackControlScreenState(
-                intents = remember(intentsKey) {
-                    PlaybackControlScreenIntents(
-                        requestSeekNextAsync = requestSeekNextAsync,
-                        requestSeekPreviousAsync = requestSeekPreviousAsync,
-                        requestSeekNextWithExpectAsync = requestSeekNextWithExpectAsync,
-                        requestSeekPreviousWithExpectAsync = requestSeekPreviousWithExpectAsync,
-                        requestSeekAsync = requestSeekAsync,
-                        requestSeekPositionAsync = requestSeekPositionAsync,
-                        requestMoveQueueItemAsync = requestMoveQueueItemAsync,
-                        requestPlayAsync = requestPlayAsync,
-                        requestPauseAsync = requestPauseAsync,
-                        requestToggleRepeatAsync = requestToggleRepeatAsync,
-                        requestToggleShuffleAsync = requestToggleShuffleAsync,
-                        dismiss = dismiss
-                    )
-                },
-                source = remember(sourceKey) {
-                    PlaybackControlScreenDataSource(
-                        user = user,
-                        observeQueue = observeQueue,
-                        observePlaybackProperties = observePlaybackProperties,
-                        observeDuration = observeDuration,
-                        observePositionWithIntervalHandle = observePositionWithIntervalHandle,
-                        observeTrackMetadata = observeTrackMetadata,
-                        observeArtwork = observeArtwork
-                    )
-                },
-                backPressRegistry = backPressRegistry
-            ).apply {
-                remember(showSelf) {
-                    if (showSelf) requestShow() else requestHide()
+) {
+    val coordinator = remember(state) { PlaybackControlCoordinator(state) }
+
+    coordinator.ComposeLayout(
+        screen = @Composable {
+            PlaybackControlScreen(
+                state = rememberPlaybackControlScreenState(
+                    intents = remember(intentsKey) {
+                        PlaybackControlScreenIntents(
+                            requestSeekNextAsync = requestSeekNextAsync,
+                            requestSeekPreviousAsync = requestSeekPreviousAsync,
+                            requestSeekNextWithExpectAsync = requestSeekNextWithExpectAsync,
+                            requestSeekPreviousWithExpectAsync = requestSeekPreviousWithExpectAsync,
+                            requestSeekAsync = requestSeekAsync,
+                            requestSeekPositionAsync = requestSeekPositionAsync,
+                            requestMoveQueueItemAsync = requestMoveQueueItemAsync,
+                            requestPlayAsync = requestPlayAsync,
+                            requestPauseAsync = requestPauseAsync,
+                            requestToggleRepeatAsync = requestToggleRepeatAsync,
+                            requestToggleShuffleAsync = requestToggleShuffleAsync,
+                            dismiss = dismiss
+                        )
+                    },
+                    source = remember(sourceKey) {
+                        PlaybackControlScreenDataSource(
+                            user = user,
+                            observeQueue = observeQueue,
+                            observePlaybackProperties = observePlaybackProperties,
+                            observeDuration = observeDuration,
+                            observePositionWithIntervalHandle = observePositionWithIntervalHandle,
+                            observeTrackMetadata = observeTrackMetadata,
+                            observeArtwork = observeArtwork
+                        )
+                    },
+                    backPressRegistry = backPressRegistry
+                ).apply {
+                    remember(showSelf) {
+                        if (showSelf) requestShow() else requestHide()
+                    }
                 }
-            }
-        )
-    },
-    compact = @Composable {
-        RootPlaybackControlCompact(
-            rememberRootPlaybackControlCompactState(
-                user = user,
-                onBaseClicked = onBaseClicked,
-                onArtworkClicked = onArtworkClicked,
-            ).apply {
-                bottomSpacing = with(LocalDensity.current) { bottomSpacingState.value.toDp() }
-            }
-        )
-    }
-)
+            )
+        },
+        compact = @Composable {
+            RootPlaybackControlCompact(
+                rememberRootPlaybackControlCompactState(
+                    user = user,
+                    onBaseClicked = onBaseClicked,
+                    onArtworkClicked = onArtworkClicked,
+                ).apply {
+                    bottomSpacing = with(LocalDensity.current) { bottomSpacingState.value.toDp() }
+                    coordinator.updateCompactTopPositionRelativeToAnchor(
+                        with(LocalDensity.current) { topPositionRelativeToAnchor.roundToPx() }
+                    )
+                }
+            )
+        }
+    )
+}
+
 
 class RootPlaybackControlState internal constructor(
     internal val user: User,
@@ -116,6 +124,9 @@ class RootPlaybackControlState internal constructor(
     private var currentCoordinator by mutableStateOf<PlaybackControlCoordinator?>(null)
 
     val hasBackPressConsumer by derivedStateOf { currentCoordinator?.hasBackPressConsumer == true }
+
+    val compactTopPositionFromAnchor
+        get() = currentCoordinator?.compactTopPositionRelativeToAnchor ?: 0
 
     fun consumeBackPress() {
         currentCoordinator?.consumeBackPress()
@@ -175,6 +186,9 @@ internal class PlaybackControlCoordinator(
     var bottomBarSpacing by mutableStateOf(0)
         private set
 
+    var compactTopPositionRelativeToAnchor by mutableStateOf(0)
+        private set
+
     val hasBackPressConsumer by derivedStateOf {
         val screen = currentScreenScope?.state?.hasBackPressConsumer() == true
         screen
@@ -183,6 +197,10 @@ internal class PlaybackControlCoordinator(
     fun updateBottomBarHeight(height: Int) {
         Timber.d("player.presentation.root.main.RootPlayback.kt PlaybackControlCoordinator@${System.identityHashCode(this)}.updateBottomBarHeight($height)")
         this.bottomBarSpacing = height
+    }
+
+    fun updateCompactTopPositionRelativeToAnchor(pos: Int) {
+        this.compactTopPositionRelativeToAnchor = pos
     }
 
     fun consumeBackPress() {

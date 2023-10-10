@@ -56,6 +56,7 @@ fun rememberRootPlaybackControlState(
 fun RootPlaybackControl(
     state: RootPlaybackControlState
 ) {
+
     val coordinator = remember(state) { PlaybackControlCoordinator(state) }
 
     coordinator.ComposeLayout(
@@ -469,7 +470,7 @@ internal class PlaybackControlCoordinator(
         ): Deferred<Result<Boolean>> {
             return coroutineDispatchScope.async {
                 runCatching {
-                    playbackController.requestSeekAsync(
+                    playbackController.requestMoveAsync(
                         from,
                         expectFromId,
                         to,

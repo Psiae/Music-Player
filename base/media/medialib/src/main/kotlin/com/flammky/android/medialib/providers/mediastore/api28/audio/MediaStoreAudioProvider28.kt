@@ -18,6 +18,8 @@ import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider.Cont
 import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider.ContentObserver.Flag.Companion.isUnknown
 import com.flammky.android.medialib.providers.mediastore.api28.MediaStore28
 import com.flammky.android.medialib.providers.mediastore.api28.MediaStoreProvider28
+import com.flammky.musicplayer.core.sdk.AndroidAPI
+import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.isTiramisu
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
@@ -265,7 +267,7 @@ class MediaStoreAudioProvider28(private val context: MediaStoreContext)
 				return false
 			}
 			// no permission either so we can't check for change
-			if (!contextHelper.permissions.common.hasReadExternalStorage) {
+			if (!hasFsReadPermission()) {
 				return false
 			}
 			return try {
@@ -284,7 +286,7 @@ class MediaStoreAudioProvider28(private val context: MediaStoreContext)
 				return false
 			}
 			// no permission either so we can't check for change
-			if (!contextHelper.permissions.common.hasReadExternalStorage) {
+			if (!hasFsReadPermission()) {
 				return false
 			}
 			return try {
@@ -303,7 +305,7 @@ class MediaStoreAudioProvider28(private val context: MediaStoreContext)
 				return false
 			}
 			// no permission either so we can't check for change
-			if (!contextHelper.permissions.common.hasReadExternalStorage) {
+			if (!hasFsReadPermission()) {
 				return false
 			}
 			return try {
@@ -312,6 +314,19 @@ class MediaStoreAudioProvider28(private val context: MediaStoreContext)
 				false
 			}
 		}
+	}
+
+	private fun hasFsReadPermission(): Boolean {
+		if (AndroidAPI.isTiramisu()) {
+			if (contextHelper.permissions.hasPermission(android.Manifest.permission.READ_MEDIA_AUDIO)) {
+				return true
+			}
+		} else {
+			if (hasFsReadPermission()) {
+				return true
+			}
+		}
+		return false
 	}
 
 	private class OverflowSafeLong(value: Long, private val overflowValue: () -> Long) {

@@ -87,6 +87,8 @@ class ContextHelper(private val context: Context) {
 		interface Common {
 			val hasReadExternalStorage: Boolean
 			val hasWriteExternalStorage: Boolean
+
+
 		}
 	}
 

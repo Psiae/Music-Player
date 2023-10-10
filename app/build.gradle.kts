@@ -15,7 +15,7 @@ android {
     compileSdk = 33
 
     defaultConfig {
-        applicationId = "com.flammky.musicplayer"
+        applicationId = "com.flammky.musicplayer.a"
         minSdk = 24
         targetSdk = 33
         versionCode = 1

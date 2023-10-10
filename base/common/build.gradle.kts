@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.flammky.musicplayer.base.common"
-    compileSdk = 32
+    compileSdk = 33
 }
 
 java {

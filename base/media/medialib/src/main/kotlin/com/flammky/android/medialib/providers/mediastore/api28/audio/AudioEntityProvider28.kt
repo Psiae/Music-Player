@@ -11,6 +11,8 @@ import com.flammky.android.medialib.BuildConfig
 import com.flammky.android.medialib.providers.mediastore.MediaStoreContext
 import com.flammky.android.medialib.providers.mediastore.MediaStoreContext.Companion.android
 import com.flammky.android.medialib.providers.mediastore.api28.MediaStore28
+import com.flammky.musicplayer.core.sdk.AndroidAPI
+import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.isTiramisu
 
 
 internal class AudioEntityProvider28 (private val context: MediaStoreContext) {
@@ -19,7 +21,7 @@ internal class AudioEntityProvider28 (private val context: MediaStoreContext) {
 
 	@kotlin.jvm.Throws(ReadExternalStoragePermissionException::class)
 	fun query(): List<MediaStoreAudioEntity28> {
-		checkReadExternalStoragePermission()
+		checkReadPermission()
 
 		val holder = mutableListOf<MediaStoreAudioEntity28>()
 
@@ -39,7 +41,7 @@ internal class AudioEntityProvider28 (private val context: MediaStoreContext) {
 				}
 			}
 		} catch (se: SecurityException) {
-			checkReadExternalStoragePermission()
+			checkReadPermission()
 			if (BuildConfig.DEBUG) throw se
 		}
 		return holder.toList().also {
@@ -57,7 +59,7 @@ internal class AudioEntityProvider28 (private val context: MediaStoreContext) {
 
 	@kotlin.jvm.Throws(ReadExternalStoragePermissionException::class)
 	fun queryByUri(uri: Uri): MediaStoreAudioEntity28? {
-		checkReadExternalStoragePermission()
+		checkReadPermission()
 		return try {
 			contentResolver.query(
 				/* uri = */ uri,
@@ -72,7 +74,7 @@ internal class AudioEntityProvider28 (private val context: MediaStoreContext) {
 			}
 			null
 		} catch (se: SecurityException) {
-			checkReadExternalStoragePermission()
+			checkReadPermission()
 			if (BuildConfig.DEBUG) throw se
 			null
 		}
@@ -80,7 +82,7 @@ internal class AudioEntityProvider28 (private val context: MediaStoreContext) {
 
 	@kotlin.jvm.Throws(ReadExternalStoragePermissionException::class)
 	fun queryUris(): List<Uri> {
-		checkReadExternalStoragePermission()
+		checkReadPermission()
 		return try {
 			val holder = mutableListOf<Uri>()
 			contentResolver.query(
@@ -99,17 +101,30 @@ internal class AudioEntityProvider28 (private val context: MediaStoreContext) {
 			}
 			holder.toList()
 		} catch (se: SecurityException) {
-			checkReadExternalStoragePermission()
+			checkReadPermission()
 			if (BuildConfig.DEBUG) throw se
 			emptyList()
 		}
 	}
 
 	@kotlin.jvm.Throws(ReadExternalStoragePermissionException::class)
-	private fun checkReadExternalStoragePermission() {
-		if (!contextHelper.permissions.common.hasReadExternalStorage) {
+	private fun checkReadPermission() {
+		if (!hasFsReadPermission()) {
 			throw ReadExternalStoragePermissionException()
 		}
+	}
+
+	private fun hasFsReadPermission(): Boolean {
+		if (AndroidAPI.isTiramisu()) {
+			if (contextHelper.permissions.hasPermission(android.Manifest.permission.READ_MEDIA_AUDIO)) {
+				return true
+			}
+		} else {
+			if (contextHelper.permissions.common.hasReadExternalStorage) {
+				return true
+			}
+		}
+		return false
 	}
 
 	private fun fillAudioEntityBuilder(

@@ -31,6 +31,8 @@ import com.flammky.musicplayer.R
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.backgroundContentColorAsState
 import com.flammky.musicplayer.base.theme.compose.surfaceContentColorAsState
+import com.flammky.musicplayer.core.sdk.AndroidAPI
+import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.isTiramisu
 import com.flammky.musicplayer.main.ui.compose.MaterialDesign3Theme
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
@@ -53,16 +55,41 @@ private val entryPermViewModel: EntryPermViewModel
 private val readStoragePermission = AndroidPermission.Read_External_Storage
 private val writeStoragePermission = AndroidPermission.Write_External_Stoage
 
-private val pageItems = listOf(
-	PermissionPageItem(
-		readStoragePermission, resId = R.drawable.folder_search_base_256_blu_glass,
-		optional = false, title = "Read Storage Permission"
-	),
-	PermissionPageItem(
-		writeStoragePermission, resId = R.drawable.folder_write_base_256,
-		optional = true, title = "Write Storage Permission"
-	),
-)
+private val pageItems = if (AndroidAPI.isTiramisu()) {
+	listOf(
+		PermissionPageItem(
+			AndroidPermission.Other(
+				"android.permission.READ_MEDIA_AUDIO"
+			),
+			resId = R.drawable.folder_search_base_256_blu_glass,
+			title = "Read Storage Audio Files Permission",
+			optional = false
+		),
+		PermissionPageItem(
+			AndroidPermission.Other(
+				"android.permission.READ_MEDIA_IMAGES"
+			),
+			resId = R.drawable.folder_search_base_256_blu_glass,
+			title = "Read Storage Image Files Permission",
+			optional = false
+		),
+		PermissionPageItem(
+			writeStoragePermission, resId = R.drawable.folder_write_base_256,
+			optional = true, title = "Write Storage Permission"
+		)
+	)
+} else {
+	listOf(
+		PermissionPageItem(
+			readStoragePermission, resId = R.drawable.folder_search_base_256_blu_glass,
+			optional = false, title = "Read Storage Permission"
+		),
+		PermissionPageItem(
+			writeStoragePermission, resId = R.drawable.folder_write_base_256,
+			optional = true, title = "Write Storage Permission"
+		),
+	)
+}
 
 @OptIn(ExperimentalPagerApi::class, ExperimentalPermissionsApi::class)
 @Composable

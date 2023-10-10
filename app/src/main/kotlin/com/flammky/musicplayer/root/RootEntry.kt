@@ -24,6 +24,8 @@ import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.absoluteBackgroundContentColorAsState
 import com.flammky.musicplayer.base.theme.compose.backgroundColorAsState
 import com.flammky.musicplayer.base.user.User
+import com.flammky.musicplayer.core.sdk.AndroidAPI
+import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.isTiramisu
 import com.flammky.musicplayer.main.ext.IntentReceiver
 import com.flammky.musicplayer.main.ui.MainViewModel
 import com.flammky.musicplayer.main.ui.compose.entry.EntryPermissionPager
@@ -241,8 +243,13 @@ private class RootEntryGuardState <HANDLE> (
 		}
 		val permissionGrantedState = remember {
 			mutableStateOf(
-				contextHelper.permissions.common.hasReadExternalStorage ||
-				contextHelper.permissions.common.hasWriteExternalStorage
+				if (AndroidAPI.isTiramisu()) {
+					contextHelper.permissions.hasPermission(android.Manifest.permission.READ_MEDIA_AUDIO) &&
+						contextHelper.permissions.hasPermission(android.Manifest.permission.READ_MEDIA_IMAGES)
+				} else {
+					contextHelper.permissions.common.hasReadExternalStorage ||
+						contextHelper.permissions.common.hasWriteExternalStorage
+				}
 			)
 		}
 

@@ -1,5 +1,3 @@
-HALT NOTICE: project won't be updated for the next 3 months because I'm busy
-
 App Name Coming Soon
 
 Simple Music Player `100% Made in Kotlin` with Jetpack Compose & AndroidX Media3.

@@ -1,4 +1,4 @@
-package com.flammky.musicplayer.root
+package com.flammky.musicplayer.main.presentation.root
 
 import androidx.compose.runtime.snapshots.Snapshot
 import kotlinx.coroutines.channels.Channel

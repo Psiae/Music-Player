@@ -23,7 +23,7 @@ android {
         jvmTarget = "11"
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.4.0"
+        composeOptions.kotlinCompilerExtensionVersion = ComposeVersion.kotlinCompilerExtension
     }
 }
 
@@ -125,7 +125,7 @@ dependencies {
     dependencies {
 
         // Hilt-Android
-        val vHiltAndroid = "2.44"
+        val vHiltAndroid = "2.48"
         api("com.google.dagger:hilt-android:$vHiltAndroid")
         kapt("com.google.dagger:hilt-android-compiler:$vHiltAndroid")
     }

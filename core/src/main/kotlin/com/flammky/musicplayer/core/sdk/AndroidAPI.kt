@@ -7,22 +7,22 @@ import android.os.Build
  */
 abstract class AndroidAPI {
 
-    abstract val code: BuildCode
+    abstract val buildcode: BuildCode
 
     companion object : AndroidAPI() {
 
         private val current: AndroidAPI = when(val sdk = Build.VERSION.SDK_INT) {
-            Tiramisu.code.CODE_INT -> Tiramisu
-            SnowConeV2.code.CODE_INT -> SnowConeV2
-            SnowCone.code.CODE_INT -> SnowCone
-            AndroidR.code.CODE_INT -> AndroidR
-            Q.code.CODE_INT -> Q
-            Pie.code.CODE_INT -> Pie
-            Oreo.code.CODE_INT -> Oreo
-            Nougat.code.CODE_INT -> Nougat
+            Tiramisu.buildcode.CODE_INT -> Tiramisu
+            SnowConeV2.buildcode.CODE_INT -> SnowConeV2
+            SnowCone.buildcode.CODE_INT -> SnowCone
+            AndroidR.buildcode.CODE_INT -> AndroidR
+            Q.buildcode.CODE_INT -> Q
+            Pie.buildcode.CODE_INT -> Pie
+            Oreo.buildcode.CODE_INT -> Oreo
+            Nougat.buildcode.CODE_INT -> Nougat
             else -> error("Unsupported Android API version: $sdk")
         }
 
-        override val code: BuildCode = current.code
+        override val buildcode: BuildCode = current.buildcode
     }
 }

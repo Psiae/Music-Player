@@ -1,4 +1,4 @@
-package com.flammky.musicplayer.root
+package com.flammky.musicplayer.main.presentation.root
 
 import android.app.Activity
 import androidx.compose.foundation.background
@@ -28,7 +28,6 @@ import com.flammky.musicplayer.core.sdk.AndroidAPI
 import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.isTiramisu
 import com.flammky.musicplayer.main.ext.IntentReceiver
 import com.flammky.musicplayer.main.ui.MainViewModel
-import com.flammky.musicplayer.main.ui.compose.entry.EntryPermissionPager
 import com.flammky.musicplayer.main.ui.compose.nav.RootNavigation
 import kotlinx.coroutines.launch
 
@@ -244,8 +243,7 @@ private class RootEntryGuardState <HANDLE> (
 		val permissionGrantedState = remember {
 			mutableStateOf(
 				if (AndroidAPI.isTiramisu()) {
-					contextHelper.permissions.hasPermission(android.Manifest.permission.READ_MEDIA_AUDIO) &&
-						contextHelper.permissions.hasPermission(android.Manifest.permission.READ_MEDIA_IMAGES)
+					contextHelper.permissions.hasPermission(android.Manifest.permission.READ_MEDIA_AUDIO)
 				} else {
 					contextHelper.permissions.common.hasReadExternalStorage ||
 						contextHelper.permissions.common.hasWriteExternalStorage
@@ -311,9 +309,8 @@ private class RootEntryGuardState <HANDLE> (
 			Box(modifier = Modifier
 				.fillMaxSize()
 				.background(Theme.backgroundColorAsState().value)) {
-				EntryPermissionPager(
-					contextHelper = contextHelper,
-					onGranted = {
+				AndroidPermissionRequestScreen(
+					onCompleted = {
 						permissionGrantedState.value = true
 						persistPager = false
 						vm.removeSaved("persistPager")

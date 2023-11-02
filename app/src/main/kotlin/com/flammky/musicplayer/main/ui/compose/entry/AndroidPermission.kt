@@ -78,10 +78,7 @@ internal fun PermGuard(
 		Box(modifier = Modifier
 			.fillMaxSize()
 			.background(Theme.backgroundColorAsState().value)) {
-			EntryPermissionPager(
-				contextHelper = contextHelper,
-				onGranted = { allow.value = true }
-			)
+
 		}
 	}
 

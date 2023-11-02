@@ -26,6 +26,7 @@ import com.flammky.common.kotlin.coroutines.AutoCancelJob
 import com.flammky.musicplayer.base.activity.ActivityWatcher
 import com.flammky.musicplayer.core.sdk.AndroidAPI
 import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.hasOreo
+import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.inLevel
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory.orEmpty
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemInfo
@@ -416,7 +417,7 @@ class MediaNotificationManager(
 					// if possible find sources that provide media style notification width and height
 					// 128 to 1024 is ideal
 
-					val reqSize = 500
+					val reqSize = 512
 					val scale = Scale.FILL
 					val source: Any = maybeCache ?: run {
 
@@ -436,11 +437,16 @@ class MediaNotificationManager(
 
 					// maybe create Fitter Class for some APIs version or Device that require some modification
 					// to have proper display
-					val squaredBitmap = coilHelper.loadSquaredBitmap(source, reqSize, scale)
+					val transform = if (AndroidAPI.inLevel(30..31)) {
+						coilHelper.loadSquaredBitmap(source, reqSize, scale)
+					} else {
+						coilHelper.loadSquaredBitmap(source, reqSize, scale)
+						/*coilHelper.loadBitmap(source, width = reqSize, height = reqSize / 2)*/
+					}
 
-					repo.provideArtwork(extKey, squaredBitmap ?: NO_BITMAP)
+					repo.provideArtwork(extKey, transform ?: NO_BITMAP)
 
-					item to squaredBitmap
+					item to transform
 				} catch (oom: OutOfMemoryError) {
 					null
 				}

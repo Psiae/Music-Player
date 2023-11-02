@@ -24,6 +24,7 @@ import jp.wasabeef.transformers.coil.CenterBottomCropTransformation
 import jp.wasabeef.transformers.coil.CenterCropTransformation
 import jp.wasabeef.transformers.coil.CenterTopCropTransformation
 import kotlinx.coroutines.ensureActive
+import timber.log.Timber
 import javax.inject.Singleton
 import kotlin.coroutines.coroutineContext
 
@@ -70,7 +71,9 @@ private object CoilBitmapTransformer {
 			queued.dispose()
 		}
 
-		return queued.job.await().drawable?.toBitmap()
+		return queued.job.await().drawable?.toBitmap().also { result ->
+			Timber.d("createSquaredBitmap: source=${(source as? Bitmap)?.run { "w:$width h:$height" }} result=w:${result?.width} h:${result?.height}")
+		}
 	}
 
 	private fun Drawable.toNewScaledBitmap(
@@ -132,7 +135,9 @@ class CoilHelper constructor(
 			queued.dispose()
 		}
 
-		return queued.job.await().drawable?.toBitmap()
+		return queued.job.await().drawable?.toBitmap().also { result ->
+			Timber.d("createBitmap: source=${(source as? Bitmap)?.run { "w:$width h:$height" }} result=w:${result?.width} h:${result?.height}")
+		}
 	}
 
   enum class CenterCropTransform {

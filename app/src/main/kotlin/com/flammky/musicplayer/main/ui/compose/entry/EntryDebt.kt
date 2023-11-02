@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
@@ -41,6 +42,7 @@ import com.google.accompanist.pager.rememberPagerState
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
+import kotlinx.collections.immutable.ImmutableList
 
 // Tech-Debt from old package
 
@@ -93,7 +95,11 @@ private val pageItems = if (AndroidAPI.isTiramisu()) {
 
 @OptIn(ExperimentalPagerApi::class, ExperimentalPermissionsApi::class)
 @Composable
-fun EntryPermissionPager(contextHelper: ContextHelper, onGranted: () -> Unit) {
+fun EntryPermissionPager(
+	pageItems: ImmutableList<PermissionPageItem>,
+	contextHelper: ContextHelper,
+	onGranted: () -> Unit
+) {
 
 	val granted = remember {
 		mutableStateOf(false)
@@ -255,7 +261,13 @@ private inline fun PermissionPage(
 			contentDescription = "Image"
 		)
 
-		Text(text = description, color = Theme.backgroundContentColorAsState().value)
+		Text(
+			modifier = Modifier
+				.fillMaxWidth(),
+			text = description,
+			color = Theme.backgroundContentColorAsState().value,
+			textAlign = TextAlign.Center
+		)
 
 		Box(
 			modifier = Modifier
@@ -291,7 +303,7 @@ private fun isPermissionGranted(
 		.checkSelfPermission(context, permissionString) == PackageManager.PERMISSION_GRANTED
 }
 
-private data class PermissionPageItem(
+data class PermissionPageItem(
 	val permission: AndroidPermission,
 	@DrawableRes val resId: Int,
 	val optional: Boolean,

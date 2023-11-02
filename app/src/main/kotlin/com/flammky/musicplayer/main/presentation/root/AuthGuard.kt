@@ -1,4 +1,4 @@
-package com.flammky.musicplayer.root
+package com.flammky.musicplayer.main.presentation.root
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

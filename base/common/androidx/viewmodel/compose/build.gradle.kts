@@ -23,7 +23,7 @@ android {
         compose = true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.4.0"
+        kotlinCompilerExtensionVersion = ComposeVersion.kotlinCompilerExtension
     }
 }
 

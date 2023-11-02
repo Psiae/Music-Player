@@ -22,8 +22,7 @@ internal fun PermGuard(
 	val allowState = remember {
 		mutableStateOf<Boolean?>(
 			if (AndroidAPI.isTiramisu()) {
-				contextHelper.permissions.hasPermission(android.Manifest.permission.READ_MEDIA_AUDIO) &&
-					contextHelper.permissions.hasPermission(android.Manifest.permission.READ_MEDIA_IMAGES)
+				contextHelper.permissions.hasPermission(android.Manifest.permission.READ_MEDIA_AUDIO)
 			} else {
 				contextHelper.permissions.common.hasReadExternalStorage ||
 					contextHelper.permissions.common.hasWriteExternalStorage
@@ -36,8 +35,7 @@ internal fun PermGuard(
 		val observer = LifecycleEventObserver { _, event ->
 			if (event == Lifecycle.Event.ON_RESUME) {
 				allowState.value = if (AndroidAPI.isTiramisu()) {
-					contextHelper.permissions.hasPermission(android.Manifest.permission.READ_MEDIA_AUDIO) &&
-						contextHelper.permissions.hasPermission(android.Manifest.permission.READ_MEDIA_IMAGES)
+					contextHelper.permissions.hasPermission(android.Manifest.permission.READ_MEDIA_AUDIO)
 				} else {
 					contextHelper.permissions.common.hasReadExternalStorage ||
 						contextHelper.permissions.common.hasWriteExternalStorage

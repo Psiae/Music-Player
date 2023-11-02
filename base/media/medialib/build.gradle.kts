@@ -51,7 +51,7 @@ dependencies {
 
     /* androidx.media3 */
     dependencies {
-        val v = "1.0.0-beta03"
+        val v = "1.0.0"
         api("androidx.media3:media3-exoplayer:$v")
         api("androidx.media3:media3-session:$v")
         api("androidx.media3:media3-common:$v")
@@ -96,7 +96,7 @@ dependencies {
     dependencies {
 
         // Hilt-Android
-        val vHiltAndroid = "2.44"
+        val vHiltAndroid = "2.48"
         implementation("com.google.dagger:hilt-android:$vHiltAndroid")
         kapt("com.google.dagger:hilt-android-compiler:$vHiltAndroid")
     }

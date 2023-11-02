@@ -15,7 +15,7 @@ android {
     compileSdk = 33
 
     defaultConfig {
-        applicationId = "com.flammky.musicplayer.a"
+        applicationId = "com.flammky.musicplayer"
         minSdk = 24
         targetSdk = 33
         versionCode = 1
@@ -53,7 +53,7 @@ android {
 
     buildFeatures {
         compose = true
-        composeOptions.kotlinCompilerExtensionVersion = "1.4.0"
+        composeOptions.kotlinCompilerExtensionVersion = ComposeVersion.kotlinCompilerExtension
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -97,11 +97,15 @@ dependencies {
     implementation(project(":feature:user"))
     implementation(project(":feature:player"))
 
+    implementation(libs.koin.android)
+    implementation(libs.koin.androidx.compose)
+
+
     /* google.dagger */
     dependencies {
 
         // Hilt-Android
-        val vHiltAndroid = "2.44"
+        val vHiltAndroid = "2.48"
         implementation("com.google.dagger:hilt-android:$vHiltAndroid")
         kapt("com.google.dagger:hilt-android-compiler:$vHiltAndroid")
     }

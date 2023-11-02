@@ -1,4 +1,4 @@
-package com.flammky.musicplayer.root
+package com.flammky.musicplayer.main.presentation.root
 
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background

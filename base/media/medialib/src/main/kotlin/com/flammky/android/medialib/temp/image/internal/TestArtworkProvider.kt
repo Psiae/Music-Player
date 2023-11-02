@@ -74,7 +74,7 @@ class TestArtworkProvider(
 								val data = af.imageData
 								Timber.d("AF($resolvedUri) data: ${data?.size}")
 								if (data != null && data.isNotEmpty()) {
-									BitmapSampler.ByteArray.toSampledBitmap(data, 0, data.size, 500, 500)
+									BitmapSampler.ByteArray.toSampledBitmap(data, 0, data.size, 1024, 1024)
 										?.let { bitmap ->
 											bitmap.also {
 												if (request.storeMemoryCacheAllowed) {

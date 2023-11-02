@@ -1,4 +1,4 @@
-package com.flammky.musicplayer.root
+package com.flammky.musicplayer.main.presentation.root
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.dynamicDarkColorScheme

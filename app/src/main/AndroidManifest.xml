@@ -55,7 +55,7 @@
         </activity>
 
         <activity
-            android:name="com.flammky.musicplayer.external.receiver.ReceiverActivity"
+            android:name="com.flammky.musicplayer.android.IntentReceiverActivity"
             android:exported="true"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.App.SplashScreen">

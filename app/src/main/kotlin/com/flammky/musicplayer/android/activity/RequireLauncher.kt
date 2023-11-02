@@ -1,11 +1,9 @@
-package com.flammky.musicplayer.activity
+package com.flammky.musicplayer.android.activity
 
 import android.content.Context
 import android.content.Intent
 
-abstract class ActivityCompanion() {
-
-	// abstract val instanceCount: Int
+interface RequireLauncher {
 
 	abstract fun launchWithIntent(
 		launcherContext: Context,

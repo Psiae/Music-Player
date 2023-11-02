@@ -1,6 +1,5 @@
 package com.flammky.musicplayer.main
 
-import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -11,10 +10,11 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
 import com.flammky.android.activity.disableWindowFitSystemInsets
 import com.flammky.android.content.intent.isActionMain
-import com.flammky.musicplayer.activity.ActivityCompanion
-import com.flammky.musicplayer.activity.RequireLauncher
-import com.flammky.musicplayer.main.ui.MainViewModel
+import com.flammky.musicplayer.android.activity.ActivityCompanion
+import com.flammky.musicplayer.android.activity.RequireLauncher
+import com.flammky.musicplayer.core.sdk.AndroidAPI
 import com.flammky.musicplayer.main.presentation.root.setRootContent
+import com.flammky.musicplayer.main.ui.MainViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -108,9 +108,51 @@ class MainActivity : ComponentActivity() {
 			intent: Intent
 		): Boolean {
 
-			if (launcherContext is Service) {
-				return false
+			val androidAPI = AndroidAPI.buildcode.CODE_INT
+
+			return when {
+				androidAPI < 0 -> false
+				androidAPI in 1..28 -> launchWithIntentImpl28(launcherContext, intent, true)
+				androidAPI < 1000 -> launchWithIntentImpl29(launcherContext, intent, androidAPI <= 33)
+				else -> false
 			}
+		}
+
+		private fun launchWithIntentImpl28(
+			launcherContext: Context,
+			intent: Intent,
+			targeted: Boolean
+		): Boolean {
+
+			//
+			// Intent Checker here
+			//
+
+			val guardIntent = Intent()
+				.apply {
+					action = Intent.ACTION_MAIN
+					setClass(launcherContext, MainActivity::class.java)
+					putExtra(LauncherSignatureKey, LauncherSignatureCode)
+				}
+
+			val copyIntent = requireNotNull(
+				value = (intent.clone() as? Intent)?.takeIf { it !== intent },
+				lazyMessage = { "unable to clone Intent=$intent" }
+			).apply {
+				setClass(launcherContext, MainActivity::class.java)
+				putExtra(LauncherSignatureKey, LauncherSignatureCode)
+			}
+
+			launcherContext.startActivity(guardIntent)
+			launcherContext.startActivity(copyIntent)
+			return true
+		}
+
+		private fun launchWithIntentImpl29(
+			launcherContext: Context,
+			intent: Intent,
+			targeted: Boolean
+		): Boolean {
 
 			//
 			// Intent Checker here

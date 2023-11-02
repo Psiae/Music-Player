@@ -1,20 +1,27 @@
 package com.flammky.musicplayer.domain.musiclib.service.manager
 
 import android.content.Context
+import android.os.Bundle
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.MediaLibraryService.MediaLibrarySession
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSession.ControllerInfo
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionResult
+import androidx.media3.session.SessionResult.RESULT_ERROR_NOT_SUPPORTED
+import androidx.media3.session.SessionResult.RESULT_SUCCESS
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider
 import com.flammky.common.kotlin.generic.ChangedNotNull
+import com.flammky.musicplayer.base.activity.ActivityWatcher
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemPropertyHelper
 import com.flammky.musicplayer.domain.musiclib.service.MusicLibraryService
 import com.flammky.musicplayer.domain.musiclib.service.provider.SessionProvider
 import com.flammky.musicplayer.dump.mediaplayer.helper.Preconditions.checkArgument
 import com.flammky.musicplayer.dump.mediaplayer.helper.Preconditions.checkState
+import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -283,8 +290,65 @@ class SessionManager(
 			controller: ControllerInfo
 		): MediaSession.ConnectionResult {
 			val s = super.onConnect(session, controller)
-			val pcb = s.availablePlayerCommands.buildUpon().remove(Player.COMMAND_SET_SHUFFLE_MODE)
-			return MediaSession.ConnectionResult.accept(s.availableSessionCommands, pcb.build())
+			return MediaSession.ConnectionResult.accept(
+				s.availableSessionCommands
+					.buildUpon()
+					.apply {
+						add(SessionCommand("ACTION_TOGGLE_REPEAT", Bundle()))
+						add(SessionCommand("ACTION_STOP", Bundle()))
+						add(SessionCommand("ACTION_CLOSE", Bundle()))
+					}.build(),
+				s.availablePlayerCommands
+			)
+		}
+
+		override fun onPostConnect(session: MediaSession, controller: ControllerInfo) {
+
+		}
+
+		override fun onCustomCommand(
+			session: MediaSession,
+			controller: ControllerInfo,
+			customCommand: SessionCommand,
+			args: Bundle
+		): ListenableFuture<SessionResult> {
+			when(customCommand.customAction) {
+				"ACTION_TOGGLE_REPEAT" -> {
+					when(session.player.repeatMode) {
+						Player.REPEAT_MODE_ALL -> {
+							session.player.repeatMode = Player.REPEAT_MODE_OFF
+							return Futures.immediateFuture(SessionResult(RESULT_SUCCESS))
+						}
+						Player.REPEAT_MODE_OFF -> {
+							session.player.repeatMode = Player.REPEAT_MODE_ONE
+							return Futures.immediateFuture(SessionResult(RESULT_SUCCESS))
+						}
+						Player.REPEAT_MODE_ONE -> {
+							session.player.repeatMode = Player.REPEAT_MODE_ALL
+							return Futures.immediateFuture(SessionResult(RESULT_SUCCESS))
+						}
+					}
+				}
+				"ACTION_STOP" -> {
+					session.player.apply {
+						pause()
+						stop()
+					}
+					return Futures.immediateFuture(SessionResult(RESULT_SUCCESS))
+				}
+				"ACTION_CANCEL" -> {
+					val stateInteractor = componentDelegate.stateInteractor
+					session.player.apply {
+						pause()
+						stop()
+					}
+					stateInteractor.stopForegroundService(true)
+					stateInteractor.stopService()
+					if (ActivityWatcher.get().count() == 0) stateInteractor.releaseService()
+					return Futures.immediateFuture(SessionResult(RESULT_SUCCESS))
+				}
+			}
+			return Futures.immediateFuture(SessionResult(RESULT_ERROR_NOT_SUPPORTED))
 		}
 	}
 }

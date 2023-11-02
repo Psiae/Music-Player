@@ -15,9 +15,11 @@ import androidx.media3.common.Player
 import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaNotification
 import androidx.media3.session.MediaSession
+import androidx.media3.session.SessionCommand
 import coil.Coil
 import coil.size.Scale
 import com.flammky.android.environment.DeviceInfo
+import com.flammky.android.medialib.R
 import com.flammky.android.medialib.common.mediaitem.AudioFileMetadata
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.providers.metadata.VirtualFileMetadata
@@ -25,6 +27,7 @@ import com.flammky.common.kotlin.comparable.clamp
 import com.flammky.common.kotlin.coroutines.AutoCancelJob
 import com.flammky.musicplayer.base.activity.ActivityWatcher
 import com.flammky.musicplayer.core.sdk.AndroidAPI
+import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.hasLevel
 import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.hasOreo
 import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.inLevel
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory
@@ -213,7 +216,8 @@ class MediaNotificationManager(
 				repeat(repeat) {
 					delay(delay)
 					coroutineContext.ensureActive()
-					notificationManagerService.notify(id, onUpdate())
+					val notification = onUpdate()
+					notificationManagerService.notify(id, notification)
 				}
 			}
 		}
@@ -330,14 +334,21 @@ class MediaNotificationManager(
 			return if (metadata != null) {
 				when (metadata) {
 					is AudioMetadata -> notificationProvider.buildMediaStyleNotification(
-						session, channelName,
-						metadata.title?.ifBlank { null }
+						mediaSession = session,
+						channelId = channelName,
+						title = metadata.title?.ifBlank { null }
 							?: (metadata as? AudioFileMetadata)?.file?.fileName?.ifBlank { null }
 							?: ((metadata as? AudioFileMetadata)?.file as? VirtualFileMetadata)?.uri?.toString(),
-						metadata.artistName ?: metadata.albumArtistName,
-						metadata.albumTitle, onGoing, player.repeatMode, player.playbackState,
-						player.hasPreviousMediaItem(), player.hasNextMediaItem(), player.playWhenReady,
-						player.isPlaying, largeIcon
+						subtitle = metadata.artistName ?: metadata.albumArtistName,
+						subText = metadata.albumTitle,
+						onGoing = onGoing,
+						repeatMode = player.repeatMode,
+						playerState = player.playbackState,
+						hasPreviousMediaItem = player.hasPreviousMediaItem(),
+						hasNextMediaItem = player.hasNextMediaItem(),
+						playWhenReady = player.playWhenReady,
+						isPlaying = player.isPlaying,
+						largeIcon = largeIcon
 					)
 					else -> notificationProvider.buildMediaStyleNotification(
 						session, channelName, metadata.title, null, null, onGoing, player.repeatMode,
@@ -729,6 +740,49 @@ class MediaNotificationManager(
 	private inner class PlayerEventListener : Player.Listener {
 
 		private var mediaItemTransitionJob by AutoCancelJob()
+
+		override fun onIsPlayingChanged(isPlaying: Boolean) {
+			if (!isStarted) return
+			componentDelegate.sessionInteractor.mediaSession
+				?.let { session ->
+					if (AndroidAPI.hasLevel(33)) {
+						session.setCustomLayout(
+							listOf(
+								CommandButton.Builder()
+									.apply {
+										setSessionCommand(SessionCommand("ACTION_TOGGLE_REPEAT", Bundle()))
+										setIconResId(
+											when(session.player.repeatMode) {
+												// TODO: remove ambiguity between disabled and off
+												Player.REPEAT_MODE_ALL -> R.drawable.ic_notif_repeat_all
+												Player.REPEAT_MODE_OFF -> R.drawable.ic_notif_repeat_off
+												Player.REPEAT_MODE_ONE -> R.drawable.ic_notif_repeat_one
+												else -> 0
+											}
+										)
+										setDisplayName("toggle repeat mode")
+										setEnabled(true)
+									}
+									.build(),
+								run {
+									val onGoing = session.player.playbackState.isOngoing()
+									CommandButton.Builder()
+										.apply {
+											setSessionCommand(SessionCommand(if (onGoing) { "ACTION_STOP" } else { "ACTION_CLOSE" }, Bundle()))
+											setIconResId(
+												if (onGoing) R.drawable.ic_notif_stop else R.drawable.ic_notif_close
+											)
+											setDisplayName(if (onGoing) "STOP" else "CLOSE")
+											setEnabled(true)
+										}
+										.build()
+								}
+							)
+						)
+					}
+				}
+		}
+
 		override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
 			if (!isStarted) return
 
@@ -755,9 +809,45 @@ class MediaNotificationManager(
 			if (!isStarted) return
 
 			playerRepeatModeJob = mainScope.launch {
-
 				componentDelegate.sessionInteractor.mediaSession
 					?.let {
+
+						if (AndroidAPI.hasLevel(33)) {
+							it.setCustomLayout(
+								listOf(
+									CommandButton.Builder()
+										.apply {
+											setSessionCommand(SessionCommand("ACTION_TOGGLE_REPEAT", Bundle()))
+											setIconResId(
+												when(it.player.repeatMode) {
+													// TODO: remove ambiguity between disabled and off
+													Player.REPEAT_MODE_ALL -> R.drawable.ic_notif_repeat_all
+													Player.REPEAT_MODE_OFF -> R.drawable.ic_notif_repeat_off
+													Player.REPEAT_MODE_ONE -> R.drawable.ic_notif_repeat_one
+													else -> 0
+												}
+											)
+											setDisplayName("toggle repeat mode")
+											setEnabled(true)
+										}
+										.build(),
+									run {
+										val onGoing = isOnGoingCondition(it)
+										CommandButton.Builder()
+											.apply {
+												setSessionCommand(SessionCommand(if (onGoing) { "ACTION_STOP" } else { "ACTION_CLOSE" }, Bundle()))
+												setIconResId(
+													if (onGoing) R.drawable.ic_notif_stop else R.drawable.ic_notif_close
+												)
+												setDisplayName(if (onGoing) "STOP" else "CLOSE")
+												setEnabled(true)
+											}
+											.build()
+									}
+								)
+							)
+						}
+
 						val getNotification = suspend {
 							provider.ensureCurrentItemBitmap(it.player)
 							provider.fromMediaSession(it, isOnGoingCondition(it), ChannelName)
@@ -803,6 +893,43 @@ class MediaNotificationManager(
 
 				componentDelegate.sessionInteractor.mediaSession
 					?.let {
+
+						if (AndroidAPI.hasLevel(33)) {
+							it.setCustomLayout(
+								listOf(
+									CommandButton.Builder()
+										.apply {
+											setSessionCommand(SessionCommand("ACTION_TOGGLE_REPEAT", Bundle()))
+											setIconResId(
+												when(it.player.repeatMode) {
+													// TODO: remove ambiguity between disabled and off
+													Player.REPEAT_MODE_ALL -> R.drawable.ic_notif_repeat_all
+													Player.REPEAT_MODE_OFF -> R.drawable.ic_notif_repeat_off
+													Player.REPEAT_MODE_ONE -> R.drawable.ic_notif_repeat_one
+													else -> 0
+												}
+											)
+											setDisplayName("toggle repeat mode")
+											setEnabled(true)
+										}
+										.build(),
+									run {
+										val onGoing = isOnGoingCondition(it)
+										CommandButton.Builder()
+											.apply {
+												setSessionCommand(SessionCommand(if (onGoing) { "ACTION_STOP" } else { "ACTION_CLOSE" }, Bundle()))
+												setIconResId(
+													if (onGoing) R.drawable.ic_notif_stop else R.drawable.ic_notif_close
+												)
+												setDisplayName(if (onGoing) "STOP" else "CLOSE")
+												setEnabled(true)
+											}
+											.build()
+									}
+								)
+							)
+						}
+
 						val getNotification = suspend {
 							provider.ensureCurrentItemBitmap(it.player)
 							provider.fromMediaSession(it, isOnGoingCondition(it), ChannelName)

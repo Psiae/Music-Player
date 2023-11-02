@@ -1,4 +1,4 @@
-package com.flammky.musicplayer.external.receiver
+package com.flammky.musicplayer.android
 
 import android.app.Activity
 import android.content.Intent
@@ -11,23 +11,26 @@ import com.flammky.musicplayer.main.MainActivity
 /**
  * For now use this activity to delegate all incoming intent (except launcher)
  */
-class ReceiverActivity : Activity() {
+class IntentReceiverActivity : Activity() {
 
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
 		when {
 			intent.isActionView() -> resolveActionView(intent)
-			else -> TODO("Unsupported Intent: $intent")
+			else -> {
+				// Display unsupported intent
+				TODO("Unsupported Intent: $intent")
+			}
 		}
 		finishAfterTransition()
 	}
 
 	private fun resolveActionView(intent: Intent) {
 		require(intent.isActionView())
-		launchMainActivity()
+		delegateIntentToMainActivity()
 	}
 
-	private fun launchMainActivity() {
+	private fun delegateIntentToMainActivity() {
 		MainActivity.launchWithIntent(
 			launcherContext = this,
 			intent = requireNotNull(intent)

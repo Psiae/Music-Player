@@ -127,7 +127,7 @@ internal class ControlCompactCoordinator(
         observeArtwork = state.onObserveArtwork,
         observePlaybackQueue = ::observeControllerPlaybackQueue,
         observePlaybackProperties = ::observeControllerPlaybackProperties,
-        setPlayWhenReady = ::setPlayWhenReady,
+        playOrPause = ::playOrPause,
         observeProgressWithIntervalHandle = ::observeProgressWithIntervalHandle,
         observeBufferedProgressWithIntervalHandle = ::observeBufferedProgressWithIntervalHandle,
         observeDuration = ::observeDuration,
@@ -177,13 +177,18 @@ internal class ControlCompactCoordinator(
         }
     }
 
-    private fun setPlayWhenReady(
+    private fun playOrPause(
         play: Boolean,
         joinCollectorDispatch: Boolean
     ): Deferred<Result<Boolean>> {
         return coroutineDispatchScope.async {
             runCatching {
-                val result = state.playbackController.requestSetPlayWhenReadyAsync(play).await()
+                val result =
+                    if (play) {
+                        state.playbackController.requestPlayAsync().await()
+                    } else {
+                        state.playbackController.requestSetPlayWhenReadyAsync(false).await()
+                    }
                 if (joinCollectorDispatch) {
                     result.eventDispatch?.join()
                 }
@@ -963,7 +968,7 @@ class CompactControlPagerState(
 
 class CompactButtonControlsState(
     private val observePlaybackProperties: () -> Flow<PlaybackProperties>,
-    private val setPlayWhenReady: (play: Boolean, joinCollectorDispatch: Boolean) -> Deferred<Result<Boolean>>,
+    private val playOrPause: (play: Boolean, joinCollectorDispatch: Boolean) -> Deferred<Result<Boolean>>,
     private val isSurfaceDark: @SnapshotRead () -> Boolean
 ) {
 
@@ -990,7 +995,7 @@ class CompactButtonControlsState(
                         CompositionScope(
                             PlaybackProperties.UNSET,
                             CoroutineScope(SupervisorJob()),
-                            state.setPlayWhenReady,
+                            state.playOrPause,
                             state.isSurfaceDark
                         )
                     )
@@ -1011,7 +1016,7 @@ class CompactButtonControlsState(
                                             CoroutineScope(
                                                 composableCoroutineScope.coroutineContext + SupervisorJob(supervisor)
                                             ),
-                                            state.setPlayWhenReady,
+                                            state.playOrPause,
                                             state.isSurfaceDark
                                         )
                                 }

@@ -1,10 +1,9 @@
-package dev.dexsr.klio.theme.md3.compose
+package dev.dexsr.klio.base.theme.md3.compose
 
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import dev.dexsr.klio.theme.md3.MD3Theme
-
-val PADDING_INCREMENT_DP = 4
+import dev.dexsr.klio.base.theme.md3.MD3Theme
+import dev.dexsr.klio.base.theme.md3.PADDING_INCREMENT_DP
 
 fun MD3Theme.dpPaddingIncrementsOf(
 	n: Int

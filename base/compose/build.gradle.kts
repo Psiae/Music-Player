@@ -39,27 +39,27 @@ dependencies {
 
     /* androidx.compose */
     dependencies {
-        val vui = "1.3.3"
+
 
         // Core UI
-        api("androidx.compose.ui:ui:$vui")
-        api("androidx.compose.ui:ui-tooling-preview:$vui")
-        api("androidx.compose.ui:ui-util:$vui")
+        api(libs.androidx.compose.ui.ui.asProvider())
+        api(libs.androidx.compose.ui.ui.util)
+        debugApi(libs.androidx.compose.ui.ui.tooling.preview)
 
         // Debug
-        debugApi("androidx.compose.ui:ui-tooling:$vui")
+        debugApi(libs.androidx.compose.ui.ui.tooling.asProvider())
 
-        val vf = "1.3.1"
         // Foundation
-        api("androidx.compose.foundation:foundation:$vf")
+        api(libs.androidx.compose.foundation.foundation.asProvider())
+        api(libs.androidx.compose.foundation.foundation.layout)
 
         // Material
-        api("androidx.compose.material:material:$vf")
-        api("androidx.compose.material:material-icons-core:$vf")
+        api(libs.androidx.compose.material.material)
+        api("androidx.compose.material:material-icons-core:1.3.1")
 
         // Material3
         val vMaterial3 = "1.0.1"
-        api("androidx.compose.material3:material3:$vMaterial3")
+        api(libs.androidx.compose.material3.material3)
     }
 
     /* androidx.hilt */
@@ -128,5 +128,10 @@ dependencies {
         val vHiltAndroid = "2.48"
         api("com.google.dagger:hilt-android:$vHiltAndroid")
         kapt("com.google.dagger:hilt-android-compiler:$vHiltAndroid")
+    }
+
+    /* insert-koin.koin */
+    dependencies {
+        api(libs.koin.androidx.compose)
     }
 }

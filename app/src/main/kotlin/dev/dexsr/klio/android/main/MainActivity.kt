@@ -1,4 +1,4 @@
-package com.flammky.musicplayer.main
+package dev.dexsr.klio.android.main
 
 import android.content.Context
 import android.content.Intent
@@ -14,88 +14,102 @@ import com.flammky.musicplayer.android.activity.ActivityCompanion
 import com.flammky.musicplayer.android.activity.RequireLauncher
 import com.flammky.musicplayer.android.main.IntentManager
 import com.flammky.musicplayer.core.sdk.AndroidAPI
-import com.flammky.musicplayer.main.presentation.root.setRootContent
 import com.flammky.musicplayer.main.ui.MainViewModel
 import dagger.hilt.android.AndroidEntryPoint
+import dev.dexsr.klio.android.main.compose.composeRootContent
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import kotlin.random.Random
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : ComponentActivity(), RequireLauncher by Companion {
 
 	private lateinit var _intentManager: IntentManager
 
 	internal val intentManager
 		get() = _intentManager
 
-	private val mainVM: MainViewModel by viewModels()
+	private val oldImpl = OldImpl()
 
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
-		_intentManager = IntentManager(mainVM.intentHandler)
-		checkLauncherIntent()
-		setupWindow()
-		setupSplashScreen()
-		setRootContent()
-
-		lifecycleScope.launch {
-			// consume
-			for (message in mainVM.intentRequestErrorMessageChannel) {
-				Toast.makeText(applicationContext, message, Toast.LENGTH_SHORT).show()
-			}
-		}
-
-		lifecycleScope.launch {
-			// consume
-			for (message in mainVM.playbackErrorMessageChannel) {
-				Toast.makeText(applicationContext, message, Toast.LENGTH_SHORT).show()
-			}
-		}
+		oldImpl.onCreate(savedInstanceState)
+		composeRootContent()
 	}
 
 	override fun onNewIntent(intent: Intent?) {
 		super.onNewIntent(intent)
-		if (intent == null) {
-			return
-		}
-		if (intent.isActionMain()) {
-			return
-		}
-		check(intent.getStringExtra(LauncherSignatureKey) == LauncherSignatureCode) {
-			"New Intent must have Launcher Signature, possible uncaught condition"
-		}
-		intentManager.new(intent)
+		oldImpl.onNewIntent(intent)
 	}
 
-	/**
-	 * Check the validity of the launcher intent of this Activity
-	 */
-	private fun checkLauncherIntent() = check(
-		value = intent.isActionMain(),
-		lazyMessage = {
-			"""
-				the `first` intent that launched this activity must be kept `Intent.Action_Main`
-			"""
-		}
-	)
+	private inner class OldImpl() {
 
-	private fun setupWindow() {
-		disableWindowFitSystemInsets()
-	}
+		@Deprecated("Remove ViewModel usage entirely")
+		private val mainVM: MainViewModel by viewModels()
 
-	private fun setupSplashScreen() {
-		mainVM.splashHolders
-			.apply {
-				if (contains(EntrySplashHolder)) {
-					return@apply
+		fun onCreate(savedInstanceState: Bundle?) {
+			_intentManager = IntentManager(mainVM.intentHandler)
+			checkLauncherIntent()
+			setupWindow()
+			setupSplashScreen()
+
+			lifecycleScope.launch {
+				// consume
+				for (message in mainVM.intentRequestErrorMessageChannel) {
+					Toast.makeText(applicationContext, message, Toast.LENGTH_SHORT).show()
 				}
 			}
-		installSplashScreen().setKeepOnScreenCondition {
-			run {
-				mainVM.splashHolders.isNotEmpty()
-			}.also { keep ->
-				Timber.d("MainActivity_DEBUG_onPreDraw: SplashCheckKeepOnScreenCondition=$keep")
+
+			lifecycleScope.launch {
+				// consume
+				for (message in mainVM.playbackErrorMessageChannel) {
+					Toast.makeText(applicationContext, message, Toast.LENGTH_SHORT).show()
+				}
+			}
+		}
+
+		fun onNewIntent(intent: Intent?) {
+			if (intent == null) {
+				return
+			}
+			if (intent.isActionMain()) {
+				return
+			}
+			check(intent.getStringExtra(LauncherSignatureKey) == LauncherSignatureCode) {
+				"New Intent must have Launcher Signature, possible uncaught condition"
+			}
+			intentManager.new(intent)
+		}
+
+		/**
+		 * Check the validity of the launcher intent of this Activity
+		 */
+		private fun checkLauncherIntent() = check(
+			value = intent.isActionMain(),
+			lazyMessage = {
+				"""
+				the `first` intent that launched this activity must be kept `Intent.Action_Main`
+			"""
+			}
+		)
+
+		private fun setupWindow() {
+			disableWindowFitSystemInsets()
+		}
+
+		private fun setupSplashScreen() {
+			mainVM.splashHolders
+				.apply {
+					if (contains(EntrySplashHolder)) {
+						return@apply
+					}
+				}
+			installSplashScreen().setKeepOnScreenCondition {
+				run {
+					mainVM.splashHolders.isNotEmpty()
+				}.also { keep ->
+					Timber.d("MainActivity_DEBUG_onPreDraw: SplashCheckKeepOnScreenCondition=$keep")
+				}
 			}
 		}
 	}
@@ -109,7 +123,7 @@ class MainActivity : ComponentActivity() {
 				.map { chars.elementAt(Random.nextInt(until = chars.size)) }
 				.joinToString(separator = "")
 		}
-		private val LauncherSignatureKey = "dev.dexsr.klio.activity_lsign"
+		private val LauncherSignatureKey = "dev.dexsr.klio.android.activity_lsign"
 
 		override fun launchWithIntent(
 			launcherContext: Context,

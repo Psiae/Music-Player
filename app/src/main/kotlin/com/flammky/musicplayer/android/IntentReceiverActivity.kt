@@ -6,7 +6,7 @@ import android.os.Bundle
 import com.flammky.android.content.intent.isActionView
 import com.flammky.musicplayer.R
 import com.flammky.musicplayer.android.base.activity.ActivityWatcher
-import com.flammky.musicplayer.main.MainActivity
+import dev.dexsr.klio.android.main.MainActivity
 
 /**
  * For now use this activity to delegate all incoming intent (except launcher)

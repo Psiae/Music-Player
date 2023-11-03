@@ -15,7 +15,7 @@ dependencyResolutionManagement {
     }
     versionCatalogs {
         create("libs") {
-            val compose_ui_version = "1.5.0-alpha02"
+            val compose_ui_version = "1.5.0-beta01"
             library(
                 "koin.android",
                 "io.insert-koin",
@@ -47,6 +47,11 @@ dependencyResolutionManagement {
                 "ui"
             ).version(compose_ui_version)
             library(
+                "androidx.compose.ui.ui-tooling",
+                "androidx.compose.ui",
+                "ui-tooling"
+            ).version(compose_ui_version)
+            library(
                 "androidx.compose.ui.ui-tooling-preview",
                 "androidx.compose.ui",
                 "ui-tooling-preview"
@@ -75,7 +80,7 @@ dependencyResolutionManagement {
                 "androidx.compose.material3.material3",
                 "androidx.compose.material3",
                 "material3"
-            ).version("1.1.0")
+            ).version("1.1.1")
 
             library(
                 "io.coil-kt.coil",

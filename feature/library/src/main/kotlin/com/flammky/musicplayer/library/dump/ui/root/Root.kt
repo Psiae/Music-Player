@@ -57,8 +57,8 @@ import com.flammky.musicplayer.library.presentation.entry.PermGuard
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
-import dev.dexsr.klio.theme.md3.MD3Theme
-import dev.dexsr.klio.theme.md3.compose.dpPaddingIncrementsOf
+import dev.dexsr.klio.base.theme.md3.MD3Theme
+import dev.dexsr.klio.base.theme.md3.compose.dpPaddingIncrementsOf
 
 @Composable
 @Deprecated("Rewrite")

@@ -134,6 +134,11 @@ dependencies {
         kapt("com.google.dagger:hilt-android-compiler:$vHiltAndroid")
     }
 
+    /* insert-koin.koin */
+    dependencies {
+        api(libs.koin.android)
+    }
+
     //
     // Debug
     //

@@ -10,7 +10,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.flammky.musicplayer.android.compose.LocalIntentManager
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.backgroundColorAsState
-import com.flammky.musicplayer.main.MainActivity
+import dev.dexsr.klio.android.main.MainActivity
 
 internal fun MainActivity.setRootContent() = setContent {
 	MaterialDesign3Theme {

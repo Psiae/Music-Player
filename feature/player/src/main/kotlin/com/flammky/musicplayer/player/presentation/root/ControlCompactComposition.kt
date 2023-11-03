@@ -27,7 +27,7 @@ class ControlCompactComposition internal constructor(
     private val observeArtwork: (String) -> Flow<Any?>,
     private val observePlaybackQueue: () -> Flow<OldPlaybackQueue>,
     private val observePlaybackProperties: () -> Flow<PlaybackProperties>,
-    private val setPlayWhenReady: (play: Boolean, joinCollectorDispatch: Boolean) -> Deferred<Result<Boolean>>,
+    private val playOrPause: (play: Boolean, joinCollectorDispatch: Boolean) -> Deferred<Result<Boolean>>,
     private val observeProgressWithIntervalHandle: (
         getInterval: (progress: Duration, duration: Duration, speed: Float) -> Duration
     ) -> Flow<Duration>,
@@ -96,7 +96,7 @@ class ControlCompactComposition internal constructor(
 
     val controlsState = CompactButtonControlsState(
         observePlaybackProperties = observePlaybackProperties,
-        setPlayWhenReady = setPlayWhenReady,
+        playOrPause = playOrPause,
         isSurfaceDark = ::isButtonControlSurfaceDark
     )
 

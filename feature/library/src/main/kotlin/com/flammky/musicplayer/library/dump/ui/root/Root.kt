@@ -1,12 +1,21 @@
 package com.flammky.musicplayer.library.dump.ui.root
 
+import android.app.Activity
+import android.content.Context
 import android.content.ContextWrapper
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -19,8 +28,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -36,9 +48,17 @@ import com.flammky.musicplayer.base.compose.rewrite
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.backgroundContentColorAsState
 import com.flammky.musicplayer.base.theme.compose.surfaceContentColorAsState
+import com.flammky.musicplayer.core.sdk.AndroidAPI
+import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.hasLevel
 import com.flammky.musicplayer.library.R
 import com.flammky.musicplayer.library.dump.localmedia.ui.LocalSongDisplay
 import com.flammky.musicplayer.library.dump.localmedia.ui.LocalSongNavigator
+import com.flammky.musicplayer.library.presentation.entry.PermGuard
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
+import dev.dexsr.klio.theme.md3.MD3Theme
+import dev.dexsr.klio.theme.md3.compose.dpPaddingIncrementsOf
 
 @Composable
 @Deprecated("Rewrite")
@@ -68,7 +88,9 @@ private fun LibraryRootContent(
 ) {
 	val tabsNavHostController = rememberNavController()
 
-	Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
+	Column(modifier = Modifier
+		.fillMaxSize()
+		.statusBarsPadding()) {
 		NoInlineBox {
 			val tabsNavBackstackEntry = tabsNavHostController.currentBackStackEntryAsState().value
 			if (tabsNavBackstackEntry != null) {
@@ -211,22 +233,108 @@ private fun LibraryRootContent(
 private fun LocalContents(
 	navController: NavController
 ) {
-	Column(
-		modifier = Modifier
-			.fillMaxSize()
-			.verticalScroll(rememberScrollState()),
-		verticalArrangement = Arrangement.spacedBy(16.dp)
-	) {
-		LocalSongDisplay(
-			modifier = Modifier
-				.padding(horizontal = 10.dp)
-				.heightIn(max = 300.dp),
-			viewModel = activityViewModel(),
-			navigate = { route ->
-				navController.navigate(route)
+	val permState = remember {
+		mutableStateOf<Boolean?>(null)
+	}
+	PermGuard(onPermChanged = { nBool ->
+		permState.value = nBool
+	})
+
+	when (permState.value) {
+		true -> {
+			Column(
+				modifier = Modifier
+					.fillMaxSize()
+					.verticalScroll(rememberScrollState()),
+				verticalArrangement = Arrangement.spacedBy(16.dp)
+			) {
+				LocalSongDisplay(
+					modifier = Modifier
+						.padding(horizontal = 10.dp)
+						.heightIn(max = 300.dp),
+					viewModel = activityViewModel(),
+					navigate = { route ->
+						navController.navigate(route)
+					}
+				)
+				Spacer(modifier = Modifier.height(LocalLayoutVisibility.LocalBottomBar.current))
 			}
-		)
-		Spacer(modifier = Modifier.height(LocalLayoutVisibility.LocalBottomBar.current))
+		}
+		false -> @OptIn(ExperimentalPermissionsApi::class) {
+			val permission =
+				if (AndroidAPI.hasLevel(33)) {
+					android.Manifest.permission.READ_MEDIA_AUDIO
+				} else {
+					android.Manifest.permission.READ_EXTERNAL_STORAGE
+				}
+			val permissionState = rememberPermissionState(permission = permission) {}
+			val ctx = LocalContext.current
+			val rememberLauncher = rememberLauncherForActivityResult(
+				contract = ActivityResultContracts.StartActivityForResult(),
+				onResult = {}
+			)
+			Column(
+				modifier = Modifier
+					.fillMaxSize(),
+				verticalArrangement = Arrangement.Bottom
+			) {
+				BasicText(
+					modifier = Modifier
+						.align(Alignment.CenterHorizontally)
+						.fillMaxWidth(),
+					text = "READ AUDIO FILES PERMISSION NOT GRANTED",
+					style = MaterialTheme.typography.labelLarge.copy(
+						color = Theme.backgroundContentColorAsState().value,
+						textAlign = TextAlign.Center
+					)
+				)
+				Spacer(
+					modifier = Modifier.height(MD3Theme.dpPaddingIncrementsOf(5))
+				)
+				Button(
+					modifier = Modifier
+						.align(Alignment.CenterHorizontally),
+					enabled = !permissionState.status.isGranted,
+					onClick = {
+						if (permissionState.status.isGranted) {
+							return@Button
+						}
+						if (isPermissionRequestBlocked(ctx as Activity, permission)) {
+							rememberLauncher.launch(
+								Intent().apply {
+									action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+									data = Uri.parse("package:${ctx.packageName}")
+								}
+							)
+							return@Button
+						}
+						permissionState.launchPermissionRequest()
+						savePermissionRequested(ctx as Activity, permission)
+					},
+					colors = ButtonDefaults.elevatedButtonColors(
+						containerColor = MaterialTheme.colorScheme.primaryContainer
+					)
+				) {
+					val text = if (permissionState.status.isGranted) "Permission Granted!" else "Grant Permission"
+					val style = MaterialTheme.typography.titleMedium
+					Text(
+						text = text,
+						color = Theme.backgroundContentColorAsState().value,
+						fontSize = style.fontSize,
+						fontStyle = style.fontStyle
+					)
+				}
+				Spacer(
+					modifier = Modifier.height(MD3Theme.dpPaddingIncrementsOf(15))
+				)
+				Spacer(
+					modifier = Modifier.height(LocalLayoutVisibility.LocalBottomBar.current)
+				)
+			}
+		}
+		null -> {
+
+		}
 	}
 }
 
@@ -259,5 +367,18 @@ private fun Float.toComposeDp(): Dp {
 
 operator fun Float.times(other: Dp): Float {
 	return this * other.value
+}
+
+
+private fun savePermissionRequested(activity: Activity, permissionString: String) {
+	val sharedPref = activity.getSharedPreferences("perm", Context.MODE_PRIVATE)
+	sharedPref.edit { putBoolean(permissionString, true) }
+}
+
+private fun isPermissionRequestBlocked(activity: Activity, permission: String): Boolean {
+	val sharedPref = activity.getSharedPreferences("perm", Context.MODE_PRIVATE)
+	return ContextCompat.checkSelfPermission(activity, permission) != PackageManager.PERMISSION_GRANTED
+		&& !activity.shouldShowRequestPermissionRationale(permission)
+		&& sharedPref.getBoolean(permission, false)
 }
 

@@ -3,7 +3,7 @@ package com.flammky.musicplayer.domain.musiclib.service.manager
 import android.app.Notification
 import androidx.media3.common.Player
 import androidx.media3.session.MediaSession
-import com.flammky.musicplayer.base.activity.ActivityWatcher
+import com.flammky.musicplayer.android.base.activity.ActivityWatcher
 import com.flammky.musicplayer.domain.musiclib.player.exoplayer.PlayerExtension.isOngoing
 import com.flammky.musicplayer.domain.musiclib.service.MusicLibraryService
 import timber.log.Timber

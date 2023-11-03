@@ -42,7 +42,7 @@ interface AuthService {
 	 *
 	 * @return deferred of [LoginResult]
 	 */
-	suspend fun loginAsync(
+	fun loginAsync(
 		provider: String,
 		data: AuthData,
 		coroutineContext: CoroutineContext = EmptyCoroutineContext

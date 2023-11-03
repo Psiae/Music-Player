@@ -168,7 +168,7 @@ private class Actual(
                     .apply msf@ {
                         coroutineScope.launch(supervisor) {
                             metadataProvider
-                                .requestAsync(id)
+                                .requestFromMediaStoreIdAsync(id)
                             metadataCacheRepository.observeMetadata(id).collect {
                                 this@msf.emit(it)
                             }

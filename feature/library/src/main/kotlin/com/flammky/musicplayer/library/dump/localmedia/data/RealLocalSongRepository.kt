@@ -99,7 +99,7 @@ internal class RealLocalSongRepository(
 		return ioScope.launch {
 			if (mediaConnection.repository.getMetadata(id) != null) {
 				mediaConnection.repository.evictMetadata(id, true)
-				metadataProvider.requestAsync(id).join()
+				metadataProvider.requestFromMediaStoreIdAsync(id).join()
 			}
 		}
 	}
@@ -222,7 +222,7 @@ internal class RealLocalSongRepository(
 
 	override suspend fun collectMetadata(id: String): Flow<AudioMetadata?> {
 		return flow {
-			metadataProvider.requestAsync(id)
+			metadataProvider.requestFromMediaStoreIdAsync(id)
 			mediaConnection.repository.observeMetadata(id).map { it as? AudioMetadata }.collect(this)
 		}
 	}

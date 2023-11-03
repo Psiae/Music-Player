@@ -11,6 +11,7 @@ import javax.inject.Inject
 import kotlin.coroutines.CoroutineContext
 
 @HiltViewModel
+@Deprecated("Remove ViewModel usage entirely")
 class MainViewModel @Inject constructor(
 	private val presenter: MainPresenter
 ) : ViewModel() {

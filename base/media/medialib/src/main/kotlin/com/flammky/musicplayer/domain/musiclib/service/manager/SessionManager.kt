@@ -15,7 +15,7 @@ import androidx.media3.session.SessionResult.RESULT_SUCCESS
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider
 import com.flammky.common.kotlin.generic.ChangedNotNull
-import com.flammky.musicplayer.base.activity.ActivityWatcher
+import com.flammky.musicplayer.android.base.activity.ActivityWatcher
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemPropertyHelper
 import com.flammky.musicplayer.domain.musiclib.service.MusicLibraryService
 import com.flammky.musicplayer.domain.musiclib.service.provider.SessionProvider
@@ -294,10 +294,15 @@ class SessionManager(
 				s.availableSessionCommands
 					.buildUpon()
 					.apply {
+						add(SessionCommand("ACTION_PLAY", Bundle()))
+						add(SessionCommand("ACTION_PAUSE", Bundle()))
+						add(SessionCommand("ACTION_SEEK_NEXT", Bundle()))
+						add(SessionCommand("ACTION_SEEK_PREVIOUS", Bundle()))
 						add(SessionCommand("ACTION_TOGGLE_REPEAT", Bundle()))
 						add(SessionCommand("ACTION_STOP", Bundle()))
 						add(SessionCommand("ACTION_CLOSE", Bundle()))
 					}.build(),
+				// TODO: we can remove player command to remove the system provided action
 				s.availablePlayerCommands
 			)
 		}
@@ -313,6 +318,22 @@ class SessionManager(
 			args: Bundle
 		): ListenableFuture<SessionResult> {
 			when(customCommand.customAction) {
+				"ACTION_PLAY" -> {
+					session.player.play()
+					return Futures.immediateFuture(SessionResult(RESULT_SUCCESS))
+				}
+				"ACTION_PAUSE" -> {
+					session.player.pause()
+					return Futures.immediateFuture(SessionResult(RESULT_SUCCESS))
+				}
+				"ACTION_SEEK_NEXT" -> {
+					session.player.seekToNextMediaItem()
+					return Futures.immediateFuture(SessionResult(RESULT_SUCCESS))
+				}
+				"ACTION_SEEK_PREVIOUS" -> {
+					session.player.seekToPrevious()
+					return Futures.immediateFuture(SessionResult(RESULT_SUCCESS))
+				}
 				"ACTION_TOGGLE_REPEAT" -> {
 					when(session.player.repeatMode) {
 						Player.REPEAT_MODE_ALL -> {
@@ -336,7 +357,7 @@ class SessionManager(
 					}
 					return Futures.immediateFuture(SessionResult(RESULT_SUCCESS))
 				}
-				"ACTION_CANCEL" -> {
+				"ACTION_CLOSE" -> {
 					val stateInteractor = componentDelegate.stateInteractor
 					session.player.apply {
 						pause()

@@ -21,7 +21,7 @@ import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider
 import com.flammky.common.kotlin.collection.mutable.forEachClear
 import com.flammky.common.kotlin.coroutines.safeCollect
 import com.flammky.musicplayer.base.BuildConfig
-import com.flammky.musicplayer.base.activity.ActivityWatcher
+import com.flammky.musicplayer.android.base.activity.ActivityWatcher
 import com.flammky.musicplayer.base.media.r.MediaContentWatcher
 import com.flammky.musicplayer.base.media.r.MediaMetadataCacheRepository
 import com.flammky.musicplayer.core.sdk.AndroidAPI
@@ -161,14 +161,19 @@ class MusicLibraryService : MediaLibraryService() {
 	}
 
 	private fun stopForegroundService(removeNotification: Boolean) {
-		stopForeground(removeNotification)
-		if (removeNotification) notificationManagerService.cancel(MediaNotificationId)
+		stopForeground(
+			if (removeNotification) STOP_FOREGROUND_REMOVE else STOP_FOREGROUND_DETACH
+		)
+		if (removeNotification) {
+			notificationManagerService.cancel(MediaNotificationId)
+		}
 		if (isServiceForeground) {
 			stateRegistry.onEvent(ServiceEvent.PauseForeground, true)
 		}
 	}
 
 	private fun stopService(release: Boolean) {
+		if (isServiceStopped) return
 		if (release) mReleasing = true
 		if (isServiceForeground) stopForeground(release)
 		stopSelf()
@@ -178,7 +183,7 @@ class MusicLibraryService : MediaLibraryService() {
 	}
 
 	private fun releaseService() {
-		if (!isServiceStopped) stopService(true)
+		if (!isServiceStopped) stopService(false)
 		stateRegistry.onEvent(ServiceEvent.Release, true)
 		releaseComponent()
 		releaseSessions()
@@ -403,6 +408,7 @@ class MusicLibraryService : MediaLibraryService() {
 
 		fun updateState(state: ServiceState) {
 			val currentState = serviceStateSF.value
+			if (state == currentState) return
 			check(state upFrom currentState || state downFrom currentState) {
 				if (state == currentState) {
 					"ServiceState updated multiple times $currentState"

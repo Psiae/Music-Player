@@ -12,6 +12,7 @@ import com.flammky.android.activity.disableWindowFitSystemInsets
 import com.flammky.android.content.intent.isActionMain
 import com.flammky.musicplayer.android.activity.ActivityCompanion
 import com.flammky.musicplayer.android.activity.RequireLauncher
+import com.flammky.musicplayer.android.main.IntentManager
 import com.flammky.musicplayer.core.sdk.AndroidAPI
 import com.flammky.musicplayer.main.presentation.root.setRootContent
 import com.flammky.musicplayer.main.ui.MainViewModel
@@ -23,10 +24,16 @@ import kotlin.random.Random
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
+	private lateinit var _intentManager: IntentManager
+
+	internal val intentManager
+		get() = _intentManager
+
 	private val mainVM: MainViewModel by viewModels()
 
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
+		_intentManager = IntentManager(mainVM.intentHandler)
 		checkLauncherIntent()
 		setupWindow()
 		setupSplashScreen()
@@ -58,7 +65,7 @@ class MainActivity : ComponentActivity() {
 		check(intent.getStringExtra(LauncherSignatureKey) == LauncherSignatureCode) {
 			"New Intent must have Launcher Signature, possible uncaught condition"
 		}
-		mainVM.intentEntryGuardWaiter.add { mainVM.intentHandler.sendIntent(intent) }
+		intentManager.new(intent)
 	}
 
 	/**
@@ -69,8 +76,6 @@ class MainActivity : ComponentActivity() {
 		lazyMessage = {
 			"""
 				the `first` intent that launched this activity must be kept `Intent.Action_Main`
-				otherwise we must keep track of received intent by `action + id` which might be implemented
-				in the future but is not priority as of now
 			"""
 		}
 	)
@@ -85,8 +90,6 @@ class MainActivity : ComponentActivity() {
 				if (contains(EntrySplashHolder)) {
 					return@apply
 				}
-				add(EntrySplashHolder)
-				mainVM.firstEntryGuardWaiter.add { mainVM.splashHolders.remove(EntrySplashHolder) }
 			}
 		installSplashScreen().setKeepOnScreenCondition {
 			run {
@@ -100,8 +103,13 @@ class MainActivity : ComponentActivity() {
 	companion object : ActivityCompanion(), RequireLauncher {
 		private val EntrySplashHolder = Any()
 
-		private val LauncherSignatureCode = (Random.nextInt() shl 13).toString()
-		private val LauncherSignatureKey = "l_sign"
+		private val LauncherSignatureCode = run {
+			val chars = ('a'..'z') + ('A'..'Z') + ('0'..'9')
+			(1..16)
+				.map { chars.elementAt(Random.nextInt(until = chars.size)) }
+				.joinToString(separator = "")
+		}
+		private val LauncherSignatureKey = "dev.dexsr.klio.activity_lsign"
 
 		override fun launchWithIntent(
 			launcherContext: Context,

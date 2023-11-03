@@ -32,7 +32,7 @@ class TestMetadataProvider(
 
 	override fun getCached(id: String): MediaMetadata? = cacheRepository.getMetadata(id)
 
-	override fun requestAsync(id: String): Deferred<MediaMetadata?> {
+	override fun requestFromMediaStoreIdAsync(id: String): Deferred<MediaMetadata?> {
 		return getCached(id)
 			?.let { CompletableDeferred(it) }
 			?: requestMap.sync {
@@ -40,6 +40,25 @@ class TestMetadataProvider(
 					getCached(id)
 						?: run {
 							fillMetadata(id)
+								?.also { cacheRepository.provideMetadata(id, it) }
+								.also { requestMap.sync { remove(id) } }
+						}
+				}.also { job ->
+					put(id, job)
+				}
+			}
+	}
+
+	override fun requestFromDocumentUriAsync(contentUri: String): Deferred<MediaMetadata?> {
+		val id = contentUri
+		val uri = Uri.parse(contentUri)
+		return getCached(id)
+			?.let { CompletableDeferred(it) }
+			?: requestMap.sync {
+				get(id) ?: coroutineScope.async(limitedIO) {
+					getCached(id)
+						?: run {
+							fillAudioMetadata(uri)
 								?.also { cacheRepository.provideMetadata(id, it) }
 								.also { requestMap.sync { remove(id) } }
 						}

@@ -4,11 +4,11 @@ import android.content.Context
 import androidx.startup.Initializer
 import com.flammky.musicplayer.base.BaseModuleInitializer
 import com.flammky.musicplayer.base.nav.compose.ComposeRootNavigation
-import com.flammky.musicplayer.core.common.atomic
 import com.flammky.musicplayer.home.nav.compose.HomeRootNavigator
 import com.flammky.musicplayer.library.dump.nav.compose.LibraryRootNavigator
 import com.flammky.musicplayer.search.nav.compose.SearchRootNavigator
 import com.flammky.musicplayer.user.nav.compose.UserRootNavigator
+import kotlinx.atomicfu.atomic
 import kotlinx.collections.immutable.persistentListOf
 
 /**

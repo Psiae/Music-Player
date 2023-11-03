@@ -209,7 +209,7 @@ internal class ExpectPlaybackControlPresenter(
 			}
 
 			override fun observeMetadata(id: String): Flow<MediaMetadata?> {
-				metadataProvider.requestAsync(id)
+				metadataProvider.requestFromMediaStoreIdAsync(id)
 				return mediaMetadataCacheRepository.observeMetadata(id)
 			}
 		}

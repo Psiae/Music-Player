@@ -10,15 +10,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
-import androidx.compose.runtime.snapshots.readable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModelStoreOwner
-import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import com.flammky.android.manifest.permission.AndroidPermission
+import com.flammky.musicplayer.base.auth.AuthService
 import com.flammky.musicplayer.base.compose.rememberLocalContextHelper
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.absoluteBackgroundContentColorAsState
@@ -35,70 +34,14 @@ import kotlinx.coroutines.launch
 fun BoxScope.RootEntry(
 	viewModel: MainViewModel,
 ) {
-	rememberRootEntryGuardState<MainViewModel>(
-		handle = rememberUpdatedState(viewModel).value,
-		viewModelStoreOwner = LocalViewModelStoreOwner.current!!,
-		intentReceiver = { it.intentHandler },
-		onFirstEntryGuardLayout = {
-			snapshotFlow(equality = { _, _ -> false }) {
-				it.firstEntryGuardWaiter.apply {
-					firstStateRecord.readable(this)
-				}
-			}.collect {
-				it.apply {
-					if (!isEmpty()) {
-						forEach { it() }
-						clear()
-					}
-				}
-			}
-		},
-		onAuthGuarded = {
-			snapshotFlow(equality = { _, _ -> false }) {
-				it.authGuardWaiter.apply {
-					firstStateRecord.readable(this)
-				}
-			}.collect {
-				it.apply {
-					if (!isEmpty()) {
-						forEach { it() }
-						clear()
-					}
-				}
-			}
-		},
-		onRuntimePermissionGuarded = {
-			snapshotFlow(equality = { _, _ -> false }) {
-				it.permGuardWaiter.apply {
-					firstStateRecord.readable(this)
-				}
-			}.collect {
-				it.apply {
-					if (!isEmpty()) {
-						forEach { it() }
-						clear()
-					}
-				}
-			}
-		},
-		onAllGuarded = {
-			snapshotFlow(equality = { _, _ -> false }) {
-				it.intentEntryGuardWaiter.apply {
-					firstStateRecord.readable(this)
-				}
-			}.collect {
-				it.apply {
-					if (!isEmpty()) {
-						forEach { it() }
-						clear()
-					}
-				}
-			}
-		}
-	).run {
-		GuardLayout { user ->
-			RootNavigation(user = user)
-		}
+	val user = remember {
+		mutableStateOf<User?>(null)
+	}
+	LaunchedEffect(key1 = Unit, block = {
+		AuthService.get().observeCurrentUser().collect { user.value = it }
+	})
+	user.value?.let {
+		RootNavigation(user = it)
 	}
 }
 

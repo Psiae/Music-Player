@@ -10,6 +10,7 @@ import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider
 import com.flammky.android.medialib.temp.image.ArtworkProvider
 import com.flammky.common.kotlin.coroutines.AutoCancelJob
 import com.flammky.musicplayer.base.auth.AuthService
+import com.flammky.musicplayer.base.media.MetadataProvider
 import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConnection
 import com.flammky.musicplayer.base.media.playback.OldPlaybackQueue
 import com.flammky.musicplayer.base.media.r.MediaMetadataCacheRepository
@@ -64,6 +65,25 @@ class MediaIntentHandler constructor(
 					setQueue(OldPlaybackQueue(persistentListOf(id), 0))
 					play()
 				}
+
+			try {
+				presenter.metadataProvider
+					.requestFromDocumentUriAsync(id)
+					.await()
+			} catch (ex: Exception) {
+				when (ex) {
+					is FileNotFoundException -> presenter.showIntentRequestErrorMessage(
+						message = "Requested File is not found"
+					)
+					is SecurityException -> presenter.showIntentRequestErrorMessage(
+						message = "Requested File could not be read (no provider permission)"
+					)
+					is NullPointerException -> presenter.showIntentRequestErrorMessage(
+						message = "Requested File could not be read (inaccessible provider)"
+					)
+					else -> presenter.showIntentRequestErrorMessage(message = "Unexpected Error Occurred")
+				}
+			}
 		}
 	}
 
@@ -97,6 +117,7 @@ class MediaIntentHandler constructor(
 		val authService: AuthService
 		val androidContext: Context
 		val artworkProvider: ArtworkProvider
+		val metadataProvider: MetadataProvider
 		val coroutineDispatchers: AndroidCoroutineDispatchers
 		val coroutineScope: CoroutineScope
 		val playbackConnection: PlaybackConnection

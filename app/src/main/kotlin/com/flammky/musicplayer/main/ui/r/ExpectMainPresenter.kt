@@ -8,6 +8,7 @@ import com.flammky.android.medialib.temp.image.ArtworkProvider
 import com.flammky.musicplayer.base.auth.AuthService
 import com.flammky.musicplayer.base.auth.LocalAuth
 import com.flammky.musicplayer.base.coroutine.NonBlockingDispatcherPool
+import com.flammky.musicplayer.base.media.MetadataProvider
 import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConnection
 import com.flammky.musicplayer.base.media.r.MediaMetadataCacheRepository
 import com.flammky.musicplayer.base.user.User
@@ -30,6 +31,7 @@ class ExpectMainPresenter @Inject constructor(
 	private val artworkProvider: ArtworkProvider,
 	private val sharedRepository: MediaMetadataCacheRepository,
 	private val mediaStore: MediaStoreProvider,
+	private val metadataProvider: MetadataProvider
 ) : MainPresenter {
 
 	private val _lock = Any()
@@ -77,6 +79,7 @@ class ExpectMainPresenter @Inject constructor(
 				androidContext = androidContext,
 				playbackConnection = playbackConnection,
 				artworkProvider,
+				metadataProvider,
 				sharedRepository,
 				mediaStore
 			)
@@ -103,6 +106,7 @@ class ExpectMainPresenter @Inject constructor(
 		override val androidContext: Context,
 		override val playbackConnection: PlaybackConnection,
 		override val artworkProvider: ArtworkProvider,
+		override val metadataProvider: MetadataProvider,
 		override val sharedRepository: MediaMetadataCacheRepository,
 		override val mediaStore: MediaStoreProvider,
 	) : MainPresenter, MediaIntentHandler.Presenter {

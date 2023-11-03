@@ -25,7 +25,7 @@ import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.providers.metadata.VirtualFileMetadata
 import com.flammky.common.kotlin.comparable.clamp
 import com.flammky.common.kotlin.coroutines.AutoCancelJob
-import com.flammky.musicplayer.base.activity.ActivityWatcher
+import com.flammky.musicplayer.android.base.activity.ActivityWatcher
 import com.flammky.musicplayer.core.sdk.AndroidAPI
 import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.hasLevel
 import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.hasOreo
@@ -748,6 +748,43 @@ class MediaNotificationManager(
 					if (AndroidAPI.hasLevel(33)) {
 						session.setCustomLayout(
 							listOf(
+								/*CommandButton.Builder()
+									.apply {
+										val showPlayAction =
+											if (session.player.playbackState.isStateBuffering()) {
+												!session.player.playWhenReady
+											} else {
+												!isPlaying
+											}
+										if (showPlayAction) {
+											setSessionCommand(SessionCommand("ACTION_PLAY", Bundle()))
+											setIconResId(R.drawable.ic_notif_play)
+											setDisplayName("play")
+											setEnabled(true)
+										} else {
+											setSessionCommand(SessionCommand("ACTION_PAUSE", Bundle()))
+											setIconResId(R.drawable.ic_notif_pause)
+											setDisplayName("pause")
+											setEnabled(true)
+										}
+									}
+									.build(),
+								CommandButton.Builder()
+									.apply {
+										setSessionCommand(SessionCommand("ACTION_SEEK_PREVIOUS", Bundle()))
+										setIconResId(R.drawable.ic_notif_prev)
+										setDisplayName("seek previous")
+										setEnabled(true)
+									}
+									.build(),
+								CommandButton.Builder()
+									.apply {
+										setSessionCommand(SessionCommand("ACTION_SEEK_NEXT", Bundle()))
+										setIconResId(R.drawable.ic_notif_next,)
+										setDisplayName("seek next")
+										setEnabled(session.player.hasNextMediaItem())
+									}
+									.build(),*/
 								CommandButton.Builder()
 									.apply {
 										setSessionCommand(SessionCommand("ACTION_TOGGLE_REPEAT", Bundle()))
@@ -810,16 +847,53 @@ class MediaNotificationManager(
 
 			playerRepeatModeJob = mainScope.launch {
 				componentDelegate.sessionInteractor.mediaSession
-					?.let {
+					?.let { session ->
 
 						if (AndroidAPI.hasLevel(33)) {
-							it.setCustomLayout(
+							session.setCustomLayout(
 								listOf(
+									/*CommandButton.Builder()
+										.apply {
+											val showPlayAction =
+												if (session.player.playbackState.isStateBuffering()) {
+													!session.player.playWhenReady
+												} else {
+													!session.player.isPlaying
+												}
+											if (showPlayAction) {
+												setSessionCommand(SessionCommand("ACTION_PLAY", Bundle()))
+												setIconResId(R.drawable.ic_notif_play)
+												setDisplayName("play")
+												setEnabled(true)
+											} else {
+												setSessionCommand(SessionCommand("ACTION_PAUSE", Bundle()))
+												setIconResId(R.drawable.ic_notif_pause)
+												setDisplayName("pause")
+												setEnabled(true)
+											}
+										}
+										.build(),
+									CommandButton.Builder()
+										.apply {
+											setSessionCommand(SessionCommand("ACTION_SEEK_PREVIOUS", Bundle()))
+											setIconResId(R.drawable.ic_notif_prev)
+											setDisplayName("seek previous")
+											setEnabled(true)
+										}
+										.build(),
+									CommandButton.Builder()
+										.apply {
+											setSessionCommand(SessionCommand("ACTION_SEEK_NEXT", Bundle()))
+											setIconResId(R.drawable.ic_notif_next,)
+											setDisplayName("seek next")
+											setEnabled(session.player.hasNextMediaItem())
+										}
+										.build(),*/
 									CommandButton.Builder()
 										.apply {
 											setSessionCommand(SessionCommand("ACTION_TOGGLE_REPEAT", Bundle()))
 											setIconResId(
-												when(it.player.repeatMode) {
+												when(session.player.repeatMode) {
 													// TODO: remove ambiguity between disabled and off
 													Player.REPEAT_MODE_ALL -> R.drawable.ic_notif_repeat_all
 													Player.REPEAT_MODE_OFF -> R.drawable.ic_notif_repeat_off
@@ -832,7 +906,7 @@ class MediaNotificationManager(
 										}
 										.build(),
 									run {
-										val onGoing = isOnGoingCondition(it)
+										val onGoing = session.player.playbackState.isOngoing()
 										CommandButton.Builder()
 											.apply {
 												setSessionCommand(SessionCommand(if (onGoing) { "ACTION_STOP" } else { "ACTION_CLOSE" }, Bundle()))
@@ -849,8 +923,8 @@ class MediaNotificationManager(
 						}
 
 						val getNotification = suspend {
-							provider.ensureCurrentItemBitmap(it.player)
-							provider.fromMediaSession(it, isOnGoingCondition(it), ChannelName)
+							provider.ensureCurrentItemBitmap(session.player)
+							provider.fromMediaSession(session, isOnGoingCondition(session), ChannelName)
 						}
 						dispatcher.suspendUpdateNotification(notificationId, getNotification())
 						dispatcher.dispatchNotificationValidator(
@@ -892,16 +966,53 @@ class MediaNotificationManager(
 			playbackStateChangedJob = mainScope.launch {
 
 				componentDelegate.sessionInteractor.mediaSession
-					?.let {
+					?.let { session ->
 
 						if (AndroidAPI.hasLevel(33)) {
-							it.setCustomLayout(
+							session.setCustomLayout(
 								listOf(
+									/*CommandButton.Builder()
+										.apply {
+											val showPlayAction =
+												if (session.player.playbackState.isStateBuffering()) {
+													!session.player.playWhenReady
+												} else {
+													!session.player.isPlaying
+												}
+											if (showPlayAction) {
+												setSessionCommand(SessionCommand("ACTION_PLAY", Bundle()))
+												setIconResId(R.drawable.ic_notif_play)
+												setDisplayName("play")
+												setEnabled(true)
+											} else {
+												setSessionCommand(SessionCommand("ACTION_PAUSE", Bundle()))
+												setIconResId(R.drawable.ic_notif_pause)
+												setDisplayName("pause")
+												setEnabled(true)
+											}
+										}
+										.build(),
+									CommandButton.Builder()
+										.apply {
+											setSessionCommand(SessionCommand("ACTION_SEEK_PREVIOUS", Bundle()))
+											setIconResId(R.drawable.ic_notif_prev)
+											setDisplayName("seek previous")
+											setEnabled(true)
+										}
+										.build(),
+									CommandButton.Builder()
+										.apply {
+											setSessionCommand(SessionCommand("ACTION_SEEK_NEXT", Bundle()))
+											setIconResId(R.drawable.ic_notif_next,)
+											setDisplayName("seek next")
+											setEnabled(session.player.hasNextMediaItem())
+										}
+										.build(),*/
 									CommandButton.Builder()
 										.apply {
 											setSessionCommand(SessionCommand("ACTION_TOGGLE_REPEAT", Bundle()))
 											setIconResId(
-												when(it.player.repeatMode) {
+												when(session.player.repeatMode) {
 													// TODO: remove ambiguity between disabled and off
 													Player.REPEAT_MODE_ALL -> R.drawable.ic_notif_repeat_all
 													Player.REPEAT_MODE_OFF -> R.drawable.ic_notif_repeat_off
@@ -914,7 +1025,7 @@ class MediaNotificationManager(
 										}
 										.build(),
 									run {
-										val onGoing = isOnGoingCondition(it)
+										val onGoing = session.player.playbackState.isOngoing()
 										CommandButton.Builder()
 											.apply {
 												setSessionCommand(SessionCommand(if (onGoing) { "ACTION_STOP" } else { "ACTION_CLOSE" }, Bundle()))
@@ -931,8 +1042,8 @@ class MediaNotificationManager(
 						}
 
 						val getNotification = suspend {
-							provider.ensureCurrentItemBitmap(it.player)
-							provider.fromMediaSession(it, isOnGoingCondition(it), ChannelName)
+							provider.ensureCurrentItemBitmap(session.player)
+							provider.fromMediaSession(session, isOnGoingCondition(session), ChannelName)
 						}
 						dispatcher.dispatchNotificationValidator(
 							notificationId,

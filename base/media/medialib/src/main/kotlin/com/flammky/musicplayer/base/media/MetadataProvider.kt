@@ -5,5 +5,7 @@ import kotlinx.coroutines.Deferred
 
 interface MetadataProvider {
 	fun getCached(id: String): MediaMetadata?
-	fun requestAsync(id: String): Deferred<MediaMetadata?>
+	fun requestFromMediaStoreIdAsync(id: String): Deferred<MediaMetadata?>
+
+	fun requestFromDocumentUriAsync(contentUri: String): Deferred<MediaMetadata?>
 }

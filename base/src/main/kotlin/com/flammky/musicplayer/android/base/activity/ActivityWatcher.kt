@@ -1,4 +1,4 @@
-package com.flammky.musicplayer.base.activity
+package com.flammky.musicplayer.android.base.activity
 
 import android.app.Activity
 import android.app.Application
@@ -7,13 +7,18 @@ import android.os.Looper
 import androidx.annotation.MainThread
 import com.flammky.kotlin.common.lazy.LazyConstructor
 import com.flammky.kotlin.common.lazy.LazyConstructor.Companion.valueOrNull
+import kotlinx.atomicfu.atomic
 import timber.log.Timber
 
+/*
+	For reliability reason, this class instance must only be called from the main thread
+*/
 @MainThread
 class ActivityWatcher private constructor(
 	private val app: Application
 ) {
 	private val _activities = mutableListOf<Activity>()
+	private val running = atomic(false)
 
 	private val listener = object : Application.ActivityLifecycleCallbacks {
 		override fun onActivityPreCreated(activity: Activity, savedInstanceState: Bundle?) {
@@ -69,6 +74,8 @@ class ActivityWatcher private constructor(
 			assertThreadAccessFromCallback()
 			Timber.d("ActivityLifecycleCallback, onActivityPreDestroyed: activity=$activity")
 		}
+
+		// NOTE: even if this is not called, it's promised that the process will end shortly
 		override fun onActivityDestroyed(activity: Activity) {
 			assertThreadAccessFromCallback()
 			Timber.d("ActivityLifecycleCallback, onActivityDestroyed: activity=$activity")
@@ -77,6 +84,12 @@ class ActivityWatcher private constructor(
 	}
 
 	init {
+	}
+
+	fun init() {
+		if (!running.compareAndSet(false, true)) {
+			return
+		}
 		app.registerActivityLifecycleCallbacks(listener)
 	}
 
@@ -98,7 +111,6 @@ class ActivityWatcher private constructor(
 		callback: () -> Unit
 	) {
 		assertThreadAccess()
-
 	}
 
 	fun registerOnResumeCallback(

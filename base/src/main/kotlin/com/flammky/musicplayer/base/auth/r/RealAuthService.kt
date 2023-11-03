@@ -93,7 +93,7 @@ internal class RealAuthService(
 
 	override fun initialize(): Job = initializeJob.apply { start() }
 
-	override suspend fun loginAsync(
+	override fun loginAsync(
 		provider: String,
 		data: AuthData,
 		coroutineContext: CoroutineContext

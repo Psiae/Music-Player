@@ -5,7 +5,7 @@ import android.content.Intent
 import android.os.Bundle
 import com.flammky.android.content.intent.isActionView
 import com.flammky.musicplayer.R
-import com.flammky.musicplayer.base.activity.ActivityWatcher
+import com.flammky.musicplayer.android.base.activity.ActivityWatcher
 import com.flammky.musicplayer.main.MainActivity
 
 /**
@@ -34,8 +34,8 @@ class IntentReceiverActivity : Activity() {
 		MainActivity.launchWithIntent(
 			launcherContext = this,
 			intent = requireNotNull(intent)
-		).also {
-			if (it && !ActivityWatcher.get().hasActivity(MainActivity::class.java)) {
+		).also { success ->
+			if (success && !ActivityWatcher.get().hasActivity(MainActivity::class.java)) {
 				overridePendingTransition(R.anim.anim_stay_still, R.anim.anim_stay_still)
 			}
 		}

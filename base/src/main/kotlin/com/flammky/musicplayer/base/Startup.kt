@@ -24,6 +24,10 @@ class BaseModuleInitializer : Initializer<Unit> {
 		}
 		val app = context as Application
 		ActivityWatcher provides app
+		ActivityWatcher.get()
+			.apply {
+				init()
+			}
 		val authService = RealAuthService provides app
 		RealAuthService
 			.apply {

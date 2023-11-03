@@ -86,11 +86,12 @@ class ActivityWatcher private constructor(
 	init {
 	}
 
-	fun init() {
+	fun init(): Boolean {
 		if (!running.compareAndSet(false, true)) {
-			return
+			return false
 		}
 		app.registerActivityLifecycleCallbacks(listener)
+		return true
 	}
 
 	//

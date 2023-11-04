@@ -38,6 +38,8 @@ import com.flammky.musicplayer.base.theme.compose.*
 import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.player.presentation.root.main.RootPlaybackControl
 import com.flammky.musicplayer.player.presentation.root.main.rememberRootPlaybackControlState
+import dev.dexsr.klio.android.main.compose.md3.RootBottomNavigationBar
+import dev.dexsr.klio.android.main.compose.md3.rememberRootBottomNavigationBarState
 
 @Composable
 internal fun RootNavigation(user: User) {
@@ -103,7 +105,11 @@ private class RootNavigationState(
 			Scaffold(
 				modifier = Modifier.fillMaxSize(),
 				bottomBar = {
-					BottomNavigation(navController = navController)
+					RootBottomNavigationBar(
+						state = rememberRootBottomNavigationBarState(navController = navController),
+						systemNavigationBarSpacing = true
+					)
+					/*BottomNavigation(navController = navController)*/
 				}
 			) { contentPadding ->
 				compactBottomPadding

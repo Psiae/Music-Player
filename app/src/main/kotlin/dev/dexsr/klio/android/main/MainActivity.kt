@@ -16,7 +16,7 @@ import com.flammky.musicplayer.android.main.IntentManager
 import com.flammky.musicplayer.core.sdk.AndroidAPI
 import com.flammky.musicplayer.main.ui.MainViewModel
 import dagger.hilt.android.AndroidEntryPoint
-import dev.dexsr.klio.android.main.compose.composeRootContent
+import dev.dexsr.klio.android.main.compose.setComposeRootContent
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import kotlin.random.Random
@@ -34,7 +34,7 @@ class MainActivity : ComponentActivity(), RequireLauncher by Companion {
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
 		oldImpl.onCreate(savedInstanceState)
-		composeRootContent()
+		setComposeRootContent()
 	}
 
 	override fun onNewIntent(intent: Intent?) {

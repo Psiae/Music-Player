@@ -46,6 +46,19 @@ fun BoxScope.RootEntry(
 }
 
 @Composable
+fun BoxScope.RootEntry() {
+	val user = remember {
+		mutableStateOf<User?>(null)
+	}
+	LaunchedEffect(key1 = Unit, block = {
+		AuthService.get().observeCurrentUser().collect { user.value = it }
+	})
+	user.value?.let {
+		RootNavigation(user = it)
+	}
+}
+
+@Composable
 private fun <HANDLE> rememberRootEntryGuardState(
 	handle: HANDLE,
 	viewModelStoreOwner: ViewModelStoreOwner,

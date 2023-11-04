@@ -2,7 +2,7 @@ package dev.dexsr.klio.base.compose.geometry
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.IntOffset
-import dev.dexsr.klio.base.commonkt.geometry.Vector2D
+import dev.dexsr.klio.base.geometry.Vector2D
 import kotlin.math.roundToInt
 
 operator fun Offset.plus(vector2D: Vector2D): Offset {

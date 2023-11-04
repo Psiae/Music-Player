@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.alpha
@@ -24,8 +25,11 @@ fun Modifier.localMaterial3Background(
     background(transform(MD3Theme.backgroundColorAsState().value))
 }
 
-fun Modifier.localMaterial3Background() = composed {
-    background(MD3Theme.backgroundColorAsState().value)
+fun Modifier.localMaterial3Background(): Modifier {
+	return composed {
+		val color by MD3Theme.backgroundColorAsState()
+		background(color)
+	}
 }
 
 fun Modifier.localMaterial3Surface(

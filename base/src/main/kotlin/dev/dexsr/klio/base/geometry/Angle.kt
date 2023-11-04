@@ -1,4 +1,4 @@
-package dev.dexsr.klio.base.commonkt.geometry
+package dev.dexsr.klio.base.geometry
 
 import kotlin.math.cos
 import kotlin.math.sin

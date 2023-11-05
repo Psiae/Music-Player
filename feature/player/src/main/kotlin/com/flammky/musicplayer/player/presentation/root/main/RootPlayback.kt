@@ -90,7 +90,7 @@ fun RootPlaybackControl(
                             observeArtwork = observeArtwork
                         )
                     },
-                    backPressRegistry = backPressRegistry
+                    composeBackPressRegistry = composeBackPressRegistry
                 ).apply {
                     remember(showSelf) {
                         if (showSelf) requestShow() else requestHide()
@@ -250,7 +250,7 @@ internal class PlaybackControlCoordinator(
         val sourceKey: Any
         val intentsKey: Any
         val user: User
-        val backPressRegistry: BackPressRegistry
+        val composeBackPressRegistry: ComposeBackPressRegistry
         val dismiss: () -> Unit
         val requestSeekNextAsync: () -> Deferred<Result<Boolean>>
         val requestSeekPreviousAsync: () -> Deferred<Result<Boolean>>
@@ -310,7 +310,7 @@ internal class PlaybackControlCoordinator(
 
     private class ScreenState() {
 
-        val backPressRegistry = BackPressRegistry()
+        val composeBackPressRegistry = ComposeBackPressRegistry()
 
         var showSelf by mutableStateOf(false)
             private set
@@ -330,11 +330,11 @@ internal class PlaybackControlCoordinator(
         }
 
         fun hasBackPressConsumer(): Boolean {
-            return backPressRegistry.hasBackPressConsumer()
+            return composeBackPressRegistry.hasBackPressConsumer()
         }
 
         fun backPress() {
-            backPressRegistry.consumeBackPress()
+            composeBackPressRegistry.consumeBackPress()
         }
     }
 
@@ -356,7 +356,7 @@ internal class PlaybackControlCoordinator(
                 showSelf = state.showSelf,
                 sourceKey = this,
                 intentsKey = this,
-                backPressRegistry = state.backPressRegistry,
+                composeBackPressRegistry = state.composeBackPressRegistry,
                 user = user,
                 dismiss = state::dismiss,
                 requestSeekNextAsync = ::requestSeekNextAsync,
@@ -632,7 +632,7 @@ internal class PlaybackControlCoordinator(
         override val intentsKey: Any,
         override val user: User,
         override val showSelf: Boolean,
-        override val backPressRegistry: BackPressRegistry,
+        override val composeBackPressRegistry: ComposeBackPressRegistry,
         override val dismiss: () -> Unit,
         override val observeArtwork: (String) -> Flow<Any?>,
         override val observePlaybackProperties: () -> Flow<PlaybackProperties>,

@@ -8,7 +8,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.viewModels
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
-import com.flammky.android.activity.disableWindowFitSystemInsets
+import com.flammky.android.activity.disableSystemWindowInsets
 import com.flammky.android.content.intent.isActionMain
 import com.flammky.musicplayer.android.activity.ActivityCompanion
 import com.flammky.musicplayer.android.activity.RequireLauncher
@@ -16,7 +16,7 @@ import com.flammky.musicplayer.android.main.IntentManager
 import com.flammky.musicplayer.core.sdk.AndroidAPI
 import com.flammky.musicplayer.main.ui.MainViewModel
 import dagger.hilt.android.AndroidEntryPoint
-import dev.dexsr.klio.android.main.compose.setComposeRootContent
+import dev.dexsr.klio.android.main.root.compose.setComposeRootContent
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import kotlin.random.Random
@@ -34,7 +34,7 @@ class MainActivity : ComponentActivity(), RequireLauncher by Companion {
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
 		oldImpl.onCreate(savedInstanceState)
-		setComposeRootContent()
+		setComposeRootContent(fitSystemWindow = false)
 	}
 
 	override fun onNewIntent(intent: Intent?) {
@@ -94,7 +94,7 @@ class MainActivity : ComponentActivity(), RequireLauncher by Companion {
 		)
 
 		private fun setupWindow() {
-			disableWindowFitSystemInsets()
+			disableSystemWindowInsets()
 		}
 
 		private fun setupSplashScreen() {

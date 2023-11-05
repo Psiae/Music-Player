@@ -160,10 +160,10 @@ data class QueueScreenIntents(
 fun rememberPlaybackControlScreenState(
     intents: PlaybackControlScreenIntents,
     source: PlaybackControlScreenDataSource,
-    backPressRegistry: BackPressRegistry
+    composeBackPressRegistry: ComposeBackPressRegistry
 ): PlaybackControlScreenState {
-    return remember(intents, source, backPressRegistry) {
-        PlaybackControlScreenState(intents, source, backPressRegistry)
+    return remember(intents, source, composeBackPressRegistry) {
+        PlaybackControlScreenState(intents, source, composeBackPressRegistry)
     }
 }
 
@@ -186,7 +186,7 @@ fun PlaybackControlScreen(
 class PlaybackControlScreenState(
     internal val intents: PlaybackControlScreenIntents,
     internal val source: PlaybackControlScreenDataSource,
-    internal val backPressRegistry: BackPressRegistry
+    internal val composeBackPressRegistry: ComposeBackPressRegistry
 ) {
 
     private var currentCoordinator by mutableStateOf<PlaybackControlScreenCoordinator?>(null)
@@ -352,7 +352,7 @@ class PlaybackControlScreenCoordinator(
                     if (!mainTransition.show && !mainTransition.show) {
                         return@DisposableEffect onDispose {  }
                     }
-                    val backPressConsumer = BackPressRegistry.BackPressConsumer {
+                    val backPressConsumer = ComposeBackPressRegistry.BackPressConsumer {
                         if (queueTransition.show) {
                             queueTransition.hide()
                             return@BackPressConsumer
@@ -361,8 +361,8 @@ class PlaybackControlScreenCoordinator(
                             state.intents.dismiss()
                         }
                     }
-                    state.backPressRegistry.registerBackPressConsumer(backPressConsumer)
-                    onDispose { state.backPressRegistry.unregisterBackPressConsumer(backPressConsumer) }
+                    state.composeBackPressRegistry.registerBackPressConsumer(backPressConsumer)
+                    onDispose { state.composeBackPressRegistry.unregisterBackPressConsumer(backPressConsumer) }
                 }
             )
         }

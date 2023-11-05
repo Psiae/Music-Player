@@ -2,7 +2,7 @@ package dev.dexsr.klio.base.compose
 
 import androidx.compose.ui.layout.MeasurePolicy
 
-val SimpleLayoutMeasurePolicy : MeasurePolicy = MeasurePolicy { measurables, constraints ->
+val SimpleStackLayoutMeasurePolicy : MeasurePolicy = MeasurePolicy { measurables, constraints ->
 	if (measurables.isEmpty()) {
 		return@MeasurePolicy layout(
 			constraints.minWidth,

@@ -103,8 +103,8 @@ private fun PlaceContents(
                     .clickable(
                         interactionSource = interactionSource,
                         indication = null,
-                        enabled = true,
-                        onClick = dismiss.onClick
+                        enabled = false,
+                        onClick = {  }
                     ),
                 content = {
                     with(more) {

@@ -1,4 +1,4 @@
-package dev.dexsr.klio.android.main.compose.md3
+package dev.dexsr.klio.android.main.root.compose.md3
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.RememberObserver

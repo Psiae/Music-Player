@@ -51,7 +51,7 @@ dependencies {
 
     /* androidx.media3 */
     dependencies {
-        val v = "1.0.0"
+        val v = "1.1.1"
         api("androidx.media3:media3-exoplayer:$v")
         api("androidx.media3:media3-session:$v")
         api("androidx.media3:media3-common:$v")

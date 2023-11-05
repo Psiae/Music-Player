@@ -74,6 +74,13 @@ private fun LocalSongListsColumn(
 	) {
 		val lazyColumnState = rememberLazyListState()
 		LazyColumn() {
+			item() {
+				Spacer(
+					modifier = Modifier
+						.fillMaxWidth()
+						.height(LocalLayoutVisibility.LocalTopBar.current)
+				)
+			}
 			val localSongs = vm.listState.read()
 			itemsIndexed(
 				items = localSongs,

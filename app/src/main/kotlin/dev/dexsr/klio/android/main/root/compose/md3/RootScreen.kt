@@ -1,4 +1,4 @@
-package dev.dexsr.klio.android.main.compose.md3
+package dev.dexsr.klio.android.main.root.compose.md3
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
@@ -8,7 +8,7 @@ import androidx.compose.ui.layout.Layout
 import com.flammky.musicplayer.core.sdk.AndroidAPI
 import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.hasSnowCone
 import dev.dexsr.klio.base.compose.ComposableFun
-import dev.dexsr.klio.base.compose.SimpleLayoutMeasurePolicy
+import dev.dexsr.klio.base.compose.SimpleStackLayoutMeasurePolicy
 import dev.dexsr.klio.base.theme.md3.compose.DefaultMaterial3Theme
 import dev.dexsr.klio.base.theme.md3.compose.localMaterial3Background
 
@@ -19,7 +19,9 @@ internal fun MD3RootScreen() {
 		dark = isSystemInDarkTheme()
 	) {
 		MD3RootSurface {
-			MD3RootContent(modifier = Modifier)
+			MD3RootContent(
+				modifier = Modifier
+			)
 		}
 	}
 }
@@ -30,10 +32,10 @@ private inline fun MD3RootSurface(
 	content: ComposableFun
 ) {
 	Layout(
-		modifier = Modifier
+		modifier = modifier
 			.fillMaxSize()
 			.localMaterial3Background(),
 		content = content,
-		measurePolicy = SimpleLayoutMeasurePolicy
+		measurePolicy = SimpleStackLayoutMeasurePolicy
 	)
 }

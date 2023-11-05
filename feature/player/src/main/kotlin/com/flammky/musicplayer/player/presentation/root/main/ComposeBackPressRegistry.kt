@@ -2,7 +2,7 @@ package com.flammky.musicplayer.player.presentation.root.main
 
 import androidx.compose.runtime.mutableStateListOf
 
-class BackPressRegistry {
+class ComposeBackPressRegistry {
 
     private var backPressConsumers = mutableStateListOf<BackPressConsumer>()
 

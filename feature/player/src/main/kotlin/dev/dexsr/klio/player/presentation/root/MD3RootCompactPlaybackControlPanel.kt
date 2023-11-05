@@ -3,26 +3,36 @@ package dev.dexsr.klio.player.presentation.root
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.SubcomposeLayout
+import androidx.compose.ui.platform.AndroidUiDispatcher
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.*
 import androidx.compose.ui.util.fastForEach
 import androidx.compose.ui.util.fastMap
 import androidx.compose.ui.util.fastMaxBy
+import coil.compose.rememberAsyncImagePainter
+import coil.request.ImageRequest
 import com.flammky.musicplayer.base.auth.AuthService
+import com.flammky.musicplayer.base.theme.Theme
+import com.flammky.musicplayer.base.theme.compose.surfaceVariantContentColorAsState
 import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.player.presentation.root.RootPlaybackControlCompact
 import com.flammky.musicplayer.player.presentation.root.rememberRootPlaybackControlCompactState
 import dev.dexsr.klio.base.compose.Stack
-import kotlinx.coroutines.delay
+import dev.dexsr.klio.player.presentation.LocalMediaArtwork
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 @Composable
 fun MD3RootCompactPlaybackControlPanel(
@@ -54,10 +64,11 @@ fun TransitioningRootCompactPlaybackControlPanel(
     state: RootCompactPlaybackControlPanelState,
     bottomSpacing: Dp
 ) {
-    val offset = transitioningRootCompactPlaybackControlOffset(
+    val offset = transitioningRootCompactPlaybackControlOffsetAsState(
         state = state,
-        bottomSpacing
-    )
+        height = 56.dp,
+        bottomSpacing = bottomSpacing
+    ).value
     Stack(modifier.offset { IntOffset(offset.x.roundToPx(), offset.y.roundToPx()) }) {
         SubcomposeLayout() { constraints ->
             val layoutHeight = 56.dp
@@ -112,7 +123,8 @@ fun TransitioningRootCompactPlaybackControlPanel(
                             .minus(pcPadding.calculateBottomPadding())
                     }.coerceAtLeast(0.dp)
                 RootCompactPlaybackControlArtworkDisplay(
-                    modifier = Modifier.size(size = size)
+                    modifier = Modifier.size(size = size),
+                    state= state
                 )
             }.fastMap { measurable ->
                 measurable
@@ -230,36 +242,153 @@ private fun OldRootPlaybackControlPanel(
 }
 
 @Composable
+private fun transitioningRootCompactPlaybackControlOffsetAsState(
+    state: RootCompactPlaybackControlPanelState,
+    height: Dp,
+    bottomSpacing: Dp
+): State<DpOffset> {
+    val bottomSpacingState = rememberUpdatedState(newValue = bottomSpacing)
+    val heightState = rememberUpdatedState(newValue = height)
+    val animatable = remember(state) {
+        Animatable(
+            initialValue = heightState.value,
+            typeConverter = Dp.VectorConverter,
+        )
+    }
+    DisposableEffect(
+        key1 = state,
+        key2 = animatable,
+        effect = {
+            val coroutineScope = CoroutineScope(SupervisorJob())
+
+            coroutineScope.launch(Dispatchers.Main) {
+                var task: Job? = null
+                snapshotFlow { state.freeze }
+                    .distinctUntilChanged()
+                    .collect { freeze ->
+                        task?.cancel()
+                        if (freeze) return@collect
+                        task = launch {
+                            var animator: Job? = null
+                            state.playbackController
+                                .currentlyPlayingMediaIdAsFlow()
+                                .distinctUntilChanged()
+                                .collect { mediaID ->
+                                    animator?.cancel()
+                                    animator = launch {
+                                        if (mediaID == null) {
+                                            snapshotFlow { heightState.value }
+                                                .distinctUntilChanged()
+                                                .collect { target ->
+                                                    withContext(AndroidUiDispatcher.Main) {
+                                                        animatable.animateTo(target, animationSpec = tween(200))
+                                                    }
+                                                }
+                                        } else {
+                                            snapshotFlow { bottomSpacingState.value.unaryMinus() }
+                                                .distinctUntilChanged()
+                                                .collect { target ->
+                                                    withContext(AndroidUiDispatcher.Main) {
+                                                        animatable.animateTo(target, animationSpec = tween(200))
+                                                    }
+                                                }
+                                        }
+                                    }
+                                }
+                        }
+                    }
+            }
+
+
+            onDispose { coroutineScope.cancel() }
+        }
+    )
+    return remember(state) {
+        derivedStateOf { DpOffset(x = 0.dp, y = animatable.value) }
+    }
+}
+
+@Composable
 private fun RootCompactPlaybackControlArtworkDisplay(
-    modifier: Modifier
+    modifier: Modifier,
+    state: RootCompactPlaybackControlPanelState
 ) {
-    // temp
-    Box(
+    val ctx = LocalContext.current
+    val artState = currentlyPlayingArtworkAsState(state = state, resetOnChange = false)
+    val model = remember(artState.value) {
+        ImageRequest.Builder(ctx)
+            .data(artState.value?.image?.value)
+            .crossfade(true)
+            .build()
+    }
+    val clickableModifier = state.onArtClicked
+        ?.let { onArtClicked ->
+            Modifier.clickable(enabled = !state.freeze) { if (!state.freeze) onArtClicked() }
+        }
+        ?: Modifier
+    Image(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.Yellow)
+            .clip(RoundedCornerShape(5.dp))
+            .background(Theme.surfaceVariantContentColorAsState().value)
+            .then(clickableModifier),
+        painter = rememberAsyncImagePainter(model = model),
+        contentDescription = "Currently Playing Artwork",
+        contentScale = if (artState.value?.allowTransform != true) {
+            ContentScale.Fit
+        } else {
+            ContentScale.Crop
+        }
     )
 }
 
 @Composable
-private fun transitioningRootCompactPlaybackControlOffset(
+private fun currentlyPlayingArtworkAsState(
     state: RootCompactPlaybackControlPanelState,
-    bottomSpacing: Dp
-): DpOffset {
-    // TOO
-    val dpOffset = remember {
-        Animatable(
-            initialValue = 56.dp,
-            typeConverter = Dp.VectorConverter,
-        )
-    }.apply {
-        LaunchedEffect(
-            key1 = this,
-            block = {
-                delay(2000)
-                animateTo(-bottomSpacing, tween(500))
-            }
-        )
+    resetOnChange: Boolean
+): State<LocalMediaArtwork?> {
+    val upResetOnChange = rememberUpdatedState(newValue = resetOnChange)
+    val returns = remember(state) {
+        mutableStateOf<LocalMediaArtwork?>(null)
     }
-    return remember(dpOffset.value) { DpOffset(0.dp, dpOffset.value) }
+    DisposableEffect(
+        key1 = state,
+        effect = {
+            val coroutineScope = CoroutineScope(SupervisorJob())
+
+            coroutineScope.launch(Dispatchers.Main) {
+                var task: Job? = null
+
+                snapshotFlow { state.freeze }
+                    .distinctUntilChanged()
+                    .collect { freeze ->
+                        task?.cancel()
+                        if (freeze) return@collect
+                        task = launch {
+                            var artworkCollector: Job? = null
+                            state.playbackController.currentlyPlayingMediaIdAsFlow()
+                                .distinctUntilChanged()
+                                .collect { mediaID ->
+                                    artworkCollector?.cancel()
+                                    if (upResetOnChange.value) {
+                                        returns.value = null
+                                    }
+                                    if (mediaID == null) {
+                                        returns.value = null
+                                        return@collect
+                                    }
+                                    artworkCollector = launch {
+                                        state.mediaMetadataProvider.artworkAsFlow(mediaID)
+                                            .collect { image -> returns.value = image }
+                                    }
+                                }
+                        }
+                    }
+
+            }
+
+            onDispose { coroutineScope.cancel() ; returns.value = null  }
+        }
+    )
+    return returns
 }

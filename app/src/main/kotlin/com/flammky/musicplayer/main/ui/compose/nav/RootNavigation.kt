@@ -38,7 +38,7 @@ import com.flammky.musicplayer.base.theme.compose.*
 import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.player.presentation.root.main.RootPlaybackControl
 import com.flammky.musicplayer.player.presentation.root.main.rememberRootPlaybackControlState
-import dev.dexsr.klio.android.main.root.compose.md3.RootBottomNavigationBar
+import dev.dexsr.klio.android.main.root.compose.md3.MD3RootBottomNavigationBar
 import dev.dexsr.klio.android.main.root.compose.md3.rememberRootBottomNavigationBarState
 
 @Composable
@@ -105,7 +105,7 @@ private class RootNavigationState(
 			Scaffold(
 				modifier = Modifier.fillMaxSize(),
 				bottomBar = {
-					RootBottomNavigationBar(
+					MD3RootBottomNavigationBar(
 						state = rememberRootBottomNavigationBarState(navController = navController),
 						systemNavigationBarSpacing = true
 					)
@@ -120,7 +120,7 @@ private class RootNavigationState(
 					mutableStateOf(0.dp)
 				}.apply {
 					value = maxOf(
-						LocalLayoutVisibility.LocalTopBar.current,
+						LocalLayoutVisibility.Top.current,
 						contentPadding.calculateTopPadding()
 					)
 				}
@@ -128,14 +128,14 @@ private class RootNavigationState(
 					mutableStateOf(0.dp)
 				}.apply {
 					value = maxOf(
-						LocalLayoutVisibility.LocalBottomBar.current,
+						LocalLayoutVisibility.Bottom.current,
 						contentPadding.calculateBottomPadding(),
 						with(LocalDensity.current) { playbackControlState.compactTopPositionFromAnchor.toDp() }
 					)
 				}
 				CompositionLocalProvider(
-					LocalLayoutVisibility.LocalTopBar provides topBarVisibility.value,
-					LocalLayoutVisibility.LocalBottomBar provides bottomBarVisibility.value
+					LocalLayoutVisibility.Top provides topBarVisibility.value,
+					LocalLayoutVisibility.Bottom provides bottomBarVisibility.value
 				) {
 					NavHost(
 						modifier = Modifier,

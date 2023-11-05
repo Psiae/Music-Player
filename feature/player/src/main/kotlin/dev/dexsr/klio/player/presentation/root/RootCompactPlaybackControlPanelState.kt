@@ -5,6 +5,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.dexsr.klio.base.compose.SnapshotRead
 import dev.dexsr.klio.base.compose.SnapshotWrite
+import dev.dexsr.klio.base.resource.LocalImage
+import kotlinx.coroutines.flow.Flow
 
 abstract class RootCompactPlaybackControlPanelState() {
 
@@ -17,6 +19,10 @@ abstract class RootCompactPlaybackControlPanelState() {
     abstract var heightFromAnchor: Dp
         @SnapshotRead get
         @SnapshotWrite set
+
+    abstract fun currentlyPlayingArtworkAsFlow(): Flow<LocalImage<*>>
+
+    abstract fun currentlyPlayingTimelineAsFlow(rangeFromCurrent: IntRange): Flow<PlaybackTimeline>
 }
 
 @Composable
@@ -48,4 +54,12 @@ private class RootCompactPlaybackControlPanelStateImpl(
 
     override var heightFromAnchor: Dp by mutableStateOf(0.dp)
         @SnapshotRead get
+
+    override fun currentlyPlayingArtworkAsFlow(): Flow<LocalImage<*>> {
+        TODO("Not yet implemented")
+    }
+
+    override fun currentlyPlayingTimelineAsFlow(rangeFromCurrent: IntRange): Flow<PlaybackTimeline> {
+        TODO("Not yet implemented")
+    }
 }

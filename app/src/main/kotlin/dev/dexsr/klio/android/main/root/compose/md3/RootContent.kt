@@ -14,9 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -25,48 +23,41 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEach
 import androidx.compose.ui.util.fastMap
 import androidx.compose.ui.util.fastMaxBy
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.LifecycleOwner
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.flammky.musicplayer.base.compose.LocalLayoutVisibility
-import com.flammky.musicplayer.base.theme.Theme
-import com.flammky.musicplayer.base.theme.compose.backgroundContentColorAsState
-import com.flammky.musicplayer.base.theme.compose.secondaryContainerContentColorAsState
-import com.flammky.musicplayer.base.theme.compose.surfaceVariantContentColorAsState
 import com.flammky.musicplayer.main.presentation.root.MaterialDesign3Theme
-import com.flammky.musicplayer.main.presentation.root.RootEntry
 import dev.dexsr.klio.android.main.root.compose.OldRootNavHost
 import dev.dexsr.klio.base.compose.*
-import dev.dexsr.klio.base.compose.systeminsets.systemNavigationBarsPadding
+import dev.dexsr.klio.android.base.systeminsets.compose.systemNavigationBarsPadding
 import dev.dexsr.klio.base.resource.LocalImage
 import dev.dexsr.klio.base.theme.md3.MD3Spec
 import dev.dexsr.klio.base.theme.md3.MD3Theme
 import dev.dexsr.klio.base.theme.md3.components.navigationbar.BottomNavigationBarElevation
 import dev.dexsr.klio.base.theme.md3.components.navigationbar.BottomNavigationBarHeightDp
 import dev.dexsr.klio.base.theme.md3.components.navigationbar.BottomNavigationBarWidthDp
+import dev.dexsr.klio.base.theme.md3.compose.backgroundContentColorAsState
+import dev.dexsr.klio.base.theme.md3.compose.secondaryContainerContentColorAsState
 import dev.dexsr.klio.base.theme.md3.compose.surfaceColorAtElevation
+import dev.dexsr.klio.base.theme.md3.compose.surfaceVariantContentColorAsState
 import dev.dexsr.klio.player.presentation.root.*
-import timber.log.Timber
 
 @Composable
 internal fun MD3RootContent(
 	modifier: Modifier = Modifier,
 ) {
-	/*MD3RootContent(
-		modifier = modifier.navigationBarsPadding(),
-		bottomNavigationBarState = rememberRootBottomNavigationBarState()
-	)*/
-
 	// test
 	MaterialDesign3Theme {
 		CompositionLocalProvider(
-			LocalLayoutVisibility.LocalTopBar provides with(LocalDensity.current) {
+			LocalLayoutVisibility.Top provides with(LocalDensity.current) {
 				WindowInsets.statusBars.getTop(LocalDensity.current).toDp()
 			}
 		) {
-			val pState = rememberRootPlaybackControlScreenState()
+			val pState = rememberRootPlaybackControlScreenState(
+
+			)
 			val pCompactState = rememberRootCompactPlaybackControlPanelState(
 				onArtClicked = { pState.showSelf = true },
 				onSurfaceClicked = { pState.showSelf = true }
@@ -91,10 +82,8 @@ private fun MD3RootContent(
 ) {
 	val lifecycleOwner = LocalLifecycleOwner.current
 	val navHostBackPressDispatcherOwner = remember(lifecycleOwner) {
-		object : OnBackPressedDispatcherOwner {
+		object : OnBackPressedDispatcherOwner, LifecycleOwner by lifecycleOwner {
 			override val onBackPressedDispatcher: OnBackPressedDispatcher = OnBackPressedDispatcher()
-			override val lifecycle : Lifecycle
-				get() = lifecycleOwner.lifecycle
 		}
 	}
 	MD3RootContentProvidableLocals(
@@ -105,14 +94,14 @@ private fun MD3RootContent(
 			val contentConstraints = constraints.copy(minWidth = 0, minHeight = 0)
 
 			val bottomNavigationBar = subcompose("BottomNavigationBar") {
-				RootBottomNavigationBar(
+				MD3RootBottomNavigationBar(
 					state = rememberRootBottomNavigationBarState(navController = navHostController),
 					systemNavigationBarSpacing = true
 				)
 			}.fastMap { it.measure(contentConstraints) }
 
 			val compactPlaybackControlPanel = subcompose("CompactPlaybackControlPanel") {
-				RootCompactPlaybackControlPanel(
+				MD3RootCompactPlaybackControlPanel(
 					state = compactPlaybackControlPanelState,
 					bottomSpacing = bottomNavigationBar.maxOfOrNull { it.height }?.toDp() ?: 0.dp
 				)
@@ -121,7 +110,7 @@ private fun MD3RootContent(
 			val navHost = subcompose("NavHost") {
 				OldRootNavHost(
 					onBackPressedDispatcherOwner = navHostBackPressDispatcherOwner,
-					topBarVisibilitySpacing = 0.dp,
+					topBarVisibilitySpacing = LocalLayoutVisibility.Top.current,
 					bottomBarVisibilitySpacing = maxOf(
 						bottomNavigationBar.maxOfOrNull { it.height }?.toDp() ?: 0.dp,
 						compactPlaybackControlPanelState.heightFromAnchor,
@@ -140,7 +129,6 @@ private fun MD3RootContent(
 				}
 				run {
 					val height = bottomNavigationBar.fastMaxBy { it.height }?.height ?: 0
-					Timber.d("DEBUG: $height")
 					bottomNavigationBar.fastForEach { it.place(x = 0, y = constraints.maxHeight - height) }
 				}
 				run {
@@ -183,7 +171,7 @@ private fun MD3RootContentProvidableLocals(
 
 // TODO: internal for testing with existing
 @Composable
-internal fun RootBottomNavigationBar(
+internal fun MD3RootBottomNavigationBar(
 	modifier: Modifier = Modifier,
 	state: RootBottomNavigationBarState,
 	systemNavigationBarSpacing: Boolean
@@ -191,7 +179,7 @@ internal fun RootBottomNavigationBar(
 	Box(
 		modifier = modifier
 	) {
-		RootBottomNavigationBarContent(
+		MD3RootBottomNavigationBarContent(
 			modifier = Modifier
 				.background(MD3Theme.surfaceColorAtElevation(elevation = MD3Spec.BottomNavigationBarElevation.dp))
 				.combineIf(systemNavigationBarSpacing) { Modifier.systemNavigationBarsPadding() }
@@ -203,7 +191,7 @@ internal fun RootBottomNavigationBar(
 }
 
 @Composable
-private fun RootBottomNavigationBarContent(
+private fun MD3RootBottomNavigationBarContent(
 	modifier: Modifier = Modifier,
 	state: RootBottomNavigationBarState
 ) {
@@ -242,16 +230,16 @@ private fun RootBottomNavigationBarContent(
 						modifier = Modifier.size(24.dp),
 						painter = painter,
 						tint = if (selected) {
-							Theme.secondaryContainerContentColorAsState().value
+							MD3Theme.secondaryContainerContentColorAsState().value
 						} else {
-							Theme.surfaceVariantContentColorAsState().value
+							MD3Theme.surfaceVariantContentColorAsState().value
 						},
 						contentDescription = null
 					)
 				},
 				label = {
 					Text(
-						color = Theme.backgroundContentColorAsState().value,
+						color = MD3Theme.backgroundContentColorAsState().value,
 						fontWeight = MaterialTheme.typography.labelMedium.fontWeight,
 						fontSize = MaterialTheme.typography.labelMedium.fontSize,
 						fontStyle = MaterialTheme.typography.labelMedium.fontStyle,

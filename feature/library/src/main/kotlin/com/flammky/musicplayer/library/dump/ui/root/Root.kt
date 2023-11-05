@@ -257,7 +257,7 @@ private fun LocalContents(
 						navController.navigate(route)
 					}
 				)
-				Spacer(modifier = Modifier.height(LocalLayoutVisibility.LocalBottomBar.current))
+				Spacer(modifier = Modifier.height(LocalLayoutVisibility.Bottom.current))
 			}
 		}
 		false -> @OptIn(ExperimentalPermissionsApi::class) {
@@ -328,7 +328,7 @@ private fun LocalContents(
 					modifier = Modifier.height(MD3Theme.dpPaddingIncrementsOf(15))
 				)
 				Spacer(
-					modifier = Modifier.height(LocalLayoutVisibility.LocalBottomBar.current)
+					modifier = Modifier.height(LocalLayoutVisibility.Bottom.current)
 				)
 			}
 		}

@@ -78,7 +78,7 @@ private fun LocalSongListsColumn(
 				Spacer(
 					modifier = Modifier
 						.fillMaxWidth()
-						.height(LocalLayoutVisibility.LocalTopBar.current)
+						.height(LocalLayoutVisibility.Top.current)
 				)
 			}
 			val localSongs = vm.listState.read()
@@ -104,7 +104,7 @@ private fun LocalSongListsColumn(
 			item() {
 				Spacer(modifier = Modifier
 					.fillMaxWidth()
-					.height(LocalLayoutVisibility.LocalBottomBar.current))
+					.height(LocalLayoutVisibility.Bottom.current))
 			}
 		}
 	}
@@ -171,6 +171,7 @@ private fun LocalSongListsItem(
 						.fillMaxSize(0.5f)
 						.aspectRatio(1f),
 					painter = painterResource(id = id),
+					tint = Color.Unspecified,
 					contentDescription = "More",
 				)
 			}

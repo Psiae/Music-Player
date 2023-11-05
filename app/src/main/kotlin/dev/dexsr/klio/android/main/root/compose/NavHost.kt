@@ -21,8 +21,8 @@ internal fun OldRootNavHost(
 ) {
 	CompositionLocalProvider(
 		LocalOnBackPressedDispatcherOwner provides onBackPressedDispatcherOwner,
-		LocalLayoutVisibility.LocalTopBar provides topBarVisibilitySpacing,
-		LocalLayoutVisibility.LocalBottomBar provides bottomBarVisibilitySpacing
+		LocalLayoutVisibility.Top provides topBarVisibilitySpacing,
+		LocalLayoutVisibility.Bottom provides bottomBarVisibilitySpacing
 	) {
 		NavHost(
 			modifier = Modifier,

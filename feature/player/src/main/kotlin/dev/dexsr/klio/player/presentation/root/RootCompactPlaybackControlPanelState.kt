@@ -37,6 +37,10 @@ class RootCompactPlaybackControlPanelState internal constructor(
         @SnapshotRead get
         @SnapshotWrite set
 
+    var isSurfaceDark: Boolean by mutableStateOf(false)
+        @SnapshotRead get
+        @SnapshotWrite set
+
     @MainThread
     fun params(
         onArtClicked: (() -> Unit)?,

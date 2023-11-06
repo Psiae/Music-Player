@@ -1,12 +1,18 @@
 package dev.dexsr.klio.player.presentation.root
 
+import android.graphics.Bitmap
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.LinearProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -14,32 +20,37 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.AndroidUiDispatcher
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.*
 import androidx.compose.ui.util.fastForEach
 import androidx.compose.ui.util.fastMap
 import androidx.compose.ui.util.fastMaxBy
+import androidx.palette.graphics.Palette
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.flammky.musicplayer.base.auth.AuthService
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.*
 import com.flammky.musicplayer.base.user.User
+import com.flammky.musicplayer.player.R
 import com.flammky.musicplayer.player.presentation.root.RootPlaybackControlCompact
 import com.flammky.musicplayer.player.presentation.root.rememberRootPlaybackControlCompactState
 import dev.dexsr.klio.base.compose.Stack
+import dev.dexsr.klio.base.compose.consumeDownGesture
 import dev.dexsr.klio.base.theme.md3.MD3Theme
-import dev.dexsr.klio.base.theme.md3.compose.backgroundContentColorAsState
-import dev.dexsr.klio.base.theme.md3.compose.blackOrWhite
-import dev.dexsr.klio.base.theme.md3.compose.surfaceVariantColorAsState
+import dev.dexsr.klio.base.theme.md3.compose.*
 import dev.dexsr.klio.player.presentation.LocalMediaArtwork
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.distinctUntilChanged
 import timber.log.Timber
+import kotlin.coroutines.resume
+import kotlin.math.roundToInt
 import kotlin.time.Duration
 
 @Composable
@@ -74,12 +85,16 @@ fun TransitioningRootCompactPlaybackControlPanel(
 ) {
     val offset = transitioningRootCompactPlaybackControlOffsetAsState(
         state = state,
-        height = 56.dp,
+        height = 65.dp,
         bottomSpacing = bottomSpacing
     ).value
-    Stack(modifier.offset { IntOffset(offset.x.roundToPx(), offset.y.roundToPx()) }) {
+    Stack(
+        modifier
+            .offset { IntOffset(offset.x.roundToPx(), offset.y.roundToPx()) }
+            .consumeDownGesture()
+    ) {
         SubcomposeLayout() { constraints ->
-            val layoutHeight = 56.dp
+            val layoutHeight = 65.dp
                 .roundToPx()
                 .coerceIn(0, constraints.maxHeight)
             val layoutWidth = constraints.maxWidth
@@ -95,22 +110,14 @@ fun TransitioningRootCompactPlaybackControlPanel(
 
             val surface = subcompose("Surface") {
                 // temp
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Green)
-                )
+               RootCompactPlaybackControlSurface(
+                   modifier = Modifier,
+                   state = state
+               )
             }.fastMap { it.measure(contentConstraints) }
 
             var progressBarHeight = 0
             val progressBar = subcompose("ProgressBar") {
-                Box(
-                    modifier = Modifier
-                        .sizeIn(maxHeight = 3.dp)
-                        .fillMaxHeight()
-                        .fillMaxWidth()
-                        .background(Color.Magenta)
-                )
                 RootCompactPlaybackControlProgressBar(
                     modifier = Modifier
                         .sizeIn(maxHeight = 3.dp)
@@ -147,6 +154,7 @@ fun TransitioningRootCompactPlaybackControlPanel(
             }
 
             var controlWidth = 0
+            var controlHeight = 0
             val control = subcompose("Control") {
                 val layoutHeight = layoutHeight - progressBarHeight
                 val maxHeight = layoutHeight.toDp()
@@ -157,18 +165,16 @@ fun TransitioningRootCompactPlaybackControlPanel(
                     .minus(artworkWidth.toDp())
                     .minus(7.dp).minus(7.dp)
                     .minus(pcPadding.calculateRightPadding(ltr))
-                // temp
-                Box(
+                RootCompactPlaybackControlButtons(
                     modifier = Modifier
-                        .sizeIn(maxWidth = maxWidth, maxHeight = maxHeight)
-                        .fillMaxHeight()
-                        .width(((24 * 3) + (7 * (3 - 1))).dp)
-                        .background(Color.Blue)
+                        .sizeIn(maxWidth = maxWidth, maxHeight = maxHeight),
+                    state = state
                 )
             }.fastMap { measurable ->
                 measurable
                     .measure(contentConstraints)
                     .also { if (it.width > controlWidth) controlWidth = it.width }
+                    .also { if (it.height > controlHeight) controlHeight = it.height }
             }
 
             var pagerWidth = 0
@@ -218,7 +224,13 @@ fun TransitioningRootCompactPlaybackControlPanel(
                     pager.fastForEach { it.place(x = leftOffset, y = topOffset) }
                 }
                 run {
-                    val topOffset = pcPadding.calculateTopPadding().roundToPx()
+                    val topOffset = run {
+                        layoutHeight
+                            .minus(progressBarHeight)
+                            .div(2f)
+                            .minus(controlHeight.toFloat().div(2))
+                            .roundToInt()
+                    }
                     val leftOffset = layoutWidth - controlWidth - pcPadding.calculateRightPadding(ltr).roundToPx()
                     control.fastForEach { it.place(x = leftOffset, y = topOffset) }
                 }
@@ -558,4 +570,280 @@ private fun animatePlaybackProgressAsState(
     return remember(animatable) {
         derivedStateOf { animatable.value }
     }
+}
+
+
+@Composable
+private fun RootCompactPlaybackControlButtons(
+    modifier: Modifier,
+    state: RootCompactPlaybackControlPanelState
+) {
+    Stack(modifier) {
+        SubcomposeLayout { constraints ->
+
+            val contentConstraints = constraints.copy(minWidth = 0, minHeight = 0)
+            val spacerPx = 3.dp.roundToPx()
+
+            var playPauseButtonWidth = 0
+            var playPauseButtonHeight = 0
+            val playPauseButton = subcompose("PlayPauseButton") {
+                RootCompactPlaybackControlPlayPauseButton(modifier = Modifier, state = state)
+            }.fastMap { measurable ->
+                measurable.measure(contentConstraints)
+                    .also {
+                        if (it.width > playPauseButtonWidth) playPauseButtonWidth = it.width
+                        if (it.height > playPauseButtonHeight) playPauseButtonHeight = it.height
+                    }
+            }
+
+            var futureSlot2Width = 0
+            var futureSlot2Height = 0
+            val futureSlot2 = subcompose("FutureSlot2") {
+                Box(modifier = Modifier.size(35.dp))
+            }.fastMap { measurable ->
+                measurable.measure(contentConstraints)
+                    .also {
+                        if (it.width > futureSlot2Width) futureSlot2Width = it.width
+                        if (it.height > futureSlot2Height) futureSlot2Height = it.height
+                    }
+            }
+
+            var futureSlot3Width = 0
+            var futureSlot3Height = 0
+            val futureSlot3 = subcompose("FutureSlot3") {
+                Box(modifier = Modifier.size(35.dp))
+            }.fastMap { measurable ->
+                measurable.measure(contentConstraints)
+                    .also {
+                        if (it.width > futureSlot3Width) futureSlot3Width = it.width
+                        if (it.height > futureSlot3Height) futureSlot3Height = it.height
+                    }
+            }
+
+            layout(
+                height = maxOf(playPauseButtonHeight, futureSlot2Height, futureSlot3Height),
+                width = playPauseButtonWidth + (spacerPx) + futureSlot2Width +
+                        (spacerPx) + futureSlot3Width
+            ) {
+                futureSlot3.fastForEach { it.place(0, 0) }
+                futureSlot2.fastForEach { it.place(futureSlot3Width + spacerPx, 0) }
+                playPauseButton.fastForEach { it.place(futureSlot3Width + spacerPx + futureSlot2Width + spacerPx, 0) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RootCompactPlaybackControlPlayPauseButton(
+    modifier: Modifier,
+    state: RootCompactPlaybackControlPanelState
+) {
+    val progressionState by playbackProgressionStateAsSnapshotState(panelState = state)
+    // IsPlaying callback from mediaController is somewhat not accurate
+    val showPlay = !progressionState.playWhenReady
+    val allowPlay = showPlay && progressionState.canPlay
+    val icon =
+        if (showPlay) {
+            R.drawable.play_filled_round_corner_32
+        } else {
+            R.drawable.pause_filled_narrow_rounded_corner_32
+        }
+
+    val interactionSource = remember { MutableInteractionSource() }
+    Box(
+        modifier = modifier
+            .size(35.dp)
+            .clickable(
+                enabled = !state.freeze && !showPlay || allowPlay,
+                interactionSource = interactionSource,
+                indication = LocalIndication.current,
+            ) {
+                if (state.freeze) {
+                    return@clickable
+                }
+                if (showPlay) {
+                    state.playbackController.play()
+                } else {
+                    state.playbackController.pause()
+                }
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        val pressed by interactionSource.collectIsPressedAsState()
+        val size by animateDpAsState(targetValue =  if (pressed) 24.dp else 26.dp)
+        Icon(
+            modifier = Modifier
+                .size(size)
+            ,
+            painter = painterResource(id = icon),
+            contentDescription = null,
+            tint = remember(state.isSurfaceDark, showPlay, allowPlay) {
+                if (!state.isSurfaceDark) {
+                    Color(0xFF0F0F0F)
+                } else {
+                    Color(0xFFEBEBEB)
+                }.let {
+                    // TODO: define alpha spec
+                    if (showPlay && !allowPlay) it.copy(alpha  = 0.38f) else it
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun playbackProgressionStateAsSnapshotState(
+    panelState: RootCompactPlaybackControlPanelState
+): State<PlaybackProgressionState> {
+    val returns = remember(panelState) {
+        mutableStateOf<PlaybackProgressionState>(PlaybackProgressionState.UNSET)
+    }
+
+    DisposableEffect(
+        panelState,
+        returns,
+        effect = {
+            val coroutineScope = CoroutineScope(SupervisorJob())
+
+            coroutineScope.launch {
+
+                var collector: Job? = null
+                snapshotFlow { panelState.freeze }
+                    .distinctUntilChanged()
+                    .collect { freeze ->
+                        collector?.cancel()
+                        if (freeze) {
+                            return@collect
+                        }
+                        collector = launch {
+                            panelState.playbackController.playbackProgressionStateAsFlow()
+                                .collect { progression ->
+                                    returns.value = progression
+                                }
+                        }
+                    }
+            }
+
+            onDispose { coroutineScope.cancel() }
+        }
+    )
+
+
+    return returns
+}
+
+@Composable
+private fun RootCompactPlaybackControlSurface(
+    modifier: Modifier,
+    state: RootCompactPlaybackControlPanelState
+) {
+    val colorState = animatedCompositeSurfacePaletteColorAsState(
+        dark = LocalIsThemeDark.current,
+        compositeFactor = 0.78f,
+        compositeOver = MD3Theme.surfaceVariantColorAsState().value,
+        state = state
+    )
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(colorState.value)
+    )
+    SideEffect {
+        state.isSurfaceDark = colorState.value.luminance() < (155f / 255f)
+    }
+}
+
+@Composable
+private fun animatedCompositeSurfacePaletteColorAsState(
+    dark: Boolean,
+    compositeFactor: Float,
+    compositeOver: Color,
+    state: RootCompactPlaybackControlPanelState
+): State<Color> {
+    val paletteColor = surfacePaletteColor(dark = dark, state)
+    return animateColorAsState(
+        targetValue = remember(paletteColor, compositeFactor, compositeOver) {
+            paletteColor.takeIf { it != Color.Unspecified }
+                ?.copy(compositeFactor)
+                ?.compositeOver(compositeOver)
+                ?: compositeOver
+        },
+        animationSpec = tween(150)
+    )
+}
+
+@Composable
+private fun surfacePaletteColor(
+    dark: Boolean,
+    state: RootCompactPlaybackControlPanelState
+): Color {
+    val paletteColorState = remember(state) {
+        mutableStateOf(Color.Unspecified)
+    }
+    val upDark = rememberUpdatedState(newValue = dark)
+    DisposableEffect(
+        state,
+        effect = {
+            val coroutineScope = CoroutineScope(SupervisorJob())
+
+            coroutineScope.launch {
+                var mediaIdCollector: Job? = null
+
+                snapshotFlow { state.freeze }
+                    .distinctUntilChanged()
+                    .collect { freeze ->
+                        mediaIdCollector?.cancel()
+                        if (freeze) return@collect
+                        mediaIdCollector = launch {
+                            var artCollector: Job? = null
+                            state.playbackController.currentlyPlayingMediaIdAsFlow()
+                                .distinctUntilChanged()
+                                .collect { id ->
+                                    artCollector?.cancel()
+                                    if (id == null) return@collect
+                                    artCollector = launch {
+                                        var paletteWorker: Job? = null
+                                        state.mediaMetadataProvider.artworkAsFlow(id)
+                                            .collect { art ->
+                                                paletteWorker?.cancel()
+                                                val rawArt = art?.image?.value
+                                                if (rawArt !is Bitmap) {
+                                                    // TODO: transform
+                                                    paletteColorState.value = Color.Unspecified
+                                                    return@collect
+                                                }
+                                                paletteWorker = launch {
+                                                    val gen = suspendCancellableCoroutine<Palette?> { cont ->
+                                                        Palette.from(rawArt).maximumColorCount(16).generate() { palette ->
+                                                            cont.resume(palette)
+                                                        }
+                                                    }
+                                                    if (gen == null) {
+                                                        paletteColorState.value = Color.Unspecified
+                                                        return@launch
+                                                    }
+                                                    snapshotFlow { upDark.value }
+                                                        .collect { dark ->
+                                                            val int = gen.run {
+                                                                if (dark) {
+                                                                    getDarkVibrantColor(getVibrantColor(getLightVibrantColor(getDominantColor(-1))))
+                                                                } else {
+                                                                    getLightVibrantColor(getVibrantColor(getDarkVibrantColor(getDominantColor(-1))))
+                                                                }
+                                                            }
+                                                            paletteColorState.value = if (int == -1) Color.Unspecified else Color(int)
+                                                        }
+                                                }
+                                            }
+                                    }
+                                }
+                        }
+                    }
+            }
+
+            onDispose { coroutineScope.cancel() }
+        }
+    )
+
+    return paletteColorState.value
 }

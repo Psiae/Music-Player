@@ -10,6 +10,15 @@ interface RootCompactPlaybackController {
     fun playbackProgressAsFlow(
         uiWidthDp: Float
     ): Flow<PlaybackProgress>
+
+    fun playbackProgressionStateAsFlow(
+
+    ): Flow<PlaybackProgressionState>
+
+    fun play()
+
+    fun pause()
+
 }
 
 object NoOpRootCompactPlaybackController : RootCompactPlaybackController {
@@ -17,4 +26,14 @@ object NoOpRootCompactPlaybackController : RootCompactPlaybackController {
     override fun currentlyPlayingMediaIdAsFlow(): Flow<String?> = flowOf()
 
     override fun playbackProgressAsFlow(uiWidthDp: Float): Flow<PlaybackProgress> = flowOf()
+
+    override fun playbackProgressionStateAsFlow(): Flow<PlaybackProgressionState> {
+        return flowOf()
+    }
+
+    override fun play() {
+    }
+
+    override fun pause() {
+    }
 }

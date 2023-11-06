@@ -4,6 +4,7 @@ import com.flammky.musicplayer.base.media.playback.PlaybackConstants
 import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.player.presentation.main.PlaybackControlViewModel
 import dev.dexsr.klio.player.presentation.root.PlaybackProgress
+import dev.dexsr.klio.player.presentation.root.PlaybackProgressionState
 import dev.dexsr.klio.player.presentation.root.RootCompactPlaybackController
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
@@ -107,6 +108,51 @@ internal class OldRootCompactPlaybackController(
             }
 
         }
+    }
+
+    override fun playbackProgressionStateAsFlow(): Flow<PlaybackProgressionState> {
+        return flow {
+            val channel = Channel<PlaybackProgressionState>(Channel.UNLIMITED)
+            val obs = playbackController.createPlaybackObserver()
+            try {
+                coroutineScope.launch {
+                    val pc = obs.createPropertiesCollector()
+                    try {
+                        pc.apply {
+                            startCollect().join()
+                        }
+                        pc.run {
+                            propertiesStateFlow
+                                .collect {
+                                    val progression = PlaybackProgressionState(
+                                        isPlaying = it.playing,
+                                        canPlay = it.canPlay,
+                                        playWhenReady = it.playWhenReady,
+                                        canPlayWhenReady = it.canPlayWhenReady
+                                    )
+                                    channel.send(progression)
+                                }
+                        }
+                    } finally {
+                        pc.dispose()
+                    }
+                }
+
+                for (element in channel) {
+                    emit(element)
+                }
+            } finally {
+                obs.dispose()
+            }
+        }
+    }
+
+    override fun play() {
+        playbackController.requestPlayAsync()
+    }
+
+    override fun pause() {
+        playbackController.requestSetPlayWhenReadyAsync(playWhenReady = false)
     }
 
     fun dispose() {

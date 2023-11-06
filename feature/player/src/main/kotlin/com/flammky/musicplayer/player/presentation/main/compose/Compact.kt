@@ -836,7 +836,7 @@ private fun AnimatedProgressBar(
 					setCollectEvent(true)
 					setIntervalHandler { isEvent, progress, buf, duration, speed ->
 						if (progress == Duration.ZERO || duration == Duration.ZERO || speed == 0f) {
-							PlaybackConstants.DURATION_UNSET
+							null
 						} else {
 							(duration.inWholeMilliseconds / width.value / speed).toLong()
 								.takeIf { it > 100 }?.milliseconds

@@ -1,18 +1,19 @@
 package dev.dexsr.klio.player.presentation.root
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.VectorConverter
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.LinearProgressIndicator
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.AndroidUiDispatcher
@@ -25,14 +26,21 @@ import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.flammky.musicplayer.base.auth.AuthService
 import com.flammky.musicplayer.base.theme.Theme
-import com.flammky.musicplayer.base.theme.compose.surfaceVariantContentColorAsState
+import com.flammky.musicplayer.base.theme.compose.*
 import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.player.presentation.root.RootPlaybackControlCompact
 import com.flammky.musicplayer.player.presentation.root.rememberRootPlaybackControlCompactState
 import dev.dexsr.klio.base.compose.Stack
+import dev.dexsr.klio.base.theme.md3.MD3Theme
+import dev.dexsr.klio.base.theme.md3.compose.backgroundContentColorAsState
+import dev.dexsr.klio.base.theme.md3.compose.blackOrWhite
+import dev.dexsr.klio.base.theme.md3.compose.surfaceVariantColorAsState
 import dev.dexsr.klio.player.presentation.LocalMediaArtwork
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.distinctUntilChanged
+import timber.log.Timber
+import kotlin.time.Duration
 
 @Composable
 fun MD3RootCompactPlaybackControlPanel(
@@ -102,6 +110,12 @@ fun TransitioningRootCompactPlaybackControlPanel(
                         .fillMaxHeight()
                         .fillMaxWidth()
                         .background(Color.Magenta)
+                )
+                RootCompactPlaybackControlProgressBar(
+                    modifier = Modifier
+                        .sizeIn(maxHeight = 3.dp)
+                        .fillMaxWidth(),
+                    state = state
                 )
             }.fastMap { measurable ->
                 measurable
@@ -276,11 +290,13 @@ private fun transitioningRootCompactPlaybackControlOffsetAsState(
                                 .collect { mediaID ->
                                     animator?.cancel()
                                     animator = launch {
+                                        var animateToTarget: Job? = null
                                         if (mediaID == null) {
                                             snapshotFlow { heightState.value }
                                                 .distinctUntilChanged()
                                                 .collect { target ->
-                                                    withContext(AndroidUiDispatcher.Main) {
+                                                    animateToTarget?.cancel()
+                                                    animateToTarget = launch(AndroidUiDispatcher.Main) {
                                                         animatable.animateTo(target, animationSpec = tween(200))
                                                     }
                                                 }
@@ -288,7 +304,8 @@ private fun transitioningRootCompactPlaybackControlOffsetAsState(
                                             snapshotFlow { bottomSpacingState.value.unaryMinus() }
                                                 .distinctUntilChanged()
                                                 .collect { target ->
-                                                    withContext(AndroidUiDispatcher.Main) {
+                                                    animateToTarget?.cancel()
+                                                    animateToTarget = launch(AndroidUiDispatcher.Main) {
                                                         animatable.animateTo(target, animationSpec = tween(200))
                                                     }
                                                 }
@@ -391,4 +408,154 @@ private fun currentlyPlayingArtworkAsState(
         }
     )
     return returns
+}
+
+@Composable
+private fun RootCompactPlaybackControlProgressBar(
+    modifier: Modifier,
+    state: RootCompactPlaybackControlPanelState
+) {
+    BoxWithConstraints(
+        modifier = modifier
+            .fillMaxSize()
+            .composed {
+                background(
+                    MD3Theme.surfaceVariantColorAsState().value
+                        .copy(alpha = 0.7f)
+                        .compositeOver(MD3Theme.blackOrWhite())
+                )
+            }
+    ) {
+
+        val progress = observePlaybackProgressAsState(
+            state = state,
+            progressIndicatorLengthDp = maxWidth.value,
+            bufferedProgressIndicatorLengthDp = maxWidth.value
+        ).value
+
+        LinearProgressIndicator(
+            modifier = remember { Modifier.fillMaxSize() },
+            color = MD3Theme.backgroundContentColorAsState().value.copy(alpha = 0.25f),
+            backgroundColor = Color.Transparent,
+            progress = animatePlaybackProgressAsState(
+                key = state,
+                position = progress.bufferedPosition,
+                duration = progress.duration,
+                animationSpec = tween(150)
+            ).value
+        )
+
+        LinearProgressIndicator(
+            modifier = remember { Modifier.fillMaxSize() },
+            color = MD3Theme.backgroundContentColorAsState().value,
+            backgroundColor = Color.Transparent,
+            progress = animatePlaybackProgressAsState(
+                key = state,
+                position = progress.position,
+                duration = progress.duration,
+                animationSpec = tween(150)
+            ).value
+        )
+    }
+}
+
+@Composable
+private fun observePlaybackProgressAsState(
+    state: RootCompactPlaybackControlPanelState,
+    progressIndicatorLengthDp: Float,
+    bufferedProgressIndicatorLengthDp: Float
+): State<PlaybackProgress> {
+    val returns = remember(state) {
+        mutableStateOf<PlaybackProgress>(PlaybackProgress.UNSET)
+    }
+
+    val upWidth = rememberUpdatedState(
+        newValue = minOf(
+            progressIndicatorLengthDp,
+            bufferedProgressIndicatorLengthDp
+        )
+    )
+
+    DisposableEffect(
+        key1 = state,
+        effect = {
+            val coroutineScope = CoroutineScope(SupervisorJob())
+
+            var latestCollector: Job? = null
+            coroutineScope.launch(Dispatchers.Main) {
+                snapshotFlow { upWidth.value }
+                    .collect { width ->
+                        latestCollector?.cancel()
+                        latestCollector = launch {
+                            state.playbackController.playbackProgressAsFlow(width)
+                                .collect { progress ->
+                                   returns.value = progress
+                                }
+                        }
+                    }
+            }
+
+            onDispose { coroutineScope.cancel() }
+        }
+    )
+
+    return returns
+}
+
+@Composable
+private fun animatePlaybackProgressAsState(
+    key: Any,
+    position: Duration,
+    duration: Duration,
+    animationSpec: AnimationSpec<Float>
+): State<Float> {
+    val animatable = remember(key) {
+        Animatable(
+            initialValue = 0f,
+            visibilityThreshold = 0.01f,
+        )
+    }
+    val animSpec: AnimationSpec<Float> by rememberUpdatedState(
+        animationSpec.run {
+            if (this is SpringSpec &&
+                this.visibilityThreshold != 0.01f
+            ) {
+                spring(dampingRatio, stiffness, visibilityThreshold)
+            } else {
+                this
+            }
+        }
+    )
+    val channel = remember(key) { Channel<Float>(Channel.CONFLATED) }
+    SideEffect {
+        val positionMS = position.inWholeMilliseconds
+        val durationMS = duration.inWholeMilliseconds
+        val targetValue = when {
+            positionMS <= 0 -> 0f
+            durationMS <= 0 -> 0f
+            positionMS > durationMS -> 1f
+            else -> positionMS.toFloat() / durationMS
+        }
+        Timber.d("DEBUG: position=$position, duration=$duration, targetValue=$targetValue")
+        channel.trySend(targetValue)
+    }
+    LaunchedEffect(channel) {
+        for (target in channel) {
+            // This additional poll is needed because when the channel suspends on receive and
+            // two values are produced before consumers' dispatcher resumes, only the first value
+            // will be received.
+            // It may not be an issue elsewhere, but in animation we want to avoid being one
+            // frame late.
+            val newTarget = channel.tryReceive().getOrNull() ?: target
+            launch {
+                if (newTarget != animatable.targetValue) {
+                    animatable.animateTo(newTarget, animSpec)
+                }
+            }
+        }
+    }
+
+    return remember(animatable) {
+        derivedStateOf { animatable.value }
+    }
 }

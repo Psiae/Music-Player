@@ -1,4 +1,4 @@
-package dev.dexsr.klio.player.presentation
+package dev.dexsr.klio.player.shared
 
 import dev.dexsr.klio.base.UNSET
 import dev.dexsr.klio.base.resource.LocalImage

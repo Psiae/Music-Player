@@ -1,4 +1,4 @@
-package dev.dexsr.klio.player.presentation.root
+package dev.dexsr.klio.player.android.presentation.root
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect

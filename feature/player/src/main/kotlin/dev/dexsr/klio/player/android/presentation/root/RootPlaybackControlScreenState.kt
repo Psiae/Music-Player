@@ -1,4 +1,4 @@
-package dev.dexsr.klio.player.presentation.root
+package dev.dexsr.klio.player.android.presentation.root
 
 import androidx.compose.runtime.*
 import com.flammky.musicplayer.player.presentation.root.main.ComposeBackPressRegistry

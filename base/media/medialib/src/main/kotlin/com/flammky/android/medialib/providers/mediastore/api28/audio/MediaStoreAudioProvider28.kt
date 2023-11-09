@@ -132,6 +132,10 @@ class MediaStoreAudioProvider28(private val context: MediaStoreContext)
 		}
 	}
 
+	private suspend fun queryByUriOrNull(uri: Uri): MediaStoreAudioEntity28? {
+		return runCatching { queryByUri(uri) }.getOrNull()
+	}
+
 
 	private fun rememberUris(key: Long, uris: List<Uri>) {
 		internalIoScope.launch {
@@ -185,7 +189,7 @@ class MediaStoreAudioProvider28(private val context: MediaStoreContext)
 				val id = "MediaStore_28_AUDIO_" + uri.toString().takeLastWhile { it.isDigit() }
 
 				if (resolvedFlag.isInsert) {
-					queryByUri(uri)?.file?.absolutePath?.let { path ->
+					queryByUriOrNull(uri)?.file?.absolutePath?.let { path ->
 						MediaScannerConnection.scanFile(context.android, arrayOf(path), null, null)
 					}
 				}
@@ -271,7 +275,7 @@ class MediaStoreAudioProvider28(private val context: MediaStoreContext)
 				return false
 			}
 			return try {
-				queryByUri(uri) == null
+				queryByUriOrNull(uri) == null
 			} catch (e: Exception) {
 				false
 			}
@@ -290,7 +294,7 @@ class MediaStoreAudioProvider28(private val context: MediaStoreContext)
 				return false
 			}
 			return try {
-				queryByUri(uri) != null
+				queryByUriOrNull(uri) != null
 			} catch (e: Exception) {
 				false
 			}
@@ -309,7 +313,7 @@ class MediaStoreAudioProvider28(private val context: MediaStoreContext)
 				return false
 			}
 			return try {
-				queryByUri(uri) != null
+				queryByUriOrNull(uri) != null
 			} catch (e: Exception) {
 				false
 			}

@@ -1,4 +1,4 @@
-package dev.dexsr.klio.player.presentation.root
+package dev.dexsr.klio.player.android.presentation.root
 
 import dev.dexsr.klio.base.UNSET
 import kotlin.time.Duration

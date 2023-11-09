@@ -1,4 +1,4 @@
-package dev.dexsr.klio.player.presentation.root
+package dev.dexsr.klio.player.android.presentation.root
 
 import android.graphics.Bitmap
 import androidx.compose.animation.animateColorAsState
@@ -44,11 +44,11 @@ import dev.dexsr.klio.base.compose.Stack
 import dev.dexsr.klio.base.compose.consumeDownGesture
 import dev.dexsr.klio.base.theme.md3.MD3Theme
 import dev.dexsr.klio.base.theme.md3.compose.*
-import dev.dexsr.klio.player.presentation.LocalMediaArtwork
+import dev.dexsr.klio.player.shared.LocalMediaArtwork
+import dev.dexsr.klio.player.android.presentation.root.compact.FoundationDescriptionPagerState
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.distinctUntilChanged
-import timber.log.Timber
 import kotlin.coroutines.resume
 import kotlin.math.roundToInt
 import kotlin.time.Duration
@@ -190,12 +190,10 @@ fun TransitioningRootCompactPlaybackControlPanel(
                     .minus(7.dp)
                     .minus(controlWidth.toDp())
                     .minus(pcPadding.calculateRightPadding(ltr))
-                Box(
+                DescriptionPager(
                     modifier = Modifier
-                        .sizeIn(maxWidth = maxWidth, maxHeight = maxHeight)
-                        .fillMaxHeight()
-                        .fillMaxWidth()
-                        .background(Color.Red)
+                        .sizeIn(maxWidth = maxWidth, maxHeight = maxHeight),
+                    state = state
                 )
             }.fastMap { measurable ->
                 measurable
@@ -548,7 +546,6 @@ private fun animatePlaybackProgressAsState(
             positionMS > durationMS -> 1f
             else -> positionMS.toFloat() / durationMS
         }
-        Timber.d("DEBUG: position=$position, duration=$duration, targetValue=$targetValue")
         channel.trySend(targetValue)
     }
     LaunchedEffect(channel) {
@@ -826,7 +823,7 @@ private fun surfacePaletteColor(
                                                         .collect { dark ->
                                                             val int = gen.run {
                                                                 if (dark) {
-                                                                    getDarkVibrantColor(getVibrantColor(getLightVibrantColor(getDominantColor(-1))))
+                                                                    getDarkVibrantColor(getMutedColor(getVibrantColor(getLightVibrantColor(getDominantColor(-1)))))
                                                                 } else {
                                                                     getLightVibrantColor(getVibrantColor(getDarkVibrantColor(getDominantColor(-1))))
                                                                 }
@@ -846,4 +843,18 @@ private fun surfacePaletteColor(
     )
 
     return paletteColorState.value
+}
+
+
+@Composable
+private fun DescriptionPager(
+    modifier: Modifier,
+    state: RootCompactPlaybackControlPanelState
+) {
+    FoundationDescriptionPagerState(
+        modifier = modifier,
+        state = remember(state) {
+            FoundationDescriptionPagerState(state)
+        }
+    )
 }

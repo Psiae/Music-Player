@@ -42,6 +42,7 @@ import dev.dexsr.klio.base.theme.md3.compose.backgroundContentColorAsState
 import dev.dexsr.klio.base.theme.md3.compose.secondaryContainerContentColorAsState
 import dev.dexsr.klio.base.theme.md3.compose.surfaceColorAtElevation
 import dev.dexsr.klio.base.theme.md3.compose.surfaceVariantContentColorAsState
+import dev.dexsr.klio.player.android.presentation.root.*
 import dev.dexsr.klio.player.presentation.root.*
 
 @Composable
@@ -74,11 +75,11 @@ internal fun MD3RootContent(
 
 @Composable
 private fun MD3RootContent(
-	modifier: Modifier,
-	compactPlaybackControlPanelState: RootCompactPlaybackControlPanelState,
-	playbackControlScreenState: RootPlaybackControlScreenState,
+    modifier: Modifier,
+    compactPlaybackControlPanelState: RootCompactPlaybackControlPanelState,
+    playbackControlScreenState: RootPlaybackControlScreenState,
 	// TEMP
-	navHostController: NavHostController
+    navHostController: NavHostController
 ) {
 	val lifecycleOwner = LocalLifecycleOwner.current
 	val navHostBackPressDispatcherOwner = remember(lifecycleOwner) {

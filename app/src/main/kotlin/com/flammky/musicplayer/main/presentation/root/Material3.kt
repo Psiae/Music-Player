@@ -44,7 +44,8 @@ fun MaterialDesign3Theme(
 					.elevatedTonalPrimarySurfaceAsState(elevation = 2.dp)
 					.value
 					.copy(0.4f))
-			setNavigationBarColor(Color.Transparent)
+			// workaround on certain device where Color.Transparent is tampered
+			setNavigationBarColor(Color.White.copy(alpha = 0.01f))
 			isNavigationBarContrastEnforced = true
 			statusBarDarkContentEnabled = !useDarkTheme
 			navigationBarDarkContentEnabled = !useDarkTheme

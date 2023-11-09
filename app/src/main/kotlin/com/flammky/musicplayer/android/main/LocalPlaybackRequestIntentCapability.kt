@@ -52,6 +52,7 @@ class LocalPlaybackRequestIntentCapability {
 			"audio/webm",
 			"audio/x-aiff",
 			"audio/x-matroska",
+			"audio/x-wav",
 		)
 	}
 }

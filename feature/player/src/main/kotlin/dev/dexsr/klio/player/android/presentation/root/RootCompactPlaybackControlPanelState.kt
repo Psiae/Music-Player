@@ -1,4 +1,4 @@
-package dev.dexsr.klio.player.presentation.root
+package dev.dexsr.klio.player.android.presentation.root
 
 import androidx.annotation.MainThread
 import androidx.compose.runtime.*
@@ -12,8 +12,8 @@ import dev.dexsr.klio.android.base.checkInMainLooper
 import dev.dexsr.klio.base.compose.SnapshotRead
 import dev.dexsr.klio.base.compose.SnapshotWrite
 import dev.dexsr.klio.base.compose.rememberWithCompositionObserver
-import dev.dexsr.klio.player.presentation.root.bw.OldRootCompactMediaMetadataProvider
-import dev.dexsr.klio.player.presentation.root.bw.OldRootCompactPlaybackController
+import dev.dexsr.klio.player.android.presentation.root.bw.OldRootCompactMediaMetadataProvider
+import dev.dexsr.klio.player.android.presentation.root.bw.OldRootCompactPlaybackController
 
 class RootCompactPlaybackControlPanelState internal constructor(
     val playbackController: RootCompactPlaybackController,

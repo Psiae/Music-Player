@@ -77,19 +77,23 @@ class TestMetadataProvider(
 	}
 
 	private suspend fun fillMetadata(uri: Uri): MediaMetadata {
-		mediaStoreProvider.audio.queryByUri(uri)?.let { from ->
-			val audioMetadata = fillAudioMetadata(uri)
-			val fileMetadata = VirtualFileMetadata.build {
-				setUri(from.uri)
-				setScheme(from.uri.scheme)
-				setAbsolutePath(from.file.absolutePath)
-				setFileName(from.file.fileName)
-				setDateAdded(from.file.dateAdded?.seconds)
-				setLastModified(from.file.dateModified?.seconds)
-				setSize(from.file.size)
+		runCatching { mediaStoreProvider.audio.queryByUri(uri) }
+			.fold(
+				onSuccess = { it },
+				onFailure = { null }
+			)?.let { from ->
+				val audioMetadata = fillAudioMetadata(uri)
+				val fileMetadata = VirtualFileMetadata.build {
+					setUri(from.uri)
+					setScheme(from.uri.scheme)
+					setAbsolutePath(from.file.absolutePath)
+					setFileName(from.file.fileName)
+					setDateAdded(from.file.dateAdded?.seconds)
+					setLastModified(from.file.dateModified?.seconds)
+					setSize(from.file.size)
+				}
+				return AudioFileMetadata(audioMetadata, fileMetadata)
 			}
-			return AudioFileMetadata(audioMetadata, fileMetadata)
-		}
 		return fillAudioMetadata(uri)
 	}
 

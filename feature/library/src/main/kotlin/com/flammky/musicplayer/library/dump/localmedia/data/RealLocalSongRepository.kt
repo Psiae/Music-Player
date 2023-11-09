@@ -48,14 +48,23 @@ internal class RealLocalSongRepository(
 	override suspend fun getModelsAsync(): Deferred<List<LocalSongModel>> =
 		coroutineScope {
 			async(dispatchers.io) {
-				audioProvider.query().map { toLocalSongModel(it) }
+				runCatching { audioProvider.query() }
+					.fold(
+						onSuccess = { it },
+						onFailure = { emptyList() }
+					)
+					.map { toLocalSongModel(it) }
 			}
 		}
 
 	override suspend fun getModelAsync(id: String): Deferred<LocalSongModel?> =
 		coroutineScope {
 			async(dispatchers.io) {
-				audioProvider.queryById(id)?.let { toLocalSongModel(it) }
+				runCatching { audioProvider.queryById(id) }
+					.fold(
+						onSuccess = { it },
+						onFailure = { null }
+					)?.let { toLocalSongModel(it) }
 			}
 		}
 

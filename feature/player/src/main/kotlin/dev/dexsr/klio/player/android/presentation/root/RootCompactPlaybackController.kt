@@ -30,6 +30,10 @@ interface RootCompactPlaybackController {
 
     fun pause()
 
+    fun seekToNextMediaItemAsync()
+
+    fun seekToPreviousMediaItemAsync()
+
     fun invokeOnMoveToNextMediaItem(
         block: (Int) -> Unit
     ): DisposableHandle
@@ -66,6 +70,12 @@ object NoOpRootCompactPlaybackController : RootCompactPlaybackController {
     }
 
     override fun pause() {
+    }
+
+    override fun seekToNextMediaItemAsync() {
+    }
+
+    override fun seekToPreviousMediaItemAsync() {
     }
 
     override fun invokeOnMoveToNextMediaItem(block: (Int) -> Unit): DisposableHandle {

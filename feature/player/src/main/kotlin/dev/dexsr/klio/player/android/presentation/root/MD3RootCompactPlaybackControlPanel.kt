@@ -44,8 +44,8 @@ import dev.dexsr.klio.base.compose.Stack
 import dev.dexsr.klio.base.compose.consumeDownGesture
 import dev.dexsr.klio.base.theme.md3.MD3Theme
 import dev.dexsr.klio.base.theme.md3.compose.*
-import dev.dexsr.klio.player.shared.LocalMediaArtwork
 import dev.dexsr.klio.player.android.presentation.root.compact.FoundationDescriptionPagerState
+import dev.dexsr.klio.player.shared.LocalMediaArtwork
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -60,7 +60,7 @@ fun MD3RootCompactPlaybackControlPanel(
     bottomSpacing: Dp
 ) {
     // TODO: Impl
-    if (true) {
+    if (false) {
         Box(modifier = Modifier.height(56.dp)) {
             OldRootPlaybackControlPanel(state = state, bottomSpacing)
         }

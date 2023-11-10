@@ -364,6 +364,14 @@ internal class OldRootCompactPlaybackController(
         playbackController.requestSetPlayWhenReadyAsync(playWhenReady = false)
     }
 
+    override fun seekToNextMediaItemAsync() {
+        playbackController.requestSeekNextAsync(Duration.ZERO)
+    }
+
+    override fun seekToPreviousMediaItemAsync() {
+        playbackController.requestSeekPreviousItemAsync(Duration.ZERO)
+    }
+
     fun dispose() {
         playbackController.dispose()
         coroutineScope.cancel()

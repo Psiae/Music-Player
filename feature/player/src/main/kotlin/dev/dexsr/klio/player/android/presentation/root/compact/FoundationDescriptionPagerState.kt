@@ -122,13 +122,14 @@ class FoundationDescriptionPagerLayoutConnection  constructor(
         neverEqualPolicy()
     )
 
+    val userDraggingState = mutableStateOf<Boolean>(false)
+
     fun mediaDescriptionAsFlow(mediaID: String): Flow<PlaybackMediaDescription?> {
         return panelState.mediaMetadataProvider.descriptionAsFlow(mediaID)
     }
 
     fun init() {
         var k: Job? = null
-        val userDraggingState = mutableStateOf<Boolean>(false)
         val dragListenerInstall = Job()
         val pageListenerInstall = Job()
         coroutineScope.launch(Dispatchers.Main) {
@@ -176,9 +177,10 @@ class FoundationDescriptionPagerLayoutConnection  constructor(
                 }
         }
 
-        panelState.playbackController.invokeOnMoveToNextMediaItem { step ->
+        panelState.playbackController.invokeOnTimelineChanged(2) { timeline, step ->
             k?.cancel()
             k = coroutineScope.launch(Dispatchers.Main) {
+                Timber.d("DEBUG: onTimelineChanged)_step=$step")
                 dragListenerInstall.join()
                 pageListenerInstall.join()
                 savedItemStateMap.clear()
@@ -189,7 +191,7 @@ class FoundationDescriptionPagerLayoutConnection  constructor(
                 _lCount = 0
                 run scroll@ {
                     val savePage = targetPage
-                    if (targetPage > pagerState.pageCount) {
+                    if (targetPage > pagerState.pageCount || targetPage < 0) {
                         return@scroll
                     }
                     placeholderPage.value = targetPage
@@ -204,55 +206,14 @@ class FoundationDescriptionPagerLayoutConnection  constructor(
                         }
                         .build()
                 }
-                val tl = panelState.playbackController.getPlaybackTimelineAsync(2).await()
-                renderState.value = DescriptionPagerRenderData(
-                    timeline = DescriptionPagerTimeline(
-                        currentIndex = tl.currentIndex,
-                        items = tl.items
-                    ),
-                    savedInstanceState = savedItemStateMap.toMap(),
-                    pageOverride = mapOf(tl.currentIndex to placeholderPage.value),
-                    internalData = mapOf("userScrollUnlockKey" to userScrollUnlockKey)
-                )
-            }
-        }.also { disposables.add(it) }
-
-        panelState.playbackController.invokeOnMoveToPreviousMediaItem { step ->
-            k?.cancel()
-            k = coroutineScope.launch(Dispatchers.Main) {
-                dragListenerInstall.join()
-                pageListenerInstall.join()
-                savedItemStateMap.clear()
-                val targetPage = rActualPage - step
-                val userScrollUnlockKey = Any()
-                _userScrollUnlockKey = userScrollUnlockKey
-                _rCount = 0
-                _lCount = 0
-                run scroll@ {
-                    if (targetPage < 0) {
-                        return@scroll
-                    }
-                    val savePage = targetPage
-                    placeholderPage.value = targetPage
-                    animateMoveToPage(targetPage) ; scroller!!.join()
-                    savedItemStateMap[savePage] = persistentMapOf<String, Any>()
-                        .builder()
-                        .apply {
-                            itemStateSaveDelegate[targetPage]?.let {
-                                putAll(it.invoke())
-                            }
-                        }
-                        .build()
-                }
-                val tl = panelState.playbackController.getPlaybackTimelineAsync(2).await()
                 correctingPage = true
                 renderState.value = DescriptionPagerRenderData(
                     timeline = DescriptionPagerTimeline(
-                        currentIndex = tl.currentIndex,
-                        items = tl.items
+                        currentIndex = timeline.currentIndex,
+                        items = timeline.items
                     ),
                     savedInstanceState = savedItemStateMap.toMap(),
-                    pageOverride = mapOf(tl.currentIndex to placeholderPage.value),
+                    pageOverride = mapOf(timeline.currentIndex to placeholderPage.value),
                     internalData = mapOf("userScrollUnlockKey" to userScrollUnlockKey)
                 )
             }
@@ -319,6 +280,9 @@ class FoundationDescriptionPagerLayoutConnection  constructor(
                 pagerState.scrollToPage(
                     renderState.value?.timeline?.currentIndex ?: 0,
                 )
+                if (userDraggingState.value) {
+                    pagerState.dispatchRawDelta(sUserScrollPixels.also { sUserScrollPixels = 0f })
+                }
             }
         }
     }

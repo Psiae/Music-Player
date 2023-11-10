@@ -44,7 +44,7 @@ interface RootCompactPlaybackController {
 
     fun invokeOnTimelineChanged(
         range: Int,
-        block: (PlaybackTimeline) -> Unit
+        block: (PlaybackTimeline, Int) -> Unit
     ): DisposableHandle
 }
 
@@ -88,7 +88,7 @@ object NoOpRootCompactPlaybackController : RootCompactPlaybackController {
 
     override fun invokeOnTimelineChanged(
         range: Int,
-        block: (PlaybackTimeline) -> Unit
+        block: (PlaybackTimeline, Int) -> Unit
     ): DisposableHandle {
         return DisposableHandle {}
     }

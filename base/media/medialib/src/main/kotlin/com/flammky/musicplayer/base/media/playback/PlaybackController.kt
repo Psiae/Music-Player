@@ -23,6 +23,7 @@ interface PlaybackController {
 	suspend fun toggleShuffleMode(): Boolean
 	suspend fun seekPosition(progress: Duration): Boolean
 	suspend fun seekPosition(expectId: String, expectDuration: Duration, percent: Float): Boolean
+	suspend fun seekPosition(percent: Float): Boolean
 	suspend fun seekIndex(index: Int, startPosition: Duration): Boolean
 	suspend fun play(): Boolean
 	suspend fun seekNext(): Boolean

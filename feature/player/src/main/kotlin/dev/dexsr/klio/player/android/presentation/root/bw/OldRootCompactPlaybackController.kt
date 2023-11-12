@@ -1,7 +1,6 @@
 package dev.dexsr.klio.player.android.presentation.root.bw
 
-import com.flammky.musicplayer.base.media.playback.OldPlaybackQueue
-import com.flammky.musicplayer.base.media.playback.PlaybackConstants
+import com.flammky.musicplayer.base.media.playback.*
 import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.player.presentation.main.PlaybackControlViewModel
 import dev.dexsr.klio.base.ktx.coroutines.initAsParentCompleter
@@ -51,6 +50,14 @@ internal class OldRootCompactPlaybackController(
     override fun playbackProgressAsFlow(
         uiWidthDp: Float
     ): Flow<PlaybackProgress> {
+        return playbackProgressAsFlow(
+            getUiWidthDp = { uiWidthDp }
+        )
+    }
+
+    override fun playbackProgressAsFlow(
+        getUiWidthDp: () -> Float
+    ): Flow<PlaybackProgress> {
 
         return flow {
             val po = playbackController.createPlaybackObserver()
@@ -72,8 +79,9 @@ internal class OldRootCompactPlaybackController(
                                             if (progress == Duration.ZERO || duration == Duration.ZERO || speed == 0f) {
                                                 PlaybackConstants.DURATION_UNSET
                                             } else {
-                                                (duration.inWholeMilliseconds / uiWidthDp / speed).toLong()
+                                                (duration.inWholeMilliseconds / getUiWidthDp() / speed).toLong()
                                                     .takeIf { it > 100 }?.milliseconds
+                                                    ?.coerceAtMost(1000.milliseconds)
                                                     ?: PlaybackConstants.DURATION_UNSET
                                             }
                                         }
@@ -83,10 +91,10 @@ internal class OldRootCompactPlaybackController(
                                                 positionStateFlow.collect {
                                                     channel.send(
                                                         PlaybackProgress(
-                                                        duration = duration,
-                                                        position = positionStateFlow.value,
-                                                        bufferedPosition = bufferedPositionStateFlow.value
-                                                    )
+                                                            duration = duration,
+                                                            position = positionStateFlow.value,
+                                                            bufferedPosition = bufferedPositionStateFlow.value
+                                                        )
                                                     )
                                                 }
                                             }
@@ -94,10 +102,10 @@ internal class OldRootCompactPlaybackController(
                                                 bufferedPositionStateFlow.collect {
                                                     channel.send(
                                                         PlaybackProgress(
-                                                        duration = duration,
-                                                        position = positionStateFlow.value,
-                                                        bufferedPosition = bufferedPositionStateFlow.value
-                                                    )
+                                                            duration = duration,
+                                                            position = positionStateFlow.value,
+                                                            bufferedPosition = bufferedPositionStateFlow.value
+                                                        )
                                                     )
                                                 }
                                             }
@@ -139,7 +147,23 @@ internal class OldRootCompactPlaybackController(
                                         isPlaying = it.playing,
                                         canPlay = it.canPlay,
                                         playWhenReady = it.playWhenReady,
-                                        canPlayWhenReady = it.canPlayWhenReady
+                                        canPlayWhenReady = it.canPlayWhenReady,
+                                        repeatMode = it.repeatMode.toIntConstants(),
+                                        canToggleRepeat = when(it.repeatMode) {
+                                            RepeatMode.ALL -> it.canRepeatOff
+                                            RepeatMode.OFF -> it.canRepeatOne
+                                            RepeatMode.ONE -> it.canRepeatAll
+                                        },
+                                        shuffleMode = when(it.shuffleMode) {
+                                            ShuffleMode.OFF -> 0
+                                            ShuffleMode.ON -> 1
+                                        },
+                                        canToggleShuffleMode = when(it.shuffleMode) {
+                                            ShuffleMode.OFF -> it.canShuffleOn
+                                            ShuffleMode.ON -> it.canShuffleOff
+                                        },
+                                        canSeekNext = it.canSeekNext,
+                                        canSeekPrevious = it.canSeekPrevious,
                                     )
                                     channel.send(progression)
                                 }
@@ -438,6 +462,10 @@ internal class OldRootCompactPlaybackController(
 
     override fun seekToPreviousMediaItemAsync() {
         playbackController.requestSeekPreviousItemAsync(Duration.ZERO)
+    }
+
+    override fun toggleRepeatAsync() {
+        playbackController.requestToggleRepeatModeAsync()
     }
 
     fun dispose() {

@@ -19,6 +19,7 @@ import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.core.common.sync
 import com.flammky.musicplayer.player.presentation.controller.PlaybackController
 import com.flammky.musicplayer.player.presentation.r.RealPlaybackController
+import dev.dexsr.klio.player.android.presentation.root.PlaybackProgress
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
@@ -391,6 +392,10 @@ internal class ExpectPlaybackControlPresenter(
 			TODO("Not yet implemented")
 		}
 
+		override fun requestSeekPositionAsync(percent: Float): Deferred<RequestResult> {
+			TODO("Not yet implemented")
+		}
+
 		override val disposed: Boolean = true
 
 		override fun createPlaybackObserver(coroutineContext: CoroutineContext): PlaybackObserver {
@@ -455,6 +460,22 @@ internal class ExpectPlaybackControlPresenter(
 		}
 
 		override fun requestCompareAndSetAsync(compareAndSet: CompareAndSetScope.() -> Unit): Deferred<RequestResult> {
+			TODO("Not yet implemented")
+		}
+
+		override fun getDurationAsync(): Deferred<Result<Duration>> {
+			TODO("Not yet implemented")
+		}
+
+		override fun getPositionAsync(): Deferred<Result<Duration>> {
+			TODO("Not yet implemented")
+		}
+
+		override fun getBufferedPositionAsync(): Deferred<Result<Duration>> {
+			TODO("Not yet implemented")
+		}
+
+		override fun getPlaybackProgressAsync(): Deferred<Result<PlaybackProgress>> {
 			TODO("Not yet implemented")
 		}
 

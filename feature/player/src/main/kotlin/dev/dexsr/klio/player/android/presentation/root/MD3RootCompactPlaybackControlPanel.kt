@@ -45,6 +45,7 @@ import dev.dexsr.klio.base.compose.consumeDownGesture
 import dev.dexsr.klio.base.theme.md3.MD3Theme
 import dev.dexsr.klio.base.theme.md3.compose.*
 import dev.dexsr.klio.player.android.presentation.root.compact.FoundationDescriptionPagerState
+import dev.dexsr.klio.player.android.presentation.root.compact.FoundationDescriptionPager
 import dev.dexsr.klio.player.shared.LocalMediaArtwork
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
@@ -145,7 +146,7 @@ fun TransitioningRootCompactPlaybackControlPanel(
                     }.coerceAtLeast(0.dp)
                 RootCompactPlaybackControlArtworkDisplay(
                     modifier = Modifier.size(size = size),
-                    state= state
+                    state = state
                 )
             }.fastMap { measurable ->
                 measurable
@@ -740,10 +741,16 @@ private fun RootCompactPlaybackControlSurface(
         compositeOver = MD3Theme.surfaceVariantColorAsState().value,
         state = state
     )
+    val clickableModifier = state.onSurfaceClicked
+        ?.let { onSurfaceClicked ->
+            Modifier.clickable(enabled = !state.freeze) { if (!state.freeze) onSurfaceClicked() }
+        }
+        ?: Modifier
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(colorState.value)
+            .then(clickableModifier)
     )
     SideEffect {
         state.isSurfaceDark = colorState.value.luminance() < (155f / 255f)
@@ -851,7 +858,7 @@ private fun DescriptionPager(
     modifier: Modifier,
     state: RootCompactPlaybackControlPanelState
 ) {
-    FoundationDescriptionPagerState(
+    FoundationDescriptionPager(
         modifier = modifier,
         state = remember(state) {
             FoundationDescriptionPagerState(state)

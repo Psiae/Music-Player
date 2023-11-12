@@ -6,6 +6,7 @@ import com.flammky.musicplayer.base.media.playback.RepeatMode
 import com.flammky.musicplayer.base.media.playback.ShuffleMode
 import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.player.presentation.presenter.PlaybackObserver
+import dev.dexsr.klio.player.android.presentation.root.PlaybackProgress
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
 import kotlin.coroutines.CoroutineContext
@@ -47,6 +48,10 @@ internal abstract class PlaybackController(
 	abstract fun requestSeekPositionAsync(
 		expectId: String,
 		expectDuration: Duration,
+		percent: Float
+	): Deferred<RequestResult>
+
+	abstract fun requestSeekPositionAsync(
 		percent: Float
 	): Deferred<RequestResult>
 
@@ -129,6 +134,14 @@ internal abstract class PlaybackController(
 	abstract fun requestCompareAndSetAsync(
 		compareAndSet: CompareAndSetScope.() -> Unit
 	): Deferred<RequestResult>
+
+	abstract fun getDurationAsync(): Deferred<Result<Duration>>
+
+	abstract fun getPositionAsync(): Deferred<Result<Duration>>
+
+	abstract fun getBufferedPositionAsync(): Deferred<Result<Duration>>
+
+	abstract fun getPlaybackProgressAsync(): Deferred<Result<PlaybackProgress>>
 
 	abstract fun dispose()
 

@@ -55,12 +55,10 @@ internal fun MD3RootContent(
 				WindowInsets.statusBars.getTop(LocalDensity.current).toDp()
 			}
 		) {
-			val pState = rememberRootPlaybackControlScreenState(
-
-			)
+			val pState = rememberPlaybackControlScreenState()
 			val pCompactState = rememberRootCompactPlaybackControlPanelState(
-				onArtClicked = { pState.showSelf = true },
-				onSurfaceClicked = { pState.showSelf = true }
+				onArtClicked = { pState.show() },
+				onSurfaceClicked = { pState.show() }
 			)
 			MD3RootContent(
 				modifier = modifier,
@@ -76,7 +74,7 @@ internal fun MD3RootContent(
 private fun MD3RootContent(
 	modifier: Modifier,
 	compactPlaybackControlPanelState: RootCompactPlaybackControlPanelState,
-	playbackControlScreenState: RootPlaybackControlScreenState,
+	playbackControlScreenState: PlaybackControlScreenState,
 	// TEMP
 	navHostController: NavHostController
 ) {

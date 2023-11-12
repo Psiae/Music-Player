@@ -469,6 +469,20 @@ class PlaybackSessionConnector internal constructor(
 			}
 		}
 
+		override suspend fun seekPosition(percent: Float): Boolean {
+			return runCatching {
+				_deferredController?.await()
+					?.let { controller ->
+						controller.seekTo(((percent / 100) * controller.duration).toLong())
+						true
+					}
+					?: false
+			}.getOrElse { ex ->
+				if (ex !is CancellationException) throw ex
+				false
+			}
+		}
+
 		override suspend fun seekIndex(index: Int, startPosition: Duration): Boolean {
 			return runCatching {
 				_deferredController?.await()

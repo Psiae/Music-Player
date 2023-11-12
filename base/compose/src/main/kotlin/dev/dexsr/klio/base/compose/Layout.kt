@@ -7,6 +7,7 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.MeasurePolicy
 import androidx.compose.ui.util.fastForEach
 import androidx.compose.ui.util.fastMap
+import kotlin.math.max
 
 fun simpleStackLayoutMeasurePolicy(
 	propagateMinConstraints: Boolean
@@ -27,8 +28,8 @@ fun simpleStackLayoutMeasurePolicy(
 		val measurable = measurables[0]
 		val placeable = measurable.measure(contentConstraints)
 		return@MeasurePolicy layout(
-			placeable.width,
-			placeable.height,
+			max(constraints.minWidth, placeable.width),
+			max(constraints.minHeight, placeable.height),
 			placementBlock = { placeable.place(0, 0, 0f) }
 		)
 	}
@@ -41,7 +42,10 @@ fun simpleStackLayoutMeasurePolicy(
 				if (placeable.height > height) height = placeable.height
 			}
 	}
-	layout(width, height) {
+	layout(
+		max(width, constraints.minWidth),
+		max(height, constraints.minHeight)
+	) {
 		placeables.fastForEach { placeable -> placeable.place(0, 0, 0f) }
 	}
 }

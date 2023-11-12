@@ -262,6 +262,10 @@ class RealPlaybackController(
 		TODO("Not yet implemented")
 	}
 
+	override suspend fun seekPosition(percent: Float): Boolean {
+		TODO("Not yet implemented")
+	}
+
 	private fun checkInLooper() {
 		check(Looper.myLooper() == playbackLooper)
 	}

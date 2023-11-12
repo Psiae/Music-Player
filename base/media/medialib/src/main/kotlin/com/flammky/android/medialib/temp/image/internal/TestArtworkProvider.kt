@@ -95,7 +95,7 @@ class TestArtworkProvider(
 					}
 				}.await().also { rawJobMap.sync { remove(uri) } }
 			}
-			Timber.d("TestArtworkProvider, result: $embed")
+			Timber.d("TestArtworkProvider, result: $embed(w=${embed?.width}, h=${embed?.height})")
 			listenable.setResult(embed as? R)
 		}
 	}

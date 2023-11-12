@@ -347,7 +347,9 @@ class PlaybackControlScreenCoordinator(
                 }
             )
             DisposableEffect(
-                key1 = mainTransition.show, queueTransition.show,
+                mainTransition.show,
+                queueTransition.show,
+                state.composeBackPressRegistry,
                 effect = {
                     if (!mainTransition.show && !mainTransition.show) {
                         return@DisposableEffect onDispose {  }

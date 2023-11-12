@@ -10,6 +10,7 @@ import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.core.common.sync
 import com.flammky.musicplayer.player.presentation.controller.PlaybackController
 import com.flammky.musicplayer.player.presentation.presenter.PlaybackObserver
+import dev.dexsr.klio.player.android.presentation.root.PlaybackProgress
 import kotlinx.coroutines.*
 import timber.log.Timber
 import kotlin.coroutines.CoroutineContext
@@ -72,6 +73,32 @@ internal class RealPlaybackController(
 					seekPosition(
 						expectId,
 						expectDuration,
+						percent
+					)
+				}
+			}.getOrElse {
+				false
+			}
+			RequestResult(
+				success = success,
+				eventDispatch = if (success) {
+					launch {
+						val jobs = mutableListOf<Job>()
+						_observers.forEach { jobs.add(it.updateProgress()) }
+						jobs.joinAll()
+					}
+				} else {
+					null
+				}
+			)
+		}
+	}
+
+	override fun requestSeekPositionAsync(percent: Float): Deferred<RequestResult> {
+		return scope.async {
+			val success = runCatching {
+				playbackConnection.requestUserSessionAsync(user).await().controller.withLooperContext {
+					seekPosition(
 						percent
 					)
 				}
@@ -275,6 +302,54 @@ internal class RealPlaybackController(
 		compareAndSet: CompareAndSetScope.() -> Unit)
 	: Deferred<RequestResult> {
 		TODO("Not yet implemented")
+	}
+
+	override fun getDurationAsync(): Deferred<Result<Duration>> {
+		return scope.async {
+			runCatching {
+				playbackConnection.requestUserSessionAsync(user)
+					.await().controller.withLooperContext {
+						getDuration()
+					}
+			}
+		}
+	}
+
+	override fun getPositionAsync(): Deferred<Result<Duration>> {
+		return scope.async {
+			runCatching {
+				playbackConnection.requestUserSessionAsync(user)
+					.await().controller.withLooperContext {
+						getPosition()
+					}
+			}
+		}
+	}
+
+	override fun getBufferedPositionAsync(): Deferred<Result<Duration>> {
+		return scope.async {
+			runCatching {
+				playbackConnection.requestUserSessionAsync(user)
+					.await().controller.withLooperContext {
+						getBufferedPosition()
+					}
+			}
+		}
+	}
+
+	override fun getPlaybackProgressAsync(): Deferred<Result<PlaybackProgress>> {
+		return scope.async {
+			runCatching {
+				playbackConnection.requestUserSessionAsync(user)
+					.await().controller.withLooperContext {
+						PlaybackProgress(
+							getDuration(),
+							getPosition(),
+							getBufferedPosition()
+						)
+					}
+			}
+		}
 	}
 
 	override fun requestPlayAsync(

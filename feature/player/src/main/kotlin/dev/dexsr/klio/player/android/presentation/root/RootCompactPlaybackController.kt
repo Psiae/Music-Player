@@ -14,6 +14,10 @@ interface RootCompactPlaybackController {
         uiWidthDp: Float
     ): Flow<PlaybackProgress>
 
+    fun playbackProgressAsFlow(
+        getUiWidthDp: () -> Float
+    ): Flow<PlaybackProgress>
+
     fun playbackProgressionStateAsFlow(
 
     ): Flow<PlaybackProgressionState>
@@ -46,6 +50,8 @@ interface RootCompactPlaybackController {
         range: Int,
         block: (PlaybackTimeline, Int) -> Unit
     ): DisposableHandle
+
+    fun toggleRepeatAsync()
 }
 
 object NoOpRootCompactPlaybackController : RootCompactPlaybackController {
@@ -53,6 +59,10 @@ object NoOpRootCompactPlaybackController : RootCompactPlaybackController {
     override fun currentlyPlayingMediaIdAsFlow(): Flow<String?> = flowOf()
 
     override fun playbackProgressAsFlow(uiWidthDp: Float): Flow<PlaybackProgress> = flowOf()
+
+    override fun playbackProgressAsFlow(getUiWidthDp: () -> Float): Flow<PlaybackProgress> {
+        return flowOf()
+    }
 
     override fun playbackProgressionStateAsFlow(): Flow<PlaybackProgressionState> {
         return flowOf()
@@ -91,5 +101,8 @@ object NoOpRootCompactPlaybackController : RootCompactPlaybackController {
         block: (PlaybackTimeline, Int) -> Unit
     ): DisposableHandle {
         return DisposableHandle {}
+    }
+
+    override fun toggleRepeatAsync() {
     }
 }

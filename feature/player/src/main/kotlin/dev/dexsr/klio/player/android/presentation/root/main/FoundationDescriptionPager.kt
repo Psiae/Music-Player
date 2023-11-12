@@ -1,4 +1,4 @@
-package dev.dexsr.klio.player.android.presentation.root.compact
+package dev.dexsr.klio.player.android.presentation.root.main
 
 import androidx.annotation.AnyThread
 import androidx.annotation.MainThread
@@ -12,19 +12,20 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.PagerSnapDistance
 import androidx.compose.foundation.pager.PagerState
-import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.AndroidUiDispatcher
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
+import coil.compose.AsyncImage
+import coil.request.CachePolicy
+import coil.request.ImageRequest
 import dev.dexsr.klio.android.base.checkInMainLooper
 import dev.dexsr.klio.base.compose.rememberWithCustomEquality
 import dev.dexsr.klio.base.kt.referentialEqualityFun
-import dev.dexsr.klio.base.theme.md3.compose.MaterialTheme3
-import dev.dexsr.klio.player.android.presentation.root.RootCompactPlaybackControlPanelState
+import dev.dexsr.klio.player.android.presentation.root.PlaybackControlMainScreenState
+import dev.dexsr.klio.player.shared.LocalMediaArtwork
 import dev.dexsr.klio.player.shared.PlaybackMediaDescription
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentMapOf
@@ -37,9 +38,11 @@ import timber.log.Timber
 // Pager Implementation over androidx.compose.foundation pager
 // try to mimic YT Music behavior
 
+// copied from compact implementation
+
 @OptIn(ExperimentalFoundationApi::class)
 class FoundationDescriptionPagerState(
-    private val panelState: RootCompactPlaybackControlPanelState
+    private val panelState: PlaybackControlMainScreenState
 ) {
 
 
@@ -58,7 +61,7 @@ class FoundationDescriptionPagerState(
 
 @OptIn(ExperimentalFoundationApi::class)
 class FoundationDescriptionPagerLayoutConnection  constructor(
-    private val panelState: RootCompactPlaybackControlPanelState,
+    private val panelState: PlaybackControlMainScreenState,
 ) {
 
     private var disposables = mutableListOf<DisposableHandle>()
@@ -113,7 +116,6 @@ class FoundationDescriptionPagerLayoutConnection  constructor(
         get() = _pagerState
 
     val userScrollEnabledState = mutableStateOf(true)
-    val isSurfaceDarkState = derivedStateOf { panelState.isSurfaceDark }
 
     val placeholderPage = mutableStateOf<Int>(2)
 
@@ -126,6 +128,10 @@ class FoundationDescriptionPagerLayoutConnection  constructor(
 
     fun mediaDescriptionAsFlow(mediaID: String): Flow<PlaybackMediaDescription?> {
         return panelState.mediaMetadataProvider.descriptionAsFlow(mediaID)
+    }
+
+    fun mediaArtworkAsFlow(mediaID: String): Flow<LocalMediaArtwork?> {
+        return panelState.mediaMetadataProvider.artworkAsFlow(mediaID)
     }
 
     fun init() {
@@ -353,9 +359,10 @@ data class DescriptionPagerRenderData(
 )
 
 @Composable
-fun FoundationDescriptionPagerState(
+fun FoundationDescriptionPager(
     modifier: Modifier,
-    state: FoundationDescriptionPagerState
+    state: FoundationDescriptionPagerState,
+    contentPadding: PaddingValues
 ) {
 
     val layoutConnectionState = remember {
@@ -366,7 +373,8 @@ fun FoundationDescriptionPagerState(
         ?.let { layoutConnection ->
             FoundationHorizontalPager(
                 modifier = modifier.fillMaxSize(),
-                layoutConnection = layoutConnection
+                layoutConnection = layoutConnection,
+                contentPadding = contentPadding
             )
         }
 
@@ -386,6 +394,7 @@ fun FoundationDescriptionPagerState(
 private fun FoundationHorizontalPager(
     modifier: Modifier,
     layoutConnection: FoundationDescriptionPagerLayoutConnection,
+    contentPadding: PaddingValues
 ) {
     val render = layoutConnection.renderState.value
     layoutConnection.preRender(render)
@@ -412,7 +421,8 @@ private fun FoundationHorizontalPager(
             page = pageIndex,
             mediaID = mediaID,
             savedInstanceStateKey = savedInstanceStateKey,
-            savedInstanceState = render.savedInstanceState[render.pageOverride[pageIndex] ?: pageIndex]
+            savedInstanceState = render.savedInstanceState[render.pageOverride[pageIndex] ?: pageIndex],
+            contentPadding = contentPadding
         )
     }
     SideEffect {
@@ -427,64 +437,55 @@ private inline fun FoundationDescriptionPagerItem(
     mediaID: String,
     layoutConnection: FoundationDescriptionPagerLayoutConnection,
     savedInstanceStateKey: Any,
-    savedInstanceState: Map<String, Any>?
+    savedInstanceState: Map<String, Any>?,
+    contentPadding: PaddingValues
 ) {
 
-    val metadata = remember(savedInstanceStateKey) {
+    val artwork = remember(savedInstanceStateKey) {
         mutableStateOf(
-            savedInstanceState?.get("MediaDescription") as? PlaybackMediaDescription
+            savedInstanceState?.get("MediaArtwork") as? LocalMediaArtwork
         )
     }.apply {
         LaunchedEffect(this, layoutConnection, mediaID) {
-            layoutConnection.mediaDescriptionAsFlow(mediaID).collect { value = it }
+            layoutConnection.mediaArtworkAsFlow(mediaID).collect { value = it }
         }
     }.value
 
-    Column(
-        modifier = modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center
+    val ctx = LocalContext.current
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(contentPadding),
+        contentAlignment = Alignment.Center
     ) {
-        // or we can just add more base ratio of the background on the palette
-        val textColorState = remember {
-            mutableStateOf(Color.Unspecified)
-        }.apply {
-            value =
-                if (layoutConnection.isSurfaceDarkState.value) {
-                    Color(0xFFFFFFFF)
-                } else {
-                    Color(0xFF101010)
-                }
-        }
-
-        BasicText(
-            text = metadata?.title ?: "",
-            style = MaterialTheme3.typography.labelMedium.copy(
-                fontWeight = FontWeight.Bold,
-                color = textColorState.value,
-            ),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-
-        Spacer(modifier = Modifier.height(1.dp))
-
-        BasicText(
-            text = metadata?.subtitle ?: "",
-            style = MaterialTheme3.typography.labelMedium.copy(
-                fontWeight = FontWeight.Bold,
-                color = textColorState.value,
-            ),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+        // we can provide a custom painter instead
+        AsyncImage(
+            modifier = Modifier
+                .fillMaxSize(),
+            model = remember(ctx, artwork) {
+                ImageRequest.Builder(ctx)
+                    .data(artwork?.image?.value)
+                    .memoryCachePolicy(CachePolicy.ENABLED)
+                    .memoryCacheKey(mediaID)
+                    .build()
+            },
+            contentDescription = "art",
+            contentScale = if (artwork?.allowTransform == true) {
+                ContentScale.Crop
+            } else {
+                ContentScale.Fit
+            }
         )
     }
+
 
     SideEffect {
         layoutConnection.itemRendered(page) {
             persistentMapOf<String, Any>()
                 .builder()
                 .apply {
-                    metadata?.let { put("MediaDescription", metadata) }
+                    artwork?.let { put("MediaArtwork", artwork) }
                 }
                 .build()
         }

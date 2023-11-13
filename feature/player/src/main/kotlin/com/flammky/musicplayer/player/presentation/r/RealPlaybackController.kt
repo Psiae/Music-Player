@@ -4,6 +4,7 @@ package com.flammky.musicplayer.player.presentation.r
 
 import androidx.annotation.GuardedBy
 import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConnection
+import com.flammky.musicplayer.base.media.playback.OldPlaybackQueue
 import com.flammky.musicplayer.base.media.playback.RepeatMode
 import com.flammky.musicplayer.base.media.playback.ShuffleMode
 import com.flammky.musicplayer.base.user.User
@@ -347,6 +348,17 @@ internal class RealPlaybackController(
 							getPosition(),
 							getBufferedPosition()
 						)
+					}
+			}
+		}
+	}
+
+	override fun getQueueAsync(): Deferred<Result<OldPlaybackQueue>> {
+		return scope.async {
+			runCatching {
+				playbackConnection.requestUserSessionAsync(user)
+					.await().controller.withLooperContext {
+						getQueue()
 					}
 			}
 		}

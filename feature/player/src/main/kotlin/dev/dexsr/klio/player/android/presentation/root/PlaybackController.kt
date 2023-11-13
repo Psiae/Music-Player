@@ -29,9 +29,9 @@ interface PlaybackController {
 
     fun pauseAsync()
 
-    fun seekToNextMediaItemAsync()
+    fun seekToNextMediaItemAsync(): Deferred<Boolean>
 
-    fun seekToPreviousMediaItemAsync()
+    fun seekToPreviousMediaItemAsync(): Deferred<Boolean>
 
     fun seekToPreviousAsync()
 
@@ -46,6 +46,10 @@ interface PlaybackController {
     ): Deferred<Boolean>
 
     fun getPlaybackProgressAsync(): Deferred<PlaybackProgress>
+
+    fun getTimelineAsync(
+        range: Int
+    ): Deferred<PlaybackTimeline>
 }
 
 object NoOpPlaybackController : PlaybackController {
@@ -82,10 +86,12 @@ object NoOpPlaybackController : PlaybackController {
     override fun pauseAsync() {
     }
 
-    override fun seekToNextMediaItemAsync() {
+    override fun seekToNextMediaItemAsync(): Deferred<Boolean> {
+        return CompletableDeferred<Boolean>().apply { cancel() }
     }
 
-    override fun seekToPreviousMediaItemAsync() {
+    override fun seekToPreviousMediaItemAsync(): Deferred<Boolean> {
+        return CompletableDeferred<Boolean>().apply { cancel() }
     }
 
     override fun toggleRepeatAsync() {
@@ -102,5 +108,11 @@ object NoOpPlaybackController : PlaybackController {
 
     override fun getPlaybackProgressAsync(): Deferred<PlaybackProgress> {
         return CompletableDeferred<PlaybackProgress>().apply { cancel() }
+    }
+
+    override fun getTimelineAsync(
+        range: Int
+    ): Deferred<PlaybackTimeline> {
+        return CompletableDeferred<PlaybackTimeline>().apply { cancel() }
     }
 }

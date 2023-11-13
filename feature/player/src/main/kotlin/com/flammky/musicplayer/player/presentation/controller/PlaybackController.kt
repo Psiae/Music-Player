@@ -143,6 +143,8 @@ internal abstract class PlaybackController(
 
 	abstract fun getPlaybackProgressAsync(): Deferred<Result<PlaybackProgress>>
 
+	abstract fun getQueueAsync(): Deferred<Result<OldPlaybackQueue>>
+
 	abstract fun dispose()
 
 	/**

@@ -34,9 +34,9 @@ interface RootCompactPlaybackController {
 
     fun pause()
 
-    fun seekToNextMediaItemAsync()
+    fun seekToNextMediaItemAsync(): Deferred<Boolean>
 
-    fun seekToPreviousMediaItemAsync()
+    fun seekToPreviousMediaItemAsync(): Deferred<Boolean>
 
     fun invokeOnMoveToNextMediaItem(
         block: (Int) -> Unit
@@ -82,10 +82,12 @@ object NoOpRootCompactPlaybackController : RootCompactPlaybackController {
     override fun pause() {
     }
 
-    override fun seekToNextMediaItemAsync() {
+    override fun seekToNextMediaItemAsync(): Deferred<Boolean> {
+        return CompletableDeferred<Boolean>().apply { cancel() }
     }
 
-    override fun seekToPreviousMediaItemAsync() {
+    override fun seekToPreviousMediaItemAsync(): Deferred<Boolean> {
+        return CompletableDeferred<Boolean>().apply { cancel() }
     }
 
     override fun invokeOnMoveToNextMediaItem(block: (Int) -> Unit): DisposableHandle {

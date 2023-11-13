@@ -29,7 +29,7 @@ internal class AudioEntityProvider28 (private val context: MediaStoreContext) {
 			contentResolver.query(
 				/* uri = */ uri_audio_external,
 				/* projection = */ entityDefaultProjector,
-				/* selection = */ null,
+					/* selection = */ MediaStore28.Audio.AudioColumns.IS_MUSIC + "!= 0",
 				/* selectionArgs = */ null,
 				/* sortOrder = */ null
 			)?.use {  cursor ->

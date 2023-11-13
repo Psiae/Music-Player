@@ -183,7 +183,6 @@ class FoundationDescriptionPagerLayoutConnection  constructor(
         panelState.playbackController.invokeOnTimelineChanged(2) { timeline, step ->
             k?.cancel()
             k = coroutineScope.launch(Dispatchers.Main) {
-                Timber.d("DEBUG: onTimelineChanged)_step=$step")
                 dragListenerInstall.join()
                 pageListenerInstall.join()
                 savedItemStateMap.clear()

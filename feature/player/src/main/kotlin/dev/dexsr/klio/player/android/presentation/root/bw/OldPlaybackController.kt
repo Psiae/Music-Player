@@ -8,6 +8,7 @@ import dev.dexsr.klio.player.android.presentation.root.PlaybackController
 import dev.dexsr.klio.player.android.presentation.root.PlaybackProgress
 import dev.dexsr.klio.player.android.presentation.root.PlaybackProgressionState
 import dev.dexsr.klio.player.android.presentation.root.PlaybackTimeline
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -129,11 +130,11 @@ internal class OldPlaybackController(
         return compact.pause()
     }
 
-    override fun seekToNextMediaItemAsync() {
+    override fun seekToNextMediaItemAsync(): Deferred<Boolean> {
         return compact.seekToNextMediaItemAsync()
     }
 
-    override fun seekToPreviousMediaItemAsync() {
+    override fun seekToPreviousMediaItemAsync(): Deferred<Boolean>  {
         return compact.seekToPreviousMediaItemAsync()
     }
 
@@ -174,6 +175,59 @@ internal class OldPlaybackController(
         coroutineScope.launch {
             def.completeWith(
                 runCatching { pc.getPlaybackProgressAsync().await().getOrThrow() }
+            )
+        }.initAsParentCompleter(def)
+        return def
+    }
+
+    override fun getTimelineAsync(range: Int): Deferred<PlaybackTimeline> {
+        val def = CompletableDeferred<PlaybackTimeline>()
+        coroutineScope.launch {
+            def.completeWith(
+                runCatching {
+                    val q = pc.getQueueAsync().await().getOrThrow()
+                    run get@ {
+                        if (q.currentIndex < 0) {
+                            return@get PlaybackTimeline(
+                                currentIndex = -1,
+                                items = persistentListOf()
+                            )
+                        }
+                        if (range < 0 ){
+                            return@get PlaybackTimeline(
+                                currentIndex = -1,
+                                items = persistentListOf()
+                            )
+                        }
+                        if (range > q.list.size) {
+                            return@get PlaybackTimeline(
+                                currentIndex = q.currentIndex,
+                                items = q.list
+                            )
+                        }
+                        PlaybackTimeline(
+                            currentIndex = range.coerceAtMost(minOf(q.list.size - 1, q.currentIndex)),
+                            items = persistentListOf<String>().builder()
+                                .apply {
+                                    // take left
+                                    val leftRange = range
+                                        .coerceAtMost(q.currentIndex)
+                                    repeat(leftRange) { i ->
+                                        add(q.list[q.currentIndex - (leftRange - i)])
+                                    }
+                                    // take center
+                                    add(q.list[q.currentIndex])
+                                    // take right
+                                    val rightRange = range
+                                        .coerceAtMost(q.list.lastIndex - q.currentIndex)
+                                    repeat(rightRange) { i ->
+                                        add(q.list[q.currentIndex + (i + 1)])
+                                    }
+                                }
+                                .build()
+                        )
+                    }
+                }
             )
         }.initAsParentCompleter(def)
         return def

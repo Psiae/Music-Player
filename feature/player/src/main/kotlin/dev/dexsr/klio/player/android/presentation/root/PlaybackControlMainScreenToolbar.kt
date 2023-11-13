@@ -70,8 +70,8 @@ fun PlaybackControlMainScreenToolbar(
                     .clickable(
                         interactionSource = interactionSource,
                         indication = null,
-                        enabled = state.userDismissible,
-                        onClick = state::onDismissButtonClicked
+                        enabled = false,
+                        onClick = {  }
                     )
             ) {
                 Icon(

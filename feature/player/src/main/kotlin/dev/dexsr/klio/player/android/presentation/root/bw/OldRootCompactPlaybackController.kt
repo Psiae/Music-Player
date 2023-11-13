@@ -456,12 +456,50 @@ internal class OldRootCompactPlaybackController(
         playbackController.requestSetPlayWhenReadyAsync(playWhenReady = false)
     }
 
-    override fun seekToNextMediaItemAsync() {
-        playbackController.requestSeekNextAsync(Duration.ZERO)
+    override fun seekToNextMediaItemAsync(): Deferred<Boolean> {
+        val def = CompletableDeferred<Boolean>()
+
+        coroutineScope.launch(Dispatchers.Main) {
+
+            def.completeWith(
+                runCatching {
+                    playbackController
+                        .requestSeekNextAsync(Duration.ZERO)
+                        .await()
+                        .run {
+                            eventDispatch?.join()
+                            success
+                        }
+                }
+            )
+
+        }.initAsParentCompleter(def)
+
+
+        return def
     }
 
-    override fun seekToPreviousMediaItemAsync() {
-        playbackController.requestSeekPreviousItemAsync(Duration.ZERO)
+    override fun seekToPreviousMediaItemAsync(): Deferred<Boolean>  {
+        val def = CompletableDeferred<Boolean>()
+
+        coroutineScope.launch(Dispatchers.Main) {
+
+            def.completeWith(
+                runCatching {
+                    playbackController
+                        .requestSeekPreviousItemAsync(Duration.ZERO)
+                        .await()
+                        .run {
+                            eventDispatch?.join()
+                            success
+                        }
+                }
+            )
+
+        }.initAsParentCompleter(def)
+
+
+        return def
     }
 
     override fun toggleRepeatAsync() {

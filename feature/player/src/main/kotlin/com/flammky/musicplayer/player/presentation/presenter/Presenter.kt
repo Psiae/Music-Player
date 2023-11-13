@@ -479,6 +479,10 @@ internal class ExpectPlaybackControlPresenter(
 			TODO("Not yet implemented")
 		}
 
+		override fun getQueueAsync(): Deferred<Result<OldPlaybackQueue>> {
+			TODO("Not yet implemented")
+		}
+
 		override fun dispose() = Unit
 
 		private object Observer : PlaybackObserver {

@@ -3,6 +3,7 @@ package dev.dexsr.klio.base.kt
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
 
+// TODO: linter that cast usage should specify the Type
 @OptIn(ExperimentalContracts::class)
 inline fun <reified R> Any?.cast(): R {
     contract {

@@ -77,7 +77,7 @@ class FoundationDescriptionPagerLayoutConnection  constructor(
     private var _rCount = 0
     private var _lCount = 0
     private var _direction = 0
-
+    private var userInputInProgress = false
 
     private val _pagerState = object : PagerState(
         initialPage = 0,
@@ -102,7 +102,14 @@ class FoundationDescriptionPagerLayoutConnection  constructor(
                         _userScrollMark = true
                         return dispatchRawDelta(pixels)
                     }
-                }.run { block() }
+                }.run {
+                    userInputInProgress = true
+                    try {
+                        block()
+                    } finally {
+                        userInputInProgress = false
+                    }
+                }
                 return
             }
             super.scroll(scrollPriority, block)
@@ -164,9 +171,11 @@ class FoundationDescriptionPagerLayoutConnection  constructor(
                         return@collect
                     }
                     dragWaiter = launch {
+                        var scrollWaiter: Job? = null
                         snapshotFlow { userDraggingState.value }
                             .distinctUntilChanged()
                             .collect drag@ { dragging ->
+                                scrollWaiter?.cancel()
                                 if (dragging || !_userScrollMark) return@drag
                                 if (page == rActualPage + 1 + _rCount) {
                                     _rCount++
@@ -177,6 +186,7 @@ class FoundationDescriptionPagerLayoutConnection  constructor(
                                 } else if (page != rActualPage) {
                                     snapToCorrectPageSuspend()
                                 }
+
                             }
                     }
                 }
@@ -366,32 +376,37 @@ class FoundationDescriptionPagerLayoutConnection  constructor(
         }
     }
 
-    private suspend fun snapToCorrectPageSuspend(
-    ) {
+    private suspend fun snapToCorrectPageSuspend() {
         checkInMainLooper()
         scroller?.cancel()
         val t = Job()
         scroller = t
         runCatching {
-            doSnapToCorrectPage(
-            )
+            doSnapToCorrectPage()
         }.fold(
             onSuccess = { t.complete() },
             onFailure = { t.cancel() }
         )
     }
 
-    private suspend fun doSnapToCorrectPage(
-    ) {
+    private suspend fun doSnapToCorrectPage() {
         withContext(AndroidUiDispatcher.Main) {
             if (pagerState.pageCount > 0) {
                 _userScrollMark = false
                 val correctPage = renderState.value?.timeline?.currentIndex ?: 0
-                if (pagerState.currentPage != correctPage)  {
-                    pagerState.scrollToPage(
+                pagerState.apply {
+                    scrollToPage(
                         page = correctPage,
-                        pageOffsetFraction = 0f
                     )
+                    if (userDraggingState.value) {
+                        _userScrollMark = true
+                        dispatchRawDelta(sUserScrollPixels)
+                    }
+                    sUserScrollPixels = 0f
+                    if (!isScrollInProgress && !userInputInProgress) {
+                        _userScrollMark = false
+                        animateScrollToPage(correctPage)
+                    }
                 }
             }
         }
@@ -508,6 +523,7 @@ private fun FoundationHorizontalPager(
             pagerSnapDistance = PagerSnapDistance.atMost(1)
         ),
         userScrollEnabled = layoutConnection.userScrollEnabledState.value,
+        beyondBoundsPageCount = 2
     ) { pageIndex ->
         val mediaID = render!!.timeline!!.items[pageIndex]
         FoundationDescriptionPagerItem(
@@ -533,6 +549,10 @@ private inline fun FoundationDescriptionPagerItem(
     savedInstanceState: Map<String, Any>?,
     contentPadding: PaddingValues
 ) {
+
+    BoxWithConstraints {
+        Timber.d("DEBUG: FoundationDescriptionPagerItem_constraints=$constraints")
+    }
 
     val artwork = remember(mediaID) {
         mutableStateOf(

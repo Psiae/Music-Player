@@ -23,8 +23,11 @@ import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.SubcomposeLayout
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.AndroidUiDispatcher
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.*
 import androidx.compose.ui.util.fastForEach
@@ -44,8 +47,10 @@ import dev.dexsr.klio.base.compose.Stack
 import dev.dexsr.klio.base.compose.consumeDownGesture
 import dev.dexsr.klio.base.theme.md3.MD3Theme
 import dev.dexsr.klio.base.theme.md3.compose.*
-import dev.dexsr.klio.player.android.presentation.root.compact.FoundationDescriptionPagerState
 import dev.dexsr.klio.player.android.presentation.root.compact.FoundationDescriptionPager
+import dev.dexsr.klio.player.android.presentation.root.compact.FoundationDescriptionPagerState
+import dev.dexsr.klio.player.android.presentation.root.compact.PlaybackPagerCompact
+import dev.dexsr.klio.player.android.presentation.root.main.LazyPlaybackPagerState
 import dev.dexsr.klio.player.shared.LocalMediaArtwork
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
@@ -89,9 +94,17 @@ fun TransitioningRootCompactPlaybackControlPanel(
         height = 65.dp,
         bottomSpacing = bottomSpacing
     ).value
+    val density = LocalDensity.current
     Stack(
         modifier
             .offset { IntOffset(offset.x.roundToPx(), offset.y.roundToPx()) }
+            .onGloballyPositioned { lc ->
+                with(density) {
+                    val posInParent = lc.positionInParent()
+                    state.heightFromAnchor =
+                        (lc.parentLayoutCoordinates!!.size.height - posInParent.y).toDp()
+                }
+            }
             .consumeDownGesture()
     ) {
         SubcomposeLayout() { constraints ->
@@ -858,10 +871,17 @@ private fun DescriptionPager(
     modifier: Modifier,
     state: RootCompactPlaybackControlPanelState
 ) {
-    FoundationDescriptionPager(
+    PlaybackPagerCompact(
+        modifier = modifier,
+        state = rememberPlaybackPagerState(state.playbackController),
+        mediaMetadataProvider = state.mediaMetadataProvider,
+        lightContent = state.isSurfaceDark,
+        onItemClicked = state.onSurfaceClicked,
+    )
+    /*FoundationDescriptionPager(
         modifier = modifier,
         state = remember(state) {
             FoundationDescriptionPagerState(state)
         }
-    )
+    )*/
 }

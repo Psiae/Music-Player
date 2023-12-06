@@ -9,7 +9,7 @@ fun RootPlaybackControlScreen(
     state: PlaybackControlScreenState
 ) {
     // TODO
-    if (true) {
+    if (false) {
         OldRootPlaybackControlScreen(state)
     } else {
         TransitioningPlaybackControlScreen(

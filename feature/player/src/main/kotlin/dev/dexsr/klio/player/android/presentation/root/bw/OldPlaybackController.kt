@@ -59,7 +59,7 @@ internal class OldPlaybackController(
                                     try {
                                         pc.setCollectEvent(true)
                                         pc.setIntervalHandler { isEvent, progress, bufferedProgress, duration, speed ->
-                                            if (progress == Duration.ZERO || duration == Duration.ZERO || speed == 0f) {
+                                            if (/*progress < Duration.ZERO || duration < Duration.ZERO || */speed == 0f) {
                                                 PlaybackConstants.DURATION_UNSET
                                             } else {
                                                 (duration.inWholeMilliseconds / getUiWidthDp() / speed).toLong()

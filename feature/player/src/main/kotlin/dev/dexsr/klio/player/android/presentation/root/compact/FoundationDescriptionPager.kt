@@ -2,7 +2,8 @@ package dev.dexsr.klio.player.android.presentation.root.compact
 
 import androidx.annotation.AnyThread
 import androidx.annotation.MainThread
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.MutatePriority
 import androidx.compose.foundation.gestures.ScrollScope
@@ -26,6 +27,7 @@ import dev.dexsr.klio.base.compose.rememberWithCustomEquality
 import dev.dexsr.klio.base.kt.referentialEqualityFun
 import dev.dexsr.klio.base.theme.md3.compose.MaterialTheme3
 import dev.dexsr.klio.player.android.presentation.root.RootCompactPlaybackControlPanelState
+import dev.dexsr.klio.player.shared.LocalMediaArtwork
 import dev.dexsr.klio.player.shared.PlaybackMediaDescription
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentMapOf
@@ -72,10 +74,14 @@ class FoundationDescriptionPagerLayoutConnection  constructor(
     private var _userScrollUnlockKey = Any()
     private var sUserScrollPixels: Float = 0f
     private var correctingPage = false
+    private var dispatching = false
     private var _rCount = 0
     private var _lCount = 0
     private var _direction = 0
 
+    val onItemClickedState = derivedStateOf { panelState.onSurfaceClicked }
+
+    val isSurfaceDarkState = derivedStateOf { panelState.isSurfaceDark }
 
     private val _pagerState = object : PagerState(
         initialPage = 0,
@@ -93,9 +99,9 @@ class FoundationDescriptionPagerLayoutConnection  constructor(
                 super.scroll(scrollPriority) {  }
                 object : ScrollScope {
                     override fun scrollBy(pixels: Float): Float {
-                        if (correctingPage) {
+                        Timber.d("DEBUG: scrollBy=$pixels (correctingPage=$correctingPage, dispatching=$dispatching)")
+                        if (correctingPage || dispatching) {
                             sUserScrollPixels += pixels
-                            return pixels
                         }
                         _userScrollMark = true
                         return dispatchRawDelta(pixels)
@@ -114,7 +120,6 @@ class FoundationDescriptionPagerLayoutConnection  constructor(
         get() = _pagerState
 
     val userScrollEnabledState = mutableStateOf(true)
-    val isSurfaceDarkState = derivedStateOf { panelState.isSurfaceDark }
 
     val placeholderPage = mutableStateOf<Int>(2)
 
@@ -125,16 +130,17 @@ class FoundationDescriptionPagerLayoutConnection  constructor(
 
     val userDraggingState = mutableStateOf<Boolean>(false)
 
-    val onItemClickedState = derivedStateOf { panelState.onSurfaceClicked }
-
     fun mediaDescriptionAsFlow(mediaID: String): Flow<PlaybackMediaDescription?> {
         return panelState.mediaMetadataProvider.descriptionAsFlow(mediaID)
     }
 
+    fun mediaArtworkAsFlow(mediaID: String): Flow<LocalMediaArtwork?> {
+        return panelState.mediaMetadataProvider.artworkAsFlow(mediaID)
+    }
+
+    val dragListenerInstall = Job()
+    val pageListenerInstall = Job()
     fun init() {
-        var k: Job? = null
-        val dragListenerInstall = Job()
-        val pageListenerInstall = Job()
         coroutineScope.launch(Dispatchers.Main) {
             val dragInteraction = mutableListOf<DragInteraction.Start>()
             pagerState.interactionSource.interactions
@@ -168,10 +174,10 @@ class FoundationDescriptionPagerLayoutConnection  constructor(
                                 if (dragging || !_userScrollMark) return@drag
                                 if (page == rActualPage + 1 + _rCount) {
                                     _rCount++
-                                    panelState.playbackController.seekToNextMediaItemAsync()
+                                    userSwipeToPage(page, true)
                                 } else if (page == rActualPage - 1 - _lCount) {
                                     _lCount++
-                                    panelState.playbackController.seekToPreviousMediaItemAsync()
+                                    userSwipeToPage(page, false)
                                 } else if (page != rActualPage) {
                                     snapToCorrectPageSuspend()
                                 }
@@ -180,46 +186,151 @@ class FoundationDescriptionPagerLayoutConnection  constructor(
                 }
         }
 
-        panelState.playbackController.invokeOnTimelineChanged(2) { timeline, step ->
-            k?.cancel()
-            k = coroutineScope.launch(Dispatchers.Main) {
-                dragListenerInstall.join()
-                pageListenerInstall.join()
-                savedItemStateMap.clear()
-                val targetPage = rActualPage + step
-                val userScrollUnlockKey = Any()
-                _userScrollUnlockKey = userScrollUnlockKey
-                _rCount = 0
-                _lCount = 0
-                run scroll@ {
-                    val savePage = targetPage
-                    if (targetPage > pagerState.pageCount || targetPage < 0) {
-                        return@scroll
-                    }
-                    placeholderPage.value = targetPage
-                    animateMoveToPage(targetPage) ; scroller!!.join()
-                    savedItemStateMap[savePage] = persistentMapOf<String, Any>()
-                        .builder()
-                        .apply {
-                            itemStateSaveDelegate[targetPage]?.let {
-                                val toSave = it.invoke()
-                                putAll(toSave)
-                            }
-                        }
-                        .build()
+        launchTimelineCollector()
+    }
+
+    private var sc = 0
+    private fun userSwipeToPage(
+        page: Int,
+        next: Boolean
+    ) {
+        val targetPage = page
+        val inc = ++sc
+        dispatching = true
+        coroutineScope.launch(Dispatchers.Main) {
+            if (inc == 1) {
+                stopTimelineCollector()
+            }
+            try {
+                val success = if (next) {
+                    panelState.playbackController
+                        .seekToNextMediaItemAsync()
+                        .await()
+                } else {
+                    panelState.playbackController
+                        .seekToPreviousMediaItemAsync()
+                        .await()
                 }
-                correctingPage = true
-                renderState.value = DescriptionPagerRenderData(
-                    timeline = DescriptionPagerTimeline(
+                if (success && inc == sc) {
+                    val timeline = panelState.playbackController.getTimelineAsync(2).await()
+                    dispatching = false
+                    dragListenerInstall.join()
+                    pageListenerInstall.join()
+                    savedItemStateMap.clear()
+                    val userScrollUnlockKey = Any()
+                    _userScrollUnlockKey = userScrollUnlockKey
+                    _rCount = 0
+                    _lCount = 0
+                    correctingPage = true
+                    run scroll@ {
+                        val savePage = targetPage
+                        placeholderPage.value = targetPage
+                        if (targetPage > pagerState.pageCount || targetPage < 0) {
+                            return@scroll
+                        }
+                        savedItemStateMap[savePage] = persistentMapOf<String, Any>()
+                            .builder()
+                            .apply {
+                                itemStateSaveDelegate[targetPage]?.let {
+                                    val toSave = it.invoke()
+                                    putAll(toSave)
+                                }
+                            }
+                            .build()
+                    }
+                    renderState.value = DescriptionPagerRenderData(
+                        timeline = DescriptionPagerTimeline(
+                            currentIndex = timeline.currentIndex,
+                            items = timeline.items
+                        ),
+                        savedInstanceState = savedItemStateMap.toMap(),
+                        pageOverride = mapOf(
+                            timeline.currentIndex to targetPage,
+                        ),
+                        internalData = mapOf("userScrollUnlockKey" to userScrollUnlockKey)
+                    )
+                }
+            } finally {
+                if (--sc == 0) {
+                    launchTimelineCollector()
+                }
+            }
+        }
+    }
+
+    var timelineCollector: Job? = null
+    var timelineUpdateJob: Job? = null
+    private fun launchTimelineCollector() {
+        timelineCollector?.cancel()
+        timelineCollector = coroutineScope.launch(Dispatchers.Main) {
+            panelState.playbackController.invokeOnTimelineChanged(2) { timeline, step ->
+                ensureActive()
+                timelineUpdateJob?.cancel()
+                timelineUpdateJob = coroutineScope.launch(Dispatchers.Main) {
+                    Timber.d("DEBUG: onTimelineChanged)_step=$step")
+                    dragListenerInstall.join()
+                    pageListenerInstall.join()
+                    savedItemStateMap.clear()
+                    val targetPage = rActualPage + step
+                    correctingPage = step != 0
+                    val oldT = renderState.value?.timeline
+                    val newT = DescriptionPagerTimeline(
                         currentIndex = timeline.currentIndex,
                         items = timeline.items
-                    ),
-                    savedInstanceState = savedItemStateMap.toMap(),
-                    pageOverride = mapOf(timeline.currentIndex to placeholderPage.value),
-                    internalData = mapOf("userScrollUnlockKey" to userScrollUnlockKey)
-                )
+                    )
+                    if (oldT == newT) {
+                        return@launch
+                    }
+                    run scroll@ {
+                        if (step == 0) return@scroll
+                        val savePage = targetPage
+                        if (targetPage > pagerState.pageCount || targetPage < 0 || targetPage == pagerState.currentPage) {
+                            return@scroll
+                        }
+                        placeholderPage.value = targetPage
+                        animateMoveToPage(targetPage) ; scroller!!.join()
+                        savedItemStateMap[savePage] = persistentMapOf<String, Any>()
+                            .builder()
+                            .apply {
+                                itemStateSaveDelegate[targetPage]?.let {
+                                    val toSave = it.invoke()
+                                    putAll(toSave)
+                                }
+                            }
+                            .build()
+                    }
+                    ensureActive()
+                    renderState.value = DescriptionPagerRenderData(
+                        timeline = DescriptionPagerTimeline(
+                            currentIndex = timeline.currentIndex,
+                            items = timeline.items
+                        ),
+                        savedInstanceState = if (step != 0) {
+                            savedItemStateMap.toMap()
+                        } else {
+                            mapOf()
+                        },
+                        pageOverride = if (step != 0) {
+                            mapOf(timeline.currentIndex to placeholderPage.value)
+                        } else {
+                            mapOf()
+                        },
+                        internalData = mapOf()
+                    )
+                }
+            }.also {
+                disposables.add(it)
+                try {
+                    awaitCancellation()
+                } finally {
+                    disposables.remove(it.apply { dispose() })
+                }
             }
-        }.also { disposables.add(it) }
+        }
+    }
+
+    private fun stopTimelineCollector() {
+        timelineCollector?.cancel()
     }
 
     private var scroller: Job? = null
@@ -234,7 +345,7 @@ class FoundationDescriptionPagerLayoutConnection  constructor(
                 try {
                     if (pagerState.currentPage == page) return@launch
                     _userScrollMark = false
-                    pagerState.animateScrollToPage(page, animationSpec = tween(200))
+                    pagerState.animateScrollToPage(page, animationSpec = spring(stiffness = Spring.StiffnessMediumLow))
                 } finally {
                     scrollerMovePage = -1
                 }
@@ -279,12 +390,10 @@ class FoundationDescriptionPagerLayoutConnection  constructor(
         withContext(AndroidUiDispatcher.Main) {
             if (pagerState.pageCount > 0) {
                 _userScrollMark = false
+                val correctPage = renderState.value?.timeline?.currentIndex ?: 0
                 pagerState.scrollToPage(
-                    renderState.value?.timeline?.currentIndex ?: 0,
+                    page = correctPage,
                 )
-                if (userDraggingState.value) {
-                    pagerState.dispatchRawDelta(sUserScrollPixels.also { sUserScrollPixels = 0f })
-                }
             }
         }
     }
@@ -311,12 +420,10 @@ class FoundationDescriptionPagerLayoutConnection  constructor(
             rActualPage = (renderData?.timeline?.currentIndex ?: 0).coerceAtLeast(0)
             // the Foundation pager should already be recomposed, snap to the correct page
             coroutineScope.launch(Dispatchers.Main.immediate) {
-                try { scroller?.join() } finally {
-                    snapToCorrectPageSuspend()
-                    if (o?.internalData !== renderData?.internalData) {
-                        if (renderData?.internalData?.get("userScrollUnlockKey") == _userScrollUnlockKey) {
-                            correctingPage = false
-                        }
+                snapToCorrectPageSuspend()
+                if (o?.internalData !== renderData?.internalData) {
+                    if (renderData?.internalData?.get("userScrollUnlockKey") == _userScrollUnlockKey) {
+                        correctingPage = false
                     }
                 }
             }

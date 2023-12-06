@@ -29,9 +29,13 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.flammky.musicplayer.base.compose.LocalLayoutVisibility
 import com.flammky.musicplayer.main.presentation.root.MaterialDesign3Theme
-import dev.dexsr.klio.android.main.root.compose.OldRootNavHost
-import dev.dexsr.klio.base.compose.*
+import dev.dexsr.klio.android.base.resource.AndroidLocalImage
 import dev.dexsr.klio.android.base.systeminsets.compose.systemNavigationBarsPadding
+import dev.dexsr.klio.android.main.root.compose.OldRootNavHost
+import dev.dexsr.klio.base.compose.ComposableFun
+import dev.dexsr.klio.base.compose.NoOpPainter
+import dev.dexsr.klio.base.compose.checkedDpStatic
+import dev.dexsr.klio.base.compose.combineIf
 import dev.dexsr.klio.base.resource.LocalImage
 import dev.dexsr.klio.base.theme.md3.MD3Spec
 import dev.dexsr.klio.base.theme.md3.MD3Theme
@@ -106,6 +110,9 @@ private fun MD3RootContent(
 			}.fastMap { it.measure(contentConstraints) }
 
 			val navHost = subcompose("NavHost") {
+				val sysBottomBar = with(LocalDensity.current) {
+					WindowInsets.navigationBars.getBottom(this).toDp()
+				}
 				OldRootNavHost(
 					onBackPressedDispatcherOwner = navHostBackPressDispatcherOwner,
 					topBarVisibilitySpacing = LocalLayoutVisibility.Top.current,
@@ -221,7 +228,7 @@ private fun MD3RootBottomNavigationBarContent(
 						state.destinationImageAsFlow(destination, selected)
 					}.collectAsState(initial = LocalImage.None).value
 					val painter = when {
-						image is LocalImage.Resource -> painterResource(id = image.value)
+						image is AndroidLocalImage.Resource -> painterResource(id = image.value)
 						else -> NoOpPainter
 					}
 					Icon(

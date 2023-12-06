@@ -17,16 +17,6 @@ open class LocalImage<T>(val value: T) {
 			return Objects.hash(value)
 		}
 	}
-	class Resource(id: Int) : LocalImage<Int>(id) {
-
-		override fun equals(other: Any?): Boolean {
-			return this === other || other is Resource && other.value == value
-		}
-
-		override fun hashCode(): Int {
-			return Objects.hash(value)
-		}
-	}
 
 	class ByteArray(bytes: kotlin.ByteArray) : LocalImage<kotlin.ByteArray>(bytes) {
 

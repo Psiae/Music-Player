@@ -104,10 +104,6 @@ fun Job.initAsParentCompleter(
     }
 }
 
-fun Job.initAsCompleterJob(parent: Job): DisposableHandle {
-    return initAsParentCompleter(parent)
-}
-
 fun Job.initAsParentJob(child: Job): DisposableHandle {
     return child.initAsChildJob(this)
 }

@@ -52,6 +52,10 @@ interface RootCompactPlaybackController {
     ): DisposableHandle
 
     fun toggleRepeatAsync()
+
+    fun getTimelineAsync(
+        range: Int
+    ): Deferred<PlaybackTimeline>
 }
 
 object NoOpRootCompactPlaybackController : RootCompactPlaybackController {
@@ -106,5 +110,9 @@ object NoOpRootCompactPlaybackController : RootCompactPlaybackController {
     }
 
     override fun toggleRepeatAsync() {
+    }
+
+    override fun getTimelineAsync(range: Int): Deferred<PlaybackTimeline> {
+        return CompletableDeferred<PlaybackTimeline>().apply { cancel() }
     }
 }

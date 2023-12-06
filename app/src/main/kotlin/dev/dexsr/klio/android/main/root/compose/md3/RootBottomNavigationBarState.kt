@@ -6,6 +6,7 @@ import androidx.compose.runtime.remember
 import androidx.navigation.NavController
 import com.flammky.musicplayer.base.nav.compose.ComposeRootDestination
 import com.flammky.musicplayer.base.nav.compose.ComposeRootNavigation
+import dev.dexsr.klio.android.base.resource.AndroidLocalImage
 import dev.dexsr.klio.base.kt.castOrNull
 import dev.dexsr.klio.base.resource.LocalImage
 import kotlinx.coroutines.flow.Flow
@@ -94,7 +95,7 @@ internal class NavControllerRootBottomNavigationBarState(
 					emit(LocalImage.None)
 					return@flow
 				}
-			emit(LocalImage.Resource(resId))
+			emit(AndroidLocalImage.Resource(resId))
 		}
 	}
 

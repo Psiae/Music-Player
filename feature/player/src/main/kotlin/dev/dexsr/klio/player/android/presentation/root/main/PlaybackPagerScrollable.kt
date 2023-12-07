@@ -36,6 +36,9 @@ fun Modifier.playbackPagerScrollable(
                 focusGroup()
             }
             .bringContentInView(bringContentInView)
-            .pointerScrollable()
+            .pointerScrollable(
+                state = state,
+                orientation = orientation
+            )
     }
 )

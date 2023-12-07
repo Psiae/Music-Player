@@ -1,6 +1,9 @@
 package dev.dexsr.klio.player.android.presentation.root
 
+import android.os.Bundle
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.flammky.musicplayer.base.auth.AuthService
 import com.flammky.musicplayer.base.user.User
@@ -45,6 +48,38 @@ class PlaybackControlScreenState(
         showSelf = false
         backPressRegistry.unregisterBackPressConsumer(backPressConsumer)
     }
+
+    fun saveState(): Bundle {
+        return Bundle().apply {
+            putBoolean("showSelf", this@PlaybackControlScreenState.showSelf)
+        }
+    }
+
+    fun restoreState(bundle: Bundle) {
+        if (bundle.containsKey("showSelf")) {
+            showSelf = bundle.getBoolean("showSelf")
+        }
+    }
+
+    companion object {
+
+        fun Saver(
+            playbackController: PlaybackController,
+            mediaMetadataProvider: MediaMetadataProvider,
+            registry: ComposeBackPressRegistry
+        ): Saver<PlaybackControlScreenState, android.os.Bundle> {
+            return androidx.compose.runtime.saveable.Saver(
+                save = { it.saveState() },
+                restore = {
+                    PlaybackControlScreenState(
+                        playbackController,
+                        mediaMetadataProvider,
+                        registry
+                    ).apply { restoreState(it) }
+                }
+            )
+        }
+    }
 }
 
 
@@ -83,10 +118,22 @@ private fun oldRememberPlaybackControlScreenState(
             ) {
                 OldMediaMetadataProvider(user, vm)
             }
-            remember(pc, mmp) { PlaybackControlScreenState(
+            val backPressRegistry = remember(
+                pc,
+                mmp,
+            ) {
+                ComposeBackPressRegistry()
+            }
+            rememberSaveable(
+                pc,
+                mmp,
+                saver = remember(pc, mmp, backPressRegistry) {
+                    PlaybackControlScreenState.Saver(pc, mmp, backPressRegistry)
+                }
+            ) { PlaybackControlScreenState(
                 playbackController = pc,
                 mediaMetadataProvider = mmp,
-                backPressRegistry = ComposeBackPressRegistry()
+                backPressRegistry = backPressRegistry
             ) }
         }
         ?: remember {

@@ -5,6 +5,7 @@ import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.MutatePriority
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.ScrollScope
 import androidx.compose.foundation.gestures.ScrollableState
 import androidx.compose.foundation.interaction.Interaction
@@ -198,7 +199,9 @@ class PlaybackPagerController(
                 currentUserFlingInstance?.cancel()
                 currentUserSwipeInstance?.userDragOverride()
                 val swipeInstance = currentUserSwipeInstance?.apply { userDragOverride() }
-                val scrollInstance = UserDragInstance(scrollJob)
+                val scrollInstance = UserDragInstance(scrollJob).apply {
+                    initKind(isOverridingScroll = startCenter)
+                }
                 val previousScrollInstance = currentUserDragInstance?.apply { cancel() }
                 check(previousScrollInstance?.dragEnded != false)
                 currentUserDragInstance = scrollInstance
@@ -266,10 +269,17 @@ class PlaybackPagerController(
                 val flingInstance = UserDragFlingInstance(scrollJob, "flingScroll@${flingScrollC}")
                 currentUserFlingInstance = flingInstance
                 var consumed = false
+                // negative means forward
+                val direction = -dragGestureDelta().sign
                 try {
                     object : ScrollScope {
                         override fun scrollBy(pixels: Float): Float {
                             flingInstance.ensureActive()
+                            if (pixels != 0f && pixels.sign != direction) {
+                                flingInstance.onUnexpectedDirection()
+                                // the fling can bounce, we don't want that, temporary fix
+                                throw CancellationException("other fling direction expected (expected=$direction, got=${pixels.sign})")
+                            }
                             val page = scrollPosition.currentPage
                             val scroll = -performScroll(-pixels, "flingScroll").also {
                                 flingInstance.onScrollBy(
@@ -297,9 +307,11 @@ class PlaybackPagerController(
                 } catch (ce: CancellationException) {
                     scrollJob.cancel(ce)
                     ensureActive()
+                } finally {
+                    flingInstance.flingEnd()
+                    scrollJob.complete()
+                    userPerformFlingDone(flingInstance)
                 }
-                userPerformFlingDone(flingInstance)
-                scrollJob.complete()
             }.initAsParentCompleter(scrollJob)
             try {
                 scrollJob.join()
@@ -847,7 +859,7 @@ class PlaybackPagerController(
                     return@run page
                 }
                 val index = run index@ {
-                    if (firstVisiblePageDiff != 0 && firstVisiblePageDiff.sign == direction.sign) {
+                    if (firstVisiblePageDiff.sign == direction.sign) {
                         return@index timeline.currentIndex - firstVisiblePageDiff
                     }
                     if (scrollPosition.currentPage == timeline.currentIndex + (stepCount * direction) - beforePageDiff) {
@@ -1062,6 +1074,12 @@ class PlaybackPagerController(
         return scroll
     }
 
+    fun userDragScrollEnd(
+        instance: UserDragInstance
+    ) {
+        userPerformScrollDone(scrollInstance = instance, swipeInstance = null)
+    }
+
     private var scrollInstanceSkip = 0
 
     private var swipePageOverride: Int? = null
@@ -1073,33 +1091,39 @@ class PlaybackPagerController(
         swipeInstance: UserSwipeInstance?
     ) {
         Timber.d("PlaybackPagerController_DEBUG: userPerformScrollDone(currentPage=${scrollPosition.currentPage}, swipePageOverride=$swipePageOverride, timeline.currentIndex=${_renderData.value?.timeline?.currentIndex}, firstDragPage=${scrollInstance.firstDragPage}, latestDragPage=${scrollInstance.latestDragResultPage}, dragPageShift=${scrollInstance.dragPageShift})")
-        val timeline = _renderData.value?.timeline?.takeIf {
-            it.windows.isNotEmpty() && it.currentIndex in it.windows.indices
-        } ?: run {
-            snapToTimelineCurrentWindow(PlaybackPagerTimeline.UNSET)
-            return
-        }
         val firstDragPage = scrollInstance.firstDragPage
             ?: run {
-                snapToTimelineCurrentWindow(timeline)
+                // no firstDragPage means that we are not dragging anywhere but is considered a scroll
+                // assume that this is down gesture over an ongoing scroll
+                if (scrollInstance.isDragScrollOverride) {
+                    // maybe: resume velocity decay ?
+                    animateToTimelineCurrentWindow(_renderData.value?.timeline ?: PlaybackPagerTimeline.UNSET)
+                } else {
+                    // we don't expect this, but we can just recover
+                    snapToTimelineCurrentWindow(_renderData.value?.timeline ?: PlaybackPagerTimeline.UNSET)
+                }
                 return
             }
         when (scrollInstance.latestDragResultPage) {
+            // expect fling to correct this
+            // maybe: timeout
             firstDragPage -> {}
             firstDragPage + 1 -> userSwipeNextPage()
             firstDragPage - 1 -> userSwipePreviousPage()
             // if the drag end up at more than we expect,
-            else -> animateToTimelineCurrentWindow(timeline)
+            else -> animateToTimelineCurrentWindow(_renderData.value?.timeline ?: PlaybackPagerTimeline.UNSET)
         }
     }
 
     private fun userPerformFlingDone(
         instance: UserDragFlingInstance
     ) {
-        if (instance.isActive) {
+        if (!instance.isCancelled) {
             if (scrollPosition.scrollOffset != 0) {
-                snapToTimelineCurrentWindow(_renderData.value!!.timeline)
+                snapToTimelineCurrentWindow(_renderData.value?.timeline ?: PlaybackPagerTimeline.UNSET)
             }
+        } else if (instance.shouldCorrect) {
+            animateToTimelineCurrentWindow(_renderData.value?.timeline ?: PlaybackPagerTimeline.UNSET)
         }
     }
 
@@ -1222,6 +1246,17 @@ class PlaybackPagerController(
         private val lifetime: Job
     ) {
 
+        private var kindInit = false
+
+        var correctionOverride = false
+            private set
+
+        var flingCorrectionOverride = false
+            private set
+
+        var isDragScrollOverride = false
+            private set
+
         var firstDragPage: Int? = null
             private set
 
@@ -1253,8 +1288,9 @@ class PlaybackPagerController(
             latestDragResultPage = afterPage
         }
 
-        fun dragEnd() {
+        fun dragEnd(): Any {
             dragEnded = true
+            return this
         }
 
         fun ensureActive() {
@@ -1308,9 +1344,12 @@ class PlaybackPagerController(
         fun startCenter(
             center: Int
         ) {
+            check(firstDragPage == null) {
+                "startCenter when firstDragPage is not NULL"
+            }
             firstDragPage = center
-            latestDragResultPage = center
             latestDragCenterPage = center
+            latestDragResultPage = center
         }
 
         fun moveCenter(
@@ -1332,12 +1371,42 @@ class PlaybackPagerController(
             checkNotNull(latestDragCenterPage)
             this.latestDragResultPage = page
         }
+
+        fun initKind(
+            isOverridingScroll: Boolean
+        ) {
+            check(!kindInit) {
+                "UserDragInstance.initKind is called multiple times"
+            }
+            kindInit = true
+            this.isDragScrollOverride = isOverridingScroll
+        }
+
+        fun ignoreUserDrag(): Boolean {
+            return correctionOverride
+        }
+
+        fun newDragOverride() {
+            cancel()
+        }
+
+        fun newCorrectionOverride() {
+            correctionOverride = true
+            if (dragEnded) {
+                flingCorrectionOverride = true
+            }
+        }
     }
 
     class UserDragFlingInstance(
         private val lifetime: Job,
         val debugName: String
     ) {
+
+        private var init = true
+
+        var source: Any? = null
+            private set
 
         var firstScrollPage: Int? = null
             private set
@@ -1351,11 +1420,23 @@ class PlaybackPagerController(
         var flingEnded = false
             private set
 
+        var shouldCorrect = false
+            private set
+
         val isCancelled: Boolean
             get() = lifetime.isCancelled
 
         val isActive: Boolean
             get() = lifetime.isActive
+
+        fun init(
+            source: UserDragInstance
+        ) {
+            if (init) return
+            init = false
+            this.source = source
+            sourceApply(source)
+        }
 
         fun onScrollBy(
             pixels: Float,
@@ -1452,6 +1533,18 @@ class PlaybackPagerController(
             checkNotNull(latestScrollCenterPage)
             this.latestScrollResultPage = page
         }
+
+        fun onUnexpectedDirection() {
+            shouldCorrect = true
+        }
+
+        private fun sourceApply(
+            source: UserDragInstance
+        ) {
+            if (source.flingCorrectionOverride) {
+                cancel()
+            }
+        }
     }
 
     class UserSwipeInstance(
@@ -1470,14 +1563,49 @@ class PlaybackPagerController(
     val correctingTimeline
         get() = _timelineAnimate?.isActive == true
 
+    // maybe: join them
+    private var latestUserDragInstance: UserDragInstance? = null
+    private var latestUserDragFlingInstance: UserDragFlingInstance? = null
+
     fun newUserDragScroll(): UserDragInstance {
-        // expected behavior:
-        //   - new interaction override correction
-        //   - correction override ongoing interaction
+        checkInMainLooper()
+        latestUserDragInstance?.newDragOverride()
+        val correcting = correctingTimeline
         _timelineAnimate?.cancel()
         return UserDragInstance(lifetime = SupervisorJob())
+            .apply {
+                initKind(
+                    isOverridingScroll = correcting
+                )
+                if (correcting) {
+                    // gesture override correction
+                    // down gesture when we are currently scrolling is treated as a "scroll"
+                    startCenter(_renderData.value?.timeline?.currentIndex?.coerceAtLeast(0) ?: 0)
+                }
+            }
+            .also {
+                latestUserDragInstance = it
+            }
+    }
+
+    fun newUserDragFlingScroll(key: Any): UserDragFlingInstance? {
+        if (key !is UserDragInstance) return null
+        if (latestUserDragInstance != key) return null
+        return UserDragFlingInstance(lifetime = SupervisorJob(), debugName = "")
+            .apply {
+                init(source = key)
+            }
+            .also {
+                latestUserDragFlingInstance = it
+            }
     }
 }
 
 // TODO: make so that we can change the range dynamically
 const val PlaybackPagerEagerRangePlaceholder = 5
+
+private fun PlaybackPagerController.dragGestureDelta() = if (pagerLayoutInfo.orientation == Orientation.Horizontal) {
+    upDownDifference.x
+} else {
+    upDownDifference.y
+}

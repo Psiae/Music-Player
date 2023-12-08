@@ -11,10 +11,13 @@ import dev.dexsr.klio.player.android.presentation.root.main.pager.PlaybackPagerC
 import dev.dexsr.klio.player.android.presentation.root.main.pager.PlaybackPagerScrollableState
 import dev.dexsr.klio.player.android.presentation.root.main.pager.gesture.bringContentInView
 import dev.dexsr.klio.player.android.presentation.root.main.pager.gesture.pointerScrollable
+import dev.dexsr.klio.player.android.presentation.root.main.pager.overscroll.PlaybackPagerOverscrollEffect
 
+@OptIn(ExperimentalFoundationApi::class)
 fun Modifier.playbackPagerScrollable(
     state: PlaybackPagerScrollableState,
-    orientation: Orientation
+    orientation: Orientation,
+    overscrollEffect: PlaybackPagerOverscrollEffect
 ): Modifier = composed(
     factory = {
         val reverseDirection = false
@@ -29,7 +32,6 @@ fun Modifier.playbackPagerScrollable(
                 )
             }
 
-
         Modifier
             .run {
                 @OptIn(ExperimentalFoundationApi::class)
@@ -38,7 +40,8 @@ fun Modifier.playbackPagerScrollable(
             .bringContentInView(bringContentInView)
             .pointerScrollable(
                 state = state,
-                orientation = orientation
+                orientation = orientation,
+                overscrollEffect = overscrollEffect
             )
     }
 )

@@ -70,7 +70,7 @@ import kotlin.math.roundToInt
 
 @Composable
 @OptIn(ExperimentalFoundationApi::class)
-internal fun rememberPlaybackPagerOverscrollEffect(): OverscrollEffect {
+internal fun rememberPatchedOverscrollEffect(): OverscrollEffect {
     val context = LocalContext.current
     val config = LocalOverscrollConfiguration.current
     return if (config != null) {

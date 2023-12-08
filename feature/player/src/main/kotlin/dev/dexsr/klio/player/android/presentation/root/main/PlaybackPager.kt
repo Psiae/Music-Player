@@ -22,9 +22,7 @@ import androidx.compose.ui.unit.*
 import dev.dexsr.klio.player.android.presentation.root.MediaMetadataProvider
 import dev.dexsr.klio.player.android.presentation.root.main.pager.SnapLayoutInfoProvider
 import dev.dexsr.klio.player.android.presentation.root.main.pager.dragDirectionDetector
-import dev.dexsr.klio.player.android.presentation.root.main.pager.overscroll.asComposeFoundationOverscrollEffect
-import dev.dexsr.klio.player.android.presentation.root.main.pager.overscroll.clipScrollableContainer
-import dev.dexsr.klio.player.android.presentation.root.main.pager.overscroll.overscroll
+import dev.dexsr.klio.player.android.presentation.root.main.pager.overscroll.*
 
 @Composable
 fun PlaybackPagerDef(
@@ -101,7 +99,9 @@ fun PlaybackPager(
     } else {
         Orientation.Horizontal
     }
-    val overscrollEffect = rememberPlaybackPagerOverscrollEffect()
+    val patchedOverscrollEffect = rememberPatchedOverscrollEffect()
+    val playbackPagerOverscrollEffect = rememberPlaybackPagerOverscrollEffect()
+
     val density = LocalDensity.current
     val flingBehavior = remember(controller, density) {
         val highVelocityAnimationSpec = SplineBasedFloatDecayAnimationSpec(density)
@@ -130,14 +130,15 @@ fun PlaybackPager(
             shortSnapVelocityThreshold = 400.dp
         )
     }
+
     SubcomposeLayout(
         modifier = modifier
             .then(controller.awaitLayoutModifier)
             .then(controller.remeasurementModifier)
-            .overscroll(overscrollEffect)
             .playbackPagerScrollable(
                 state = controller.gestureScrollableState,
                 orientation = orientation,
+                overscrollEffect = playbackPagerOverscrollEffect
             )
             .scrollable(
                 orientation = orientation,
@@ -149,9 +150,11 @@ fun PlaybackPager(
                 interactionSource = controller.interactionSource,
                 flingBehavior = flingBehavior,
                 state = controller.gestureScrollableState1,
-                overscrollEffect = remember(overscrollEffect) { overscrollEffect.asComposeFoundationOverscrollEffect() },
+                overscrollEffect = remember(patchedOverscrollEffect) { patchedOverscrollEffect.asComposeFoundationOverscrollEffect() },
                 enabled = true
             )
+            .playbackPagerOverscroll(playbackPagerOverscrollEffect)
+            .overscroll(patchedOverscrollEffect)
             .clipScrollableContainer(orientation)
             .dragDirectionDetector(controller),
         state = remember(eagerRange) {

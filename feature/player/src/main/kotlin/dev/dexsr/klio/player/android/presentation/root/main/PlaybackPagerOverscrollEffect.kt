@@ -74,14 +74,14 @@ internal fun rememberPatchedOverscrollEffect(): OverscrollEffect {
     val context = LocalContext.current
     val config = LocalOverscrollConfiguration.current
     return if (config != null) {
-        remember(context, config) { AndroidEdgeEffectOverscrollEffect(context, config) }
+        remember(context, config) { PlaybackPagerPatchAndroidEdgeEffectOverscrollEffect(context, config) }
     } else {
          NoOpOverscrollEffect
     }
 }
 
 private class DrawOverscrollModifier(
-    private val overscrollEffect: AndroidEdgeEffectOverscrollEffect,
+    private val overscrollEffect: PlaybackPagerPatchAndroidEdgeEffectOverscrollEffect,
     inspectorInfo: InspectorInfo.() -> Unit
 ) : DrawModifier, InspectorValueInfo(inspectorInfo) {
 
@@ -109,7 +109,7 @@ private class DrawOverscrollModifier(
 }
 
 @OptIn(ExperimentalFoundationApi::class)
-internal class AndroidEdgeEffectOverscrollEffect(
+internal class PlaybackPagerPatchAndroidEdgeEffectOverscrollEffect(
     context: Context,
     private val overscrollConfig: OverscrollConfiguration
 ) : OverscrollEffect {
@@ -347,10 +347,10 @@ internal class AndroidEdgeEffectOverscrollEffect(
         .onSizeChanged(onNewSize)
         .then(
             DrawOverscrollModifier(
-                this@AndroidEdgeEffectOverscrollEffect,
+                this@PlaybackPagerPatchAndroidEdgeEffectOverscrollEffect,
                 debugInspectorInfo {
                     name = "overscroll"
-                    value = this@AndroidEdgeEffectOverscrollEffect
+                    value = this@PlaybackPagerPatchAndroidEdgeEffectOverscrollEffect
                 })
         )
 

@@ -70,6 +70,7 @@ class PlaybackPagerMeasuredPage(
         return PlaybackPagerPositionedPage(
             offset = offset,
             index = this.index,
+            size = this.size,
             key = key,
             orientation = orientation,
             innerPlaceables = placeables,

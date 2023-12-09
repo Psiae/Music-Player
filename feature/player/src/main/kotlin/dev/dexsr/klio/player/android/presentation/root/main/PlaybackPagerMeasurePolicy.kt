@@ -41,6 +41,7 @@ internal class PlaybackPagerMeasurePolicy(
             firstVisiblePage = controller.firstVisiblePage
             firstVisiblePageOffset = controller.firstVisiblePageOffset
         }
+        controller.density = this
         PlaybackPagerMeasureScope(
             contentFactory = PlaybackPagerContentFactory(itemProvider),
             subcomposeMeasureScope = this,

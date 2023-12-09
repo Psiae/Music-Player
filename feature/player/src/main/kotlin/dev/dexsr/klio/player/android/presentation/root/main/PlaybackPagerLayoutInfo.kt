@@ -31,7 +31,8 @@ interface PlaybackPagerLayoutInfo : UNSET<PlaybackPagerLayoutInfo> {
                 get() = emptyList()
             override val closestPageToSnapPosition: PlaybackPagerPageInfo = PlaybackPagerPageInfo(
                 index = -1,
-                offset = 0
+                offset = 0,
+                size = 0
             )
             override val viewportSize: IntSize
                 get() = IntSize.Zero

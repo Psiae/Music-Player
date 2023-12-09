@@ -1,6 +1,7 @@
 package dev.dexsr.klio.player.android.presentation.root.main.pager
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.ui.unit.Velocity
 import dev.dexsr.klio.player.android.presentation.root.main.pager.overscroll.PlaybackPagerOverscrollEffect
 
 interface PlaybackPagerGestureScrollableState {
@@ -12,11 +13,12 @@ interface PlaybackPagerGestureScrollableState {
     // call to this function meant the beginning of a new scroll
     // maybe we can return something instead of performFling in this interface
     suspend fun userDragScroll(
+        overscrollEffect: PlaybackPagerOverscrollEffect,
         scroll: suspend PlaybackPagerScrollScope.() -> Unit
     ): Any
 
-    // performFling of previous successful userDragScroll,
-    // expect no call to userDragScroll before this function return
+    // performFling of previous successful userDragScroll
+    // maybe: coroutine job
     @OptIn(ExperimentalFoundationApi::class)
-    suspend fun performFling(key: Any, velocity: Float, overscrollEffect: PlaybackPagerOverscrollEffect)
+    suspend fun performFling(key: Any, velocity: Velocity, overscrollEffect: PlaybackPagerOverscrollEffect)
 }

@@ -11,6 +11,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Velocity
+import dev.dexsr.klio.player.android.presentation.root.main.PlaybackPagerPatchAndroidEdgeEffectOverscrollEffect
 
 /**
  * @see [androidx.compose.foundation.OverscrollEffect]
@@ -132,9 +133,34 @@ fun Modifier.playbackPagerOverscroll(
 private class PlaybackPagerOverscrollEffectImpl(
     context: Context,
     config: OverscrollConfiguration
-) : PlaybackPagerOverscrollEffect /* TODO: impl */ by NoOpPlaybackPagerOverscrollEffect {
+) : PlaybackPagerOverscrollEffect {
+
+    // TODO: impl
 
     private val platformEdgeEffect = EdgeEffectCompat
+
+    private val patched = PlaybackPagerPatchAndroidEdgeEffectOverscrollEffect(context, config)
+
+    override fun applyToScroll(
+        delta: Offset,
+        source: NestedScrollSource,
+        performScroll: (Offset) -> Offset
+    ): Offset {
+        return patched.applyToScroll(delta, source, performScroll)
+    }
+
+    override suspend fun applyToFling(
+        velocity: Velocity,
+        performFling: suspend (Velocity) -> Velocity
+    ) {
+        return patched.applyToFling(velocity, performFling)
+    }
+
+    override val isInProgress: Boolean
+        get() = patched.isInProgress
+
+    override val effectModifier: Modifier
+        get() = patched.effectModifier
 }
 
 private object NoOpPlaybackPagerOverscrollEffect : PlaybackPagerOverscrollEffect {
@@ -156,3 +182,48 @@ private object NoOpPlaybackPagerOverscrollEffect : PlaybackPagerOverscrollEffect
     override val effectModifier: Modifier
         get() = Modifier
 }
+
+@OptIn(ExperimentalFoundationApi::class)
+fun PlaybackPagerOverscrollEffect.asComposeFoundationOverscrollEffect(): androidx.compose.foundation.OverscrollEffect {
+    val self = this
+    return object : androidx.compose.foundation.OverscrollEffect {
+        override fun applyToScroll(
+            delta: Offset,
+            source: NestedScrollSource,
+            performScroll: (Offset) -> Offset
+        ) = self.applyToScroll(delta, source, performScroll)
+
+        override suspend fun applyToFling(
+            velocity: Velocity,
+            performFling: suspend (Velocity) -> Velocity
+        ) = self.applyToFling(velocity, performFling)
+
+        override val isInProgress: Boolean
+            get() = self.isInProgress
+        override val effectModifier: Modifier
+            get() = self.effectModifier
+    }
+}
+
+/*
+@OptIn(ExperimentalFoundationApi::class)
+fun PlaybackPagerOverscrollEffect.asLibIntOverscrollEffect(): dev.dexsr.klio.player.android.libint.scrollable.OverscrollEffect {
+    val self = this
+    return object : dev.dexsr.klio.player.android.libint.scrollable.OverscrollEffect {
+        override fun applyToScroll(
+            delta: Offset,
+            source: NestedScrollSource,
+            performScroll: (Offset) -> Offset
+        ) = self.applyToScroll(delta, source, performScroll)
+
+        override suspend fun applyToFling(
+            velocity: Velocity,
+            performFling: suspend (Velocity) -> Velocity
+        ) = self.applyToFling(velocity, performFling)
+
+        override val isInProgress: Boolean
+            get() = self.isInProgress
+        override val effectModifier: Modifier
+            get() = self.effectModifier
+    }
+}*/

@@ -44,13 +44,10 @@ fun Modifier.pointerScrollable(
                 with(dragScrollLogic) { onDragStarted(position) }
             },
             onDragStopped = { velocity ->
-                with(dragScrollLogic) { onDragStopped(velocity) }
+                with(dragScrollLogic) { onDragStopped(velocity, orientation) }
             },
             reverseDirection = false
         )
-
-    // not ready yet
-    Modifier
 }
 
 private class PlaybackPagerDraggableState(
@@ -86,22 +83,30 @@ private class PlaybackPagerDragScrollLogic(
         // no-op
     }
 
-    suspend fun CoroutineScope.onDragStopped(velocity: Float) {
+    suspend fun CoroutineScope.onDragStopped(velocity: Float, orientation: Orientation) {
         performFlingKey?.let {
-            scrollableState.performFling(key = it, velocity, OverscrollEffectDelegate())
+            scrollableState.performFling(
+                key = it,
+                velocity = Velocity(
+                    x = if (orientation == Orientation.Horizontal) velocity else 0f,
+                    y = if (orientation == Orientation.Vertical) velocity else 0f
+                ),
+                OverscrollEffectDelegate()
+            )
         }
     }
 
     suspend fun userScroll(
         block: suspend DragScope.() -> Unit
     ) {
-        scrollableState.userDragScroll {
-            object : DragScope {
-                override fun dragBy(pixels: Float) {
-                    scrollBy(pixels)
-                }
-            }.block()
-        }
+        scrollableState
+            .userDragScroll(OverscrollEffectDelegate()) {
+                object : DragScope {
+                    override fun dragBy(pixels: Float) {
+                        scrollBy(pixels)
+                    }
+                }.block()
+            }.also { performFlingKey = it }
     }
 
     inner class OverscrollEffectDelegate(): PlaybackPagerOverscrollEffect {

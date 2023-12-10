@@ -727,7 +727,12 @@ class PlaybackPagerController(
     ) {
         checkInMainLooper()
         currentScroll?.cancel()
-        animateToTimelineCurrentWindow(timeline)
+        val drag = latestUserDragInstance?.apply {
+            newCorrectionOverride()
+        }
+        animateToTimelineCurrentWindow(timeline).also { anim ->
+            drag?.let { anim.invokeOnCompletion { drag.correctionOverrideEnd() } }
+        }
     }
 
     private fun timelineShiftUnknown(
@@ -927,11 +932,24 @@ class PlaybackPagerController(
         connection.ensureActive()
         val beforePage = scrollPosition.currentPage
         val centerPage = _renderData.value?.timeline?.currentIndex?.coerceAtLeast(0) ?: return 0f
-        val scroll = performScroll(distance, "userPerformDragScroll")
+        val scroll = -performScroll(-distance, "userPerformDragScroll")
         connection.apply {
-            onDragBy(pixels = distance, centerPage = centerPage, beforePage = beforePage, afterPage = scrollPosition.currentPage)
+            onDragBy(pixels = -distance, centerPage = centerPage, beforePage = beforePage, afterPage = scrollPosition.currentPage)
         }
         return scroll
+    }
+
+    fun acceptFlingScroll(
+        distance: Float,
+        connection: UserDragFlingInstance
+    ): Boolean {
+        connection.ensureActive()
+        connection.dragDirection?.let { direction ->
+            val flingDirection = sign(distance).toInt()
+            connection
+        }
+
+        return false
     }
 
     fun performFlingScroll(
@@ -941,18 +959,18 @@ class PlaybackPagerController(
         connection.ensureActive()
         val beforePage = scrollPosition.currentPage
         val centerPage = _renderData.value?.timeline?.currentIndex?.coerceAtLeast(0) ?: return 0f
-        val scroll = performScroll(distance, "performFlingScroll, source=${connection.source.toString()}")
+        val scroll = -performScroll(-distance, "performFlingScroll, source=${connection.source.toString()}")
         connection
             .apply {
-                onScrollBy(pixels = distance, centerPage = centerPage, beforePage = beforePage, afterPage = scrollPosition.currentPage)
+                onScrollBy(pixels = -distance, centerPage = centerPage, beforePage = beforePage, afterPage = scrollPosition.currentPage)
             }
             .run {
                 consumeNewPage()?.let { (center, beforePage, afterPage) ->
                     val pageChangeDirection = (afterPage - beforePage).sign
-                    if (pageChangeDirection != connection.allowedDirection) {
+                    if (pageChangeDirection != connection.dragDirection) {
                         connection.onUnexpectedDirection(beforePage)
                         // the fling can bounce, we don't want that, temporary fix
-                        throw CancellationException("other fling direction expected (expected=${connection.allowedDirection}, got=${pageChangeDirection})")
+                        throw CancellationException("other fling direction expected (expected=${connection.dragDirection}, got=${pageChangeDirection})")
                     }
                     userPerformScrollFlingChangePage(beforePage, afterPage)
                 }
@@ -1291,7 +1309,9 @@ class PlaybackPagerController(
             cancel()
         }
 
+        private var ovvr = 0
         fun newCorrectionOverride() {
+            ovvr++
             correctionOverride = true
             if (dragEnded) {
                 flingCorrectionOverride = true
@@ -1299,6 +1319,9 @@ class PlaybackPagerController(
         }
 
         fun correctionOverrideEnd() {
+            check(--ovvr == 0) {
+                "CorrectionOverride imbalance"
+            }
             if (!correctionOverride) {
                 // maybe: log
                 return
@@ -1341,7 +1364,10 @@ class PlaybackPagerController(
         var shouldCorrectToPage: Int? = null
             private set
 
-        var allowedDirection: Int? = null
+        var dragDirection: Int? = null
+            private set
+
+        var consumedSwipe: Boolean? = null
             private set
 
         val isCancelled: Boolean
@@ -1488,6 +1514,13 @@ class PlaybackPagerController(
             cancel()
         }
 
+        fun allowFlingBack(): Boolean {
+            val dragInstance = (source as? UserDragInstance)?.let { drag ->
+                !drag.consumedSwipe
+            } == true
+            return dragInstance && consumedSwipe != true
+        }
+
         private fun sourceApply(
             source: UserDragInstance
         ) {
@@ -1500,7 +1533,7 @@ class PlaybackPagerController(
                     "sourceApply: unexpected drag direction, direction=$it"
                 }
                 // drag direction is the inverse of scroll direction
-                allowedDirection = -it
+                dragDirection = -it
             }
         }
 

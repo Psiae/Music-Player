@@ -49,6 +49,8 @@ internal fun SnapLayoutInfoProvider(
                     snapPositionInLayout = SnapAlignmentStartToStart
                 )
 
+                Timber.d("PlaybackPagerScrollableState_DEBUG: calculateSnappingOffset_findBounds(page=$page, itemSize=${layoutInfo.pageSize}, itemOffset=${page.offset}, itemIndex=${page.index} offset=$offset, cLo=$lowerBoundOffset, cUp=$upperBoundOffset)")
+
                 // Find page that is closest to the snap position, but before it
                 if (offset <= 0 && offset > lowerBoundOffset) {
                     lowerBoundOffset = offset
@@ -147,6 +149,7 @@ internal fun SnapLayoutInfoProvider(
             } else {
                 flingApproachOffsetPx * initialVelocity.sign
             }.also {
+                Timber.d("PlaybackPagerScrollableState_DEBUG: calculateApproachOffset=$it)")
                 /*debugLog { "Fling Approach Offset=$it" }*/
             }
         }

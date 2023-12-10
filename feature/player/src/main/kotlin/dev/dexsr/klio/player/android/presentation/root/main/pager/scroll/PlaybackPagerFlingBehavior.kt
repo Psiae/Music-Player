@@ -89,6 +89,7 @@ class PlaybackPagerFlingBehavior(
             }
         }
 
+        onRemainingScrollOffsetUpdate(0f) // Animation finished or was cancelled
         return result
     }
 
@@ -164,6 +165,8 @@ class PlaybackPagerFlingBehavior(
             remainingScrollOffset -= delta
             onAnimationStep(remainingScrollOffset)
         }
+
+        Timber.d("PlaybackPagerFlingBehavior_DEBUG: longSnap(initialVelocity=$initialVelocity, initialOffset=$initialOffset, remainingOffset=$remainingOffset)")
 
         remainingScrollOffset = remainingOffset
 
@@ -385,6 +388,7 @@ class PlaybackPagerFlingBehavior(
             decayAnimationSpec,
             sequentialAnimation = animationState.velocity != 0f
         ) {
+            Timber.d("PlaybackPagerFlingBehavior_DEBUG: animateDecay(targetOffset=$targetOffset)_onFrameDoScroll(value=$value, targetOffset=$targetOffset)")
             if (abs(value) >= abs(targetOffset)) {
                 val finalValue = value.animCoerceToTarget(targetOffset)
                 val finalDelta = finalValue - previousValue

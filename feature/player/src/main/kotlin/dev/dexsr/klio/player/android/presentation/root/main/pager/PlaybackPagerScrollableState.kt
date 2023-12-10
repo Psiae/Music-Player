@@ -82,19 +82,25 @@ class PlaybackPagerScrollableState(
                     drag.ensureDragActive()
                     // call to newUserDragScroll should make this to false, so it's actually ongoing
                     if (dragConnection.ignoreUserDrag()) return 0f
-                    val scrollDelta = pixels.toScrollAxisOffset()
+                    val dragDelta = pixels.toScrollAxisOffset()
 
                     val performScroll: (Offset) -> Offset = { delta ->
                         // Consume on a single axis
                         val axisConsumed = pagerController
-                            .userPerformDragScroll(delta.takeScrollAxisAsFloat(), dragConnection)
+                            .userPerformDragScroll(
+                                // reverse to scroll delta
+                                -delta.takeScrollAxisAsFloat(),
+                                dragConnection
+                            )
+                            // reverse to drag delta
+                            .unaryMinus()
                             .toScrollAxisOffset()
 
                         axisConsumed
                     }
 
                     return overscrollEffect
-                        .applyToScroll(delta = scrollDelta, NestedScrollSource.Drag, performScroll)
+                        .applyToScroll(delta = dragDelta, NestedScrollSource.Drag, performScroll)
                         .takeScrollAxisAsFloat()
                 }
             }.run {
@@ -162,14 +168,14 @@ class PlaybackPagerScrollableState(
         drag: UserDragScroll,
         controllerConnection: PlaybackPagerController.UserDragFlingInstance
     ) {
-        val scrollVelocity = initialVelocity.takeScrollAxis()
+        val dragVelocity = initialVelocity.takeScrollAxis()
 
         val performFling: suspend (Velocity) -> Velocity = { postOverscrollVelocity ->
             val postFlingVelocity = doFlingScroll(postOverscrollVelocity, overscrollEffect, drag, controllerConnection)
             postOverscrollVelocity - postFlingVelocity
         }
 
-        overscrollEffect.applyToFling(scrollVelocity, performFling)
+        overscrollEffect.applyToFling(dragVelocity, performFling)
     }
 
     private suspend fun doFlingScroll(
@@ -183,14 +189,22 @@ class PlaybackPagerScrollableState(
         val scope = object : ScrollScope {
 
             override fun scrollBy(pixels: Float): Float {
-                val scrollDelta = pixels.toScrollAxisOffset()
+                // reverse to drag delta
+                val dragDelta = pixels.unaryMinus().toScrollAxisOffset()
 
-                val performScroll: (Offset) -> Offset = { delta ->
+                val performScroll: (Offset) -> Offset = { postOverscrollDragDelta ->
                     drag.ensureFlingActive()
 
                     // Consume on a single axis
                     val axisConsumed = pagerController
-                        .performFlingScroll(-delta.takeScrollAxisAsFloat(), connection)
+                        .performFlingScroll(
+                            postOverscrollDragDelta
+                                .takeScrollAxisAsFloat()
+                                // reverse to scroll delta
+                                .unaryMinus(),
+                            connection
+                        )
+                        // reverse to drag delta
                         .unaryMinus()
                         .toScrollAxisOffset()
 
@@ -198,14 +212,23 @@ class PlaybackPagerScrollableState(
                 }
 
                 return overscrollEffect
-                    .applyToScroll(delta = scrollDelta, NestedScrollSource.Fling, performScroll)
+                    // apply to overScroll with dragDelta
+                    .applyToScroll(delta = dragDelta, NestedScrollSource.Fling, performScroll)
                     .takeScrollAxisAsFloat()
+                    // reverse to scroll delta
+                    .unaryMinus()
             }
         }
         with(scope) {
             @OptIn(ExperimentalFoundationApi::class)
             with(flingBehaviorFactory(pagerController.density)) {
-                result = result.updateScrollAxis(performFling(result.takeScrollAxisAsFloat()))
+                result = result
+                    .updateScrollAxis(
+                        // scroll is reversed drag
+                        performFling(result.takeScrollAxisAsFloat().unaryMinus())
+                    )
+                    // reverse to drag velocity
+                    .unaryMinus()
             }
         }
         return result

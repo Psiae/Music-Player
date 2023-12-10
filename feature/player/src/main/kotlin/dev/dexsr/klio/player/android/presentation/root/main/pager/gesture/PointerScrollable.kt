@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.Velocity
 import dev.dexsr.klio.player.android.presentation.root.main.pager.PlaybackPagerScrollableState
 import dev.dexsr.klio.player.android.presentation.root.main.pager.overscroll.PlaybackPagerOverscrollEffect
 import kotlinx.coroutines.CoroutineScope
+import timber.log.Timber
 
 fun Modifier.pointerScrollable(
     state: PlaybackPagerScrollableState,
@@ -34,6 +35,7 @@ fun Modifier.pointerScrollable(
     }
 
     this
+        // TODO: check DragGestureDetector.kt
         .draggable(
             state = draggableState,
             orientation = orientation,
@@ -82,8 +84,9 @@ private class PlaybackPagerDragScrollLogic(
     suspend fun CoroutineScope.onDragStarted(startedPosition: Offset) {
         // no-op
     }
-
+    // 02:32:14.940
     suspend fun CoroutineScope.onDragStopped(velocity: Float, orientation: Orientation) {
+        Timber.d("PlaybackPagerPointerScrollable_DEBUG: onDragStopped(velocity=$velocity, key=$performFlingKey)")
         performFlingKey?.let {
             scrollableState.performFling(
                 key = it,
@@ -99,6 +102,7 @@ private class PlaybackPagerDragScrollLogic(
     suspend fun userScroll(
         block: suspend DragScope.() -> Unit
     ) {
+        Timber.d("PlaybackPagerPointerScrollable_DEBUG: userScroll()")
         scrollableState
             .userDragScroll(OverscrollEffectDelegate()) {
                 object : DragScope {

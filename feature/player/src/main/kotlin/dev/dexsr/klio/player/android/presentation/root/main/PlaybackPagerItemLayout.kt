@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.CachePolicy
 import coil.request.ImageRequest
@@ -23,7 +24,7 @@ import dev.dexsr.klio.base.kt.cast
 import dev.dexsr.klio.base.theme.md3.MD3Theme
 import dev.dexsr.klio.base.theme.md3.compose.MaterialTheme3
 import dev.dexsr.klio.base.theme.md3.compose.dpPaddingIncrementsOf
-import dev.dexsr.klio.base.theme.md3.compose.surfaceVariantColorAsState
+import dev.dexsr.klio.base.theme.md3.compose.surfaceVariantContentColorAsState
 import dev.dexsr.klio.player.android.presentation.root.MediaMetadataProvider
 import dev.dexsr.klio.player.shared.LocalMediaArtwork
 
@@ -76,9 +77,9 @@ fun PlaybackPagerItemLayout(
             )
             if (BuildConfig.DEBUG) {
                 BasicText(
-                    modifier = Modifier.align(Alignment.BottomStart).padding(MD3Theme.dpPaddingIncrementsOf(2)),
+                    modifier = Modifier.align(Alignment.Center).padding(MD3Theme.dpPaddingIncrementsOf(2)),
                     text = page.toString(),
-                    style = MaterialTheme3.typography.headlineLarge.copy(color = MD3Theme.surfaceVariantColorAsState().value)
+                    style = MaterialTheme3.typography.headlineLarge.copy(color = MD3Theme.surfaceVariantContentColorAsState().value, fontSize = 100.sp)
                 )
             }
         }

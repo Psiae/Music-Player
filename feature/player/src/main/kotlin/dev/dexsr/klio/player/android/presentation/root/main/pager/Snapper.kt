@@ -13,6 +13,7 @@ import androidx.compose.ui.util.fastForEach
 import dev.dexsr.klio.player.android.presentation.root.main.PlaybackPagerController
 import dev.dexsr.klio.player.android.presentation.root.main.PlaybackPagerLayoutInfo
 import dev.dexsr.klio.player.android.presentation.root.main.mainAxisViewportSize
+import timber.log.Timber
 import kotlin.math.absoluteValue
 import kotlin.math.ceil
 import kotlin.math.floor
@@ -80,6 +81,9 @@ internal fun SnapLayoutInfoProvider(
                 -1f -> lowerBoundOffset
                 else -> 0f
             }
+
+
+            Timber.d("PlaybackPagerScrollableState_DEBUG: calculateSnappingOffset(vel=$currentVelocity, upOff=$upperBoundOffset, loOff=$lowerBoundOffset isForward=$isForward, offsetFromSnappedPosition=$offsetFromSnappedPosition, overflow=$offsetFromSnappedPositionOverflow, finalDistance=$finalDistance)")
 
             return if (finalDistance.isValidDistance()) {
                 finalDistance

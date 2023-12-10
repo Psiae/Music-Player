@@ -32,7 +32,7 @@ class PlaybackPagerScrollableState(
             density = density,
             snapAnimationSpec = SpringSpec<Float>(
                 Spring.DampingRatioNoBouncy,
-                Spring.StiffnessMediumLow,
+                Spring.StiffnessMedium,
                 null
             ),
             lowVelocityAnimationSpec = TweenSpec<Float>(
@@ -126,6 +126,7 @@ class PlaybackPagerScrollableState(
         checkInMainLooper()
         val drag = latestDrag
         val consume = drag?.startFling(key)
+        Timber.d("PlaybackPagerScrollableState_DEBUG: performFLing(velocity=$velocity, consume=$consume)")
         if (consume != true) return
         val flingConnection = pagerController.newUserDragFlingScroll(key)
         if (flingConnection?.isActive != true) {

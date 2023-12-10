@@ -16,6 +16,7 @@ import dev.dexsr.klio.player.android.presentation.root.main.PlaybackPagerLayoutI
 import dev.dexsr.klio.player.android.presentation.root.main.PlaybackPagerPageInfo
 import dev.dexsr.klio.player.android.presentation.root.main.pager.SnapLayoutInfoProvider
 import kotlinx.coroutines.withContext
+import timber.log.Timber
 import kotlin.math.abs
 import kotlin.math.absoluteValue
 import kotlin.math.sign
@@ -473,6 +474,10 @@ class PlaybackPagerFlingBehavior(
         snapAnimationSpec: AnimationSpec<Float>,
         onAnimationStep: (delta: Float) -> Unit
     ): AnimationResult<Float, AnimationVector1D> {
+
+
+        Timber.d("PlaybackPagerScrollableState_DEBUG: flingBehavior_animateSnap(targetOffset=$targetOffset, currentPage=${pagerState.currentPage})")
+
         var consumedUpToNow = 0f
         val initialVelocity = animationState.velocity
         animationState.animateTo(

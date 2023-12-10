@@ -618,7 +618,12 @@ class PlaybackPagerController(
         if (skipAnimate) {
             return
         }
-        timelineShiftAnimated(timeline = timeline)
+        applyTimelineShiftAnimated(
+            correction = TimelineCorrection(
+                timeline,
+                previousTimeline
+            )
+        )
     }
 
     private fun timelineShiftLeft(
@@ -649,7 +654,12 @@ class PlaybackPagerController(
         if (skipAnimate) {
             return
         }
-        timelineShiftAnimated(timeline = timeline)
+        applyTimelineShiftAnimated(
+            correction = TimelineCorrection(
+                timeline,
+                previousTimeline
+            )
+        )
     }
 
     private fun timelineShiftRemeasure(
@@ -722,16 +732,23 @@ class PlaybackPagerController(
         userDragFlingInstance?.remeasureUpdateCurrentPage(scrollPosition.currentPage)
     }
 
-    private fun timelineShiftAnimated(
-        timeline: PlaybackPagerTimeline,
+    private fun applyTimelineShiftAnimated(
+        correction: TimelineCorrection
     ) {
         checkInMainLooper()
         currentScroll?.cancel()
+        _timelineAnimate?.cancel()
         val drag = latestUserDragInstance?.apply {
             newCorrectionOverride()
         }
-        animateToTimelineCurrentWindow(timeline).also { anim ->
-            drag?.let { anim.invokeOnCompletion { drag.correctionOverrideEnd() } }
+        animateToTimelineCurrentWindow(correction.timeline).also { anim ->
+            drag?.let {
+                // invoke immediately on cancelling state
+                @OptIn(InternalCoroutinesApi::class)
+                anim.invokeOnCompletion(onCancelling = true) { ex ->
+                    drag.correctionOverrideEnd(interrupted = ex != null)
+                }
+            }
         }
     }
 
@@ -1309,18 +1326,28 @@ class PlaybackPagerController(
             cancel()
         }
 
-        private var ovvr = 0
+        private var cvr = 0
+        private var cvr_s = 0
         fun newCorrectionOverride() {
-            ovvr++
+            Timber.d("PlaybackPagerController_DEBUG: UserDragInstance_newCorrectionOverride")
+            // end must be called when the correction is completed before starting a new one
+            check(++cvr == 1) {
+                "Playback Pager: CorrectionOverride imbalance, check internal coroutines API, info=(point=new, cvr=$cvr)"
+            }
             correctionOverride = true
             if (dragEnded) {
                 flingCorrectionOverride = true
             }
         }
 
-        fun correctionOverrideEnd() {
-            check(--ovvr == 0) {
-                "CorrectionOverride imbalance"
+        fun correctionOverrideEnd(
+            interrupted: Boolean
+            // maybe: expect only cancelling,
+        ) {
+            Timber.d("PlaybackPagerController_DEBUG: UserDragInstance_correctionOverrideEnd(interrupted=$interrupted)")
+            // must be called when the correction is completed before starting a new one
+            check(--cvr == 0) {
+                "Playback Pager: CorrectionOverride imbalance, check internal coroutines API, info=(point=end, cvr=$cvr)"
             }
             if (!correctionOverride) {
                 // maybe: log
@@ -1610,6 +1637,14 @@ class PlaybackPagerController(
         operator fun component1() = center
         operator fun component2() = beforePage
         operator fun component3() = afterPage
+    }
+
+    class TimelineCorrection(
+        val timeline: PlaybackPagerTimeline,
+        val previousTimeline: PlaybackPagerTimeline,
+    ) {
+
+
     }
 }
 

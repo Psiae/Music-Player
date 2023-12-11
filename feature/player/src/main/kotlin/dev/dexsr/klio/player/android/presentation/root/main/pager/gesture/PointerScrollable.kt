@@ -84,7 +84,6 @@ private class PlaybackPagerDragScrollLogic(
     suspend fun CoroutineScope.onDragStarted(startedPosition: Offset) {
         // no-op
     }
-    // 02:32:14.940
     suspend fun CoroutineScope.onDragStopped(velocity: Float, orientation: Orientation) {
         Timber.d("PlaybackPagerPointerScrollable_DEBUG: onDragStopped(velocity=$velocity, key=$performFlingKey)")
         performFlingKey?.let {

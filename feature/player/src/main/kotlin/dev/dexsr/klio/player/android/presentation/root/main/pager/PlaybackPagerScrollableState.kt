@@ -17,6 +17,7 @@ import dev.dexsr.klio.player.android.presentation.root.main.pager.overscroll.Pla
 import dev.dexsr.klio.player.android.presentation.root.main.pager.scroll.PlaybackPagerFlingBehavior
 import kotlinx.coroutines.*
 import timber.log.Timber
+import kotlin.math.sign
 
 class PlaybackPagerScrollableState(
     // maybe: scroll connection
@@ -52,7 +53,7 @@ class PlaybackPagerScrollableState(
     private var latestDrag: UserDragScroll? = null
 
     val isScrollInProgress
-        get() = latestDrag?.let { it.dragActive || it.flingActive } == true
+        get() = pagerController.isScrollInProgress
 
     val allowUserGestureInterruptScroll: Boolean
         get() = true
@@ -147,9 +148,22 @@ class PlaybackPagerScrollableState(
         }
         coroutineScope.launch(AndroidUiDispatcher.Main) {
             try {
-                doPerformFling(velocity, overscrollEffect, drag, flingConnection)
-                drag.flingEnd()
-                flingConnection.flingEnd()
+                val scrollAxisVelocity = velocity.takeScrollAxisAsFloat()
+                val expectedVelocitySign = flingConnection.expectedDragVelocitySign()
+                if (
+                    scrollAxisVelocity == 0f ||
+                    expectedVelocitySign == null ||
+                    expectedVelocitySign == sign(scrollAxisVelocity).toInt()
+                ) {
+                    doPerformFling(velocity, overscrollEffect, drag, flingConnection)
+                    drag.flingEnd()
+                    flingConnection.flingEnd()
+                } else {
+                    // seems like the velocity tracker is giving reversed result
+                    // let the overscrollEffect absorb it regardless
+                    overscrollEffect.applyToFling(velocity) { it }
+                    throw CancellationException("unexpected post-drag velocity, velocity=$scrollAxisVelocity, expectedSign=${flingConnection.expectedDragVelocitySign()}")
+                }
             } catch (ex: Exception) {
                 Timber.d("PlaybackPagerScrollableState_DEBUG: performFLing_ex(ex=$ex)")
                 drag.flingEnd(ex as? CancellationException ?: CancellationException("exception during fling"))

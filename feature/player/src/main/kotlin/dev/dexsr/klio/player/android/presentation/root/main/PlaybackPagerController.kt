@@ -4,10 +4,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.MutatePriority
 import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.ScrollScope
-import androidx.compose.foundation.gestures.ScrollableState
 import androidx.compose.foundation.interaction.Interaction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.*
@@ -26,7 +23,6 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import timber.log.Timber
-import kotlin.coroutines.coroutineContext
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.sign
@@ -99,58 +95,13 @@ class PlaybackPagerController(
     internal var numMeasurePasses: Int = 0
         private set
 
-    private var currentScroll: Job? = null
-        get() { checkInMainLooper() ; return field }
-        set(value) { checkInMainLooper() ; field = value }
-
-    private val ignoreUserScroll: Boolean
-        get() = _timelineAnimate?.isActive == true
-
     val gestureScrollableState = PlaybackPagerScrollableState(
         pagerController = this
     )
 
-    private val scrollableState = object : ScrollableState {
-
-        private val _isScrollInProgressState = mutableStateOf(false)
-
-        override val isScrollInProgress: Boolean by _isScrollInProgressState
-
-        override fun dispatchRawDelta(delta: Float): Float {
-            /*currentScroll?.cancel()
-            return -performScroll(-delta)*/
-            TODO()
-        }
-
-        override suspend fun scroll(
-            scrollPriority: MutatePriority,
-            block: suspend ScrollScope.() -> Unit
-        ) = scroll("", scrollPriority, block)
-
-        suspend fun scroll(
-            debugPerformerName: String?,
-            scrollPriority: MutatePriority,
-            block: suspend ScrollScope.() -> Unit
-        ) {
-            check(scrollPriority != MutatePriority.UserInput) {
-                "User Scroll on scrollableState"
-            }
-            latestUserDragFlingInstance?.cancel()
-            currentScroll?.cancel()
-            currentScroll = coroutineContext[Job]!!
-            try {
-                object : ScrollScope {
-                    override fun scrollBy(pixels: Float): Float {
-                        return -performScroll(-pixels, debugPerformerName)
-                    }
-                }.block()
-                currentScroll = null
-            } finally {}
-        }
-    }
-
     val isScrollInProgress: Boolean
-        @SnapshotRead get() = scrollableState.isScrollInProgress
+        // TODO: @SnapshotRead
+        get() = correctingTimeline or userDragScrolling or userDragFlinging or correctingFling
 
     val currentPage: Int
         @SnapshotRead get() = scrollPosition.currentPage
@@ -595,7 +546,6 @@ class PlaybackPagerController(
         stepCount: Int,
         skipAnimate: Boolean
     ) {
-
         // the current scroll position is more than the target, we don't want to animate left
         if (scrollPosition.currentPage > timeline.currentIndex + stepCount &&
             latestUserDragInstance?.dragEnded != false &&
@@ -632,6 +582,7 @@ class PlaybackPagerController(
         stepCount: Int,
         skipAnimate: Boolean
     ) {
+
         // the current scroll position is more than the target, we don't want to animate right
         if (scrollPosition.currentPage < timeline.currentIndex - stepCount &&
             latestUserDragInstance?.dragEnded != false &&
@@ -639,7 +590,7 @@ class PlaybackPagerController(
         ) {
             timelineShiftSnap(timeline)
             latestUserDragInstance?.reset()
-            latestUserDragFlingInstance?.reset()
+            latestUserDragFlingInstance?.cancel()
             return
         }
         timelineShiftRemeasure(
@@ -736,8 +687,8 @@ class PlaybackPagerController(
         correction: TimelineCorrection
     ) {
         checkInMainLooper()
-        currentScroll?.cancel()
         _timelineAnimate?.cancel()
+        latestUserDragFlingInstance?.cancel()
         val drag = latestUserDragInstance?.apply {
             newCorrectionOverride()
         }
@@ -779,9 +730,8 @@ class PlaybackPagerController(
         Timber.d("PlaybackPagerController_DEBUG: timelineShiftSnap(timeline=$timeline, currentPage=${scrollPosition.currentPage})")
         checkInMainLooper()
         _timelineAnimate?.cancel()
-        currentScroll?.cancel()
         latestUserDragInstance?.reset()
-        latestUserDragFlingInstance?.reset()
+        latestUserDragFlingInstance?.cancel()
         _renderData.value = PlaybackPagerRenderData(timeline = timeline)
         snapToTimelineCurrentWindow(timeline)
     }
@@ -813,7 +763,8 @@ class PlaybackPagerController(
                 PlaybackPagerTimeline(
                     windows = (_renderData.value?.timeline?.windows ?: PlaybackPagerTimeline.UNSET.windows),
                     currentIndex = page.coerceIn(_renderData.value?.timeline?.windows?.indices ?: 0..0)
-                )
+                ),
+                debugPerformerName = "animateFlingCorrection(page=$page)"
             )
         }.also { _flingCorrection = it }
     }
@@ -821,6 +772,7 @@ class PlaybackPagerController(
     private var animateToTimelineCurrentWindowSuspend_c = 0
     private suspend fun animateToTimelineCurrentWindowSuspend(
         timeline: PlaybackPagerTimeline,
+        debugPerformerName: String? = null
     ) {
         animateToTimelineCurrentWindowSuspend_c++
         checkInMainLooper()
@@ -876,11 +828,9 @@ class PlaybackPagerController(
 
         withContext(AndroidUiDispatcher.Main) {
             var p = 0f
-            scrollableState.scroll(debugPerformerName = "animateToTimelineCurrentWindowSuspend(c=$animateToTimelineCurrentWindowSuspend_c)", scrollPriority = MutatePriority.Default) {
-                animate(0f, displacement, animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) { currentValue, _ ->
-                    ensureActive()
-                    p += scrollBy(currentValue - p)
-                }
+            animate(0f, displacement, animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) { currentValue, _ ->
+                ensureActive()
+                p += -performScroll(-(currentValue - p), "animateToTimelineCurrentWindowSuspend(c=$animateToTimelineCurrentWindowSuspend_c, performer=$debugPerformerName)")
             }
         }
     }
@@ -951,7 +901,7 @@ class PlaybackPagerController(
         val centerPage = _renderData.value?.timeline?.currentIndex?.coerceAtLeast(0) ?: return 0f
         val scroll = -performScroll(-distance, "userPerformDragScroll")
         connection.apply {
-            onDragBy(pixels = -distance, centerPage = centerPage, beforePage = beforePage, afterPage = scrollPosition.currentPage)
+            onScrollBy(pixels = distance, centerPage = centerPage, beforePage = beforePage, afterPage = scrollPosition.currentPage)
         }
         return scroll
     }
@@ -961,7 +911,7 @@ class PlaybackPagerController(
         connection: UserDragFlingInstance
     ): Boolean {
         connection.ensureActive()
-        connection.dragDirection?.let { direction ->
+        connection.dragScrollDirection?.let { direction ->
             val flingDirection = sign(distance).toInt()
             connection
         }
@@ -984,10 +934,10 @@ class PlaybackPagerController(
             .run {
                 consumeNewPage()?.let { (center, beforePage, afterPage) ->
                     val pageChangeDirection = (afterPage - beforePage).sign
-                    if (pageChangeDirection != connection.dragDirection) {
+                    if (pageChangeDirection != connection.dragScrollDirection) {
                         connection.onUnexpectedDirection(beforePage)
                         // the fling can bounce, we don't want that, temporary fix
-                        throw CancellationException("other fling direction expected (expected=${connection.dragDirection}, got=${pageChangeDirection})")
+                        throw CancellationException("other fling direction expected (expected=${connection.dragScrollDirection}, got=${pageChangeDirection})")
                     }
                     userPerformScrollFlingChangePage(beforePage, afterPage)
                 }
@@ -1014,6 +964,7 @@ class PlaybackPagerController(
         scrollInstance: UserDragInstance,
         swipeInstance: UserSwipeInstance?
     ) {
+        scrollInstance.ensureActive()
         Timber.d("PlaybackPagerController_DEBUG: userPerformScrollDone(currentPage=${scrollPosition.currentPage}, swipePageOverride=$swipePageOverride, timeline.currentIndex=${_renderData.value?.timeline?.currentIndex}, firstDragPage=${scrollInstance.firstDragPage}, latestDragPage=${scrollInstance.latestDragResultPage}, dragPageShift=${scrollInstance.dragPageShift})")
         val firstDragPage = scrollInstance.firstDragPage
             ?: run {
@@ -1021,6 +972,7 @@ class PlaybackPagerController(
                 // assume that this is down gesture over an ongoing scroll
                 if (scrollInstance.isDragOverridingScroll) {
                     // maybe: resume velocity decay ?
+                    // todo: decide whether this is considered a swipe
                     animateToTimelineCurrentWindow(_renderData.value?.timeline ?: PlaybackPagerTimeline.UNSET)
                 } else {
                     // we don't expect this, but we can just recover
@@ -1195,7 +1147,7 @@ class PlaybackPagerController(
         var latestDragCenterPage: Int? = null
             private set
 
-        var latestDragDirection: Int? = null
+        var latestScrollDirection: Int? = null
             private set
 
         var dragEnded = false
@@ -1204,7 +1156,7 @@ class PlaybackPagerController(
         val isActive: Boolean
             get() = lifetime.isActive
 
-        fun onDragBy(
+        fun onScrollBy(
             pixels: Float,
             centerPage: Int,
             beforePage: Int,
@@ -1216,7 +1168,7 @@ class PlaybackPagerController(
             latestDragCenterPage = centerPage
             latestDragResultPage = afterPage
             if (pixels != 0f) {
-                latestDragDirection = sign(pixels).toInt()
+                latestScrollDirection = sign(pixels).toInt()
             }
         }
 
@@ -1391,7 +1343,7 @@ class PlaybackPagerController(
         var shouldCorrectToPage: Int? = null
             private set
 
-        var dragDirection: Int? = null
+        var dragScrollDirection: Int? = null
             private set
 
         var consumedSwipe: Boolean? = null
@@ -1548,6 +1500,13 @@ class PlaybackPagerController(
             return dragInstance && consumedSwipe != true
         }
 
+        fun expectedDragVelocitySign(): Int? {
+            (source as? UserDragInstance)?.let { drag ->
+                drag.latestScrollDirection?.let { return -it }
+            }
+            return null
+        }
+
         private fun sourceApply(
             source: UserDragInstance
         ) {
@@ -1555,12 +1514,11 @@ class PlaybackPagerController(
                 cancel()
                 return
             }
-            source.latestDragDirection?.let {
+            source.latestScrollDirection?.let {
                 check(it == 1 || it == -1) {
-                    "sourceApply: unexpected drag direction, direction=$it"
+                    "sourceApply: unexpected drag scroll direction, direction=$it"
                 }
-                // drag direction is the inverse of scroll direction
-                dragDirection = -it
+                dragScrollDirection = it
             }
         }
 
@@ -1586,6 +1544,15 @@ class PlaybackPagerController(
 
     val correctingTimeline
         get() = _timelineAnimate?.isActive == true
+
+    val userDragScrolling
+        get() = latestUserDragInstance?.dragEnded == false
+
+    val userDragFlinging
+        get() = latestUserDragFlingInstance?.flingEnded == false
+
+    val correctingFling
+        get() = _flingCorrection?.isActive == true
 
     // maybe: join them
     private var latestUserDragInstance: UserDragInstance? = null
@@ -1615,7 +1582,11 @@ class PlaybackPagerController(
             }
     }
 
-    fun newUserDragFlingScroll(key: Any): UserDragFlingInstance? {
+    fun newUserDragFlingScroll(
+        key: Any,
+        // ask to report the initial velocity, and check if that aligns with the drag
+        // reason: there's an issue with the velocity tracker
+    ): UserDragFlingInstance? {
         if (key !is UserDragInstance) return null
         if (latestUserDragInstance != key) return null
         return UserDragFlingInstance(lifetime = SupervisorJob(), debugName = "")

@@ -129,8 +129,7 @@ fun PlaybackPager(
 
     SubcomposeLayout(
         modifier = modifier
-            .then(controller.awaitLayoutModifier)
-            .then(controller.remeasurementModifier)
+            .then(controller.modifier)
             .playbackPagerScrollable(
                 state = controller.gestureScrollableState,
                 orientation = orientation,

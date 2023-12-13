@@ -20,5 +20,9 @@ interface PlaybackPagerGestureScrollableState {
     // performFling of previous successful userDragScroll
     // maybe: coroutine job
     @OptIn(ExperimentalFoundationApi::class)
-    suspend fun performFling(key: Any, velocity: Velocity, overscrollEffect: PlaybackPagerOverscrollEffect)
+    suspend fun performFling(
+        key: Any,
+        velocity: Velocity,
+        overscrollEffect: PlaybackPagerOverscrollEffect
+    )
 }

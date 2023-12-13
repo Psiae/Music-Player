@@ -17,7 +17,6 @@ import dev.dexsr.klio.player.android.presentation.root.main.pager.overscroll.Pla
 import dev.dexsr.klio.player.android.presentation.root.main.pager.scroll.PlaybackPagerFlingBehavior
 import kotlinx.coroutines.*
 import timber.log.Timber
-import kotlin.math.sign
 
 class PlaybackPagerScrollableState(
     // maybe: scroll connection
@@ -45,9 +44,6 @@ class PlaybackPagerScrollableState(
                 .generateDecayAnimationSpec<Float>()
         )
     }
-
-    private val ignoreOngoingUserScroll: Boolean
-        get() = pagerController.correctingTimeline
 
     private var currentDrag: UserDragScroll? = null
     private var latestDrag: UserDragScroll? = null
@@ -135,40 +131,34 @@ class PlaybackPagerScrollableState(
         val consume = drag?.startFling(key)
         Timber.d("PlaybackPagerScrollableState_DEBUG: performFLing(velocity=$velocity, consume=$consume)")
         if (consume != true) return
-        val flingConnection = pagerController.newUserDragFlingScroll(key)
+        val flingConnection = pagerController.newUserDragFlingScroll(
+            key,
+            velocity.takeScrollAxisAsFloat()
+        )
         if (flingConnection?.isActive != true) {
-            // flingConnection is closed, we can early return
-            // maybe: convey reason
-            drag.flingEnd(CancellationException("flingConnection already closed"))
             flingConnection?.let {
-                it.flingEnd()
+                // flingConnection wasn't null, so it's cancelled for a reason
+                if (flingConnection.unexpectedDirection) {
+                    // seems like the velocity tracker is giving reversed result
+                    // let the overscrollEffect absorb it regardless
+                    overscrollEffect.applyToFling(velocity) { vel -> vel }
+                    Timber.d("PlaybackPagerScrollableState_DEBUG: performFling_unexpectedDirection(velocity=$velocity)")
+                }
+                flingConnection.flingEnd()
                 pagerController.userDragFlingScrollEnd(it)
             }
+            drag.flingEnd(CancellationException("flingConnection already closed"))
             return
         }
         coroutineScope.launch(AndroidUiDispatcher.Main) {
             try {
-                val scrollAxisVelocity = velocity.takeScrollAxisAsFloat()
-                val expectedVelocitySign = flingConnection.expectedDragVelocitySign()
-                if (
-                    scrollAxisVelocity == 0f ||
-                    expectedVelocitySign == null ||
-                    expectedVelocitySign == sign(scrollAxisVelocity).toInt()
-                ) {
-                    doPerformFling(velocity, overscrollEffect, drag, flingConnection)
-                    drag.flingEnd()
-                    flingConnection.flingEnd()
-                } else {
-                    // seems like the velocity tracker is giving reversed result
-                    // let the overscrollEffect absorb it regardless
-                    overscrollEffect.applyToFling(velocity) { it }
-                    throw CancellationException("unexpected post-drag velocity, velocity=$scrollAxisVelocity, expectedSign=${flingConnection.expectedDragVelocitySign()}")
-                }
+                doPerformFling(velocity, overscrollEffect, drag, flingConnection)
+                drag.flingEnd()
+                flingConnection.flingEnd()
             } catch (ex: Exception) {
                 Timber.d("PlaybackPagerScrollableState_DEBUG: performFLing_ex(ex=$ex)")
                 drag.flingEnd(ex as? CancellationException ?: CancellationException("exception during fling"))
-                flingConnection.flingEnd()
-                flingConnection.cancel()
+                flingConnection.flingEndedExceptionally()
                 throw ex
             } finally {
                 pagerController.userDragFlingScrollEnd(flingConnection)
@@ -233,18 +223,15 @@ class PlaybackPagerScrollableState(
                     .unaryMinus()
             }
         }
-        with(scope) {
-            @OptIn(ExperimentalFoundationApi::class)
-            with(flingBehaviorFactory(pagerController.density)) {
-                result = result
-                    .updateScrollAxis(
-                        // scroll is reversed drag
-                        performFling(result.takeScrollAxisAsFloat().unaryMinus())
-                    )
-                    // reverse to drag velocity
-                    .unaryMinus()
-            }
-        }
+        with(scope) { with(flingBehaviorFactory(pagerController.density)) {
+            result = result
+                .updateScrollAxis(
+                    // scroll is reversed drag
+                    performFling(result.takeScrollAxisAsFloat().unaryMinus())
+                )
+                // reverse to drag velocity
+                .unaryMinus()
+        } }
         return result
     }
 

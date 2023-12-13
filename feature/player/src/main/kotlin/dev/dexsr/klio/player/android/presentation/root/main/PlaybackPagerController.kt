@@ -5,23 +5,14 @@ import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.interaction.Interaction
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.*
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.layout.Remeasurement
-import androidx.compose.ui.layout.RemeasurementModifier
 import androidx.compose.ui.platform.AndroidUiDispatcher
 import androidx.compose.ui.unit.Density
 import dev.dexsr.klio.android.base.checkInMainLooper
 import dev.dexsr.klio.base.compose.SnapshotRead
-import dev.dexsr.klio.player.android.presentation.root.main.pager.AwaitFirstLayoutModifier
-import dev.dexsr.klio.player.android.presentation.root.main.pager.PlaybackPagerScrollableState
-import dev.dexsr.klio.player.android.presentation.root.main.pager.SnapAlignmentStartToStart
-import dev.dexsr.klio.player.android.presentation.root.main.pager.calculateDistanceToDesiredSnapPosition
+import dev.dexsr.klio.player.android.presentation.root.main.pager.*
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.emptyFlow
 import timber.log.Timber
 import kotlin.math.abs
 import kotlin.math.max
@@ -34,7 +25,6 @@ class PlaybackPagerController(
 ) {
 
     //
-
     private var _initiated = false
     private var _disposed = false
 
@@ -44,56 +34,12 @@ class PlaybackPagerController(
 
     internal var upDownDifference: Offset by mutableStateOf(Offset.Zero)
 
+    // maybe: move this to layoutInfo ?
     internal var density by mutableStateOf<Density>(Density(1f, 1f))
 
-    private val scrollPosition = PlaybackPagerScrollPosition()
-
-    private val _pagerLayoutInfoState = mutableStateOf<PlaybackPagerLayoutInfo>(
-        PlaybackPagerLayoutInfo.UNSET
-    )
 
     internal val pagerLayoutInfo
-        @SnapshotRead get() = _pagerLayoutInfoState.value
-
-    /**
-     * The [Remeasurement] object associated with our layout. It allows us to remeasure
-     * synchronously during scroll.
-     */
-    internal var remeasurement: Remeasurement? by mutableStateOf(null)
-        private set
-
-    /**
-     * The modifier which provides [remeasurement].
-     */
-    internal val remeasurementModifier = object : RemeasurementModifier {
-        override fun onRemeasurementAvailable(remeasurement: Remeasurement) {
-            this@PlaybackPagerController.remeasurement = remeasurement
-        }
-    }
-
-    internal val interactionSource = object : MutableInteractionSource {
-
-        override val interactions: Flow<Interaction> = emptyFlow()
-
-        override suspend fun emit(interaction: Interaction) {
-            Timber.d("DEBUG: interactionSource_emit=$interaction")
-        }
-
-        override fun tryEmit(interaction: Interaction): Boolean {
-            Timber.d("DEBUG: interactionSource_tryEmit=$interaction")
-            return false
-        }
-    }
-
-    internal val awaitLayoutModifier = AwaitFirstLayoutModifier()
-
-    private var settledPageState = mutableIntStateOf(0)
-
-    /**
-     * Only used for testing to confirm that we're not making too many measure passes
-     */
-    internal var numMeasurePasses: Int = 0
-        private set
+        @SnapshotRead get() = layoutState.pagerLayoutInfo
 
     val gestureScrollableState = PlaybackPagerScrollableState(
         pagerController = this
@@ -104,18 +50,13 @@ class PlaybackPagerController(
         get() = correctingTimeline or userDragScrolling or userDragFlinging or correctingFling
 
     val currentPage: Int
-        @SnapshotRead get() = scrollPosition.currentPage
-
-    var scrollToBeConsumed = 0f
-        private set
-
-    var canScrollForward: Boolean by mutableStateOf(false)
-        private set
-    var canScrollBackward: Boolean by mutableStateOf(false)
-        private set
+        @SnapshotRead get() = layoutState.currentPage
 
     val renderData
         @SnapshotRead get() = _renderData.value
+
+    internal val scrollToBeConsumed
+        @SnapshotRead get() = layoutState.scrollToBeConsumed
 
     fun init() {
         checkInMainLooper()
@@ -132,10 +73,10 @@ class PlaybackPagerController(
     }
 
     val firstVisiblePage: Int
-        @SnapshotRead get() = scrollPosition.firstVisiblePage
+        @SnapshotRead get() = layoutState.firstVisiblePage
 
     val firstVisiblePageOffset: Int
-        @SnapshotRead get() = scrollPosition.scrollOffset
+        @SnapshotRead get() = layoutState.firstVisiblePageOffset
 
     private var timelineUpdateCollector: Job? = null
     private fun initTimelineUpdater() {
@@ -176,8 +117,7 @@ class PlaybackPagerController(
             return
         }
         _renderData.value = PlaybackPagerRenderData(timeline = timeline)
-        scrollPosition.requestPosition(timeline.currentIndex, 0)
-        remeasure()
+        layoutState.scrollToPosition(timeline.currentIndex, 0)
     }
 
     private fun onNewTimelineUpdate(
@@ -188,12 +128,12 @@ class PlaybackPagerController(
         swipeUpdate: Boolean = false,
         debugSourceName: String = ""
     ) {
-        Timber.d("PlaybackPagerController_DEBUG: onNewTimelineUpdate(timeline=${timeline.toDebugString()}, previousTimeline=${previousTimeline.toDebugString()}, debugSourceName=$debugSourceName)")
+        Timber.d("PlaybackPagerController_DEBUG: onNewTimelineUpdate(timeline=${timeline.toDebugString()}, previousTimeline=${previousTimeline.toDebugString()}, skipAnimate=$skipAnimate, swipeUpdate=$swipeUpdate, debugSourceName=$debugSourceName)")
         checkInMainLooper()
         if (timeline.windows.isEmpty() || timeline.currentIndex !in timeline.windows.indices) {
             _renderData.value = PlaybackPagerRenderData(timeline = PlaybackPagerTimeline.UNSET)
-            cancelAllInteraction()
-            remeasure()
+            emptyTimelineCancelInteractions()
+            layoutState.scrollToPosition(0, 0)
             return
         }
         if (previousTimeline.windows.isEmpty() || previousTimeline.currentIndex !in previousTimeline.windows.indices) {
@@ -547,14 +487,15 @@ class PlaybackPagerController(
         skipAnimate: Boolean
     ) {
         // the current scroll position is more than the target, we don't want to animate left
-        if (scrollPosition.currentPage > timeline.currentIndex + stepCount &&
+        if (layoutState.currentPage > timeline.currentIndex + stepCount &&
             latestUserDragInstance?.dragEnded != false &&
             latestUserDragFlingInstance?.flingEnded != false
         ) {
-            latestUserDragInstance?.reset()
-            latestUserDragFlingInstance?.cancel()
+            Timber.d("PlaybackPagerController_DEBUG: timelineShiftRight_more")
+            /*latestUserDragInstance?.reset()
+            latestUserDragFlingInstance?.newTimelineCorrectionOverride()
             timelineShiftSnap(timeline)
-            return
+            return*/
         }
          timelineShiftRemeasure(
             timeline = timeline,
@@ -583,15 +524,19 @@ class PlaybackPagerController(
         skipAnimate: Boolean
     ) {
 
+        // MediaStore_28_AUDIO_37, MediaStore_28_AUDIO_38, MediaStore_28_AUDIO_39, MediaStore_28_AUDIO_40, MediaStore_28_AUDIO_41, MediaStore_28_AUDIO_42, MediaStore_28_AUDIO_43, MediaStore_28_AUDIO_44, MediaStore_28_AUDIO_45, MediaStore_28_AUDIO_46, MediaStore_28_AUDIO_73], currentIndex=5
+        // MediaStore_28_AUDIO_41, MediaStore_28_AUDIO_42, MediaStore_28_AUDIO_43, MediaStore_28_AUDIO_44, MediaStore_28_AUDIO_45, MediaStore_28_AUDIO_46, MediaStore_28_AUDIO_73, MediaStore_28_AUDIO_74, MediaStore_28_AUDIO_75, MediaStore_28_AUDIO_76, MediaStore_28_AUDIO_77], currentIndex=5
+
         // the current scroll position is more than the target, we don't want to animate right
-        if (scrollPosition.currentPage < timeline.currentIndex - stepCount &&
+        if (layoutState.currentPage < timeline.currentIndex - stepCount &&
             latestUserDragInstance?.dragEnded != false &&
             latestUserDragFlingInstance?.flingEnded != false
         ) {
+            Timber.d("PlaybackPagerController_DEBUG: timelineShiftLeft_more")
+            /*latestUserDragInstance?.reset()
+            latestUserDragFlingInstance?.newTimelineCorrectionOverride()
             timelineShiftSnap(timeline)
-            latestUserDragInstance?.reset()
-            latestUserDragFlingInstance?.cancel()
-            return
+            return*/
         }
         timelineShiftRemeasure(
             timeline = timeline,
@@ -626,18 +571,22 @@ class PlaybackPagerController(
         // previousTimeline=PlaybackPagerTimeline@ab24173(windows=[MediaStore_28_AUDIO_28, MediaStore_28_AUDIO_36, MediaStore_28_AUDIO_37, MediaStore_28_AUDIO_38, MediaStore_28_AUDIO_39, MediaStore_28_AUDIO_40, MediaStore_28_AUDIO_41, MediaStore_28_AUDIO_42, MediaStore_28_AUDIO_43, MediaStore_28_AUDIO_44], currentIndex=4),
         // timeline=PlaybackPagerTimeline@24bb3ec(windows=[MediaStore_28_AUDIO_39, MediaStore_28_AUDIO_40, MediaStore_28_AUDIO_41, MediaStore_28_AUDIO_42, MediaStore_28_AUDIO_43, MediaStore_28_AUDIO_44, MediaStore_28_AUDIO_45, MediaStore_28_AUDIO_46, MediaStore_28_AUDIO_73, MediaStore_28_AUDIO_74, MediaStore_28_AUDIO_75], currentIndex=5)
         // stepCount=5, direction=1, beforePageDiff=1, firstVisiblePage=2, currentPage=3, scrollOffset=363, skipAnimate=false
+
+        // MediaStore_28_AUDIO_36, MediaStore_28_AUDIO_37, MediaStore_28_AUDIO_38, MediaStore_28_AUDIO_39, MediaStore_28_AUDIO_40, MediaStore_28_AUDIO_41, MediaStore_28_AUDIO_42, MediaStore_28_AUDIO_43, MediaStore_28_AUDIO_44, MediaStore_28_AUDIO_45, MediaStore_28_AUDIO_46], currentIndex=5
+        // MediaStore_28_AUDIO_28, MediaStore_28_AUDIO_36, MediaStore_28_AUDIO_37, MediaStore_28_AUDIO_38, MediaStore_28_AUDIO_39, MediaStore_28_AUDIO_40, MediaStore_28_AUDIO_41, MediaStore_28_AUDIO_42], currentIndex=2
+        // stepCount=4, direction=-1, beforePageDiff=-3), firstVisiblePage=0, currentPage=0, scrollOffset=0, skipAnimate=true
         check(direction == 1 || direction == -1) {
             "timelineShiftRemeasure direction must be either 1 or -1"
         }
         val beforePageDiff = timeline.currentIndex - previousTimeline.currentIndex
-        Timber.d("PlaybackPagerController_DEBUG: timelineShiftRemeasure(timeline=${timeline.toDebugString()}, previousTimeline=${previousTimeline.toDebugString()}, stepCount=$stepCount, direction=$direction, beforePageDiff=$beforePageDiff), firstVisiblePage=${scrollPosition.firstVisiblePage}, currentPage=${scrollPosition.currentPage}, scrollOffset=${scrollPosition.scrollOffset}, skipAnimate=$ov")
+        Timber.d("PlaybackPagerController_DEBUG: timelineShiftRemeasure(timeline=${timeline.toDebugString()}, previousTimeline=${previousTimeline.toDebugString()}, stepCount=$stepCount, direction=$direction, beforePageDiff=$beforePageDiff), firstVisiblePage=${layoutState.firstVisiblePage}, currentPage=${layoutState.currentPage}, scrollOffset=${layoutState.scrollOffset}, skipAnimate=$ov")
         _renderData.value = PlaybackPagerRenderData(
             timeline = timeline
         )
         var ignoreScrollOffset = false
-        scrollPosition.requestPosition(
+        layoutState.scrollToPosition(
             firstVisiblePageIndex = run {
-                val firstVisiblePage = scrollPosition.firstVisiblePage
+                val firstVisiblePage = layoutState.firstVisiblePage
                 val firstVisiblePageDiff = timeline.currentIndex - firstVisiblePage + (stepCount * direction) - beforePageDiff
                 if (ov) {
                     if (direction == 1) {
@@ -663,7 +612,7 @@ class PlaybackPagerController(
                         }
                         return@index page
                     }
-                    if (scrollPosition.currentPage == timeline.currentIndex + (stepCount * direction) - beforePageDiff) {
+                    if (layoutState.currentPage == timeline.currentIndex + (stepCount * direction) - beforePageDiff) {
                         return@index timeline.currentIndex
                     }
                     timeline.currentIndex - (1 * direction)
@@ -676,11 +625,10 @@ class PlaybackPagerController(
                 }
                 index
             },
-            scrollOffset = if (!ignoreScrollOffset) scrollPosition.scrollOffset else 0
+            scrollOffset = if (!ignoreScrollOffset) layoutState.scrollOffset else 0
         )
-        remeasure()
-        userDragInstance?.remeasureUpdateCurrentPage(scrollPosition.currentPage)
-        userDragFlingInstance?.remeasureUpdateCurrentPage(scrollPosition.currentPage)
+        userDragInstance?.remeasureUpdateCurrentPage(layoutState.currentPage)
+        userDragFlingInstance?.remeasureUpdateCurrentPage(layoutState.currentPage)
     }
 
     private fun applyTimelineShiftAnimated(
@@ -688,7 +636,7 @@ class PlaybackPagerController(
     ) {
         checkInMainLooper()
         _timelineAnimate?.cancel()
-        latestUserDragFlingInstance?.cancel()
+        latestUserDragFlingInstance?.newTimelineCorrectionOverride()
         val drag = latestUserDragInstance?.apply {
             newCorrectionOverride()
         }
@@ -727,11 +675,11 @@ class PlaybackPagerController(
     private fun timelineShiftSnap(
         timeline: PlaybackPagerTimeline,
     ) {
-        Timber.d("PlaybackPagerController_DEBUG: timelineShiftSnap(timeline=$timeline, currentPage=${scrollPosition.currentPage})")
+        Timber.d("PlaybackPagerController_DEBUG: timelineShiftSnap(timeline=$timeline, currentPage=${layoutState.currentPage})")
         checkInMainLooper()
         _timelineAnimate?.cancel()
         latestUserDragInstance?.reset()
-        latestUserDragFlingInstance?.cancel()
+        latestUserDragFlingInstance?.newTimelineCorrectionOverride()
         _renderData.value = PlaybackPagerRenderData(timeline = timeline)
         snapToTimelineCurrentWindow(timeline)
     }
@@ -749,7 +697,7 @@ class PlaybackPagerController(
         }.also { _timelineAnimate = it }
     }
 
-    private fun animateFlingCorrection(
+    private fun dispatchAnimatedFlingCorrection(
         page: Int
     ) {
         _timelineAnimate?.let {
@@ -759,12 +707,15 @@ class PlaybackPagerController(
             it.cancel()
         }
         coroutineScope.launch(Dispatchers.Main, CoroutineStart.UNDISPATCHED) {
+            val tl = _renderData.value?.timeline ?: PlaybackPagerTimeline.UNSET
+            val windows = tl.windows
+            val currentIndex = page.coerceIn(windows.indices)
             animateToTimelineCurrentWindowSuspend(
                 PlaybackPagerTimeline(
-                    windows = (_renderData.value?.timeline?.windows ?: PlaybackPagerTimeline.UNSET.windows),
-                    currentIndex = page.coerceIn(_renderData.value?.timeline?.windows?.indices ?: 0..0)
+                    windows = windows,
+                    currentIndex = currentIndex
                 ),
-                debugPerformerName = "animateFlingCorrection(page=$page)"
+                debugPerformerName = "animateFlingCorrection(page=$page, ci=$currentIndex)"
             )
         }.also { _flingCorrection = it }
     }
@@ -777,10 +728,10 @@ class PlaybackPagerController(
         animateToTimelineCurrentWindowSuspend_c++
         checkInMainLooper()
         val MaxPagesForAnimateScroll = 3
-        val currentPage = scrollPosition.currentPage
+        val currentPage = layoutState.currentPage
         val page = timeline.currentIndex
         val targetPage = page
-        val pageOffsetFraction = 0
+        val pageOffsetFraction = 0f
         // If our future page is too far off, that is, outside of the current viewport
         var currentPosition = currentPage
         val visiblePages = pagerLayoutInfo.visiblePagesInfo
@@ -798,8 +749,7 @@ class PlaybackPagerController(
             }
 
             // Pre-jump to 1 viewport away from destination page, if possible
-            scrollPosition.requestPosition(preJumpPosition, 0)
-            remeasurement?.forceRemeasure()
+            layoutState.scrollToPosition(preJumpPosition, 0)
             currentPosition = preJumpPosition
         }
 
@@ -826,97 +776,50 @@ class PlaybackPagerController(
 
         val displacement = targetOffset - currentOffset + pageOffsetToSnappedPosition
 
+        Timber.d("PlaybackPagerController_DEBUG: @${Integer.toHexString(System.identityHashCode(this))}_animateToTimelineCurrentWindowSuspend, displacement=$displacement, pageOffsetToSnappedPosition=$pageOffsetToSnappedPosition, targetOffset=$targetOffset, currentOffset=$currentOffset")
+
         withContext(AndroidUiDispatcher.Main) {
             var p = 0f
             animate(0f, displacement, animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) { currentValue, _ ->
+                Timber.d("PlaybackPagerController_DEBUG: @${Integer.toHexString(System.identityHashCode(this@PlaybackPagerController))}_animateToTimelineCurrentWindowSuspend, onFrame, active=$isActive")
                 ensureActive()
-                p += -performScroll(-(currentValue - p), "animateToTimelineCurrentWindowSuspend(c=$animateToTimelineCurrentWindowSuspend_c, performer=$debugPerformerName)")
+                p += performScroll((currentValue - p), "animateToTimelineCurrentWindowSuspend(c=$animateToTimelineCurrentWindowSuspend_c, performer=$debugPerformerName)")
             }
         }
     }
 
     private fun snapToTimelineCurrentWindow(timeline: PlaybackPagerTimeline) {
-        scrollPosition.requestPosition(
+        layoutState.scrollToPosition(
             firstVisiblePageIndex = timeline.currentIndex.coerceAtLeast(0),
             scrollOffset = 0
         )
-        remeasure()
     }
 
-    private fun remeasure(): Boolean? {
-        remeasurement?.forceRemeasure()
-            ?: return null
-        return true
-    }
-
-    private fun cancelAllInteraction() {
+    private fun emptyTimelineCancelInteractions() {
         latestUserDragInstance?.cancel()
-        latestUserDragFlingInstance?.cancel()
+        latestUserDragFlingInstance?.emptyTimelineOverride()
     }
 
     private fun performScroll(
         distance: Float,
         debugPerformerName: String? = null
     ): Float {
-        Timber.d("PlaybackPagerController_DEBUG_s: performScroll(distance=$distance, currentScrollToBeConsumed=$scrollToBeConsumed, canScrollForward=$canScrollForward, performer=$debugPerformerName)")
-        if (distance < 0 && !canScrollForward || distance > 0 && !canScrollBackward) {
-            return 0f
-        }
-        check(abs(scrollToBeConsumed) <= 0.5f) {
-            "entered drag with non-zero pending scroll: $scrollToBeConsumed"
-        }
-        scrollToBeConsumed += distance
-
-        // scrollToBeConsumed will be consumed synchronously during the forceRemeasure invocation
-        // inside measuring we do scrollToBeConsumed.roundToInt() so there will be no scroll if
-        // we have less than 0.5 pixels
-        if (abs(scrollToBeConsumed) > 0.5f) {
-            val preScrollToBeConsumed = scrollToBeConsumed
-            remeasurement?.forceRemeasure()
-            /*if (prefetchingEnabled) {
-                notifyPrefetch(preScrollToBeConsumed - scrollToBeConsumed)
-            }*/
-        }
-
-        // here scrollToBeConsumed is already consumed during the forceRemeasure invocation
-        if (abs(scrollToBeConsumed) <= 0.5f) {
-            // We consumed all of it - we'll hold onto the fractional scroll for later, so report
-            // that we consumed the whole thing
-            return distance
-        } else {
-            val scrollConsumed = distance - scrollToBeConsumed
-            // We did not consume all of it - return the rest to be consumed elsewhere (e.g.,
-            // nested scrolling)
-            scrollToBeConsumed = 0f // We're not consuming the rest, give it back
-            return scrollConsumed
-        }
+        return layoutState.scrollBy(distance, debugPerformerName)
     }
+
 
     fun userPerformDragScroll(
         distance: Float,
         connection: UserDragInstance
     ): Float {
         connection.ensureActive()
-        val beforePage = scrollPosition.currentPage
+        val beforePage = layoutState.currentPage
         val centerPage = _renderData.value?.timeline?.currentIndex?.coerceAtLeast(0) ?: return 0f
-        val scroll = -performScroll(-distance, "userPerformDragScroll")
+        val scroll = performScroll(distance, "userPerformDragScroll")
         connection.apply {
-            onScrollBy(pixels = distance, centerPage = centerPage, beforePage = beforePage, afterPage = scrollPosition.currentPage)
+            onScrollBy(pixels = distance, centerPage = centerPage, beforePage = beforePage, afterPage = layoutState.currentPage)
         }
         return scroll
-    }
-
-    fun acceptFlingScroll(
-        distance: Float,
-        connection: UserDragFlingInstance
-    ): Boolean {
-        connection.ensureActive()
-        connection.dragScrollDirection?.let { direction ->
-            val flingDirection = sign(distance).toInt()
-            connection
-        }
-
-        return false
     }
 
     fun performFlingScroll(
@@ -924,23 +827,30 @@ class PlaybackPagerController(
         connection: UserDragFlingInstance
     ): Float {
         connection.ensureActive()
-        val beforePage = scrollPosition.currentPage
+        val beforePage = layoutState.currentPage
         val centerPage = _renderData.value?.timeline?.currentIndex?.coerceAtLeast(0) ?: return 0f
-        val scroll = -performScroll(-distance, "performFlingScroll, source=${connection.source.toString()}")
+        // TODO: if the fling already consumed newPage, coerce the distance or throw exception
+        val scroll = performScroll(distance, "performFlingScroll(beforePage=$beforePage, centerPage=$centerPage), source=${connection.source.toString()}")
         connection
             .apply {
-                onScrollBy(pixels = -distance, centerPage = centerPage, beforePage = beforePage, afterPage = scrollPosition.currentPage)
+                onScrollBy(pixels = distance, centerPage = centerPage, beforePage = beforePage, afterPage = layoutState.currentPage)
             }
             .run {
-                consumeNewPage()?.let { (center, beforePage, afterPage) ->
-                    val pageChangeDirection = (afterPage - beforePage).sign
-                    if (pageChangeDirection != connection.dragScrollDirection) {
-                        connection.onUnexpectedDirection(beforePage)
-                        // the fling can bounce, we don't want that, temporary fix
-                        throw CancellationException("other fling direction expected (expected=${connection.dragScrollDirection}, got=${pageChangeDirection})")
+                consumeNewPage()
+                    ?.let { (center, beforePage, afterPage) ->
+                        val pageChangeDirection = (afterPage - beforePage).sign
+                        if (pageChangeDirection != connection.dragScrollDirection) {
+                            connection.onUnexpectedDirection(beforePage)
+                            // the fling can bounce, we don't want that, temporary fix
+                            throw CancellationException("other fling direction expected (expected=${connection.dragScrollDirection}, got=${pageChangeDirection})")
+                        }
+                        userPerformScrollFlingChangePage(beforePage, afterPage)
                     }
-                    userPerformScrollFlingChangePage(beforePage, afterPage)
-                }
+                    ?: run {
+                        if (isScrolledOverConsumedPage()) {
+                            onPageChangedNonConsumable(beforePage)
+                        }
+                    }
             }
         return scroll
     }
@@ -948,7 +858,7 @@ class PlaybackPagerController(
     fun userDragScrollEnd(
         instance: UserDragInstance
     ) {
-        userPerformScrollDone(scrollInstance = instance, swipeInstance = null)
+        userPerformScrollDone(scrollInstance = instance, swipeInstance = latestUserSwipeInstance)
     }
 
     fun userDragFlingScrollEnd(
@@ -964,15 +874,18 @@ class PlaybackPagerController(
         scrollInstance: UserDragInstance,
         swipeInstance: UserSwipeInstance?
     ) {
-        scrollInstance.ensureActive()
-        Timber.d("PlaybackPagerController_DEBUG: userPerformScrollDone(currentPage=${scrollPosition.currentPage}, swipePageOverride=$swipePageOverride, timeline.currentIndex=${_renderData.value?.timeline?.currentIndex}, firstDragPage=${scrollInstance.firstDragPage}, latestDragPage=${scrollInstance.latestDragResultPage}, dragPageShift=${scrollInstance.dragPageShift})")
+        swipeInstance?.endUserDragOverride()
+        Timber.d("PlaybackPagerController_DEBUG: userPerformScrollDone(instance=$scrollInstance, currentPage=${layoutState.currentPage}, swipePageOverride=$swipePageOverride, timeline.currentIndex=${_renderData.value?.timeline?.currentIndex}, firstDragPage=${scrollInstance.firstDragPage}, latestDragPage=${scrollInstance.latestDragResultPage}, dragPageShift=${scrollInstance.dragPageShift})")
+        if (!scrollInstance.isActive) {
+            return
+        }
         val firstDragPage = scrollInstance.firstDragPage
             ?: run {
                 // no firstDragPage means that we are not dragging anywhere but is considered a scroll
                 // assume that this is down gesture over an ongoing scroll
                 if (scrollInstance.isDragOverridingScroll) {
                     // maybe: resume velocity decay ?
-                    // todo: decide whether this is considered a swipe
+                    // todo: decide whether this is considered a swipe, YT-M bugged when tried
                     animateToTimelineCurrentWindow(_renderData.value?.timeline ?: PlaybackPagerTimeline.UNSET)
                 } else {
                     // we don't expect this, but we can just recover
@@ -991,17 +904,21 @@ class PlaybackPagerController(
         }
     }
 
-
-
     private fun userPerformFlingDone(
         instance: UserDragFlingInstance
     ) {
+        Timber.d("PlaybackPagerController_DEBUG: userPerformFlingDone(instance=$instance, cancelled=${instance.isCancelled}, firstVisiblePage=$firstVisiblePage, scrollOffset=$firstVisiblePageOffset, currentPage=$currentPage, shouldCorrect=${instance.shouldCorrect}, shouldCorrectToPage=${instance.shouldCorrectToPage})")
         if (!instance.isCancelled) {
-            if (scrollPosition.scrollOffset != 0) {
+            if (layoutState.scrollOffset != 0) {
                 snapToTimelineCurrentWindow(_renderData.value?.timeline ?: PlaybackPagerTimeline.UNSET)
             }
         } else if (instance.shouldCorrect) {
-            animateFlingCorrection(instance.shouldCorrectToPage ?: _renderData.value?.timeline?.currentIndex ?: 0)
+            dispatchAnimatedFlingCorrection(
+                instance.shouldCorrectToPage
+                    // no specific page
+                    // TODO: be more explicit on where it should settle,
+                    ?: layoutState.currentPage
+            )
         }
     }
 
@@ -1009,7 +926,7 @@ class PlaybackPagerController(
         startPage: Int,
         endPage: Int,
     ) {
-        Timber.d("PlaybackPagerController_DEBUG: userPerformScrollFlingChangePage(startPage=$startPage, endPage=$endPage, currentPage=${scrollPosition.currentPage}, timeline=${_renderData.value?.timeline?.toDebugString()}, pageOverride=$swipePageOverride)")
+        Timber.d("PlaybackPagerController_DEBUG: userPerformScrollFlingChangePage(startPage=$startPage, endPage=$endPage, currentPage=${layoutState.currentPage}, timeline=${_renderData.value?.timeline?.toDebugString()}, pageOverride=$swipePageOverride)")
         when (endPage) {
             startPage + 1 -> userSwipeNextPage()
             startPage - 1 -> userSwipePreviousPage()
@@ -1022,10 +939,13 @@ class PlaybackPagerController(
 
     private var _ac = 0
     private fun userSwipeNextPage() {
-        Timber.d("PlaybackPagerController_DEBUG: userSwipeToNextPage")
+        Timber.d("PlaybackPagerController_DEBUG: userSwipeToNextPage(token=$_ac)")
         checkInMainLooper()
         val token = ++_ac
         val swipeInstance = UserSwipeInstance()
+            .apply {
+                latestUserSwipeInstance?.let { derive(it) }
+            }
         latestUserSwipeInstance = swipeInstance
         if (token == 1) {
             stopTimelineUpdater()
@@ -1043,13 +963,14 @@ class PlaybackPagerController(
                     PlaybackPagerTimeline(windows = seekResult.getOrThrow().items, currentIndex = seekResult.getOrThrow().currentIndex),
                     _renderData.value!!.timeline,
                     1,
-                    !swipeInstance.correction.isActive,
+                    swipeInstance.ignoreAnimate,
                     swipeUpdate = true,
                     debugSourceName = "userSwipeNextPage"
                 )
             } else {
                 snapToTimelineCurrentWindow(_renderData.value!!.timeline)
             }
+            latestUserSwipeInstance = null
             initTimelineUpdater()
             Timber.d("PlaybackPagerController_DEBUG: userSwipeToNextPage_end")
         }
@@ -1057,10 +978,13 @@ class PlaybackPagerController(
 
     private fun userSwipePreviousPage() {
 
-        Timber.d("PlaybackPagerController_DEBUG: userSwipeToPrevPage")
+        Timber.d("PlaybackPagerController_DEBUG: userSwipeToPrevPage(token=$_ac)")
         checkInMainLooper()
         val token = ++_ac
         val swipeInstance = UserSwipeInstance()
+            .apply {
+                latestUserSwipeInstance?.let { derive(it) }
+            }
         latestUserSwipeInstance = swipeInstance
         if (token == 1) {
             stopTimelineUpdater()
@@ -1078,14 +1002,14 @@ class PlaybackPagerController(
                     PlaybackPagerTimeline(windows = seekResult.getOrThrow().items, currentIndex = seekResult.getOrThrow().currentIndex),
                     _renderData.value!!.timeline,
                     -1,
-                    !swipeInstance.correction.isActive,
+                    swipeInstance.ignoreAnimate,
                     swipeUpdate = true,
                     debugSourceName = "userSwipePreviousPage"
                 )
             } else {
                 snapToTimelineCurrentWindow(_renderData.value!!.timeline)
             }
-
+            latestUserSwipeInstance = null
             initTimelineUpdater()
             Timber.d("PlaybackPagerController_DEBUG: userSwipeToPreviousPage_end")
         }
@@ -1095,17 +1019,9 @@ class PlaybackPagerController(
      *  Updates the state with the new calculated scroll position and consumed scroll.
      */
     internal fun onMeasureResult(result: PlaybackPagerMeasureResult) {
-        Timber.d("PlaybackPagerController: onMeasureResult(scrollToBeConsumed=${scrollToBeConsumed}, consumedScroll=${result.consumedScroll})")
-        scrollPosition.updateFromMeasureResult(result)
-        scrollToBeConsumed -= result.consumedScroll
-        _pagerLayoutInfoState.value = result
-        canScrollForward = result.canScrollForward
-        canScrollBackward = (result.firstVisiblePage?.index ?: 0) != 0 ||
-                result.firstVisiblePageOffset != 0
-        numMeasurePasses++
-        if (!isScrollInProgress) {
-            settledPageState.value = currentPage
-        }
+        Timber.d("PlaybackPagerLayoutState_DEBUG: onMeasureResult(currentPage=${layoutState.currentPage}, thread=${Thread.currentThread()})")
+        layoutState.onMeasureResult(result)
+        Timber.d("PlaybackPagerLayoutState_DEBUG: onMeasureResult_post(currentPage=${layoutState.currentPage})")
     }
 
     class UserScrollInstance(
@@ -1250,6 +1166,7 @@ class PlaybackPagerController(
         fun remeasureUpdateCurrentPage(
             page: Int
         ) {
+            Timber.d("PlaybackPagerController_DEBUG: userDragInstance@${Integer.toHexString(System.identityHashCode(this))}_remeasureUpdateCurrentPage(page=$page), firstDragPage=$firstDragPage, latestDragResultPage=$latestDragResultPage, latestDragCenterPage=$latestDragCenterPage")
             firstDragPage ?: return
             checkNotNull(latestDragResultPage)
             checkNotNull(latestDragCenterPage)
@@ -1279,7 +1196,6 @@ class PlaybackPagerController(
         }
 
         private var cvr = 0
-        private var cvr_s = 0
         fun newCorrectionOverride() {
             Timber.d("PlaybackPagerController_DEBUG: UserDragInstance_newCorrectionOverride")
             // end must be called when the correction is completed before starting a new one
@@ -1322,6 +1238,8 @@ class PlaybackPagerController(
 
         private var newPageConsumable: Boolean? = null
 
+        private var pageConsumed: Int? = null
+
         var source: Any? = null
             private set
 
@@ -1335,6 +1253,12 @@ class PlaybackPagerController(
             private set
 
         var flingEnded = false
+            private set
+
+        var unexpectedDirection = false
+            private set
+
+        var unexpectedPageChange = false
             private set
 
         var shouldCorrect = false
@@ -1389,6 +1313,11 @@ class PlaybackPagerController(
             flingEnded = true
         }
 
+        fun flingEndedExceptionally() {
+            flingEnded = true
+            cancel()
+        }
+
         fun ensureActive() {
             lifetime.ensureActive()
         }
@@ -1401,7 +1330,8 @@ class PlaybackPagerController(
                 ?: false
         }
 
-        fun cancel() {
+        // make cancel private, make reason explicit
+        private fun cancel() {
             lifetime.cancel()
         }
 
@@ -1466,15 +1396,31 @@ class PlaybackPagerController(
         }
 
         fun onUnexpectedDirection(
-            beforePage: Int,
+            beforePage: Int? = null
         ) {
             val source = this.source
             if (source is UserDragInstance) {
                 shouldCorrect = true
                 if (source.consumedSwipe) {
-                    shouldCorrectToPage = beforePage
+                    shouldCorrectToPage = source.latestDragResultPage ?: beforePage
                 }
             }
+            this.unexpectedDirection = true
+            cancel()
+        }
+
+        fun onPageChangedNonConsumable(
+            beforePage: Int
+        ) {
+            val source = this.source
+            if (source is UserDragInstance) {
+                shouldCorrect = true
+                if (source.consumedSwipe) {
+                    shouldCorrectToPage = source.latestDragResultPage ?: beforePage
+                }
+            }
+            this.unexpectedPageChange
+            cancel()
         }
 
         fun consumeNewPage(): PageMove? {
@@ -1483,24 +1429,38 @@ class PlaybackPagerController(
                 return PageMove(
                     center = requireNotNull(latestScrollCenterPage),
                     beforePage = requireNotNull(firstScrollPage),
-                    afterPage = requireNotNull(latestScrollResultPage)
+                    afterPage = requireNotNull(latestScrollResultPage).also { pageConsumed = it }
                 )
             }
             return null
         }
 
+        fun isScrolledOverConsumedPage(): Boolean {
+            return newPageConsumable == false &&
+                    requireNotNull(latestScrollResultPage) != requireNotNull(pageConsumed)
+        }
+
         fun newUserDragOverride() {
             cancel()
+            shouldCorrect = false
         }
 
-        fun allowFlingBack(): Boolean {
-            val dragInstance = (source as? UserDragInstance)?.let { drag ->
-                !drag.consumedSwipe
-            } == true
-            return dragInstance && consumedSwipe != true
+        fun newUserDragFlingOverride() {
+            cancel()
+            shouldCorrect = false
         }
 
-        fun expectedDragVelocitySign(): Int? {
+        fun newTimelineCorrectionOverride() {
+            cancel()
+            shouldCorrect = false
+        }
+
+        fun emptyTimelineOverride() {
+            cancel()
+            shouldCorrect = false
+        }
+
+        fun expectedDragScrollVelocitySign(): Int? {
             (source as? UserDragInstance)?.let { drag ->
                 drag.latestScrollDirection?.let { return -it }
             }
@@ -1508,9 +1468,15 @@ class PlaybackPagerController(
         }
 
         private fun sourceApply(
-            source: UserDragInstance
+            source: UserDragInstance,
         ) {
             if (source.flingCorrectionOverride) {
+                cancel()
+                return
+            }
+            if (source.consumedSwipe) {
+                // drag already consumed swipe
+                shouldCorrect = true
                 cancel()
                 return
             }
@@ -1532,11 +1498,33 @@ class PlaybackPagerController(
     class UserSwipeInstance(
 
     ) {
+        private var drag: Int = 0
 
-        val correction = Job()
+        val ignoreAnimate
+            get() = drag > 0
 
         fun newUserDragOverride() {
-            correction.cancel()
+            check(++drag == 1) {
+                "PlaybackPagerController_newUserDragOverride: drag imbalance, expected end to be called before any new drag"
+            }
+        }
+
+        private fun deriveUserDragOverride() {
+            check(++drag == 1) {
+                "PlaybackPagerController_deriveUserDragOverride: drag imbalance, expected end to be called before any new drag"
+            }
+        }
+
+        fun endUserDragOverride() {
+            check(--drag == 0) {
+                "PlaybackPagerController_endUserDragOverride: drag imbalance, expected end to not be called twice"
+            }
+        }
+
+        fun derive(swipeInstance: UserSwipeInstance) {
+            if (swipeInstance.drag > 0) {
+                deriveUserDragOverride()
+            }
         }
     }
 
@@ -1554,18 +1542,26 @@ class PlaybackPagerController(
     val correctingFling
         get() = _flingCorrection?.isActive == true
 
+    private val layoutState = PlaybackPagerLayoutState()
+
+    val modifier
+        get() = layoutState.modifier
+
     // maybe: join them
     private var latestUserDragInstance: UserDragInstance? = null
     private var latestUserDragFlingInstance: UserDragFlingInstance? = null
     private var latestUserSwipeInstance: UserSwipeInstance? = null
 
     fun newUserDragScroll(): UserDragInstance {
+        Timber.d("PlaybackPagerController_DEBUG: newUserDragScroll")
         checkInMainLooper()
         latestUserDragInstance?.newUserDragOverride()
         latestUserDragFlingInstance?.newUserDragOverride()
         latestUserSwipeInstance?.newUserDragOverride()
         val correcting = correctingTimeline
         _timelineAnimate?.cancel()
+        // TODO: what to do when fling correction is active
+        _flingCorrection?.cancel()
         return UserDragInstance(lifetime = SupervisorJob())
             .apply {
                 initKind(
@@ -1579,6 +1575,7 @@ class PlaybackPagerController(
             }
             .also {
                 latestUserDragInstance = it
+                Timber.d("PlaybackPagerController_DEBUG: newUserDragScroll(instance=$it)")
             }
     }
 
@@ -1586,17 +1583,27 @@ class PlaybackPagerController(
         key: Any,
         // ask to report the initial velocity, and check if that aligns with the drag
         // reason: there's an issue with the velocity tracker
+        scrollAxisVelocity: Float
     ): UserDragFlingInstance? {
+        Timber.d("PlaybackPagerController_DEBUG: newUserDragFlingScroll(key=$key, vel=$scrollAxisVelocity)")
         if (key !is UserDragInstance) return null
         if (latestUserDragInstance != key) return null
         return UserDragFlingInstance(lifetime = SupervisorJob(), debugName = "")
             .apply {
                 initKind(source = key)
-                // TODO
-                _timelineAnimate?.let { if (it.isActive) cancel() }
+                if (isActive) {
+                    if (scrollAxisVelocity != 0f) {
+                        expectedDragScrollVelocitySign()?.let { vel ->
+                            if (vel != sign(scrollAxisVelocity).toInt()) {
+                                onUnexpectedDirection()
+                            }
+                        }
+                    }
+                }
             }
             .also {
                 latestUserDragFlingInstance = it
+                Timber.d("PlaybackPagerController_DEBUG: newUserDragFlingScroll(instance=$it)")
             }
     }
 

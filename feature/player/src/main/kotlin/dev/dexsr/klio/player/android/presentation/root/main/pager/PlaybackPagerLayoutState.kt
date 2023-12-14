@@ -1,17 +1,20 @@
 package dev.dexsr.klio.player.android.presentation.root.main.pager
 
 import androidx.annotation.MainThread
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.Remeasurement
 import androidx.compose.ui.layout.RemeasurementModifier
+import androidx.compose.ui.unit.Density
 import dev.dexsr.klio.android.base.checkInMainLooper
 import dev.dexsr.klio.base.compose.SnapshotRead
 import dev.dexsr.klio.player.android.presentation.root.main.PlaybackPagerLayoutInfo
 import dev.dexsr.klio.player.android.presentation.root.main.PlaybackPagerMeasureResult
 import dev.dexsr.klio.player.android.presentation.root.main.PlaybackPagerScrollPosition
+import dev.dexsr.klio.player.android.presentation.root.main.mainAxisViewportSize
 import timber.log.Timber
 import kotlin.math.abs
 
@@ -29,6 +32,8 @@ class PlaybackPagerLayoutState() {
 
     private val scrollPosition = PlaybackPagerScrollPosition()
 
+    var density: Density by mutableStateOf(Density(1f, 1f))
+        internal set
 
     private val _pagerLayoutInfoState = mutableStateOf<PlaybackPagerLayoutInfo>(
         PlaybackPagerLayoutInfo.UNSET
@@ -36,6 +41,21 @@ class PlaybackPagerLayoutState() {
 
     internal val pagerLayoutInfo
         @SnapshotRead get() = _pagerLayoutInfoState.value
+
+    @OptIn(ExperimentalFoundationApi::class)
+    val distanceToSnapPosition: Float
+        get() = pagerLayoutInfo.closestPageToSnapPosition?.let {
+            val layoutInfo = pagerLayoutInfo
+            density.calculateDistanceToDesiredSnapPosition(
+                mainAxisViewPortSize = layoutInfo.mainAxisViewportSize,
+                beforeContentPadding = layoutInfo.beforeContentPadding,
+                afterContentPadding = layoutInfo.afterContentPadding,
+                itemSize = layoutInfo.pageSize,
+                itemOffset = it.offset,
+                itemIndex = it.index,
+                snapPositionInLayout = SnapAlignmentStartToStart
+            )
+        } ?: 0f
 
     internal var numMeasurePasses = 0
 

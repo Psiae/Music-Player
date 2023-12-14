@@ -11,6 +11,7 @@ import androidx.compose.ui.platform.AndroidUiDispatcher
 import androidx.compose.ui.unit.Density
 import dev.dexsr.klio.android.base.checkInMainLooper
 import dev.dexsr.klio.base.compose.SnapshotRead
+import dev.dexsr.klio.base.compose.SnapshotWrite
 import dev.dexsr.klio.player.android.presentation.root.main.pager.*
 import kotlinx.coroutines.*
 import timber.log.Timber
@@ -34,8 +35,9 @@ class PlaybackPagerController(
 
     internal var upDownDifference: Offset by mutableStateOf(Offset.Zero)
 
-    // maybe: move this to layoutInfo ?
-    internal var density by mutableStateOf<Density>(Density(1f, 1f))
+    internal var density: Density
+        @SnapshotRead get() = layoutState.density
+        @SnapshotWrite set(value) { layoutState.density = value }
 
 
     internal val pagerLayoutInfo
@@ -636,6 +638,7 @@ class PlaybackPagerController(
     ) {
         checkInMainLooper()
         _timelineAnimate?.cancel()
+        // TODO: maybe we can let the fling instance to continue
         latestUserDragFlingInstance?.newTimelineCorrectionOverride()
         val drag = latestUserDragInstance?.apply {
             newCorrectionOverride()
@@ -830,7 +833,17 @@ class PlaybackPagerController(
         val beforePage = layoutState.currentPage
         val centerPage = _renderData.value?.timeline?.currentIndex?.coerceAtLeast(0) ?: return 0f
         // TODO: if the fling already consumed newPage, coerce the distance or throw exception
-        val scroll = performScroll(distance, "performFlingScroll(beforePage=$beforePage, centerPage=$centerPage), source=${connection.source.toString()}")
+        connection.flingTracker?.let { tracker ->
+            tracker.onFlingBy(distance)
+            if (tracker.incorrect) {
+                connection.onUnexpectedDirection(beforePage)
+                throw CancellationException("fling tracker: unexpected direction, alreadyForward=${tracker.alreadyForward}, alreadyBackward=${tracker.alreadyBackward}, snapped=${tracker.alreadySnapped}, passedSnap=${tracker.alreadySnapped}, initialVelocity=${tracker.initialVelocity}, snapOffset=${tracker.currentSnapOffset}, startCenter=${tracker.startCenter} ")
+            }
+        }
+        val scroll = performScroll(
+            distance,
+            "performFlingScroll(beforePage=$beforePage, centerPage=$centerPage), source=${connection.source.toString()}"
+        )
         connection
             .apply {
                 onScrollBy(pixels = distance, centerPage = centerPage, beforePage = beforePage, afterPage = layoutState.currentPage)
@@ -1273,6 +1286,9 @@ class PlaybackPagerController(
         var consumedSwipe: Boolean? = null
             private set
 
+        var flingTracker: DragFlingTracker? = null
+            private set
+
         val isCancelled: Boolean
             get() = lifetime.isCancelled
 
@@ -1280,12 +1296,16 @@ class PlaybackPagerController(
             get() = lifetime.isActive
 
         fun initKind(
-            source: UserDragInstance
+            source: UserDragInstance,
+            initialVelocity: Float,
+            currentSnapOffset: Float
         ) {
             if (!init) return
             init = false
             this.source = source
             sourceApply(source)
+            if (!isActive) return
+            this.flingTracker = DragFlingTracker(initialVelocity, currentSnapOffset, consumedSwipe != true)
         }
 
         fun onScrollBy(
@@ -1528,6 +1548,227 @@ class PlaybackPagerController(
         }
     }
 
+    // TODO: check for side-page pass
+    class DragFlingTracker(
+        val initialVelocity: Float,
+        val currentSnapOffset: Float,
+        val startCenter: Boolean
+    ) {
+
+
+        private var initialFlingDirection: Int? = null
+        private var flingAcc = 0f
+
+        // whether or not it passed the snap position
+        var passedSnapOffset = false
+            private set
+
+        var alreadySnapped = false
+            private set
+
+        // maybe: change to int ?
+        var alreadyForward = false
+            private set
+
+        var alreadyBackward = false
+            private set
+
+        var incorrect: Boolean = false
+            private set
+
+        // TODO
+        fun onFlingBy(
+            pixels: Float
+        ) {
+
+            if (!startCenter) {
+                onFlingByEdge(pixels)
+                return
+            }
+
+            if (incorrect) {
+                return
+            }
+
+            val displacement = -pixels
+
+            val flingDistanceSign = sign(displacement).toInt()
+            val snapOffsetSign = sign(currentSnapOffset).toInt()
+
+            fun checkSnapped() {
+                // TODO: check clamped <0.5f
+                this.alreadySnapped == this.alreadySnapped || currentSnapOffset == flingAcc
+            }
+
+            if (initialFlingDirection == null || initialFlingDirection == 0) {
+                initialFlingDirection = flingDistanceSign
+            }
+            if (initialVelocity == 0f) {
+                // if this instance starts with 0 velocity, it can only go backward to snap-position,
+                // TODO: unless specified otherwise, in that case the `pixels` must gradually decay into the snap-position
+                flingAcc += displacement
+                if (snapOffsetSign == flingDistanceSign) {
+                    // sign is the same, forward or stay
+                    if (currentSnapOffset == 0f) {
+                        if (displacement == 0f) {
+                            // stay
+                            checkSnapped()
+                            return
+                        }
+                    }
+                    // zero-velocity, no going forward
+                    this.incorrect = true
+                    return
+                }
+                // sign is different, backward
+
+                if (alreadySnapped) {
+                    // already snapped, no going anywhere
+                    this.incorrect = true
+                    return
+                }
+                checkSnapped()
+                if (alreadySnapped) {
+                    // snapped as a result of this fling
+                    return
+                }
+                val postFlingSign = sign(currentSnapOffset - flingAcc).toInt()
+                if (postFlingSign != snapOffsetSign) {
+                    // we passed through
+                    passedSnapOffset = true
+                    this.incorrect = true
+                    return
+                }
+                return
+            }
+            // non-zero velocity
+            if (initialFlingDirection == 0) {
+                checkSnapped()
+                return
+            }
+            if (snapOffsetSign == 0) {
+                if (flingDistanceSign != 0) {
+                    this.incorrect = true
+                    return
+                }
+                checkSnapped()
+                return
+            }
+            if (flingDistanceSign == 0) {
+                // not moving
+                checkSnapped() // ?
+                return
+            }
+            flingAcc += displacement
+
+            if (initialFlingDirection == snapOffsetSign) {
+                // we started forward, non zero
+
+                val forward = flingDistanceSign == snapOffsetSign
+
+                if (alreadyBackward) {
+                    if (forward) {
+                        // already backward, no forward
+                        this.incorrect = true
+                        return
+                    }
+                    val postFlingSign = sign(currentSnapOffset - flingAcc).toInt()
+                    if (postFlingSign != snapOffsetSign) {
+                        // we passed through
+                        passedSnapOffset = true
+                        this.incorrect = true
+                        return
+                    }
+                    checkSnapped()
+                    return
+                }
+
+                // hasn't go backward yet
+
+                if (!alreadyForward) {
+                    // this is first fling,
+                    check(forward)
+                    alreadyForward = true
+                    return
+                }
+
+                // already go forward, no backward
+
+                if (forward) {
+                    // still going forward
+                    return
+                }
+
+                // goes backward
+
+                alreadyBackward = true
+                checkSnapped()
+            }
+        }
+
+
+        private fun onFlingByEdge(
+            pixels: Float
+        ) {
+            if (incorrect) {
+                return
+            }
+
+            val displacement = -pixels
+
+            val flingDistanceSign = sign(displacement).toInt()
+            val snapOffsetSign = sign(currentSnapOffset).toInt()
+
+            fun checkSnapped() {
+                // TODO: check clamped <0.5f
+                this.alreadySnapped == this.alreadySnapped || currentSnapOffset == flingAcc
+            }
+
+            if (initialFlingDirection == null || initialFlingDirection == 0) {
+                initialFlingDirection = flingDistanceSign
+            }
+
+            if (initialVelocity == 0f) {
+                // if this instance starts with 0 velocity, it can only go forward to snap position,
+                // TODO: unless specified otherwise, in that case the `pixels` must gradually decay into the snap-position
+                flingAcc += displacement
+                if (snapOffsetSign == flingDistanceSign) {
+                    // sign is the same, forward or stay
+                    if (currentSnapOffset == 0f) {
+                        if (displacement == 0f) {
+                            // stay
+                            checkSnapped()
+                            return
+                        }
+                    }
+                    if (alreadySnapped) {
+                        // already snapped, no going anywhere
+                        this.incorrect = true
+                        return
+                    }
+                    checkSnapped()
+                    if (alreadySnapped) {
+                        // snapped as a result of this fling
+                        return
+                    }
+                    val postFlingSign = sign(currentSnapOffset - flingAcc).toInt()
+                    if (postFlingSign != snapOffsetSign) {
+                        // we passed through
+                        passedSnapOffset = true
+                        this.incorrect = true
+                        return
+                    }
+                    return
+                }
+                // sign is different, no going backward
+                this.incorrect = true
+                return
+            }
+        }
+    }
+
+
+
     //
 
     val correctingTimeline
@@ -1589,10 +1830,15 @@ class PlaybackPagerController(
         if (key !is UserDragInstance) return null
         if (latestUserDragInstance != key) return null
         return UserDragFlingInstance(lifetime = SupervisorJob(), debugName = "")
+            .also {
+                latestUserDragFlingInstance = it
+                Timber.d("PlaybackPagerController_DEBUG: newUserDragFlingScroll(instance=$it)")
+            }
             .apply {
-                initKind(source = key)
+                initKind(source = key, initialVelocity = scrollAxisVelocity, layoutState.distanceToSnapPosition)
                 if (isActive) {
                     if (scrollAxisVelocity != 0f) {
+                        // non-zero velocity must fling forward of latest drag-direction before going backward
                         expectedDragScrollVelocitySign()?.let { vel ->
                             if (vel != sign(scrollAxisVelocity).toInt()) {
                                 onUnexpectedDirection()
@@ -1600,10 +1846,6 @@ class PlaybackPagerController(
                         }
                     }
                 }
-            }
-            .also {
-                latestUserDragFlingInstance = it
-                Timber.d("PlaybackPagerController_DEBUG: newUserDragFlingScroll(instance=$it)")
             }
     }
 

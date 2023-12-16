@@ -1,4 +1,4 @@
-package dev.dexsr.klio.player.android.presentation.root.compact
+package dev.dexsr.klio.player.android.presentation.root.main.pager
 
 import androidx.annotation.AnyThread
 import androidx.annotation.MainThread
@@ -13,20 +13,17 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.PagerSnapDistance
 import androidx.compose.foundation.pager.PagerState
-import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.AndroidUiDispatcher
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
+import coil.compose.AsyncImage
+import coil.request.CachePolicy
+import coil.request.ImageRequest
 import dev.dexsr.klio.android.base.checkInMainLooper
-import dev.dexsr.klio.base.compose.clickable
-import dev.dexsr.klio.base.compose.rememberWithCustomEquality
-import dev.dexsr.klio.base.kt.referentialEqualityFun
-import dev.dexsr.klio.base.theme.md3.compose.MaterialTheme3
-import dev.dexsr.klio.player.android.presentation.root.main.RootCompactPlaybackControlPanelState
+import dev.dexsr.klio.player.android.presentation.root.main.PlaybackControlMainScreenState
 import dev.dexsr.klio.player.shared.LocalMediaArtwork
 import dev.dexsr.klio.player.shared.PlaybackMediaDescription
 import kotlinx.collections.immutable.ImmutableList
@@ -40,9 +37,11 @@ import timber.log.Timber
 // Pager Implementation over androidx.compose.foundation pager
 // try to mimic YT Music behavior
 
+// copied from compact implementation
+
 @OptIn(ExperimentalFoundationApi::class)
 class FoundationDescriptionPagerState(
-    private val panelState: RootCompactPlaybackControlPanelState
+    private val panelState: PlaybackControlMainScreenState
 ) {
 
 
@@ -61,7 +60,7 @@ class FoundationDescriptionPagerState(
 
 @OptIn(ExperimentalFoundationApi::class)
 class FoundationDescriptionPagerLayoutConnection  constructor(
-    private val panelState: RootCompactPlaybackControlPanelState,
+    private val panelState: PlaybackControlMainScreenState,
 ) {
 
     private var disposables = mutableListOf<DisposableHandle>()
@@ -78,10 +77,7 @@ class FoundationDescriptionPagerLayoutConnection  constructor(
     private var _rCount = 0
     private var _lCount = 0
     private var _direction = 0
-
-    val onItemClickedState = derivedStateOf { panelState.onSurfaceClicked }
-
-    val isSurfaceDarkState = derivedStateOf { panelState.isSurfaceDark }
+    private var userInputInProgress = false
 
     private val _pagerState = object : PagerState(
         initialPage = 0,
@@ -106,7 +102,14 @@ class FoundationDescriptionPagerLayoutConnection  constructor(
                         _userScrollMark = true
                         return dispatchRawDelta(pixels)
                     }
-                }.run { block() }
+                }.run {
+                    userInputInProgress = true
+                    try {
+                        block()
+                    } finally {
+                        userInputInProgress = false
+                    }
+                }
                 return
             }
             super.scroll(scrollPriority, block)
@@ -168,9 +171,11 @@ class FoundationDescriptionPagerLayoutConnection  constructor(
                         return@collect
                     }
                     dragWaiter = launch {
+                        var scrollWaiter: Job? = null
                         snapshotFlow { userDraggingState.value }
                             .distinctUntilChanged()
                             .collect drag@ { dragging ->
+                                scrollWaiter?.cancel()
                                 if (dragging || !_userScrollMark) return@drag
                                 if (page == rActualPage + 1 + _rCount) {
                                     _rCount++
@@ -181,6 +186,7 @@ class FoundationDescriptionPagerLayoutConnection  constructor(
                                 } else if (page != rActualPage) {
                                     snapToCorrectPageSuspend()
                                 }
+
                             }
                     }
                 }
@@ -370,30 +376,38 @@ class FoundationDescriptionPagerLayoutConnection  constructor(
         }
     }
 
-    private suspend fun snapToCorrectPageSuspend(
-    ) {
+    private suspend fun snapToCorrectPageSuspend() {
         checkInMainLooper()
         scroller?.cancel()
         val t = Job()
         scroller = t
         runCatching {
-            doSnapToCorrectPage(
-            )
+            doSnapToCorrectPage()
         }.fold(
             onSuccess = { t.complete() },
             onFailure = { t.cancel() }
         )
     }
 
-    private suspend fun doSnapToCorrectPage(
-    ) {
+    private suspend fun doSnapToCorrectPage() {
         withContext(AndroidUiDispatcher.Main) {
             if (pagerState.pageCount > 0) {
                 _userScrollMark = false
                 val correctPage = renderState.value?.timeline?.currentIndex ?: 0
-                pagerState.scrollToPage(
-                    page = correctPage,
-                )
+                pagerState.apply {
+                    scrollToPage(
+                        page = correctPage,
+                    )
+                    if (userDraggingState.value) {
+                        _userScrollMark = true
+                        dispatchRawDelta(sUserScrollPixels)
+                    }
+                    sUserScrollPixels = 0f
+                    if (!isScrollInProgress && !userInputInProgress) {
+                        _userScrollMark = false
+                        animateScrollToPage(correctPage)
+                    }
+                }
             }
         }
     }
@@ -464,7 +478,8 @@ data class DescriptionPagerRenderData(
 @Composable
 fun FoundationDescriptionPager(
     modifier: Modifier,
-    state: FoundationDescriptionPagerState
+    state: FoundationDescriptionPagerState,
+    contentPadding: PaddingValues
 ) {
 
     val layoutConnectionState = remember {
@@ -475,7 +490,8 @@ fun FoundationDescriptionPager(
         ?.let { layoutConnection ->
             FoundationHorizontalPager(
                 modifier = modifier.fillMaxSize(),
-                layoutConnection = layoutConnection
+                layoutConnection = layoutConnection,
+                contentPadding = contentPadding
             )
         }
 
@@ -495,15 +511,10 @@ fun FoundationDescriptionPager(
 private fun FoundationHorizontalPager(
     modifier: Modifier,
     layoutConnection: FoundationDescriptionPagerLayoutConnection,
+    contentPadding: PaddingValues
 ) {
     val render = layoutConnection.renderState.value
     layoutConnection.preRender(render)
-    val savedInstanceStateKey = rememberWithCustomEquality(
-        key = render?.savedInstanceState,
-        keyEquality = referentialEqualityFun()
-    ) {
-        Any()
-    }
     HorizontalPager(
         modifier = modifier.fillMaxSize(),
         state = layoutConnection.pagerState,
@@ -512,7 +523,7 @@ private fun FoundationHorizontalPager(
             pagerSnapDistance = PagerSnapDistance.atMost(1)
         ),
         userScrollEnabled = layoutConnection.userScrollEnabledState.value,
-        beyondBoundsPageCount = Int.MAX_VALUE,
+        beyondBoundsPageCount = 2
     ) { pageIndex ->
         val mediaID = render!!.timeline!!.items[pageIndex]
         FoundationDescriptionPagerItem(
@@ -520,8 +531,8 @@ private fun FoundationHorizontalPager(
             layoutConnection = layoutConnection,
             page = pageIndex,
             mediaID = mediaID,
-            savedInstanceStateKey = savedInstanceStateKey,
-            savedInstanceState = render.savedInstanceState[render.pageOverride[pageIndex] ?: pageIndex]
+            savedInstanceState = render.savedInstanceState[render.pageOverride[pageIndex] ?: pageIndex],
+            contentPadding = contentPadding
         )
     }
     SideEffect {
@@ -535,71 +546,61 @@ private inline fun FoundationDescriptionPagerItem(
     page: Int,
     mediaID: String,
     layoutConnection: FoundationDescriptionPagerLayoutConnection,
-    savedInstanceStateKey: Any,
-    savedInstanceState: Map<String, Any>?
+    savedInstanceState: Map<String, Any>?,
+    contentPadding: PaddingValues
 ) {
 
-    val metadata = remember(savedInstanceStateKey) {
+    BoxWithConstraints {
+        Timber.d("DEBUG: FoundationDescriptionPagerItem_constraints=$constraints")
+    }
+
+    val artwork = remember(mediaID) {
         mutableStateOf(
-            savedInstanceState?.get("MediaDescription") as? PlaybackMediaDescription
+            savedInstanceState?.get("MediaArtwork") as? LocalMediaArtwork
         )
     }.apply {
         LaunchedEffect(this, layoutConnection, mediaID) {
-            layoutConnection.mediaDescriptionAsFlow(mediaID).collect { value = it }
+            layoutConnection.mediaArtworkAsFlow(mediaID).collect { value = it }
         }
     }.value
 
-    Column(
+    Timber.d("DEBUG: pagerItem(page=$page, artwork=$artwork, mediaID=$mediaID)")
+
+    val ctx = LocalContext.current
+
+    Box(
         modifier = modifier
             .fillMaxSize()
-            .clickable(
-                indication = null,
-                enabled = layoutConnection.onItemClickedState.value != null,
-                onClick = layoutConnection.onItemClickedState.value ?: {}
-            ),
-        verticalArrangement = Arrangement.Center
+            .padding(contentPadding),
+        contentAlignment = Alignment.Center
     ) {
-        // or we can just add more base ratio of the background on the palette
-        val textColorState = remember {
-            mutableStateOf(Color.Unspecified)
-        }.apply {
-            value =
-                if (layoutConnection.isSurfaceDarkState.value) {
-                    Color(0xFFFFFFFF)
-                } else {
-                    Color(0xFF101010)
-                }
-        }
-
-        BasicText(
-            text = metadata?.title ?: "",
-            style = MaterialTheme3.typography.labelMedium.copy(
-                fontWeight = FontWeight.Bold,
-                color = textColorState.value,
-            ),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-
-        Spacer(modifier = Modifier.height(1.dp))
-
-        BasicText(
-            text = metadata?.subtitle ?: "",
-            style = MaterialTheme3.typography.labelMedium.copy(
-                fontWeight = FontWeight.Bold,
-                color = textColorState.value,
-            ),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+        // we can provide a custom painter instead
+        AsyncImage(
+            modifier = Modifier
+                .fillMaxSize(),
+            model = remember(ctx, artwork) {
+                ImageRequest.Builder(ctx)
+                    .data(artwork?.image?.value)
+                    .memoryCachePolicy(CachePolicy.ENABLED)
+                    .memoryCacheKey(mediaID)
+                    .build()
+            },
+            contentDescription = "art",
+            contentScale = if (artwork?.allowTransform == true) {
+                ContentScale.Crop
+            } else {
+                ContentScale.Fit
+            }
         )
     }
+
 
     SideEffect {
         layoutConnection.itemRendered(page) {
             persistentMapOf<String, Any>()
                 .builder()
                 .apply {
-                    metadata?.let { put("MediaDescription", metadata) }
+                    artwork?.let { put("MediaArtwork", artwork) }
                 }
                 .build()
         }

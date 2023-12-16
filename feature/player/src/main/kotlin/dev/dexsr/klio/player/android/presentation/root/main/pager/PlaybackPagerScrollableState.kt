@@ -12,7 +12,6 @@ import androidx.compose.ui.platform.AndroidUiDispatcher
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Velocity
 import dev.dexsr.klio.android.base.checkInMainLooper
-import dev.dexsr.klio.player.android.presentation.root.main.PlaybackPagerController
 import dev.dexsr.klio.player.android.presentation.root.main.pager.overscroll.PlaybackPagerOverscrollEffect
 import dev.dexsr.klio.player.android.presentation.root.main.pager.scroll.PlaybackPagerFlingBehavior
 import kotlinx.coroutines.*
@@ -292,6 +291,7 @@ class PlaybackPagerScrollableState(
             if (!flingActive) return
             flingActive = false
             startFlingKey = null
+            flingEnded = true
         }
 
         fun ensureDragActive(): Unit {

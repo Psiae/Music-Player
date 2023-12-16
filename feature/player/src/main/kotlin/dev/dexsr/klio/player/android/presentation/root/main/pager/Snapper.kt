@@ -10,9 +10,6 @@ import androidx.compose.foundation.pager.*
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.util.fastFirstOrNull
 import androidx.compose.ui.util.fastForEach
-import dev.dexsr.klio.player.android.presentation.root.main.PlaybackPagerController
-import dev.dexsr.klio.player.android.presentation.root.main.PlaybackPagerLayoutInfo
-import dev.dexsr.klio.player.android.presentation.root.main.mainAxisViewportSize
 import timber.log.Timber
 import kotlin.math.absoluteValue
 import kotlin.math.ceil

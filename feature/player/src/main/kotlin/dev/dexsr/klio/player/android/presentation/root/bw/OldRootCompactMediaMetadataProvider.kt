@@ -10,7 +10,7 @@ import com.flammky.musicplayer.player.presentation.main.PlaybackControlViewModel
 import dev.dexsr.klio.android.base.resource.AndroidLocalImage
 import dev.dexsr.klio.player.shared.LocalMediaArtwork
 import dev.dexsr.klio.player.shared.PlaybackMediaDescription
-import dev.dexsr.klio.player.android.presentation.root.RootCompactMediaMetadataProvider
+import dev.dexsr.klio.player.android.presentation.root.main.RootCompactMediaMetadataProvider
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow

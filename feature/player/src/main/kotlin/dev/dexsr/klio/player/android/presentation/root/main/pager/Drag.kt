@@ -9,7 +9,6 @@ import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.util.fastAll
-import dev.dexsr.klio.player.android.presentation.root.main.PlaybackPagerController
 import kotlinx.coroutines.coroutineScope
 
 /**

@@ -46,7 +46,7 @@ import dev.dexsr.klio.base.theme.md3.compose.backgroundContentColorAsState
 import dev.dexsr.klio.base.theme.md3.compose.secondaryContainerContentColorAsState
 import dev.dexsr.klio.base.theme.md3.compose.surfaceColorAtElevation
 import dev.dexsr.klio.base.theme.md3.compose.surfaceVariantContentColorAsState
-import dev.dexsr.klio.player.android.presentation.root.*
+import dev.dexsr.klio.player.android.presentation.root.main.*
 
 @Composable
 internal fun MD3RootContent(

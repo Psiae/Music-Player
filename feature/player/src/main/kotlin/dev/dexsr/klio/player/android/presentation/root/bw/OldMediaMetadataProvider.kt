@@ -2,7 +2,7 @@ package dev.dexsr.klio.player.android.presentation.root.bw
 
 import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.player.presentation.main.PlaybackControlViewModel
-import dev.dexsr.klio.player.android.presentation.root.MediaMetadataProvider
+import dev.dexsr.klio.player.android.presentation.root.main.MediaMetadataProvider
 import dev.dexsr.klio.player.shared.LocalMediaArtwork
 import dev.dexsr.klio.player.shared.PlaybackMediaDescription
 import kotlinx.coroutines.flow.Flow

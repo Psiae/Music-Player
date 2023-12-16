@@ -14,8 +14,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastSumBy
-import dev.dexsr.klio.player.android.presentation.root.main.PlaybackPagerController
-import dev.dexsr.klio.player.android.presentation.root.main.PlaybackPagerPageInfo
+import dev.dexsr.klio.player.android.presentation.root.main.pager.PlaybackPagerController
+import dev.dexsr.klio.player.android.presentation.root.main.pager.PlaybackPagerPageInfo
 import dev.dexsr.klio.player.android.presentation.root.main.pager.SnapLayoutInfoProvider
 import kotlinx.coroutines.withContext
 import timber.log.Timber

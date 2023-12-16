@@ -12,11 +12,11 @@ import androidx.compose.ui.unit.dp
 import dev.dexsr.klio.base.compose.clickable
 import dev.dexsr.klio.base.kt.cast
 import dev.dexsr.klio.base.theme.md3.compose.MaterialTheme3
-import dev.dexsr.klio.player.android.presentation.root.RootCompactMediaMetadataProvider
-import dev.dexsr.klio.player.android.presentation.root.main.LazyPlaybackPagerState
-import dev.dexsr.klio.player.android.presentation.root.main.PlaybackPager
-import dev.dexsr.klio.player.android.presentation.root.main.PlaybackPagerEagerRangePlaceholder
-import dev.dexsr.klio.player.android.presentation.root.main.PlaybackPagerItemScope
+import dev.dexsr.klio.player.android.presentation.root.main.RootCompactMediaMetadataProvider
+import dev.dexsr.klio.player.android.presentation.root.main.pager.LazyPlaybackPagerState
+import dev.dexsr.klio.player.android.presentation.root.main.pager.PlaybackPager
+import dev.dexsr.klio.player.android.presentation.root.main.pager.PlaybackPagerEagerRangePlaceholder
+import dev.dexsr.klio.player.android.presentation.root.main.pager.PlaybackPagerItemScope
 import dev.dexsr.klio.player.shared.PlaybackMediaDescription
 
 @Composable

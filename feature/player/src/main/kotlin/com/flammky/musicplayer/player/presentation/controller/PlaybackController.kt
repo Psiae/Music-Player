@@ -6,7 +6,7 @@ import com.flammky.musicplayer.base.media.playback.RepeatMode
 import com.flammky.musicplayer.base.media.playback.ShuffleMode
 import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.player.presentation.presenter.PlaybackObserver
-import dev.dexsr.klio.player.android.presentation.root.PlaybackProgress
+import dev.dexsr.klio.player.android.presentation.root.main.PlaybackProgress
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
 import kotlin.coroutines.CoroutineContext

@@ -4,10 +4,10 @@ import com.flammky.musicplayer.base.media.playback.*
 import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.player.presentation.main.PlaybackControlViewModel
 import dev.dexsr.klio.base.ktx.coroutines.initAsParentCompleter
-import dev.dexsr.klio.player.android.presentation.root.PlaybackProgress
-import dev.dexsr.klio.player.android.presentation.root.PlaybackProgressionState
-import dev.dexsr.klio.player.android.presentation.root.PlaybackTimeline
-import dev.dexsr.klio.player.android.presentation.root.RootCompactPlaybackController
+import dev.dexsr.klio.player.android.presentation.root.main.PlaybackProgress
+import dev.dexsr.klio.player.android.presentation.root.main.PlaybackProgressionState
+import dev.dexsr.klio.player.android.presentation.root.main.PlaybackTimeline
+import dev.dexsr.klio.player.android.presentation.root.main.RootCompactPlaybackController
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel

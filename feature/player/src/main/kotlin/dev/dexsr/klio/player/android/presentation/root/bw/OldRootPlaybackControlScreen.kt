@@ -9,7 +9,7 @@ import com.flammky.musicplayer.base.auth.AuthService
 import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.player.presentation.main.PlaybackControlViewModel
 import com.flammky.musicplayer.player.presentation.root.main.*
-import dev.dexsr.klio.player.android.presentation.root.PlaybackControlScreenState
+import dev.dexsr.klio.player.android.presentation.root.main.PlaybackControlScreenState
 
 @Composable
 fun OldRootPlaybackControlScreen(

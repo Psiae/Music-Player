@@ -11,10 +11,6 @@ import androidx.compose.ui.layout.RemeasurementModifier
 import androidx.compose.ui.unit.Density
 import dev.dexsr.klio.android.base.checkInMainLooper
 import dev.dexsr.klio.base.compose.SnapshotRead
-import dev.dexsr.klio.player.android.presentation.root.main.PlaybackPagerLayoutInfo
-import dev.dexsr.klio.player.android.presentation.root.main.PlaybackPagerMeasureResult
-import dev.dexsr.klio.player.android.presentation.root.main.PlaybackPagerScrollPosition
-import dev.dexsr.klio.player.android.presentation.root.main.mainAxisViewportSize
 import timber.log.Timber
 import kotlin.math.abs
 

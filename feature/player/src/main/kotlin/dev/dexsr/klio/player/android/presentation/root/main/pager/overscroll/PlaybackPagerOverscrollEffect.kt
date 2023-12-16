@@ -11,7 +11,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Velocity
-import dev.dexsr.klio.player.android.presentation.root.main.PlaybackPagerPatchAndroidEdgeEffectOverscrollEffect
+import dev.dexsr.klio.player.android.presentation.root.main.pager.PlaybackPagerPatchAndroidEdgeEffectOverscrollEffect
 
 /**
  * @see [androidx.compose.foundation.OverscrollEffect]

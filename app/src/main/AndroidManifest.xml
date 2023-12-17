@@ -21,7 +21,8 @@
         android:icon="@mipmap/ic_launcher_blu_dark"
         android:label="Music Player"
         android:roundIcon="@mipmap/ic_launcher_blu_dark_round"
-        android:theme="@style/Theme.App.SplashScreen">
+        android:theme="@style/Theme.App.SplashScreen"
+        android:supportsRtl="false">
 
         <provider
             android:name="androidx.startup.InitializationProvider"
@@ -46,6 +47,7 @@
         <activity
             android:name="dev.dexsr.klio.android.main.MainActivity"
             android:exported="true"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.App.SplashScreen"
             android:launchMode="singleTask">
             <intent-filter>

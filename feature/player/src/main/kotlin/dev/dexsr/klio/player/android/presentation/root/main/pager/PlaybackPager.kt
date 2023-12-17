@@ -1,15 +1,12 @@
 package dev.dexsr.klio.player.android.presentation.root.main.pager
 
 import androidx.collection.LruCache
-import androidx.compose.animation.SplineBasedFloatDecayAnimationSpec
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.snapping.SnapFlingBehavior
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.pager.PagerSnapDistance
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -97,33 +94,6 @@ fun PlaybackPager(
     val playbackPagerOverscrollEffect = rememberPlaybackPagerOverscrollEffect()
 
     val density = LocalDensity.current
-    val flingBehavior = remember(controller, density) {
-        val highVelocityAnimationSpec = SplineBasedFloatDecayAnimationSpec(density)
-            .generateDecayAnimationSpec<Float>()
-        val lowVelocityAnimationSpec = TweenSpec<Float>(
-            500,
-            0,
-            LinearEasing
-        )
-        val snapAnimationSpec = SpringSpec<Float>(
-            Spring.DampingRatioNoBouncy,
-            Spring.StiffnessMediumLow,
-            null
-        )
-        SnapFlingBehavior(
-            snapLayoutInfoProvider = SnapLayoutInfoProvider(
-                pagerState = controller,
-                pagerSnapDistance = PagerSnapDistance.atMost(1),
-                decayAnimationSpec = highVelocityAnimationSpec,
-                snapPositionalThreshold = 0.5f
-            ),
-            lowVelocityAnimationSpec = lowVelocityAnimationSpec,
-            highVelocityAnimationSpec = highVelocityAnimationSpec,
-            snapAnimationSpec = snapAnimationSpec,
-            density = density,
-            shortSnapVelocityThreshold = 400.dp
-        )
-    }
 
     SubcomposeLayout(
         modifier = modifier

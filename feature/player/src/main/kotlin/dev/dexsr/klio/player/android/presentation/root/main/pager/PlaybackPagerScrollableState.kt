@@ -77,7 +77,9 @@ class PlaybackPagerScrollableState(
                 override fun scrollBy(pixels: Float): Float {
                     drag.ensureDragActive()
                     // call to newUserDragScroll should make this to false, so it's actually ongoing
-                    if (dragConnection.ignoreUserDrag()) return 0f
+                    if (dragConnection.ignoreUserDrag()) {
+                        return 0f
+                    }
                     val dragDelta = pixels.toScrollAxisOffset()
 
                     val performScroll: (Offset) -> Offset = { delta ->
@@ -139,10 +141,12 @@ class PlaybackPagerScrollableState(
                 // flingConnection wasn't null, so it's cancelled for a reason
                 if (flingConnection.unexpectedDirection) {
                     // seems like the velocity tracker is giving reversed result
-                    // let the overscrollEffect absorb it regardless
-                    overscrollEffect.applyToFling(velocity) { vel -> vel }
                     Timber.d("PlaybackPagerScrollableState_DEBUG: performFling_unexpectedDirection(velocity=$velocity)")
+                } else if (flingConnection.disallowDirection) {
+                    Timber.d("PlaybackPagerScrollableState_DEBUG: performFling_disallowDirection(velocity=$velocity)")
                 }
+                // let the overscrollEffect absorb it regardless
+                overscrollEffect.applyToFling(velocity) { vel -> vel }
                 flingConnection.flingEnd()
                 pagerController.userDragFlingScrollEnd(it)
             }

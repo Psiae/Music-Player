@@ -488,17 +488,6 @@ class PlaybackPagerController(
         stepCount: Int,
         skipAnimate: Boolean
     ) {
-        // the current scroll position is more than the target, we don't want to animate left
-        if (layoutState.currentPage > timeline.currentIndex + stepCount &&
-            latestUserDragInstance?.dragEnded != false &&
-            latestUserDragFlingInstance?.flingEnded != false
-        ) {
-            Timber.d("PlaybackPagerController_DEBUG: timelineShiftRight_more")
-            /*latestUserDragInstance?.reset()
-            latestUserDragFlingInstance?.newTimelineCorrectionOverride()
-            timelineShiftSnap(timeline)
-            return*/
-        }
          timelineShiftRemeasure(
             timeline = timeline,
             previousTimeline = previousTimeline,
@@ -525,21 +514,6 @@ class PlaybackPagerController(
         stepCount: Int,
         skipAnimate: Boolean
     ) {
-
-        // MediaStore_28_AUDIO_37, MediaStore_28_AUDIO_38, MediaStore_28_AUDIO_39, MediaStore_28_AUDIO_40, MediaStore_28_AUDIO_41, MediaStore_28_AUDIO_42, MediaStore_28_AUDIO_43, MediaStore_28_AUDIO_44, MediaStore_28_AUDIO_45, MediaStore_28_AUDIO_46, MediaStore_28_AUDIO_73], currentIndex=5
-        // MediaStore_28_AUDIO_41, MediaStore_28_AUDIO_42, MediaStore_28_AUDIO_43, MediaStore_28_AUDIO_44, MediaStore_28_AUDIO_45, MediaStore_28_AUDIO_46, MediaStore_28_AUDIO_73, MediaStore_28_AUDIO_74, MediaStore_28_AUDIO_75, MediaStore_28_AUDIO_76, MediaStore_28_AUDIO_77], currentIndex=5
-
-        // the current scroll position is more than the target, we don't want to animate right
-        if (layoutState.currentPage < timeline.currentIndex - stepCount &&
-            latestUserDragInstance?.dragEnded != false &&
-            latestUserDragFlingInstance?.flingEnded != false
-        ) {
-            Timber.d("PlaybackPagerController_DEBUG: timelineShiftLeft_more")
-            /*latestUserDragInstance?.reset()
-            latestUserDragFlingInstance?.newTimelineCorrectionOverride()
-            timelineShiftSnap(timeline)
-            return*/
-        }
         timelineShiftRemeasure(
             timeline = timeline,
             previousTimeline = previousTimeline,
@@ -569,14 +543,6 @@ class PlaybackPagerController(
         userDragInstance: UserDragInstance?,
         userDragFlingInstance: UserDragFlingInstance?
     ) {
-        // TODO:
-        // previousTimeline=PlaybackPagerTimeline@ab24173(windows=[MediaStore_28_AUDIO_28, MediaStore_28_AUDIO_36, MediaStore_28_AUDIO_37, MediaStore_28_AUDIO_38, MediaStore_28_AUDIO_39, MediaStore_28_AUDIO_40, MediaStore_28_AUDIO_41, MediaStore_28_AUDIO_42, MediaStore_28_AUDIO_43, MediaStore_28_AUDIO_44], currentIndex=4),
-        // timeline=PlaybackPagerTimeline@24bb3ec(windows=[MediaStore_28_AUDIO_39, MediaStore_28_AUDIO_40, MediaStore_28_AUDIO_41, MediaStore_28_AUDIO_42, MediaStore_28_AUDIO_43, MediaStore_28_AUDIO_44, MediaStore_28_AUDIO_45, MediaStore_28_AUDIO_46, MediaStore_28_AUDIO_73, MediaStore_28_AUDIO_74, MediaStore_28_AUDIO_75], currentIndex=5)
-        // stepCount=5, direction=1, beforePageDiff=1, firstVisiblePage=2, currentPage=3, scrollOffset=363, skipAnimate=false
-
-        // MediaStore_28_AUDIO_36, MediaStore_28_AUDIO_37, MediaStore_28_AUDIO_38, MediaStore_28_AUDIO_39, MediaStore_28_AUDIO_40, MediaStore_28_AUDIO_41, MediaStore_28_AUDIO_42, MediaStore_28_AUDIO_43, MediaStore_28_AUDIO_44, MediaStore_28_AUDIO_45, MediaStore_28_AUDIO_46], currentIndex=5
-        // MediaStore_28_AUDIO_28, MediaStore_28_AUDIO_36, MediaStore_28_AUDIO_37, MediaStore_28_AUDIO_38, MediaStore_28_AUDIO_39, MediaStore_28_AUDIO_40, MediaStore_28_AUDIO_41, MediaStore_28_AUDIO_42], currentIndex=2
-        // stepCount=4, direction=-1, beforePageDiff=-3), firstVisiblePage=0, currentPage=0, scrollOffset=0, skipAnimate=true
         check(direction == 1 || direction == -1) {
             "timelineShiftRemeasure direction must be either 1 or -1"
         }
@@ -702,6 +668,7 @@ class PlaybackPagerController(
                 return
             }
         }
+        _scrollCorrection = correction
         latestUserDragInstance?.reset()
         latestUserDragFlingInstance?.newTimelineCorrectionOverride()
         _renderData.value = PlaybackPagerRenderData(timeline = timeline)
@@ -850,8 +817,9 @@ class PlaybackPagerController(
     }
 
     private fun emptyTimelineCancelInteractions() {
-        latestUserDragInstance?.cancel()
+        latestUserDragInstance?.emptyTimelineOverride()
         latestUserDragFlingInstance?.emptyTimelineOverride()
+        _scrollCorrection?.emptyTimelineOverride()
     }
 
     private fun performScroll(
@@ -890,7 +858,7 @@ class PlaybackPagerController(
             tracker.onFlingBy(distance)
             if (tracker.incorrect) {
                 connection.onUnexpectedDirection(beforePage)
-                throw CancellationException("fling tracker: unexpected direction, alreadyForward=${tracker.alreadyForward}, alreadyBackward=${tracker.alreadyBackward}, snapped=${tracker.alreadySnapped}, passedSnap=${tracker.alreadySnapped}, initialVelocity=${tracker.initialVelocity}, snapOffset=${tracker.currentSnapOffset}, startCenter=${tracker.startCenter} ")
+                throw CancellationException("fling tracker: unexpected direction, alreadyForward=${tracker.alreadyForward}, alreadyBackward=${tracker.alreadyBackward}, snapped=${tracker.alreadySnapped}, passedSnap=${tracker.passedSnapOffset}, initialVelocity=${tracker.initialVelocity}, snapOffset=${tracker.currentSnapOffset}, startCenter=${tracker.startCenter} ")
             }
         }
         val scroll = performScroll(
@@ -985,13 +953,13 @@ class PlaybackPagerController(
             firstDragPage -> {}
             firstDragPage + 1 -> {
                 scrollInstance.apply {
-                    markConsumedSwipe()
+                    markConsumedSwipe(1)
                 }
                 userSwipeNextPage()
             }
             firstDragPage - 1 -> {
                 scrollInstance.apply {
-                    markConsumedSwipe()
+                    markConsumedSwipe(-1)
                 }
                 userSwipePreviousPage()
             }
@@ -1189,7 +1157,7 @@ class PlaybackPagerController(
             get() = lifetime.isActive
 
         val noFling: Boolean
-            get() = !isActive || flingTimelineCorrectionOverride || noMovement
+            get() = lifetime.isCancelled || flingTimelineCorrectionOverride || noMovement
 
         fun onScrollBy(
             pixels: Float,
@@ -1216,8 +1184,12 @@ class PlaybackPagerController(
             lifetime.ensureActive()
         }
 
-        fun cancel() {
+        private fun cancel() {
             lifetime.cancel()
+        }
+
+        fun emptyTimelineOverride() {
+            cancel()
         }
 
         // [g, h, i, j, k, l]
@@ -1308,8 +1280,10 @@ class PlaybackPagerController(
             return correctionOverride
         }
 
-        fun markConsumedSwipe() {
+        fun markConsumedSwipe(direction: Int) {
+            require(direction == 1 || direction == -1)
             consumedSwipe = true
+            consumedSwipeDirection = direction
         }
 
         fun markOverBoundDrag() {
@@ -1390,6 +1364,9 @@ class PlaybackPagerController(
         var unexpectedPageChange = false
             private set
 
+        var disallowDirection = false
+            private set
+
         var shouldCorrect = false
             private set
 
@@ -1397,9 +1374,6 @@ class PlaybackPagerController(
             private set
 
         var dragScrollDirection: Int? = null
-            private set
-
-        var consumedSwipe: Boolean? = null
             private set
 
         var flingTracker: DragFlingTracker? = null
@@ -1411,6 +1385,14 @@ class PlaybackPagerController(
         val isActive: Boolean
             get() = lifetime.isActive
 
+        val dragSwipeDirection: Int?
+            get() {
+                source.castOrNull<UserDragInstance>()?.let { drag ->
+                    drag.consumedSwipeDirection?.let { return it }
+                }
+                return null
+            }
+
         fun initKind(
             source: UserDragInstance,
             initialVelocity: Float,
@@ -1421,7 +1403,11 @@ class PlaybackPagerController(
             this.source = source
             sourceApply(source)
             if (!isActive) return
-            this.flingTracker = DragFlingTracker(initialVelocity, currentSnapOffset, consumedSwipe != true)
+            this.flingTracker = DragFlingTracker(
+                initialVelocity,
+                currentSnapOffset,
+                dragSwipeDirection == null
+            )
         }
 
         fun onScrollBy(
@@ -1545,6 +1531,18 @@ class PlaybackPagerController(
             cancel()
         }
 
+        fun onDisallowDirection() {
+            val source = this.source
+            if (source is UserDragInstance) {
+                shouldCorrect = true
+                if (source.consumedSwipe) {
+                    shouldCorrectToPage = source.latestDragResultPage
+                }
+            }
+            this.disallowDirection = true
+            cancel()
+        }
+
         fun onPageChangedNonConsumable(
             beforePage: Int
         ) {
@@ -1606,13 +1604,7 @@ class PlaybackPagerController(
         private fun sourceApply(
             source: UserDragInstance,
         ) {
-            if (source.flingTimelineCorrectionOverride || source.noMovement) {
-                cancel()
-                return
-            }
-            if (source.consumedSwipe) {
-                // drag already consumed swipe
-                shouldCorrect = true
+            if (source.flingTimelineCorrectionOverride || source.noMovement || source.overBound) {
                 cancel()
                 return
             }
@@ -1844,7 +1836,7 @@ class PlaybackPagerController(
                 initialFlingDirection = flingDistanceSign
             }
 
-            if (initialVelocity == 0f) {
+            if (initialVelocity >= 0f) {
                 // if this instance starts with 0 velocity, it can only go forward to snap position,
                 // TODO: unless specified otherwise, in that case the `pixels` must gradually decay into the snap-position
                 flingAcc += displacement
@@ -1880,6 +1872,7 @@ class PlaybackPagerController(
                 this.incorrect = true
                 return
             }
+
         }
     }
 
@@ -1966,6 +1959,13 @@ class PlaybackPagerController(
                 )
                 if (isActive) {
                     if (scrollAxisVelocity != 0f) {
+                        // if the user already swiped, only allow fling to that direction
+                        dragSwipeDirection?.let { direction ->
+                            if (direction.sign != sign(-scrollAxisVelocity).toInt()) {
+                                onDisallowDirection()
+                            }
+                        }
+
                         // non-zero velocity must fling forward of latest drag-direction before going backward
                         expectedDragScrollVelocitySign()?.let { vel ->
                             if (vel != sign(scrollAxisVelocity).toInt()) {
@@ -2162,6 +2162,18 @@ class PlaybackPagerController(
         )
 
         open fun newUserDragOverride() {
+            scroller?.let {
+                if (it.isActive) {
+                    it.cancel()
+                    checkScrollerCancellationEffect()
+                    return
+                }
+            }
+            cancellationEx = CancellationException("NewUserDragOverride")
+            cancelled = true
+        }
+
+        open fun emptyTimelineOverride() {
             scroller?.let {
                 if (it.isActive) {
                     it.cancel()

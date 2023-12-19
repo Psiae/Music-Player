@@ -15,11 +15,11 @@ internal fun UserScreen() = UserScreenSurface {
 		.statusBarsPadding()
 	) {
 		Spacer(modifier = Modifier.height(20.dp))
-		UserProfileCard(
+		/*UserProfileCard(
 			modifier = Modifier
 				.height(70.dp)
 				.padding(horizontal = 10.dp)
-		)
+		)*/
 		Spacer(modifier = Modifier.height(20.dp))
 	}
 }

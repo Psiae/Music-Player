@@ -11,6 +11,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerId
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.layout.Remeasurement
+import androidx.compose.ui.layout.RemeasurementModifier
 import androidx.compose.ui.util.fastFirstOrNull
 import com.flammky.musicplayer.base.compose_components.reorderable.ReorderResultHandle
 import dev.flammky.compose_components.core.SnapshotRead
@@ -104,7 +106,17 @@ internal class RealReorderableLazyListApplier(
         }
     }
 
-    override val lazyLayoutModifiers: Modifier = pointerInputFilterModifier
+		private var remeasurement: Remeasurement? = null
+
+		private val remeasurementModifier = object : RemeasurementModifier {
+			override fun onRemeasurementAvailable(remeasurement: Remeasurement) {
+				this@RealReorderableLazyListApplier.remeasurement = remeasurement
+			}
+		}
+
+    override val lazyLayoutModifiers: Modifier =
+			pointerInputFilterModifier
+				.then(remeasurementModifier)
 
     override fun onLazyListScope(
         lazyListScope: LazyListScope,
@@ -125,10 +137,28 @@ internal class RealReorderableLazyListApplier(
     fun onMove(
         composition: InternalReorderableLazyListScope,
         from: ItemPosition,
-        new: ItemPosition
+        new: ItemPosition,
+				ignoreRemeasure: Boolean
     ): Boolean {
-        return _currentItemProvider?.onMove(composition, from, new) ?: return false
-    }
+        return _currentItemProvider?.let {
+					val moved = it.onMove(
+						composition,
+						from,
+						new
+					)
+					if (moved) {
+						// immediately remeasure, this will update the layoutInfo
+						if (!ignoreRemeasure) remeasurement?.forceRemeasure()
+						/*// actual measure pass
+						remeasurement?.forceRemeasure()*/
+					}
+					moved
+				} ?: return false
+		}
+
+		fun remeasure(): Boolean {
+			return remeasurement?.forceRemeasure() != null
+		}
 
     fun onEndReorder(
         composition: InternalReorderableLazyListScope,

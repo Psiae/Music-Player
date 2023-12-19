@@ -1,6 +1,7 @@
 package com.flammky.musicplayer.player.presentation.root.main
 
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.ui.util.fastLastOrNull
 
 class ComposeBackPressRegistry {
 
@@ -19,12 +20,12 @@ class ComposeBackPressRegistry {
     }
 
     fun interface BackPressConsumer {
-        fun consume()
+        fun consume(): Boolean
     }
 
     fun hasBackPressConsumer(): Boolean = !backPressConsumers.isEmpty()
 
     fun consumeBackPress(): Boolean {
-        return backPressConsumers.lastOrNull()?.apply { consume() } != null
+        return backPressConsumers.fastLastOrNull { it.consume() } != null
     }
 }

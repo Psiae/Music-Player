@@ -144,6 +144,8 @@ class PlaybackPagerScrollableState(
                     Timber.d("PlaybackPagerScrollableState_DEBUG: performFling_unexpectedDirection(velocity=$velocity)")
                 } else if (flingConnection.disallowDirection) {
                     Timber.d("PlaybackPagerScrollableState_DEBUG: performFling_disallowDirection(velocity=$velocity)")
+                } else if (flingConnection.flingBack) {
+                    Timber.d("PlaybackPagerScrollableState_DEBUG: performFling_flingBack(velocity=$velocity)")
                 }
                 // let the overscrollEffect absorb it regardless
                 overscrollEffect.applyToFling(velocity) { vel -> vel }

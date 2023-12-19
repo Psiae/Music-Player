@@ -43,7 +43,7 @@ import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.player.R
 import com.flammky.musicplayer.player.presentation.root.RootPlaybackControlCompact
 import com.flammky.musicplayer.player.presentation.root.rememberRootPlaybackControlCompactState
-import dev.dexsr.klio.base.compose.Stack
+import dev.dexsr.klio.base.compose.SimpleStack
 import dev.dexsr.klio.base.compose.consumeDownGesture
 import dev.dexsr.klio.base.theme.md3.MD3Theme
 import dev.dexsr.klio.base.theme.md3.compose.*
@@ -92,7 +92,9 @@ fun TransitioningRootCompactPlaybackControlPanel(
         bottomSpacing = bottomSpacing
     ).value
     val density = LocalDensity.current
-    Stack(
+
+    // skip the SubcomposeLayout measurePolicy entirely on new offset
+    SimpleStack(
         modifier
             .offset { IntOffset(offset.x.roundToPx(), offset.y.roundToPx()) }
             .onGloballyPositioned { lc ->
@@ -586,7 +588,8 @@ private fun RootCompactPlaybackControlButtons(
     modifier: Modifier,
     state: RootCompactPlaybackControlPanelState
 ) {
-    Stack(modifier) {
+
+    SimpleStack(modifier) {
         SubcomposeLayout { constraints ->
 
             val contentConstraints = constraints.copy(minWidth = 0, minHeight = 0)

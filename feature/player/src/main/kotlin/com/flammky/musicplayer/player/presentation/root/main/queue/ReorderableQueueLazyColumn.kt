@@ -1,7 +1,8 @@
 package com.flammky.musicplayer.player.presentation.root.main.queue
 
+import android.os.Parcel
+import android.os.Parcelable
 import android.widget.Toast
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListState
@@ -13,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.compositeOver
@@ -22,6 +24,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.fastFirstOrNull
+import androidx.compose.ui.util.fastLastOrNull
 import coil.compose.AsyncImage
 import coil.request.CachePolicy
 import coil.request.ImageRequest
@@ -41,197 +45,259 @@ import com.flammky.musicplayer.base.theme.compose.*
 import com.google.accompanist.placeholder.PlaceholderHighlight
 import com.google.accompanist.placeholder.placeholder
 import com.google.accompanist.placeholder.shimmer
+import dev.dexsr.klio.base.kt.castOrNull
+import dev.dexsr.klio.base.theme.md3.compose.LocalIsThemeDark
 import dev.flammky.compose_components.reorderable.ReorderableLazyColumn
+import dev.flammky.compose_components.reorderable.ReorderableLazyItemScope
 import dev.flammky.compose_components.reorderable.itemsIndexed
 import dev.flammky.compose_components.reorderable.rememberReorderableLazyListState
-import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.launch
+import timber.log.Timber
 
 @Composable
 fun ReorderableQueueLazyColumn(
     transitionState: QueueContainerTransitionState,
-    state: ReorderableQueueLazyColumnState
+    state: ReorderableQueueLazyColumnState,
+    backgroundColor: Color = Theme.surfaceVariantColorAsState().value
 ) {
-    val coroutineScope = rememberCoroutineScope()
-    val currentQueue = remember(state) {
-        mutableStateOf<OldPlaybackQueue>(OldPlaybackQueue.UNSET)
+    val reorder = remember(state) {
+        ReorderingApplier(state.intents, state.dataSource)
     }
-    val queueOverrideState = remember(state) {
-        mutableStateOf<OldPlaybackQueue?>(null)
-    }
-    val maskedQueueState = remember(state) {
-        derivedStateOf { queueOverrideState.value ?: currentQueue.value }
-    }
+    val upReorder = rememberUpdatedState(newValue = reorder)
+    val upBackgroundColor = rememberUpdatedState(newValue = backgroundColor)
+    val upState = rememberUpdatedState(newValue = state)
+    val upPadding = rememberUpdatedState(
+        PaddingValues(
+            top = state.topContentPadding,
+            bottom = state.bottomContentPadding
+        )
+    )
     if (transitionState.rememberFullTransitionRendered) {
         RenderQueue(
-            queue = maskedQueueState.value,
-            intents = state.intents,
-            dataSource = state.dataSource,
-            contentPadding = remember(state.topContentPadding, state.bottomContentPadding) {
-                PaddingValues(top = state.topContentPadding, bottom = state.bottomContentPadding)
-            }
+            reorder = upReorder::value,
+            intents = { upState.value.intents },
+            dataSource = { upState.value.dataSource },
+            contentPadding = upPadding::value,
+            backgroundColor = upBackgroundColor::value
         )
     }
     DisposableEffect(
-        key1 = state,
+        state, reorder,
         effect = {
-            val supervisor = SupervisorJob()
-
-            coroutineScope.launch(supervisor) {
-                state.dataSource.observeQueue().collect { queue ->
-                    currentQueue.value = queue
-                }
-            }
-
-            onDispose {  }
+            val observeQ = reorder.observeQueue()
+            onDispose { observeQ.cancel() ; reorder.dispose() }
         }
     )
 }
 
 @Composable
 private fun RenderQueue(
-    queue: OldPlaybackQueue,
-    intents: ReorderableQueueLazyColumnIntents,
-    dataSource: ReorderableQueueLazyColumnDataSource,
-    contentPadding: PaddingValues
+    reorder: () -> ReorderingApplier,
+    dataSource: () -> ReorderableQueueLazyColumnDataSource,
+    intents: () -> ReorderableQueueLazyColumnIntents,
+    contentPadding: () -> PaddingValues,
+    backgroundColor: () -> Color
 ) {
-    val coroutineScope = rememberCoroutineScope()
-    if (queue == OldPlaybackQueue.UNSET) {
+    val upReorder = rememberUpdatedState(newValue = reorder())
+    val upQueue = rememberUpdatedState(newValue = upReorder.value.actualQueueState.value)
+    val queue = upQueue.value
+    if (upQueue.value == OldPlaybackQueue.UNSET) {
         return Column(modifier = Modifier.fillMaxSize()) {}
     }
     val lazyListState: LazyListState = rememberLazyListState(
-        initialFirstVisibleItemIndex = (queue.currentIndex),
+        initialFirstVisibleItemIndex = (upQueue.value.currentIndex),
         initialFirstVisibleItemScrollOffset = 0
+    )
+    val upBackgroundColor = rememberUpdatedState(newValue = backgroundColor)
+    val upIntents = rememberUpdatedState(newValue = intents())
+    val upDataSource = rememberUpdatedState(newValue = dataSource())
+    val state = rememberReorderableLazyListState(
+        lazyListState = lazyListState,
+        onDragStart = start@ { true },
+        onDragEnd = end@ { cancelled, from, to, handle ->
+            val fromID = from.key.castOrNull<QueueItemPositionKey>()?.idInQueue
+            val toID = to.key.castOrNull<QueueItemPositionKey>()?.idInQueue
+            if (cancelled || fromID == null || toID == null) {
+                handle.done()
+                return@end
+            }
+            reorder().dispatchMove(from.index, fromID, to.index, toID).invokeOnCompletion { handle.done() }
+        },
     )
     ReorderableLazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(Theme.backgroundColorAsState().value),
-        state = rememberReorderableLazyListState(
-            lazyListState = lazyListState,
-            onDragStart = { true },
-            onDragEnd = remember {
-                end@ { cancelled, from, to, handle ->
-                    if (cancelled || from.index == to.index || from.key == to.key) {
-                        return@end handle.done()
-                    }
-                    val expectFromId = (from.key as String)
-                    val expectToId = (to.key as String)
-                    intents.requestMoveQueueItemAsync(
-                        from.index,
-                        expectFromId,
-                        to.index,
-                        expectToId
-                    ).run {
-                        coroutineScope.launch {
-                            await()
-                        }.invokeOnCompletion {
-                            handle.done()
-                        }
-                    }
-                }
+            .drawBehind {
+                drawRect(upBackgroundColor.value.invoke())
             },
-        ),
-        contentPadding = contentPadding,
-    ) content@ {
-        itemsIndexed(
-            queue.list,
-            { _, item -> item }
-        ) { index, item ->
-            val id = item
-            val playing = index == queue.currentIndex
-            Box(
-                modifier = run {
-                    val svc = Theme.surfaceVariantColorAsState().value
-                    val bck = Theme.backgroundColorAsState().value
-                    val dragging = info.dragging
-                    remember(this, playing, queue.currentIndex, dragging) {
-                        var acc: Modifier = Modifier
-                        acc = acc.reorderingItemVisualModifiers()
-                        acc = acc.background(
-                            color = if (playing) {
-                                svc.copy(alpha = 0.6f).compositeOver(bck)
-                            } else if (dragging) {
-                                svc.copy(0.4f).compositeOver(bck)
-                            } else {
-                                bck
-                            }
-                        )
-                        if (index < queue.currentIndex) {
-                            acc = acc.alpha(0.6f)
-                        }
-                        acc
-                    }
-                }
-            ) {
-                Row {
-                    NoInlineBox(
-                        modifier = Modifier
-                            .height(60.dp)
-                            .width(35.dp)
-                    ) {
-                        Icon(
-                            modifier = Modifier
-                                .size(30.dp)
-                                .align(Alignment.Center)
-                                .reorderInput(),
-                            painter = painterResource(id = R.drawable.drag_handle_material_fill),
-                            contentDescription = "Drag_Queue_Item",
-                            tint = Theme.backgroundContentColorAsState().value
-                        )
-                    }
-                    QueueItem(
-                        id = id,
-                        observeTrackMetadata = dataSource.observeTrackMetadata,
-                        observeTrackArtwork = dataSource.observeTrackArtwork
-                    ) play@ {
-                        if (index != queue.currentIndex) {
-                            intents.requestSeekIndexAsync(
-                                queue.currentIndex,
-                                queue.list[queue.currentIndex],
+        state = state,
+        contentPadding = contentPadding(),
+        content = remember(queue) {
+            {
+                itemsIndexed(
+                    queue.list,
+                    { _, item ->
+                        QueueItemPositionKey(qID = "", idInQueue = item)
+                    },
+                    contentType = { _, _ -> "type" }
+                ) { index, item ->
+                    val q = queue
+                    val backgroundColor = upBackgroundColor.value.invoke()
+                    DraggableQueueItem(
+                        getBackgroundColor = upBackgroundColor.value,
+                        observeTrackArtwork = { upDataSource.value.observeTrackArtwork(item) },
+                        observeTrackMetadata = { upDataSource.value.observeTrackMetadata(item) },
+                        play = {
+                            upIntents.value.requestSeekIndexAsync(
+                                q.currentIndex,
+                                q.list.getOrNull(q.currentIndex) ?: "",
                                 index,
-                                item,
+                                item
                             )
-                        }
-                    }
-                }
-                if (!Theme.isDarkAsState().value) {
-                    Divider(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 5.dp)
-                            .align(Alignment.BottomCenter),
-                        color = Theme.surfaceVariantColorAsState().value
+                        },
+                        currentlyPlaying = index == q.currentIndex,
+                        behindCurrentlyPlaying = index < q.currentIndex,
+                        withDivider = !LocalIsThemeDark.current && q.list.getOrNull(index + 1) != null
                     )
                 }
             }
+        }
+    )
+    LaunchedEffect(
+        key1 = queue.list.getOrNull(queue.currentIndex),
+        block = {
+            if (!state.remeasure()) return@LaunchedEffect
+            if (state.expectDraggingItemIndex != null) return@LaunchedEffect
+            val index = queue.currentIndex
+            val id = queue.list.getOrNull(index) ?: return@LaunchedEffect
+            with(state.lazyListState.layoutInfo) {
+                val firstFullyVisibleItem = visibleItemsInfo.fastFirstOrNull {
+                    it.offset >= viewportStartOffset
+                } ?: return@LaunchedEffect
+                val lastFullyVisibleItem = visibleItemsInfo.fastLastOrNull {
+                    Timber.d("LastFullyVisibleItem, off=${it.offset}, size=${it.size}, endOff=$viewportEndOffset, startOff=$viewportStartOffset")
+                    it.offset + it.size <= viewportEndOffset + viewportStartOffset
+                } ?: return@LaunchedEffect
+                if (index in firstFullyVisibleItem.index .. lastFullyVisibleItem.index) {
+                    if (index == firstFullyVisibleItem.index) {
+                        state.lazyListState.animateScrollToItem(index)
+                    }
+                    if (index == lastFullyVisibleItem.index) {
+                        state.lazyListState.animateScrollToItem(firstFullyVisibleItem.index)
+                    }
+                    return@with
+                }
+                if (index < firstFullyVisibleItem.index) {
+                    state.lazyListState.animateScrollToItem(index)
+                    return@with
+                }
+                state.lazyListState.animateScrollToItem(
+                    index = visibleItemsInfo.first().index + (index - lastFullyVisibleItem.index),
+                    scrollOffset = 48 / 2
+                )
+            }
+        }
+    )
+}
+
+@Composable
+private fun ReorderableLazyItemScope.DraggableQueueItem(
+    getBackgroundColor: () -> Color,
+    observeTrackArtwork: () -> Flow<Any?>,
+    observeTrackMetadata: () -> Flow<MediaMetadata?>,
+    play: () -> Unit,
+    currentlyPlaying: Boolean,
+    behindCurrentlyPlaying: Boolean,
+    withDivider: Boolean,
+) {
+    Timber.d("RECOMPOSE_DraggableQueueItem")
+    Box(
+        modifier = run {
+            val dragging = info.dragging
+            val backgroundColor = getBackgroundColor()
+            remember(this, currentlyPlaying, backgroundColor, dragging, behindCurrentlyPlaying) {
+                var acc: Modifier = Modifier
+                acc = acc
+                    .reorderingItemVisualModifiers()
+                if (dragging) {
+                    acc = acc
+                        .drawBehind {
+                            drawRect(
+                                color = Color.White.copy(alpha = 0.35f).compositeOver(backgroundColor)
+                            )
+                        }
+                } else if (currentlyPlaying) {
+                    acc = acc
+                        .drawBehind {
+                            drawRect(
+                                color = Color.White.copy(alpha = 0.25f).compositeOver(backgroundColor)
+                            )
+                        }
+                }
+                if (behindCurrentlyPlaying) {
+                    acc = acc
+                        .alpha(0.6f)
+                }
+                acc
+            }
+        }
+    ) {
+        Row {
+            NoInlineBox(
+                modifier = Modifier
+                    .height(60.dp)
+                    .width(35.dp)
+            ) {
+                Icon(
+                    modifier = Modifier
+                        .size(30.dp)
+                        .align(Alignment.Center)
+                        .reorderInput(),
+                    painter = painterResource(id = R.drawable.drag_handle_material_fill),
+                    contentDescription = "Drag_Queue_Item",
+                    tint = Theme.backgroundContentColorAsState().value
+                )
+            }
+            QueueItemContent(
+                observeTrackMetadata = observeTrackMetadata,
+                observeTrackArtwork = observeTrackArtwork,
+                play = play
+            )
+        }
+        if (withDivider) {
+            Divider(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 5.dp)
+                    .align(Alignment.BottomCenter),
+                color = Theme.surfaceVariantColorAsState().value
+            )
         }
     }
 }
 
 @Composable
-private fun QueueItem(
-    id: String,
-    observeTrackArtwork: (String) -> Flow<Any?>,
-    observeTrackMetadata: (String) -> Flow<MediaMetadata?>,
+private fun QueueItemContent(
+    observeTrackArtwork: () -> Flow<Any?>,
+    observeTrackMetadata: () -> Flow<MediaMetadata?>,
     play: () -> Unit
 ) {
-    val artwork by remember(id) {
+    val artwork by remember(observeTrackArtwork) {
         mutableStateOf<Any?>(null)
     }.apply {
         LaunchedEffect(key1 = this, block = {
-            observeTrackArtwork(id)
+            observeTrackArtwork()
                 .collect {
                     value = it
                 }
         })
     }
-    val metadata by remember(id) {
+    val metadata by remember(observeTrackMetadata) {
         mutableStateOf<MediaMetadata?>(AudioMetadata.UNSET)
     }.apply {
         LaunchedEffect(key1 = this, block = {
-            observeTrackMetadata(id)
+            observeTrackMetadata()
                 .collect {
                     value = it
                 }
@@ -456,5 +522,127 @@ private fun localShimmerColor(): Color {
     val content = Theme.backgroundContentColorAsState().value
     return remember(sf, content) {
         content.copy(alpha = 0.6f).compositeOver(sf)
+    }
+}
+
+private class ReorderingApplier(
+    private val intents: ReorderableQueueLazyColumnIntents,
+    private val source: ReorderableQueueLazyColumnDataSource,
+) {
+
+    private val coroutineScope = CoroutineScope(SupervisorJob())
+
+    private var _observeJobCount = 0
+    private var _observeJob: Job? = null
+
+    private val _queueState = mutableStateOf<OldPlaybackQueue>(value = OldPlaybackQueue.UNSET)
+    private val _reorderedQueueState = mutableStateOf<ReorderedQueue?>(value = null)
+    private var ignoreObserve = false
+    private var ignoreObserveStagedQueue: OldPlaybackQueue? = null
+
+    val actualQueueState = derivedStateOf {
+        _queueState.value
+    }
+    val reorderedQueueState = derivedStateOf {
+        _reorderedQueueState.value?.modified
+    }
+    val maskedQueueState = derivedStateOf {
+        reorderedQueueState.value ?: actualQueueState.value
+    }
+
+
+
+    fun observeQueue(): Job = coroutineScope.launch(Dispatchers.Main.immediate) {
+        if (_observeJob == null) {
+            _observeJob = coroutineScope.launch(Dispatchers.Main.immediate) {
+                source.observeQueue()
+                    .collect {
+                        if (ignoreObserve) {
+                            ignoreObserveStagedQueue = it
+                            return@collect
+                        }
+                        _queueState.value = it
+                    }
+            }
+        }
+        runCatching {
+            _observeJobCount++
+            _observeJob!!.join()
+        }.onFailure { ex ->
+            if (ex !is CancellationException) throw ex
+            if (--_observeJobCount == 0) _observeJob!!.cancel()
+        }
+    }
+
+    private var dispatchMoveC = 0
+    fun dispatchMove(
+        from: Int,
+        expectFromID: String,
+        to: Int,
+        expectToID: String
+    ): Job {
+        dispatchMoveC++
+        return coroutineScope.launch(Dispatchers.Main.immediate) {
+            intents.requestMoveQueueItemAsync(
+                from,
+                expectFromID,
+                to,
+                expectToID
+            ).await()
+        }.apply {
+            invokeOnCompletion {
+                if (--dispatchMoveC == 0) {
+                    ignoreObserve = false
+                    ignoreObserveStagedQueue?.let {
+                        ignoreObserveStagedQueue = null
+                        _queueState.value = it
+                    }
+                }
+            }
+        }
+    }
+
+    fun dispose() {
+        coroutineScope.cancel()
+    }
+
+    @Immutable
+    private data class ReorderedQueue(
+        val base: OldPlaybackQueue,
+        val modified: OldPlaybackQueue,
+        val node: Pair<Int, Int>
+    )
+}
+
+private data class QueueItemPositionKey(
+    val qID: String,
+    val idInQueue: String,
+) : Parcelable {
+    override fun describeContents(): Int {
+        return 0
+    }
+
+    override fun writeToParcel(dest: Parcel, flags: Int) {
+        dest.writeString(qID)
+        dest.writeString(idInQueue)
+    }
+
+    companion object {
+
+        @JvmField
+        @Suppress("unused")
+        val CREATOR = object : Parcelable.Creator<QueueItemPositionKey> {
+
+            override fun createFromParcel(source: Parcel): QueueItemPositionKey {
+                return QueueItemPositionKey(
+                    source.readString()!!,
+                    source.readString()!!,
+                )
+            }
+
+            override fun newArray(size: Int): Array<QueueItemPositionKey?> {
+                return arrayOfNulls(size)
+            }
+        }
     }
 }

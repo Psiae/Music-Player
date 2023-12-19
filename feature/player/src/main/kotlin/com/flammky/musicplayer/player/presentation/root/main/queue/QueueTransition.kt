@@ -21,8 +21,10 @@ import com.flammky.musicplayer.player.presentation.root.main.MainContainerTransi
 import kotlinx.coroutines.*
 import timber.log.Timber
 
+// mark compose stable for skippable
+@Stable
 class QueueContainerTransitionState(
-    private val parent: MainContainerTransitionState,
+    private val parent: MainContainerTransitionState? = null,
     private val uiCoroutineScope: CoroutineScope,
     private val initialRememberFullTransitionRendered: Boolean = false,
     private val isRestoredInstance: Boolean = false
@@ -63,7 +65,9 @@ class QueueContainerTransitionState(
         }
     }
 
-    fun show() {
+    fun show(
+        immediate: Boolean = false
+    ) {
         Timber.d(
             "player.root.main.queue.MainTransition.kt: QueueContainerTransitionState@${System.identityHashCode(this)}_show()"
         )
@@ -71,10 +75,12 @@ class QueueContainerTransitionState(
             return
         }
         this.show = true
-        onNewVisibility()
+        onNewVisibility(immediate)
     }
 
-    fun hide() {
+    fun hide(
+        immediate: Boolean = false
+    ) {
         Timber.d(
             "player.root.queue.MainTransition.kt: QueueContainerTransitionState@${System.identityHashCode(this)}_hide()"
         )
@@ -82,17 +88,21 @@ class QueueContainerTransitionState(
             return
         }
         this.show = false
-        onNewVisibility()
+        onNewVisibility(immediate)
     }
 
     fun updateConstraints(
-        constraints: Constraints
+        constraints: Constraints,
+        immediate: Boolean = false
+
     ) {
         if (this.constraints == constraints) {
             return
         }
         this.constraints = constraints
-        onNewConstraints()
+        onNewConstraints(
+            immediate
+        )
     }
 
     fun onRender(
@@ -102,17 +112,23 @@ class QueueContainerTransitionState(
         rememberFullTransitionRendered = this.renderedHeightPx == targetHeightPx
     }
 
-    private fun onNewConstraints() {
+    private fun onNewConstraints(
+        immediate: Boolean
+    ) {
         Timber.d("player.root.main.queue.MainTransition.kt: QueueContainerTransitionState new constraints=$constraints")
         this.targetHeightPx = constraints.maxHeight
-        invalidateTarget()
+        invalidateTarget(immediate = immediate)
     }
 
-    private fun onNewVisibility() {
-        invalidateTarget()
+    private fun onNewVisibility(
+        immediate: Boolean
+    ) {
+        invalidateTarget(immediate)
     }
 
-    private fun invalidateTarget() {
+    private fun invalidateTarget(
+        immediate: Boolean
+    ) {
         stagingJob.cancel()
         stagingJob = uiCoroutineScope
             .launch(SupervisorJob()) {
@@ -135,13 +151,13 @@ class QueueContainerTransitionState(
                     targetValue = if (show) constraints.maxHeight else 0,
                     animationSpec = tween(
                         durationMillis = if (show) {
-                            if (rememberFullTransitionRendered) {
+                            if (rememberFullTransitionRendered || immediate) {
                                 0
                             } else {
-                                350
+                                500
                             }
                         } else {
-                            250
+                            500
                         },
                         easing = if (show) FastOutSlowInEasing else LinearOutSlowInEasing
                     )
@@ -153,7 +169,7 @@ class QueueContainerTransitionState(
 
         @Suppress("FunctionName")
         fun Saver(
-            parent: MainContainerTransitionState,
+            parent: MainContainerTransitionState?,
             uiCoroutineScope: CoroutineScope
         ): Saver<QueueContainerTransitionState, Bundle> = Saver(
             save = { self ->

@@ -125,7 +125,10 @@ private fun MD3RootContent(
 			}.fastMap { it.measure(contentConstraints) }
 
 			val playbackControlScreen = subcompose("PlaybackControlScreen") {
-				RootPlaybackControlScreen(state = playbackControlScreenState)
+				RootPlaybackControlScreen(
+					state = playbackControlScreenState,
+					bottomVisibilitySpacing = WindowInsets.navigationBars.getBottom(this).toDp()
+				)
 			}.fastMap { it.measure(contentConstraints) }
 
 			layout(constraints.maxWidth, constraints.maxHeight) {

@@ -1,6 +1,6 @@
 package com.flammky.musicplayer.user.ui.compose
 
-import android.graphics.Bitmap
+/*import android.graphics.Bitmap
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,8 +21,9 @@ import com.flammky.musicplayer.base.theme.compose.ProvideTheme
 import com.flammky.musicplayer.base.theme.compose.defaultDarkColorScheme
 import com.flammky.musicplayer.base.theme.compose.defaultLightColorScheme
 import com.flammky.musicplayer.base.theme.compose.primaryColorAsState
-import com.flammky.musicplayer.user.R
+import com.flammky.musicplayer.user.R*/
 
+/*
 @Composable
 internal fun UserProfileCard(
 	modifier: Modifier = Modifier,
@@ -127,3 +128,4 @@ private fun PreviewDark() {
 
 	}
 }
+*/

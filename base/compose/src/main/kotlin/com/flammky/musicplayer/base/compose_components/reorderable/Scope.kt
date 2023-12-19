@@ -8,6 +8,7 @@ import androidx.compose.foundation.gestures.forEachGesture
 import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerId
@@ -16,6 +17,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.zIndex
 import dev.flammky.compose_components.core.SnapshotRead
 import dev.flammky.compose_components.core.exhaustedStateException
+import timber.log.Timber
 import java.util.*
 
 interface ReorderableLazyListScope {
@@ -477,31 +479,37 @@ internal class RealReorderableLazyItemScope(
     @SnapshotRead
     override fun Modifier.reorderingItemVisualModifiers(): Modifier {
         val other = if (info.dragging) {
-            Modifier
-                .zIndex(1f)
-                .graphicsLayer {
-                    when (parentOrientation) {
-                        Orientation.Horizontal -> {
-                            translationX = currentDraggingItemDelta().x
-                        }
-                        Orientation.Vertical -> {
-                            translationY = currentDraggingItemDelta().y
-                        }
-                    }
-                }
+					Modifier
+						.composed {
+							zIndex(1f)
+								.graphicsLayer {
+									when (parentOrientation) {
+										Orientation.Horizontal -> {
+											translationX = currentDraggingItemDelta().x
+										}
+										Orientation.Vertical -> {
+											translationY = currentDraggingItemDelta().y.also { delta ->
+												Timber.d("reorderingItemVisualModifiers_currentDraggingItemDelta_y=$delta")
+											}
+										}
+									}
+								}
+						}
         } else if (info.cancelling) {
             Modifier
-                .zIndex(1f)
-                .graphicsLayer {
-                    when (parentOrientation) {
-                        Orientation.Horizontal -> {
-                            translationX = currentCancellingItemDelta().x
-                        }
-                        Orientation.Vertical -> {
-                            translationY = currentCancellingItemDelta().y
-                        }
-                    }
-                }
+							.composed {
+								zIndex(1f)
+									.graphicsLayer {
+										when (parentOrientation) {
+											Orientation.Horizontal -> {
+												translationX = currentCancellingItemDelta().x
+											}
+											Orientation.Vertical -> {
+												translationY = currentCancellingItemDelta().y
+											}
+										}
+									}
+							}
         } else {
             Modifier.animateItemPlacement()
         }

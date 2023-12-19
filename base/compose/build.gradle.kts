@@ -44,7 +44,7 @@ dependencies {
         // Core UI
         api(libs.androidx.compose.ui.ui.asProvider())
         api(libs.androidx.compose.ui.ui.util)
-        debugApi(libs.androidx.compose.ui.ui.tooling.preview)
+        api(libs.androidx.compose.ui.ui.tooling.preview)
 
         // Debug
         debugApi(libs.androidx.compose.ui.ui.tooling.asProvider())

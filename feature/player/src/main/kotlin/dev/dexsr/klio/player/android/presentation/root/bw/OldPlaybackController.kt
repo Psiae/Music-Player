@@ -233,8 +233,50 @@ internal class OldPlaybackController(
         return def
     }
 
+    override fun seekToIndexAsync(
+        fromIndex: Int,
+        fromId: String,
+        index: Int,
+        id: String
+    ): Deferred<Result<Boolean>> {
+        return coroutineScope.async {
+            runCatching {
+                pc.requestSeekAsync(
+                    expectFromIndex = fromIndex,
+                    expectFromId = fromId,
+                    expectToIndex = index,
+                    expectToId = id,
+                ).await().success
+            }
+        }
+    }
+
+    override fun moveQueueItemAsync(
+        fromIndex: Int,
+        fromId: String,
+        index: Int,
+        id: String
+    ): Deferred<Result<Boolean>> {
+        return coroutineScope.async {
+            runCatching {
+                pc.requestMoveAsync(
+                    from = fromIndex,
+                    expectFromId = fromId,
+                    to = index,
+                    expectToId = id
+                ).await().run {
+                    if (success) {
+                        eventDispatch?.join()
+                    }
+                    success
+                }
+            }
+        }
+    }
+
     fun dispose() {
         compact.dispose()
         pc.dispose()
+        coroutineScope.cancel()
     }
 }

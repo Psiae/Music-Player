@@ -177,7 +177,13 @@ class PlaybackPagerController(
                             ) stage@ { stage ->
 
                                 repeat(timeline.currentIndex + 1 - stage) { i ->
-                                    if (timeline.windows[i] != previousTimeline.windows[stage + i]) return@stage
+                                    if (timeline.windows[i] != previousTimeline.windows[stage + i]) {
+                                        if (i == (timeline.currentIndex + 1 - stage) - 1) {
+                                            pCutHeadCount = 0
+                                            return@rightShift
+                                        }
+                                        return@stage
+                                    }
                                     if (i == (timeline.currentIndex + 1 - stage) - 1) {
                                         pCutHeadCount = stage
                                         return@pCutHead previousTimeline.windows.subList(stage, previousTimeline.windows.size)
@@ -196,7 +202,13 @@ class PlaybackPagerController(
                             ) stage@ { stage ->
 
                                 repeat(timeline.windows.size - timeline.currentIndex + stage) { i ->
-                                    if (previousTimeline.windows[previousTimeline.windows.lastIndex - i] != timeline.windows[timeline.windows.lastIndex - stage - i]) return@stage
+                                    if (previousTimeline.windows[previousTimeline.windows.lastIndex - i] != timeline.windows[timeline.windows.lastIndex - stage - i]) {
+                                        if (i == timeline.windows.size - timeline.currentIndex - stage - 1) {
+                                            cCutTailCount = 0
+                                            return@rightShift
+                                        }
+                                        return@stage
+                                    }
                                     if (i == timeline.windows.size - timeline.currentIndex - stage - 1) {
                                         cCutTailCount = stage
                                         return@cCutTail previousTimeline.windows.subList(fromIndex = 0, toIndex = timeline.windows.size - stage)
@@ -239,7 +251,13 @@ class PlaybackPagerController(
                                     .coerceAtMost(timeline.windows.size - timeline.currentIndex)
                             ) stage@ { stage ->
                                 repeat(timeline.windows.size - timeline.currentIndex - stage) { i ->
-                                    if (previousTimeline.windows[previousTimeline.windows.lastIndex - stage - i] != timeline.windows[timeline.windows.lastIndex - i]) return@stage
+                                    if (previousTimeline.windows[previousTimeline.windows.lastIndex - stage - i] != timeline.windows[timeline.windows.lastIndex - i]) {
+                                        if (i == timeline.windows.size - timeline.currentIndex - stage - 1) {
+                                            pCutTailCount = 0
+                                            return@leftShift
+                                        }
+                                        return@stage
+                                    }
                                     if (i == timeline.windows.size - timeline.currentIndex - stage - 1) {
                                         pCutTailCount = stage
                                         return@pCutTail previousTimeline.windows.subList(fromIndex = 0, toIndex = previousTimeline.windows.size - stage)
@@ -256,10 +274,13 @@ class PlaybackPagerController(
                         shiftCount = max(cCutHeadCount, pCutTailCount)
                     }
 
+                    // timeline=PlaybackPagerTimeline@3b461b4(windows=[MediaStore_28_AUDIO_28, MediaStore_28_AUDIO_36, MediaStore_28_AUDIO_37, MediaStore_28_AUDIO_38, MediaStore_28_AUDIO_39, MediaStore_28_AUDIO_40, MediaStore_28_AUDIO_41, MediaStore_28_AUDIO_43, MediaStore_28_AUDIO_42, MediaStore_28_AUDIO_44], currentIndex=4),
+                    // previousTimeline=PlaybackPagerTimeline@ecaa1dd(windows=[MediaStore_28_AUDIO_28, MediaStore_28_AUDIO_36, MediaStore_28_AUDIO_37, MediaStore_28_AUDIO_38, MediaStore_28_AUDIO_39, MediaStore_28_AUDIO_40, MediaStore_28_AUDIO_41, MediaStore_28_AUDIO_42, MediaStore_28_AUDIO_43, MediaStore_28_AUDIO_44], currentIndex=4)
+
                     if (
                         !rightShift && !leftShift &&
-                        cCutHeadCount == 0 && cCutTailCount == -1 &&
-                        pCutHeadCount == 0 && pCutTailCount == -1
+                        cCutHeadCount == 0 && cCutTailCount == 0 &&
+                        pCutHeadCount == 0 && pCutTailCount == 0
                     ) {
                         check(timeline.windows == previousTimeline.windows)
                         shiftNone = true
@@ -1564,7 +1585,7 @@ class PlaybackPagerController(
                     shouldCorrectToPage = source.firstDragPage
                 }
             }
-            this.flingBack
+            this.flingBack = true
             cancel()
         }
 

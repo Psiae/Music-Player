@@ -16,6 +16,8 @@ import dev.dexsr.klio.base.compose.rememberWithCompositionObserver
 import dev.dexsr.klio.player.android.presentation.root.bw.OldMediaMetadataProvider
 import dev.dexsr.klio.player.android.presentation.root.bw.OldPlaybackController
 
+// mark as stable for skippable
+@Stable
 class PlaybackControlScreenState(
     val playbackController: PlaybackController,
     val mediaMetadataProvider: MediaMetadataProvider,
@@ -23,7 +25,11 @@ class PlaybackControlScreenState(
 ) {
 
     private val backPressConsumer = ComposeBackPressRegistry.BackPressConsumer {
-        hide()
+        if (showSelf) {
+            hide()
+            return@BackPressConsumer true
+        }
+        false
     }
 
     var freeze: Boolean by mutableStateOf(false)

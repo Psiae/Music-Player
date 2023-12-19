@@ -19,6 +19,8 @@ import androidx.compose.ui.util.fastForEach
 import com.flammky.musicplayer.base.compose_components.reorderable.ReorderResultHandle
 import dev.flammky.compose_components.core.*
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -27,6 +29,8 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import timber.log.Timber
 import kotlin.math.abs
 import kotlin.math.pow
 import kotlin.math.sign
@@ -115,7 +119,7 @@ class ReorderableLazyListState internal constructor(
             visibleItemsInfo.fastFirstOrNull { visible ->
                 visible.key == snap.key
             }?.let { inLayout ->
-                if (isVerticalScroll) {
+							if (isVerticalScroll) {
                     verticalOffset(snap.topPos + _draggingItemDeltaFromStart.y - inLayout.topPos)
                 } else if (isHorizontalScroll) {
                     horizontalOffset(snap.leftPos + _draggingItemDeltaFromStart.x - inLayout.leftPos)
@@ -317,6 +321,8 @@ class ReorderableLazyListState internal constructor(
             0
         }
 
+		fun remeasure(): Boolean = _applier.remeasure()
+
     /**
      * @see ReorderableState.onStartDrag
      */
@@ -487,7 +493,7 @@ class ReorderableLazyListState internal constructor(
         maxScrollPx: Float,
     ): Float {
         if (viewOutOfBoundsOffset == 0f) return 0f
-        val outOfBoundsRatio = (1f * abs(viewOutOfBoundsOffset) / viewLength)
+        val outOfBoundsRatio = (1f * abs(viewOutOfBoundsOffset) / viewLength).coerceAtLeast(1f)
         val timeRatio = (frameTimeMillis.toFloat() / 1500)
         val accel = (timeRatio.coerceAtMost(1f).pow(5))
         val calc = sign(viewOutOfBoundsOffset) * maxScrollPx * run {
@@ -673,30 +679,38 @@ class ReorderableLazyListState internal constructor(
             val targetCenterPos = (target.startPos + target.endPos) / 2
             if (toEnd!!) draggingCenterPos > targetCenterPos else draggingCenterPos < targetCenterPos
         }?.let { target ->
-            val fromPosition = ItemPosition(
-                expectDraggingItemIndex!!,
-                draggingInfo.key
-            )
-            val toPosition = ItemPosition(
-                target.index,
-                target.key
-            )
-            if (onMove?.invoke(fromPosition, toPosition) == false) {
-                return false
-            }
-            if (!_applier.onMove(_draggingLatestScope!!, fromPosition, toPosition)) {
-                return false
-            }
-            if (
-                fromPosition.index == lazyListState.firstVisibleItemIndex ||
-                toPosition.index == lazyListState.firstVisibleItemIndex
-            ) {
-                coroutineScope.launch {
-                    lazyListState.scrollToItem(firstVisibleItemIndex, firstVisibleItemScrollOffset)
-                }
-            }
-            _expectDraggingItemCurrentIndex = target.index
-        }
+					val fromPosition = ItemPosition(
+						expectDraggingItemIndex!!,
+						draggingInfo.key
+					)
+					val toPosition = ItemPosition(
+						target.index,
+						target.key
+					)
+					if (onMove?.invoke(fromPosition, toPosition) == false) {
+						return false
+					}
+					if (
+						fromPosition.index == lazyListState.firstVisibleItemIndex ||
+						toPosition.index == lazyListState.firstVisibleItemIndex
+					) {
+						var moved: Boolean
+						// TODO: seems like the LazyList is not appropriate to abstract over anymore
+						runBlocking {
+							moved = _applier.onMove(_draggingLatestScope!!, fromPosition, toPosition, ignoreRemeasure = true)
+							if (moved) {
+								lazyListState.scrollToItem((firstVisibleItemIndex - 1).coerceAtLeast(0), firstVisibleItemScrollOffset)
+								_applier.remeasure()
+							}
+						}
+						if (!moved) return false
+					} else {
+						if (!_applier.onMove(_draggingLatestScope!!, fromPosition, toPosition, ignoreRemeasure = false)) {
+							return false
+						}
+					}
+					_expectDraggingItemCurrentIndex = target.index
+				}
         return true
     }
 }

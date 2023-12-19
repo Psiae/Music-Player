@@ -11,7 +11,8 @@ import androidx.compose.ui.platform.AndroidUiDispatcher
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.util.fastForEach
 import androidx.compose.ui.util.fastMap
-import dev.dexsr.klio.base.compose.Stack
+import dev.dexsr.klio.base.compose.SimpleStack
+import dev.dexsr.klio.player.android.presentation.root.upnext.UpNextBottomSheet
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.distinctUntilChanged
 
@@ -26,7 +27,7 @@ fun TransitioningPlaybackControlScreen(
             height = constraints.maxHeight,
         )
         val stagedOffsetPx = transitionState.stagedOffsetPx
-        Stack(
+        SimpleStack(
             modifier = Modifier
                 .offset { IntOffset(x = 0, y = stagedOffsetPx) }
                 .onGloballyPositioned { transitionState.renderedOffsetPx = stagedOffsetPx }
@@ -57,12 +58,9 @@ fun PlaybackControlScreen(
             )
         }.fastMap { it.measure(constraints) }
 
-        val queue = subcompose("QUEUE") {
-            PlaybackControlQueueScreen(
-                state = rememberPlaybackControlQueueScreenState(
-                    container = state,
-                    transitionState = transitionState
-                )
+        val upNext = subcompose("UPNEXT") {
+            UpNextBottomSheet(
+                container = state
             )
         }.fastMap { it.measure(constraints) }
 
@@ -71,7 +69,7 @@ fun PlaybackControlScreen(
             height = constraints.maxHeight
         ) {
             main.fastForEach { it.place(0,0, 0f) }
-            queue.fastForEach { it.place(0,0, 0f) }
+            upNext.fastForEach { it.place(0, 0, 0f) }
         }
     }
 }

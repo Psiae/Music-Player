@@ -14,6 +14,7 @@ object BaseCoroutineModule {
 	@Provides
 	@Singleton
 	fun provideAndroidDispatchers(): AndroidCoroutineDispatchers {
+
 		return AndroidCoroutineDispatchers.DEFAULT
 	}
 }

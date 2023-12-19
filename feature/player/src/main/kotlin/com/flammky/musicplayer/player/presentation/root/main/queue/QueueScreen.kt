@@ -74,7 +74,7 @@ fun PlaybackControlScreenCoordinator.QueueScreenRenderScope.PlaybackQueueScreen(
                 state = queueState.apply {
                     topContentPadding = maxOf(statusBarInset, compactState.stagedLayoutHeight)
                     bottomContentPadding = navigationBarInset
-                }
+                },
             )
         }
     )

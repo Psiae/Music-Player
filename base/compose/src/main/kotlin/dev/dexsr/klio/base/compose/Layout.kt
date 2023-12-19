@@ -25,11 +25,10 @@ fun simpleStackLayoutMeasurePolicy(
 		constraints.copy(minWidth = 0, minHeight = 0)
 	}
 	if (measurables.size == 1) {
-		val measurable = measurables[0]
-		val placeable = measurable.measure(contentConstraints)
+		val placeable = measurables[0].measure(contentConstraints)
 		return@MeasurePolicy layout(
-			max(constraints.minWidth, placeable.width),
-			max(constraints.minHeight, placeable.height),
+			placeable.width,
+			placeable.height,
 			placementBlock = { placeable.place(0, 0, 0f) }
 		)
 	}
@@ -38,22 +37,24 @@ fun simpleStackLayoutMeasurePolicy(
 	val placeables = measurables.fastMap { measurable ->
 		measurable.measure(contentConstraints)
 			.also { placeable ->
-				if (placeable.width > width) width = placeable.width
-				if (placeable.height > height) height = placeable.height
+				width = max(placeable.width, width)
+				height = max(placeable.height, height)
 			}
 	}
 	layout(
-		max(width, constraints.minWidth),
-		max(height, constraints.minHeight)
-	) {
-		placeables.fastForEach { placeable -> placeable.place(0, 0, 0f) }
-	}
+		width,
+		height,
+		placementBlock = {
+			placeables.fastForEach { placeable -> placeable.place(0, 0, 0f) }
+		}
+	)
 }
 
 val SimpleStackLayoutMeasurePolicy = simpleStackLayoutMeasurePolicy(propagateMinConstraints = false)
 
+// a faster simple stacking layout implementation than [Box]
 @Composable
-inline fun Stack(
+inline fun SimpleStack(
 	modifier: Modifier = Modifier,
 	propagateMinConstraints: Boolean = false,
 	content: @Composable () -> Unit

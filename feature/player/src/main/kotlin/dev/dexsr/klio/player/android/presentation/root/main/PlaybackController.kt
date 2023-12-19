@@ -50,6 +50,20 @@ interface PlaybackController {
     fun getTimelineAsync(
         range: Int
     ): Deferred<PlaybackTimeline>
+
+    fun seekToIndexAsync(
+        fromIndex: Int,
+        fromId: String,
+        index: Int,
+        id: String
+    ): Deferred<Result<Boolean>>
+
+    fun moveQueueItemAsync(
+        fromIndex: Int,
+        fromId: String,
+        index: Int,
+        id: String
+    ): Deferred<Result<Boolean>>
 }
 
 object NoOpPlaybackController : PlaybackController {
@@ -114,5 +128,23 @@ object NoOpPlaybackController : PlaybackController {
         range: Int
     ): Deferred<PlaybackTimeline> {
         return CompletableDeferred<PlaybackTimeline>().apply { cancel() }
+    }
+
+    override fun seekToIndexAsync(
+        fromIndex: Int,
+        fromId: String,
+        index: Int,
+        id: String
+    ): Deferred<Result<Boolean>> {
+        return CompletableDeferred<Result<Boolean>>().apply { cancel() }
+    }
+
+    override fun moveQueueItemAsync(
+        fromIndex: Int,
+        fromId: String,
+        index: Int,
+        id: String
+    ): Deferred<Result<Boolean>> {
+        return CompletableDeferred<Result<Boolean>>().apply { cancel() }
     }
 }

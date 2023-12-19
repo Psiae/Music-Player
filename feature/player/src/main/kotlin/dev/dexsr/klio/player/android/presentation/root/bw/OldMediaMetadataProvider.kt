@@ -1,5 +1,6 @@
 package dev.dexsr.klio.player.android.presentation.root.bw
 
+import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.player.presentation.main.PlaybackControlViewModel
 import dev.dexsr.klio.player.android.presentation.root.main.MediaMetadataProvider
@@ -9,7 +10,7 @@ import kotlinx.coroutines.flow.Flow
 
 internal class OldMediaMetadataProvider(
     user: User,
-    vm: PlaybackControlViewModel
+    private val vm: PlaybackControlViewModel
 ) : MediaMetadataProvider {
 
     // same impl, going to be removed anyway
@@ -24,6 +25,10 @@ internal class OldMediaMetadataProvider(
 
     override fun descriptionAsFlow(mediaID: String): Flow<PlaybackMediaDescription?> {
         return compact.descriptionAsFlow(mediaID)
+    }
+
+    override fun oldDescriptionAsFlow(mediaID: String): Flow<MediaMetadata?> {
+        return vm.observeMediaMetadata(mediaID)
     }
 
     fun dispose() {

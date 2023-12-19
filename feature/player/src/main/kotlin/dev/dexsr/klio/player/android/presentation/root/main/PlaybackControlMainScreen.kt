@@ -77,7 +77,7 @@ fun PlaybackControlMainScreen(
             PlaybackControlMainScreenLyric(state = state)
         }.fastMap { it.measure(constraints = contentConstraints) }
 
-        val measures = arrayListOf(
+        val measuresToSpacing = arrayListOf(
             toolbar to 4.dp.roundToPx(),
             pager to 16.dp.roundToPx(),
             description to 16.dp.roundToPx(),
@@ -89,7 +89,7 @@ fun PlaybackControlMainScreen(
         var layoutBottomOffset = bottomSpacing.roundToPx()
         layout(
             max(
-                measures
+                measuresToSpacing
                     .fastMaxBy { item ->
                         item.first
                             .fastMaxBy { it.width }?.width ?: 0
@@ -104,7 +104,7 @@ fun PlaybackControlMainScreen(
                 constraints.minWidth
             ),
             max(
-                measures
+                measuresToSpacing
                     .fastSumBy { item ->
                         item.first
                             .fastMaxBy { it.height }?.height ?: 0
@@ -115,7 +115,7 @@ fun PlaybackControlMainScreen(
                 constraints.minHeight
             )
         ) {
-            measures.fastForEach { item ->
+            measuresToSpacing.fastForEach { item ->
                 var h = 0
                 item.first.fastForEach { placeable ->
                     placeable.place(0, layoutTopOffset, 0f)

@@ -38,6 +38,18 @@ fun MD3Theme.primaryColorAsState(): State<Color> {
     return rememberUpdatedState(newValue = colorScheme.primary)
 }
 
+
+@Composable
+fun MD3Theme.primaryContainerColorAsState(): State<Color> {
+	return rememberUpdatedState(newValue = colorScheme.primaryContainer)
+}
+
+@Composable
+fun MD3Theme.primaryContainerContentColorAsState(): State<Color> {
+	return rememberUpdatedState(newValue = colorScheme.onPrimaryContainer)
+}
+
+
 @Composable
 fun MD3Theme.surfaceColorAsState(): State<Color> {
     return rememberUpdatedState(newValue = colorScheme.surface)

@@ -357,11 +357,13 @@ class PlaybackControlScreenCoordinator(
                     val backPressConsumer = ComposeBackPressRegistry.BackPressConsumer {
                         if (queueTransition.show) {
                             queueTransition.hide()
-                            return@BackPressConsumer
+                            return@BackPressConsumer true
                         }
                         if (mainTransition.show) {
                             state.intents.dismiss()
+                            return@BackPressConsumer true
                         }
+                        false
                     }
                     state.composeBackPressRegistry.registerBackPressConsumer(backPressConsumer)
                     onDispose { state.composeBackPressRegistry.unregisterBackPressConsumer(backPressConsumer) }

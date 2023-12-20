@@ -4,6 +4,7 @@ import android.os.Parcel
 import android.os.Parcelable
 import android.widget.Toast
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -20,6 +21,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -168,7 +170,6 @@ private fun RenderQueue(
         key1 = queue.list.getOrNull(queue.currentIndex),
         block = {
             if (!state.remeasure()) return@LaunchedEffect
-            if (state.expectDraggingItemIndex != null) return@LaunchedEffect
             val index = queue.currentIndex
             val id = queue.list.getOrNull(index) ?: return@LaunchedEffect
             with(state.lazyListState.layoutInfo) {
@@ -176,26 +177,54 @@ private fun RenderQueue(
                     it.offset >= viewportStartOffset
                 } ?: return@LaunchedEffect
                 val lastFullyVisibleItem = visibleItemsInfo.fastLastOrNull {
-                    Timber.d("LastFullyVisibleItem, off=${it.offset}, size=${it.size}, endOff=$viewportEndOffset, startOff=$viewportStartOffset")
-                    it.offset + it.size <= viewportEndOffset + viewportStartOffset
+                    it.offset + it.size <= viewportEndOffset + viewportStartOffset - afterContentPadding
                 } ?: return@LaunchedEffect
                 if (index in firstFullyVisibleItem.index .. lastFullyVisibleItem.index) {
-                    if (index == firstFullyVisibleItem.index) {
-                        state.lazyListState.animateScrollToItem(index)
-                    }
-                    if (index == lastFullyVisibleItem.index) {
-                        state.lazyListState.animateScrollToItem(firstFullyVisibleItem.index)
-                    }
+                    // fully visible, do nothing
                     return@with
                 }
                 if (index < firstFullyVisibleItem.index) {
+                    // not fully visible, bring it down
                     state.lazyListState.animateScrollToItem(index)
                     return@with
                 }
-                state.lazyListState.animateScrollToItem(
-                    index = visibleItemsInfo.first().index + (index - lastFullyVisibleItem.index),
-                    scrollOffset = 48 / 2
+                if (index <= visibleItemsInfo.last().index) {
+                    // not fully visible, bring it up
+                    state.lazyListState.animateScrollToItem(
+                        index = firstFullyVisibleItem.index,
+                        scrollOffset = run {
+                            val endOffset = viewportEndOffset + viewportStartOffset - afterContentPadding
+                            val itemInInfo = visibleItemsInfo[index - visibleItemsInfo.first().index]
+                            val itemEndBottom = itemInInfo.offset + itemInInfo.size
+                            val offsetToFirstFullyVisibleItem = firstFullyVisibleItem.offset
+                            (itemEndBottom - offsetToFirstFullyVisibleItem ) - endOffset
+                        }.coerceAtLeast(0)
+                    )
+                    return@with
+                }
+                // TODO: find a better way
+                // not visible at all, scroll until it's visible
+                state.lazyListState.scrollToItem(
+                    index = index,
+                    scrollOffset = -(viewportEndOffset - 1)
                 )
+                with(state.lazyListState.layoutInfo) {
+                    val firstFullyVisibleItem = requireNotNull(
+                        visibleItemsInfo.fastFirstOrNull {
+                            it.offset >= viewportStartOffset
+                        }
+                    )
+                    state.lazyListState.scrollToItem(
+                        index = firstFullyVisibleItem.index,
+                        scrollOffset = run {
+                            val endOffset = viewportEndOffset + viewportStartOffset - afterContentPadding
+                            val itemInInfo = visibleItemsInfo[index - visibleItemsInfo.first().index]
+                            val itemEndBottom = itemInInfo.offset + itemInInfo.size
+                            val offsetToFirstFullyVisibleItem = firstFullyVisibleItem.offset
+                            (itemEndBottom - offsetToFirstFullyVisibleItem ) - endOffset
+                        }.coerceAtLeast(0)
+                    )
+                }
             }
         }
     )
@@ -582,6 +611,7 @@ private class ReorderingApplier(
         expectToID: String
     ): Job {
         dispatchMoveC++
+        ignoreObserve = true
         return coroutineScope.launch(Dispatchers.Main.immediate) {
             intents.requestMoveQueueItemAsync(
                 from,

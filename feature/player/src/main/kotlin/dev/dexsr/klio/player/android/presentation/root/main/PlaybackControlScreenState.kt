@@ -8,7 +8,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.flammky.musicplayer.base.auth.AuthService
 import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.player.presentation.main.PlaybackControlViewModel
-import com.flammky.musicplayer.player.presentation.root.main.ComposeBackPressRegistry
+import dev.dexsr.klio.base.compose.ComposeBackPressRegistry
 import dev.dexsr.klio.android.base.checkInMainLooper
 import dev.dexsr.klio.base.compose.SnapshotRead
 import dev.dexsr.klio.base.compose.SnapshotWrite
@@ -63,7 +63,9 @@ class PlaybackControlScreenState(
 
     fun restoreState(bundle: Bundle) {
         if (bundle.containsKey("showSelf")) {
-            showSelf = bundle.getBoolean("showSelf")
+            if (bundle.getBoolean("showSelf")) {
+                show()
+            }
         }
     }
 

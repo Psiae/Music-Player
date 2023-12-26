@@ -34,6 +34,7 @@ import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.android.medialib.providers.metadata.VirtualFileMetadata
 import com.flammky.androidx.content.context.findActivity
+import com.flammky.androidx.content.context.findAnyActivity
 import com.flammky.musicplayer.base.compose.NoInline
 import com.flammky.musicplayer.base.compose.NoInlineBox
 import com.flammky.musicplayer.base.media.playback.PlaybackConstants
@@ -1030,7 +1031,7 @@ private fun BoxScope.SecondaryControl(
 
 @Composable
 private fun LockScreenOrientation(landscape: Boolean) {
-    val activity = LocalContext.current.findActivity()
+    val activity = LocalContext.current.findAnyActivity()
         ?: error("cannot Lock Screen Orientation, LocalContext is not an Activity")
     DisposableEffect(key1 = Unit) {
         val original = activity.requestedOrientation

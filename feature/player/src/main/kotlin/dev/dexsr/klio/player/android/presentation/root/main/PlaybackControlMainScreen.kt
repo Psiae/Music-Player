@@ -15,11 +15,26 @@ import androidx.compose.ui.util.fastMap
 import androidx.compose.ui.util.fastMaxBy
 import androidx.compose.ui.util.fastSumBy
 import com.flammky.musicplayer.base.compose.LocalLayoutVisibility
+import dev.dexsr.klio.base.compose.SimpleStack
 import dev.dexsr.klio.base.theme.md3.compose.localMaterial3Background
 import kotlin.math.max
 
 @Composable
 fun PlaybackControlMainScreen(
+    state: PlaybackControlMainScreenState,
+) {
+    SimpleStack(
+        modifier = Modifier
+            .fillMaxSize()
+            .localMaterial3Background()
+    ) {
+        /*RadialPaletteBackground(modifier = Modifier.fillMaxSize(), state = state)*/
+        PlaybackControlMainScreenContent(state = state)
+    }
+}
+
+@Composable
+private fun PlaybackControlMainScreenContent(
     state: PlaybackControlMainScreenState,
 ) {
 
@@ -29,7 +44,6 @@ fun PlaybackControlMainScreen(
     SubcomposeLayout(
         modifier = Modifier
             .fillMaxSize()
-            .localMaterial3Background()
             .verticalScroll(state = rememberScrollState())
     ) { constraints ->
 
@@ -126,6 +140,4 @@ fun PlaybackControlMainScreen(
         }
     }
 }
-
-
 

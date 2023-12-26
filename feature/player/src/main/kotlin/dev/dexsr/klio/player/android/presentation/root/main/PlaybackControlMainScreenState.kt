@@ -2,6 +2,9 @@ package dev.dexsr.klio.player.android.presentation.root.main
 
 import androidx.compose.runtime.*
 
+// mark compose stable for skippable
+
+@Stable
 class PlaybackControlMainScreenState(
     val playbackController: PlaybackController,
     val mediaMetadataProvider: MediaMetadataProvider

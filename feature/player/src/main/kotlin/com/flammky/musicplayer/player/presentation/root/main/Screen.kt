@@ -10,6 +10,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.palette.graphics.Palette
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
+import dev.dexsr.klio.base.compose.ComposeBackPressRegistry
 import com.flammky.musicplayer.base.compose.SnapshotRead
 import com.flammky.musicplayer.base.media.playback.OldPlaybackQueue
 import com.flammky.musicplayer.base.media.playback.PlaybackProperties

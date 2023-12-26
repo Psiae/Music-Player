@@ -785,7 +785,7 @@ private fun animatedCompositeSurfacePaletteColorAsState(
                 ?.compositeOver(compositeOver)
                 ?: compositeOver
         },
-        animationSpec = tween(150)
+        animationSpec = tween(250)
     )
 }
 
@@ -817,7 +817,10 @@ private fun surfacePaletteColor(
                                 .distinctUntilChanged()
                                 .collect { id ->
                                     artCollector?.cancel()
-                                    if (id == null) return@collect
+                                    if (id == null) {
+                                        paletteColorState.value = Color.Unspecified
+                                        return@collect
+                                    }
                                     artCollector = launch {
                                         var paletteWorker: Job? = null
                                         state.mediaMetadataProvider.artworkAsFlow(id)

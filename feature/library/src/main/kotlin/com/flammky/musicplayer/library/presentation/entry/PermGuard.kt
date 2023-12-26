@@ -17,7 +17,6 @@ internal fun PermGuard(
 	onPermChanged: (Boolean?) -> Unit
 ) {
 	val contextHelper = rememberLocalContextHelper()
-	val vm = hiltViewModel<PermGuardViewModel>()
 
 	val allowState = remember {
 		mutableStateOf<Boolean?>(

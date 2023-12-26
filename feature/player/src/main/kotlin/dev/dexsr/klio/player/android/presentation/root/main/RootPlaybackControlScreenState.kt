@@ -1,7 +1,7 @@
 package dev.dexsr.klio.player.android.presentation.root.main
 
 import androidx.compose.runtime.*
-import com.flammky.musicplayer.player.presentation.root.main.ComposeBackPressRegistry
+import dev.dexsr.klio.base.compose.ComposeBackPressRegistry
 import dev.dexsr.klio.base.compose.SnapshotRead
 
 abstract class RootPlaybackControlScreenState {

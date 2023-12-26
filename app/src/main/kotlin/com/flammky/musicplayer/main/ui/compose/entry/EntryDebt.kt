@@ -28,6 +28,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.flammky.android.content.context.ContextHelper
 import com.flammky.android.manifest.permission.AndroidPermission
 import com.flammky.androidx.content.context.findActivity
+import com.flammky.androidx.content.context.findAnyActivity
 import com.flammky.musicplayer.R
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.backgroundContentColorAsState
@@ -155,7 +156,8 @@ fun EntryPermissionPager(
 				onResult = {}
 			)
 
-			val activity = LocalContext.current.findActivity()!!
+			val activity = LocalContext.current.findAnyActivity()
+				?: return@HorizontalPager
 
 			PermissionPage(
 				resId = resId,

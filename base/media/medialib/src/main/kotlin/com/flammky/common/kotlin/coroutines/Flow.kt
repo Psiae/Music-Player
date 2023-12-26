@@ -6,10 +6,10 @@ import kotlin.coroutines.coroutineContext
 
 suspend fun <T> Flow<T>.safeCollect(
 	fallback: () -> Unit = {},
-	collect: suspend (T) -> Unit
+	collector: suspend (T) -> Unit
 ) {
 	collect {
 		coroutineContext.ensureActive(fallback)
-		collect(it)
+		collector(it)
 	}
 }

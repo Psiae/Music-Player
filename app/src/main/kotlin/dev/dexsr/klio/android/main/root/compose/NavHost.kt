@@ -10,17 +10,21 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import com.flammky.musicplayer.base.compose.LocalLayoutVisibility
 import com.flammky.musicplayer.base.nav.compose.ComposeRootNavigation
+import dev.dexsr.klio.base.compose.ComposeBackPressRegistry
+import dev.dexsr.klio.base.compose.LocalComposeBackPressRegistry
 
 
 @Composable
 internal fun OldRootNavHost(
 	onBackPressedDispatcherOwner: OnBackPressedDispatcherOwner,
+	backPressRegistry: ComposeBackPressRegistry,
 	topBarVisibilitySpacing: Dp,
 	bottomBarVisibilitySpacing: Dp,
 	navHostController: NavHostController
 ) {
 	CompositionLocalProvider(
 		LocalOnBackPressedDispatcherOwner provides onBackPressedDispatcherOwner,
+		LocalComposeBackPressRegistry provides backPressRegistry,
 		LocalLayoutVisibility.Top provides topBarVisibilitySpacing,
 		LocalLayoutVisibility.Bottom provides bottomBarVisibilitySpacing
 	) {

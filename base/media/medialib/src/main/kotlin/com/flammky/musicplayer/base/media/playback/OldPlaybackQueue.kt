@@ -48,3 +48,6 @@ class OldPlaybackQueue(
 		)
 	}
 }
+
+val OldPlaybackQueue.isUNSET
+	get() = this === OldPlaybackQueue.UNSET

@@ -44,6 +44,7 @@ import androidx.palette.graphics.Palette
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.flammky.androidx.content.context.findActivity
+import com.flammky.androidx.content.context.findAnyActivity
 import com.flammky.common.kotlin.comparable.clamp
 import com.flammky.common.kotlin.comparable.clampPositive
 import com.flammky.musicplayer.base.compose.NoInline
@@ -1591,7 +1592,7 @@ private inline val Visibility.isVisible
 
 @Composable
 private fun LockScreenOrientation(landscape: Boolean) {
-	val activity = LocalContext.current.findActivity()
+	val activity = LocalContext.current.findAnyActivity()
 		?: error("cannot Lock Screen Orientation, LocalContext is not an Activity")
 	DisposableEffect(key1 = Unit) {
 		val original = activity.requestedOrientation

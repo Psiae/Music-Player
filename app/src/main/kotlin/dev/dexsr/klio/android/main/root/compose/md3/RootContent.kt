@@ -1,5 +1,6 @@
 package dev.dexsr.klio.android.main.root.compose.md3
 
+import android.content.Intent
 import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.OnBackPressedDispatcherOwner
 import androidx.activity.compose.BackHandler
@@ -33,6 +34,7 @@ import dev.dexsr.klio.android.base.resource.AndroidLocalImage
 import dev.dexsr.klio.android.base.systeminsets.compose.systemNavigationBarsPadding
 import dev.dexsr.klio.android.main.root.compose.OldRootNavHost
 import dev.dexsr.klio.base.compose.ComposableFun
+import dev.dexsr.klio.base.compose.ComposeBackPressRegistry
 import dev.dexsr.klio.base.compose.NoOpPainter
 import dev.dexsr.klio.base.compose.checkedDpStatic
 import dev.dexsr.klio.base.compose.combineIf
@@ -88,6 +90,9 @@ private fun MD3RootContent(
 			override val onBackPressedDispatcher: OnBackPressedDispatcher = OnBackPressedDispatcher()
 		}
 	}
+	val navBackPressRegistry = remember {
+		ComposeBackPressRegistry()
+	}
 	MD3RootContentProvidableLocals(
 
 	) {
@@ -120,6 +125,7 @@ private fun MD3RootContent(
 						bottomNavigationBar.maxOfOrNull { it.height }?.toDp() ?: 0.dp,
 						compactPlaybackControlPanelState.heightFromAnchor,
 					),
+					backPressRegistry = navBackPressRegistry,
 					navHostController = navHostController
 				)
 			}.fastMap { it.measure(contentConstraints) }
@@ -153,12 +159,16 @@ private fun MD3RootContent(
 	BackHandler(
 		// no short-circuit so the snapshot is read
 		enabled = playbackControlScreenState.backPressRegistry.hasBackPressConsumer() or
+			navBackPressRegistry.hasBackPressConsumer() or
 			// ugly workaround due to BackPressDispatcher has no snapshot mechanism
 			navHostController.run {
 				currentBackStackEntryAsState().value?.destination?.id != graph.startDestinationId
 			}
 	) {
 		if (playbackControlScreenState.backPressRegistry.consumeBackPress()) {
+			return@BackHandler
+		}
+		if (navBackPressRegistry.consumeBackPress()) {
 			return@BackHandler
 		}
 		if (navHostBackPressDispatcherOwner.onBackPressedDispatcher.hasEnabledCallbacks()) {

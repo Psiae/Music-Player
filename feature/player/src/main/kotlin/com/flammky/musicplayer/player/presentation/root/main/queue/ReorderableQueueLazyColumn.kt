@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -42,11 +43,13 @@ import com.flammky.musicplayer.base.compose.NoInlineColumn
 import com.flammky.musicplayer.base.compose.NoInlineRow
 import com.flammky.musicplayer.base.media.MediaConstants
 import com.flammky.musicplayer.base.media.playback.OldPlaybackQueue
+import com.flammky.musicplayer.base.media.playback.isUNSET
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.*
 import com.google.accompanist.placeholder.PlaceholderHighlight
 import com.google.accompanist.placeholder.placeholder
 import com.google.accompanist.placeholder.shimmer
+import dev.dexsr.klio.base.compose.SimpleStack
 import dev.dexsr.klio.base.kt.castOrNull
 import dev.dexsr.klio.base.theme.md3.compose.LocalIsThemeDark
 import dev.flammky.compose_components.reorderable.ReorderableLazyColumn
@@ -76,13 +79,24 @@ fun ReorderableQueueLazyColumn(
         )
     )
     if (transitionState.rememberFullTransitionRendered) {
-        RenderQueue(
-            reorder = upReorder::value,
-            intents = { upState.value.intents },
-            dataSource = { upState.value.dataSource },
-            contentPadding = upPadding::value,
-            backgroundColor = upBackgroundColor::value
-        )
+        Box {
+            RenderQueue(
+                reorder = upReorder::value,
+                intents = { upState.value.intents },
+                dataSource = { upState.value.dataSource },
+                contentPadding = upPadding::value,
+                backgroundColor = upBackgroundColor::value
+            )
+            reorder.actualQueueState.value.let { q ->
+                if (q.isUNSET || q.list.isNotEmpty()) return@let
+                Text(
+                    modifier = Modifier.align(Alignment.Center),
+                    text = "EMPTY QUEUE",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = Theme.backgroundContentColorAsState().value.copy(alpha = 0.68f)
+                )
+            }
+        }
     }
     DisposableEffect(
         state, reorder,

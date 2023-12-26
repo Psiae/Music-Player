@@ -2,11 +2,9 @@ package dev.dexsr.klio.player.android.presentation.root.upnext
 
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
-import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,13 +18,12 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.flammky.musicplayer.base.compose.LocalLayoutVisibility
-import com.flammky.musicplayer.player.presentation.root.main.ComposeBackPressRegistry
+import dev.dexsr.klio.base.compose.ComposeBackPressRegistry
 import dev.dexsr.klio.base.compose.clickable
 import dev.dexsr.klio.base.compose.horizontalBiasAlignment
 import dev.dexsr.klio.base.compose.ifUnspecified
 import dev.dexsr.klio.base.theme.md3.MD3Spec
 import dev.dexsr.klio.base.theme.md3.MD3Theme
-import dev.dexsr.klio.base.theme.md3.components.sheet.BottomSheetDragHandleAlpha
 import dev.dexsr.klio.base.theme.md3.components.sheet.bottomSheet
 import dev.dexsr.klio.base.theme.md3.compose.*
 import dev.dexsr.klio.player.android.presentation.root.main.PlaybackControlScreenState
@@ -35,7 +32,6 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import timber.log.Timber
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)

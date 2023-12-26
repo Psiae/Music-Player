@@ -1,7 +1,7 @@
 package dev.dexsr.klio.base.compose
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.MeasurePolicy
@@ -51,6 +51,7 @@ fun simpleStackLayoutMeasurePolicy(
 }
 
 val SimpleStackLayoutMeasurePolicy = simpleStackLayoutMeasurePolicy(propagateMinConstraints = false)
+val SimpleStackLayoutMeasurePolicy2 = simpleStackLayoutMeasurePolicy(propagateMinConstraints = true)
 
 // a faster simple stacking layout implementation than [Box]
 @Composable
@@ -59,9 +60,12 @@ inline fun SimpleStack(
 	propagateMinConstraints: Boolean = false,
 	content: @Composable () -> Unit
 ) {
+	Box {
+
+	}
 	val measurePolicy =
 		if (!propagateMinConstraints) SimpleStackLayoutMeasurePolicy
-		else remember { simpleStackLayoutMeasurePolicy(propagateMinConstraints) }
+		else SimpleStackLayoutMeasurePolicy2
 	Layout(
 		modifier = modifier,
 		content = content,

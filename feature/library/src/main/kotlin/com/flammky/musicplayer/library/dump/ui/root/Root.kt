@@ -59,6 +59,7 @@ import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import dev.dexsr.klio.base.theme.md3.MD3Theme
 import dev.dexsr.klio.base.theme.md3.compose.dpPaddingIncrementsOf
+import dev.dexsr.klio.base.theme.md3.compose.marginIncrements
 
 @Composable
 @Deprecated("Rewrite")
@@ -203,7 +204,7 @@ private fun LibraryRootContent(
 		Spacer(modifier = Modifier.height(10.dp))
 		NavHost(navController = tabsNavHostController, "local") {
 			composable("local") {
-				LocalContents(navController = navController)
+				LibraryRootDeviceContents(modifier = Modifier.padding(horizontal = 10.dp)) { navController.navigate(it) }
 			}
 			composable("spotify") {
 				Box(modifier = Modifier.fillMaxSize()) {
@@ -230,8 +231,9 @@ private fun LibraryRootContent(
 }
 
 @Composable
-private fun LocalContents(
-	navController: NavController
+internal fun LibraryRootDeviceContents(
+	modifier: Modifier = Modifier,
+	navigate: (String) -> Unit
 ) {
 	val permState = remember {
 		mutableStateOf<Boolean?>(null)
@@ -243,21 +245,15 @@ private fun LocalContents(
 	when (permState.value) {
 		true -> {
 			Column(
-				modifier = Modifier
-					.fillMaxSize()
-					.verticalScroll(rememberScrollState()),
-				verticalArrangement = Arrangement.spacedBy(16.dp)
+				modifier = modifier,
 			) {
+				Spacer(modifier = Modifier.height(MD3Theme.dpPaddingIncrementsOf(2)))
 				LocalSongDisplay(
 					modifier = Modifier
-						.padding(horizontal = 10.dp)
 						.heightIn(max = 300.dp),
 					viewModel = activityViewModel(),
-					navigate = { route ->
-						navController.navigate(route)
-					}
+					navigate = navigate
 				)
-				Spacer(modifier = Modifier.height(LocalLayoutVisibility.Bottom.current))
 			}
 		}
 		false -> @OptIn(ExperimentalPermissionsApi::class) {
@@ -274,7 +270,7 @@ private fun LocalContents(
 				onResult = {}
 			)
 			Column(
-				modifier = Modifier
+				modifier = modifier
 					.fillMaxSize(),
 				verticalArrangement = Arrangement.Bottom
 			) {

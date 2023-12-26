@@ -5,12 +5,16 @@ import android.app.Service
 import android.content.Context
 import android.content.ContextWrapper
 
-fun Context.findActivity(): Activity? {
+inline fun <reified T: Activity> Context.findActivity(): T? {
 	return if (this is ContextWrapper) {
-		unwrapUntil { it is Activity } as? Activity
+		unwrapUntil { it is T } as? T
 	} else {
 		null
 	}
+}
+
+inline fun Context.findAnyActivity(): Activity? {
+	return findActivity<Activity>()
 }
 
 fun Context.findService(): Service? {

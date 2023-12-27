@@ -32,17 +32,13 @@ import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.backgroundContentColorAsState
 import com.flammky.musicplayer.base.theme.compose.surfaceContentColorAsState
 import com.flammky.musicplayer.library.R
-import com.flammky.musicplayer.library.dump.localmedia.ui.LocalSongListsLegacy
 import dev.dexsr.klio.base.compose.ComposeBackPressRegistry
 import dev.dexsr.klio.base.compose.LocalComposeBackPressRegistry
 import dev.dexsr.klio.base.compose.SimpleStack
 import dev.dexsr.klio.base.theme.md3.MD3Theme
-import dev.dexsr.klio.base.theme.md3.compose.localMaterial3Background
+import dev.dexsr.klio.base.theme.md3.compose.localMaterial3Surface
 import dev.dexsr.klio.base.theme.md3.compose.primaryColorAsState
-import dev.dexsr.klio.library.device.DeviceRootContent
-import dev.dexsr.klio.library.spotify.ui.SpotifyUiRoot
 import dev.dexsr.klio.library.ui.root.LibraryRootNavigator
-import dev.dexsr.klio.library.ytm.ui.YTMusicUiRoot
 
 @Composable
 fun LibraryUiMain(
@@ -87,19 +83,9 @@ private fun LibraryUiMainNavHost(
 	SimpleStack(
 		modifier = Modifier
 			.fillMaxSize()
-			.localMaterial3Background()
+			.localMaterial3Surface()
 	) {
-		when (navigator.currentDestination) {
-			"device" -> {
-				DeviceRootContent(modifier = Modifier, navigate = { navigator.navigateSub(it) })
-			}
-			"spotify" -> {
-				SpotifyUiRoot()
-			}
-			"ytm" -> {
-				YTMusicUiRoot()
-			}
-		}
+		navigator.currentDestination.content.invoke()
 	}
 }
 
@@ -115,7 +101,7 @@ fun LibraryUiMainNavigationTab(
 		// implement our own indicator
 		selectedTabIndex = Int.MAX_VALUE,
 		indicator = { tabPositions ->
-			val selectedTabIndex = tabDestinationToIndex[navigator.currentDestination]
+			val selectedTabIndex = tabDestinationToIndex[navigator.currentDestination.route]
 			if (selectedTabIndex == null || selectedTabIndex !in tabPositions.indices) {
 				return@TabRow
 			}
@@ -141,7 +127,7 @@ fun LibraryUiMainNavigationTab(
 		}
 	) {
 		LeadingIconTab(
-			selected = navigator.currentDestination == "device",
+			selected = navigator.currentDestination.route == "device",
 			onClick = {
 				navigator.navigate("device")
 			},
@@ -162,7 +148,7 @@ fun LibraryUiMainNavigationTab(
 			}
 		)
 		LeadingIconTab(
-			selected = navigator.currentDestination == "spotify",
+			selected = navigator.currentDestination.route == "spotify",
 			onClick = {
 				navigator.navigate("spotify")
 			},
@@ -183,7 +169,7 @@ fun LibraryUiMainNavigationTab(
 			}
 		)
 		LeadingIconTab(
-			selected = navigator.currentDestination == "ytm",
+			selected = navigator.currentDestination.route == "ytm",
 			onClick = {
 				navigator.navigate("ytm")
 			},
@@ -211,21 +197,12 @@ private fun LibraryUiMainSubScreenHost(
 	navigator: LibraryMainNavigator
 ) {
 	navigator.currentSubDestination?.let { dest ->
-		val content: (@Composable () -> Unit)? = when (dest) {
-			// temp
-			"library.localSong.list" -> {
-				@Composable { LocalSongListsLegacy() }
-			}
-			else -> null
-		}
-		content?.let {
-			SimpleStack(
-				modifier = Modifier
-					.fillMaxSize()
-					.localMaterial3Background()
-			) {
-				content.invoke()
-			}
+		SimpleStack(
+			modifier = Modifier
+				.fillMaxSize()
+				.localMaterial3Surface()
+		) {
+			dest.content.invoke()
 		}
 	}
 }

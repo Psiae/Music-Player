@@ -1,6 +1,5 @@
 package dev.dexsr.klio.android.main.root.compose.md3
 
-import android.content.Intent
 import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.OnBackPressedDispatcherOwner
 import androidx.activity.compose.BackHandler
@@ -33,7 +32,7 @@ import com.flammky.musicplayer.main.presentation.root.MaterialDesign3Theme
 import dev.dexsr.klio.android.base.resource.AndroidLocalImage
 import dev.dexsr.klio.android.base.systeminsets.compose.systemNavigationBarsPadding
 import dev.dexsr.klio.android.main.root.compose.OldRootNavHost
-import dev.dexsr.klio.base.compose.ComposableFun
+import dev.dexsr.klio.base.compose.ComposableLambda
 import dev.dexsr.klio.base.compose.ComposeBackPressRegistry
 import dev.dexsr.klio.base.compose.NoOpPainter
 import dev.dexsr.klio.base.compose.checkedDpStatic
@@ -180,7 +179,7 @@ private fun MD3RootContent(
 
 @Composable
 private fun MD3RootContentProvidableLocals(
-	content: ComposableFun
+	content: ComposableLambda
 ) {
 	CompositionLocalProvider(
 		content = content

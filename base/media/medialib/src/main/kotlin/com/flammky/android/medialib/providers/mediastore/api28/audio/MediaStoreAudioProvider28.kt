@@ -19,7 +19,9 @@ import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider.Cont
 import com.flammky.android.medialib.providers.mediastore.api28.MediaStore28
 import com.flammky.android.medialib.providers.mediastore.api28.MediaStoreProvider28
 import com.flammky.musicplayer.core.sdk.AndroidAPI
+import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.hasLevel
 import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.isTiramisu
+import com.flammky.musicplayer.core.sdk.tiramisu
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
@@ -321,12 +323,12 @@ class MediaStoreAudioProvider28(private val context: MediaStoreContext)
 	}
 
 	private fun hasFsReadPermission(): Boolean {
-		if (AndroidAPI.isTiramisu()) {
+		if (AndroidAPI.hasLevel(AndroidAPI.tiramisu.BUILD_CODE_INT)) {
 			if (contextHelper.permissions.hasPermission(android.Manifest.permission.READ_MEDIA_AUDIO)) {
 				return true
 			}
 		} else {
-			if (hasFsReadPermission()) {
+			if (contextHelper.permissions.common.hasReadExternalStorage) {
 				return true
 			}
 		}

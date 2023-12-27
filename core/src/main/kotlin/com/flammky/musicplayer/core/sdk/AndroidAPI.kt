@@ -2,6 +2,8 @@ package com.flammky.musicplayer.core.sdk
 
 import android.os.Build
 
+// maybe: Object receiver instead
+
 /**
  * @see AndroidBuildVersion
  */

@@ -12,7 +12,9 @@ import com.flammky.android.medialib.providers.mediastore.MediaStoreContext
 import com.flammky.android.medialib.providers.mediastore.MediaStoreContext.Companion.android
 import com.flammky.android.medialib.providers.mediastore.api28.MediaStore28
 import com.flammky.musicplayer.core.sdk.AndroidAPI
+import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.hasLevel
 import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.isTiramisu
+import com.flammky.musicplayer.core.sdk.tiramisu
 
 
 internal class AudioEntityProvider28 (private val context: MediaStoreContext) {
@@ -115,7 +117,7 @@ internal class AudioEntityProvider28 (private val context: MediaStoreContext) {
 	}
 
 	private fun hasFsReadPermission(): Boolean {
-		if (AndroidAPI.isTiramisu()) {
+		if (AndroidAPI.hasLevel(AndroidAPI.tiramisu.BUILD_CODE_INT)) {
 			if (contextHelper.permissions.hasPermission(android.Manifest.permission.READ_MEDIA_AUDIO)) {
 				return true
 			}

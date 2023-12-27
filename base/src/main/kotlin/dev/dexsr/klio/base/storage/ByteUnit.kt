@@ -105,11 +105,11 @@ sealed class ByteUnit(
     }
 
     override fun hashCode(): Int {
-        var result = 0
-        result += amount.hashCode()
-        result *= 31 ; result += byteFactor.hashCode()
-        return result
-    }
+		var result = 0
+		result += amount.hashCode()
+		result *= 31 ; result += byteFactor.hashCode()
+		return result
+	}
 
     override fun toString(): String {
         return "ByteUnit: $amount $abbreviation"
@@ -184,4 +184,8 @@ inline fun ByteUnit.checkNoIntOverflow(): ByteUnit {
 
 fun ByteUnit.toIntCheckNoOverflow(): Int {
     return checkNoIntOverflow().toIntUnsafe()
+}
+
+fun ByteUnit.toIntIgnoreOverflow(): Int {
+	return toIntUnsafe()
 }

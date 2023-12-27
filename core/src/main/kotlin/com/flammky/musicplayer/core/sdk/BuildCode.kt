@@ -1,7 +1,7 @@
 package com.flammky.musicplayer.core.sdk
 
 data class BuildCode(
-    val CODE_INT: Int
+    @JvmField val CODE_INT: Int
 ) {
     operator fun compareTo (other: BuildCode): Int {
         return when {

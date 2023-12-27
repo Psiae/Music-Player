@@ -34,7 +34,9 @@ import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.backgroundContentColorAsState
 import com.flammky.musicplayer.base.theme.compose.surfaceContentColorAsState
 import com.flammky.musicplayer.core.sdk.AndroidAPI
+import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.hasLevel
 import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.isTiramisu
+import com.flammky.musicplayer.core.sdk.tiramisu
 import com.flammky.musicplayer.main.ui.compose.MaterialDesign3Theme
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
@@ -58,7 +60,7 @@ private val entryPermViewModel: EntryPermViewModel
 private val readStoragePermission = AndroidPermission.Read_External_Storage
 private val writeStoragePermission = AndroidPermission.Write_External_Stoage
 
-private val pageItems = if (AndroidAPI.isTiramisu()) {
+private val pageItems = if (AndroidAPI.hasLevel(AndroidAPI.tiramisu.BUILD_CODE_INT)) {
 	listOf(
 		PermissionPageItem(
 			AndroidPermission.Other(

@@ -19,7 +19,7 @@ import kotlinx.coroutines.flow.flow
 fun ContentResolver.observeUri(
 	uri: Uri,
 	includeChild: Boolean,
-	channelBuffer: Int = Channel.BUFFERED
+	channelBuffer: Int = Channel.CONFLATED
 ): Flow<ObserveContentEvent> {
 	return flow {
 		val channel = Channel<ObserveContentEvent>(channelBuffer)

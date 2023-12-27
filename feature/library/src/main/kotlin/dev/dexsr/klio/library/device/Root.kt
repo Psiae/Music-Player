@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import com.flammky.musicplayer.base.compose.LocalLayoutVisibility
+import com.flammky.musicplayer.base.compose.NoInlineColumn
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.backgroundContentColorAsState
 import com.flammky.musicplayer.core.sdk.AndroidAPI
@@ -61,15 +62,29 @@ internal fun DeviceRootContent(
 	modifier: Modifier,
 	navigate: (String) -> Unit
 ) {
-	val hasDevicePermission = PlatformLibrary.hasQueryAudioFilesPermission()
-	Column(
+	val hasDevicePermission = PlatformLibraryUI.hasQueryAudioFilesPermission()
+
+	NoInlineColumn(
 		modifier
 			.fillMaxSize()
 			.padding(horizontal = MD3Spec.margin.MARGIN_INCREMENTS_VALUE_COMPACT.dp)
 			.verticalScroll(rememberScrollState())
 	) {
+
 		Spacer(modifier = Modifier.height(LocalLayoutVisibility.Top.current))
 		Spacer(modifier = Modifier.height(MD3Theme.dpPaddingIncrementsOf(2)))
+
+		if (!hasDevicePermission) {
+			CompositionLocalProvider(
+				LocalLayoutVisibility.Bottom provides 0.dp
+			) {
+				Spacer(modifier = Modifier.height(MD3Theme.dpPaddingIncrementsOf(2)))
+				RequestQueryAudioFilesPermissionPanel(modifier = Modifier.heightIn(max = 300.dp))
+			}
+			Spacer(modifier = Modifier.height(MD3Theme.dpPaddingIncrementsOf(2)))
+			Spacer(modifier = Modifier.height(LocalLayoutVisibility.Bottom.current))
+			return@NoInlineColumn
+		}
 
 		CompositionLocalProvider(
 			LocalLayoutVisibility.Bottom provides 0.dp

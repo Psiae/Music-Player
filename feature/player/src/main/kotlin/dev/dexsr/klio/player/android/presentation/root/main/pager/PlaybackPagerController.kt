@@ -12,7 +12,6 @@ import dev.dexsr.klio.android.base.checkInMainLooper
 import dev.dexsr.klio.base.compose.SnapshotRead
 import dev.dexsr.klio.base.compose.SnapshotWrite
 import dev.dexsr.klio.base.kt.castOrNull
-import dev.dexsr.klio.player.android.presentation.root.main.pager.*
 import kotlinx.coroutines.*
 import timber.log.Timber
 import kotlin.math.abs
@@ -274,15 +273,17 @@ class PlaybackPagerController(
                         shiftCount = max(cCutHeadCount, pCutTailCount)
                     }
 
-                    // timeline=PlaybackPagerTimeline@3b461b4(windows=[MediaStore_28_AUDIO_28, MediaStore_28_AUDIO_36, MediaStore_28_AUDIO_37, MediaStore_28_AUDIO_38, MediaStore_28_AUDIO_39, MediaStore_28_AUDIO_40, MediaStore_28_AUDIO_41, MediaStore_28_AUDIO_43, MediaStore_28_AUDIO_42, MediaStore_28_AUDIO_44], currentIndex=4),
-                    // previousTimeline=PlaybackPagerTimeline@ecaa1dd(windows=[MediaStore_28_AUDIO_28, MediaStore_28_AUDIO_36, MediaStore_28_AUDIO_37, MediaStore_28_AUDIO_38, MediaStore_28_AUDIO_39, MediaStore_28_AUDIO_40, MediaStore_28_AUDIO_41, MediaStore_28_AUDIO_42, MediaStore_28_AUDIO_43, MediaStore_28_AUDIO_44], currentIndex=4)
+                    Timber.d("PlaybackPagerController_DEBUG: onNewTimelineUpdate_eqSize_result($cCutHeadCount, $cCutTailCount, $pCutHeadCount, $pCutTailCount)")
 
                     if (
                         !rightShift && !leftShift &&
-                        cCutHeadCount == 0 && cCutTailCount == 0 &&
-                        pCutHeadCount == 0 && pCutTailCount == 0
+                        cCutHeadCount == 0 && pCutHeadCount == 0 &&
+                        // we know that the head is the same, we can just compare tail and current
+                        run {
+                            timeline.windows.subList(timeline.currentIndex, timeline.windows.size) ==
+                                    previousTimeline.windows.subList(timeline.currentIndex, timeline.windows.size)
+                        }
                     ) {
-                        check(timeline.windows == previousTimeline.windows)
                         shiftNone = true
                     }
                 }
@@ -2152,7 +2153,7 @@ class PlaybackPagerController(
         protected var scroller: Job? = null
             private set
 
-        private var scrollPreconsumed = false
+        private var scrollPreConsumed = false
 
         fun ensureScrollActive() {
             checkInMainLooper()
@@ -2194,7 +2195,7 @@ class PlaybackPagerController(
                 return
             }
 
-            scrollPreconsumed = preCancelled
+            scrollPreConsumed = preCancelled
             isScrolling = true
 
             scroller = worker

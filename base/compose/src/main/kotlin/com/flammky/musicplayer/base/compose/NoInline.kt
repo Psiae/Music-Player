@@ -5,6 +5,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 
+// androidx.compose.runtime.Stack.pop(Stack.kt:26)
+
 // consider naming this SubCompose instead
 @Composable
 fun NoInline(content: @Composable () -> Unit) = content()

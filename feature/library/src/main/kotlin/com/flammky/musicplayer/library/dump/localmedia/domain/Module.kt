@@ -17,10 +17,10 @@ object Module {
 	@Provides
 	@Singleton
 	fun provideObservableLocalSongs(
-		@ApplicationContext context: Context,
-		dispatchers: AndroidCoroutineDispatchers,
-		repository: LocalSongRepository,
-		mediaStoreProvider: MediaStoreProvider
+        @ApplicationContext context: Context,
+        dispatchers: AndroidCoroutineDispatchers,
+        repository: LocalSongRepository,
+        mediaStoreProvider: MediaStoreProvider
 	): ObservableLocalSongs = RealObservableLocalSongs(
 		repository = repository,
 		mediaStore = mediaStoreProvider,

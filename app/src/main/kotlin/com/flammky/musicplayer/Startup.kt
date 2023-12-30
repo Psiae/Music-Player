@@ -2,7 +2,7 @@ package com.flammky.musicplayer
 
 import android.content.Context
 import androidx.startup.Initializer
-import com.flammky.musicplayer.base.BaseModuleInitializer
+import com.flammky.musicplayer.android.base.BaseModuleInitializer
 import com.flammky.musicplayer.base.nav.compose.ComposeRootNavigation
 import com.flammky.musicplayer.home.nav.compose.HomeRootNavigator
 import com.flammky.musicplayer.library.dump.nav.compose.LibraryRootNavigator

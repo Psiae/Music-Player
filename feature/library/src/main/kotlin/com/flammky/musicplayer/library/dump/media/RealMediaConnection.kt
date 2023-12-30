@@ -6,7 +6,7 @@ import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider
 import com.flammky.android.medialib.temp.image.ArtworkProvider
-import com.flammky.musicplayer.base.Playback
+import com.flammky.musicplayer.android.base.Playback
 import com.flammky.musicplayer.base.media.MediaConstants
 import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConnection
 import com.flammky.musicplayer.base.media.playback.OldPlaybackQueue
@@ -20,12 +20,12 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 
 internal class RealMediaConnection(
-	private val artworkProvider: ArtworkProvider,
-	private val context: Context,
-	private val dispatcher: AndroidCoroutineDispatchers,
-	private val mediaStore: MediaStoreProvider,
-	private val mediaRepo: MediaMetadataCacheRepository,
-	private val playbackConnection: PlaybackConnection
+    private val artworkProvider: ArtworkProvider,
+    private val context: Context,
+    private val dispatcher: AndroidCoroutineDispatchers,
+    private val mediaStore: MediaStoreProvider,
+    private val mediaRepo: MediaMetadataCacheRepository,
+    private val playbackConnection: PlaybackConnection
 ) : MediaConnection {
 	private val coroutineScope = CoroutineScope(SupervisorJob())
 

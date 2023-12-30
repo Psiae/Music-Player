@@ -1,6 +1,6 @@
 package com.flammky.musicplayer.base.media.playback
 
-import com.flammky.musicplayer.base.BuildConfig
+import com.flammky.android.medialib.BuildConfig
 import com.flammky.musicplayer.base.media.playback.PlaybackProperties.PlaybackState
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf

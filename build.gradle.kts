@@ -1,12 +1,15 @@
+import org.gradle.api.file.DuplicatesStrategy
+
 // Top-level build file where you can add configuration options common to all sub-projectsmodules.
 buildscript {
     val vKotlin = "1.9.0"
     val vHilt = "2.48"
     dependencies {
+        classpath("org.jetbrains.kotlinx:atomicfu-gradle-plugin:0.19.0")
+        classpath("org.jetbrains.kotlin:atomicfu:$vKotlin")
         classpath("com.google.dagger:hilt-android-gradle-plugin:$vHilt")
         classpath("org.jetbrains.kotlin:kotlin-serialization:$vKotlin")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$vKotlin")
-        classpath("org.jetbrains.kotlinx:atomicfu-gradle-plugin:0.19.0")
     }
     repositories {
         mavenCentral()
@@ -15,16 +18,21 @@ buildscript {
 }
 
 plugins {
-    id("com.android.application") version "7.3.1" apply false
-    id("com.android.library") version "7.3.1" apply false
+    // TODO: figure out why app:dexBuilderDebug fails on AGP 8.0 when depend on Java module
+    id("com.android.application") version "7.4.0" apply false
+    id("com.android.library") version "7.4.0" apply false
     id("com.google.devtools.ksp") version "1.9.0-1.0.13" apply false
     id("org.jetbrains.kotlin.android") version "1.9.0" apply false
     id("org.jetbrains.kotlin.plugin.serialization") version "1.9.0" apply false
     id("org.jetbrains.kotlin.jvm") version "1.9.0" apply false
     kotlin("kapt") version "1.9.0"
+
+    id("io.realm.kotlin") version "1.13.0" apply false
 }
 
-apply(plugin = "kotlinx-atomicfu")
+allprojects {
+    apply(plugin = "kotlinx-atomicfu")
+}
 
 task<Delete>("clean") {
     delete(rootProject.buildDir)
@@ -46,5 +54,12 @@ subprojects {
                 )
             }
         }
+    }
+}
+
+subprojects {
+    tasks.withType<org.gradle.jvm.tasks.Jar>().configureEach {
+        // TODO
+        duplicatesStrategy = DuplicatesStrategy.INCLUDE
     }
 }

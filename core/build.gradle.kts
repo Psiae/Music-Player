@@ -21,25 +21,5 @@ android {
 }
 
 dependencies {
-    implementation("androidx.annotation:annotation:1.5.0")
-
-    //
-    // Debug
-    //
-
-    @Suppress("SpellCheckingInspection")
-    /* jakeWharton.timber */
-    dependencies {
-        val v = "5.0.1"
-        api("com.jakewharton.timber:timber:$v")
-    }
-
-    //
-    // Misc
-    //
-    /* androidx.startup */
-    dependencies {
-        val v = "1.1.1"
-        api("androidx.startup:startup-runtime:$v")
-    }
+    api(project(":core:core-android"))
 }

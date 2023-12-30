@@ -17,10 +17,10 @@ import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import com.flammky.android.common.broadcast.ContextBroadcastManager
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
+import com.flammky.android.medialib.BuildConfig
 import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider
 import com.flammky.common.kotlin.collection.mutable.forEachClear
 import com.flammky.common.kotlin.coroutines.safeCollect
-import com.flammky.musicplayer.base.BuildConfig
 import com.flammky.musicplayer.android.base.activity.ActivityWatcher
 import com.flammky.musicplayer.base.media.r.MediaContentWatcher
 import com.flammky.musicplayer.base.media.r.MediaMetadataCacheRepository

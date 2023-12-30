@@ -2,7 +2,7 @@ package com.flammky.musicplayer.base.media.r
 
 import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider
 import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider.ContentObserver.Flag.Companion.isDelete
-import com.flammky.musicplayer.base.Playback
+import com.flammky.musicplayer.android.base.Playback
 import com.flammky.musicplayer.base.auth.AuthService
 import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConnection
 import com.flammky.musicplayer.base.media.playback.PlaybackConstants

@@ -18,12 +18,12 @@ internal object Module {
 	@Provides
 	@Singleton
 	fun provideMediaConnection(
-		artworkProvider: ArtworkProvider,
-		@ApplicationContext context: Context,
-		metadataCacheRepository: MediaMetadataCacheRepository,
-		dispatchers: AndroidCoroutineDispatchers,
-		playbackConnection: PlaybackConnection,
-		mediaStoreProvider: MediaStoreProvider,
+        artworkProvider: ArtworkProvider,
+        @ApplicationContext context: Context,
+        metadataCacheRepository: MediaMetadataCacheRepository,
+        dispatchers: AndroidCoroutineDispatchers,
+        playbackConnection: PlaybackConnection,
+        mediaStoreProvider: MediaStoreProvider,
 	): MediaConnection {
 		return RealMediaConnection(
 			artworkProvider,

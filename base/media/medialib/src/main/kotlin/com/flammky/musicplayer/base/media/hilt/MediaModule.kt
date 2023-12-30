@@ -8,7 +8,7 @@ import com.flammky.android.medialib.providers.ProvidersContext
 import com.flammky.android.medialib.providers.mediastore.MediaStoreContext
 import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider
 import com.flammky.android.medialib.providers.mediastore.internal.RealMediaStoreProvider
-import com.flammky.musicplayer.base.Playback
+import com.flammky.musicplayer.android.base.Playback
 import com.flammky.musicplayer.base.auth.AuthService
 import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConnection
 import com.flammky.musicplayer.base.media.mediaconnection.playback.real.RealPlaybackConnection
@@ -59,9 +59,9 @@ object MediaModule {
 	@Provides
 	@Singleton
 	fun provideMediaContentWatcher(
-		authService: AuthService,
-		playbackConnection: PlaybackConnection,
-		mediaStoreProvider: MediaStoreProvider,
+        authService: AuthService,
+        playbackConnection: PlaybackConnection,
+        mediaStoreProvider: MediaStoreProvider,
 	): MediaContentWatcher {
 		return MediaContentWatcher(authService, playbackConnection, mediaStoreProvider)
 	}

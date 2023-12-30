@@ -8,6 +8,7 @@ import android.os.Environment
 import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.provider.OpenableColumns
+import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.musicplayer.core.sdk.AndroidAPI
 import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.hasQ
 import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.hasR
@@ -36,7 +37,7 @@ object DocumentProviderHelper {
 
   @JvmStatic
   val storagePath
-    get() = if (AndroidAPI.hasR()) {
+    get() = if (com.flammky.musicplayer.core.sdk.AndroidAPI.hasR()) {
       Environment.getStorageDirectory().toString()
     } else {
       "/storage"
@@ -47,7 +48,7 @@ object DocumentProviderHelper {
     return withContext(coroutineContext) { URLDecoder.decode(url, enc) }
   }
 
-  private val dispatchers = com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers.DEFAULT
+  private val dispatchers = AndroidCoroutineDispatchers.DEFAULT
 
   suspend fun getAudioPathFromContentUri(
     context: Context,

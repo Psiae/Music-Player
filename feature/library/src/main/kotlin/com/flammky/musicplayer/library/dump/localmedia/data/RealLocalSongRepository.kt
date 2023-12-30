@@ -33,12 +33,12 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 internal class RealLocalSongRepository(
-	private val context: Context,
-	private val dispatchers: AndroidCoroutineDispatchers,
-	private val artworkProvider: ArtworkProvider,
-	private val metadataProvider: MetadataProvider,
-	private val mediaConnection: MediaConnection,
-	private val mediaStoreProvider: MediaStoreProvider,
+    private val context: Context,
+    private val dispatchers: AndroidCoroutineDispatchers,
+    private val artworkProvider: ArtworkProvider,
+    private val metadataProvider: MetadataProvider,
+    private val mediaConnection: MediaConnection,
+    private val mediaStoreProvider: MediaStoreProvider,
 ) : LocalSongRepository {
 
 	private val audioProvider = mediaStoreProvider.audio

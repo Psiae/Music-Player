@@ -7,7 +7,7 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import androidx.core.net.toUri
-import com.flammky.musicplayer.base.BuildConfig
+import com.flammky.android.medialib.BuildConfig
 import com.flammky.musicplayer.core.sdk.AndroidAPI
 import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.hasR
 import com.flammky.musicplayer.dump.mediaplayer.helper.Preconditions.checkArgument

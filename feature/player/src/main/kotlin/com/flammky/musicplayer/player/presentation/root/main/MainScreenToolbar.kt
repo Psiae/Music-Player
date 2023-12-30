@@ -38,7 +38,7 @@ fun MainScreenToolBar(
                 Icon(
                     modifier = modifier
                         .align(Alignment.Center),
-                    painter = painterResource(id = com.flammky.musicplayer.base.R.drawable.more_vert_48px),
+                    painter = painterResource(id = R.drawable.more_vert_48px),
                     contentDescription = "more",
                     tint = color
                 )

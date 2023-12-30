@@ -5,9 +5,9 @@ import androidx.annotation.GuardedBy
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider
 import com.flammky.android.medialib.temp.image.ArtworkProvider
+import com.flammky.musicplayer.android.base.coroutine.NonBlockingDispatcherPool
 import com.flammky.musicplayer.base.auth.AuthService
 import com.flammky.musicplayer.base.auth.LocalAuth
-import com.flammky.musicplayer.base.coroutine.NonBlockingDispatcherPool
 import com.flammky.musicplayer.base.media.MetadataProvider
 import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConnection
 import com.flammky.musicplayer.base.media.r.MediaMetadataCacheRepository

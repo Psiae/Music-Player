@@ -3,6 +3,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("dagger.hilt.android.plugin")
     id("kotlin-kapt")
+    id("io.realm.kotlin")
 }
 
 android {
@@ -15,23 +16,23 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = ComposeVersion.kotlinCompilerExtension
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions {
-        jvmTarget = "11"
+        jvmTarget = "17"
     }
 }
 
 dependencies {
-    api(project(":base"))
-    api(project(":base:compose"))
-    api(project(":base:media"))
+    implementation(project(":base:media"))
+    implementation(project(":feature:base"))
 
     /* android.accompanist */
     dependencies {

@@ -12,7 +12,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import com.flammky.musicplayer.base.R
 import dev.dexsr.klio.base.theme.md3.MD3Theme
 import dev.dexsr.klio.base.theme.md3.compose.surfaceContentColorAsState
 
@@ -84,7 +83,7 @@ fun PlaybackControlMainScreenToolbar(
                                     else 28.dp
                                 )
                         },
-                    painter = painterResource(id = R.drawable.more_vert_48px),
+                    painter = painterResource(id = com.flammky.musicplayer.player.R.drawable.more_vert_48px),
                     contentDescription = "more",
                     tint = MD3Theme.surfaceContentColorAsState().value
                 )

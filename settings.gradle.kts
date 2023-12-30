@@ -115,6 +115,12 @@ dependencyResolutionManagement {
                 "org.jetbrains.kotlinx",
                 "kotlinx-datetime"
             ).version("0.4.0")
+
+            library(
+                "io.realm.kotlin.library-base",
+                "io.realm.kotlin",
+                "library-base"
+            ).version("1.13.0")
         }
     }
 }
@@ -122,7 +128,6 @@ dependencyResolutionManagement {
 rootProject.name = "MusicPlayer"
 include(":app")
 include(":base")
-include(":base:common")
 include(":base:common:android")
 include(":base:common:android:kotlin")
 include(":base:common:androidx")
@@ -130,7 +135,6 @@ include(":base:common:androidx:viewmodel")
 include(":base:common:androidx:viewmodel:compose")
 include(":base:common:androidx:lifecycle")
 include(":base:common:kotlin")
-include(":base:compose")
 include(":base:lifecycle")
 include(":base:media")
 include(":base:media:medialib")
@@ -145,3 +149,9 @@ include(":feature:player")
 include(":base:navigation")
 include(":base:navigation:compose")
 include(":medialib")
+include(":base:base-common-jvm")
+include(":base:base-common-android")
+include(":medialib:medialib-jvm")
+include(":core:core-jvm")
+include(":core:core-android")
+include(":base2:base2-common-jvm")

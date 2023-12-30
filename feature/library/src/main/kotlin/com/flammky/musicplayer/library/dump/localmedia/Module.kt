@@ -20,12 +20,12 @@ internal object Module {
 	@Singleton
 	@Provides
 	internal fun provideLocalSongRepository(
-		@ApplicationContext context: Context,
-		dispatchers: AndroidCoroutineDispatchers,
-		mediaConnection: MediaConnection,
-		testArtworkProvider: ArtworkProvider,
-		mediaStoreProvider: MediaStoreProvider,
-		metadataProvider: MetadataProvider
+        @ApplicationContext context: Context,
+        dispatchers: AndroidCoroutineDispatchers,
+        mediaConnection: MediaConnection,
+        testArtworkProvider: ArtworkProvider,
+        mediaStoreProvider: MediaStoreProvider,
+        metadataProvider: MetadataProvider
 	): LocalSongRepository {
 		return RealLocalSongRepository(context, dispatchers, testArtworkProvider, metadataProvider, mediaConnection, mediaStoreProvider)
 	}

@@ -36,10 +36,10 @@ object MusicLibraryModule {
 	@Provides
 	@Singleton
 	fun provideTestMetadataProvider(
-		@ApplicationContext context: Context,
-		coroutineDispatchers: AndroidCoroutineDispatchers,
-		cacheRepository: MediaMetadataCacheRepository,
-		mediaStoreProvider: MediaStoreProvider
+        @ApplicationContext context: Context,
+        coroutineDispatchers: AndroidCoroutineDispatchers,
+        cacheRepository: MediaMetadataCacheRepository,
+        mediaStoreProvider: MediaStoreProvider
 	): MetadataProvider {
 		return TestMetadataProvider(context, coroutineDispatchers, cacheRepository, mediaStoreProvider)
 	}

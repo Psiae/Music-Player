@@ -59,7 +59,6 @@ import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import dev.dexsr.klio.base.theme.md3.MD3Theme
 import dev.dexsr.klio.base.theme.md3.compose.dpPaddingIncrementsOf
-import dev.dexsr.klio.base.theme.md3.compose.marginIncrements
 
 @Composable
 @Deprecated("Rewrite")
@@ -258,7 +257,7 @@ internal fun LibraryRootDeviceContents(
 		}
 		false -> @OptIn(ExperimentalPermissionsApi::class) {
 			val permission =
-				if (AndroidAPI.hasLevel(33)) {
+				if (com.flammky.musicplayer.core.sdk.AndroidAPI.hasLevel(33)) {
 					android.Manifest.permission.READ_MEDIA_AUDIO
 				} else {
 					android.Manifest.permission.READ_EXTERNAL_STORAGE

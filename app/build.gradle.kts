@@ -53,16 +53,17 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
         composeOptions.kotlinCompilerExtensionVersion = ComposeVersion.kotlinCompilerExtension
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     @Suppress("SpellCheckingInspection")
     kotlinOptions {
-        jvmTarget = "11"
+        jvmTarget = "17"
         freeCompilerArgs = freeCompilerArgs + "-Xopt-in=kotlin.RequiresOptIn"
         freeCompilerArgs = freeCompilerArgs + "-Xjvm-default=all"
         freeCompilerArgs = freeCompilerArgs + "-Xsam-conversions=class"
@@ -82,15 +83,9 @@ android {
 
 dependencies {
 
-    implementation(project(":core"))
-    implementation(project(":base"))
-    implementation(project(":base:common"))
-    implementation(project(":base:compose"))
+    implementation(project(":base:base-common-android"))
     implementation(project(":base:media"))
-    implementation(project(":base:compose"))
-    implementation(project(":base:lifecycle"))
     implementation(project(":base:media:medialib"))
-    implementation(project(":feature:base"))
     implementation(project(":feature:home"))
     implementation(project(":feature:search"))
     implementation(project(":feature:library"))

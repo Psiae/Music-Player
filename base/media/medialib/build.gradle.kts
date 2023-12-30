@@ -36,16 +36,15 @@ android {
     sourceSets.all {
         kotlin.srcDir("src/$name/kotlin")
     }
+    buildFeatures {
+        buildConfig = true
+    }
 }
 
 dependencies {
 
     // Project Local
-    api(project(":base:common:android"))
-    api(project(":base:common:androidx"))
-    api(project(":base:common:androidx:lifecycle"))
-    api(project(":base:common:kotlin"))
-    api(project(":base"))
+    implementation(project(":base:base-common-android"))
 
     api("androidx.media:media:1.6.0")
 

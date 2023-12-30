@@ -252,7 +252,8 @@ class RealMediaMetadataCacheRepository(
 	}
 
 	companion object {
-		private val SINGLETON = LazyConstructor<RealMediaMetadataCacheRepository>()
+		private val SINGLETON =
+            LazyConstructor<RealMediaMetadataCacheRepository>()
 		fun provide(ctx: Context, dispatchers: AndroidCoroutineDispatchers) = SINGLETON.construct {
 			RealMediaMetadataCacheRepository(ContextHelper(ctx), dispatchers)
 		}

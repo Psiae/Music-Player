@@ -20,13 +20,13 @@ import dagger.hilt.components.SingletonComponent
 object Module {
 	@Provides
 	internal fun providePlaybackControlPresenter(
-		@ApplicationContext context: Context,
-		coroutineDispatchers: AndroidCoroutineDispatchers,
-		playbackConnection: PlaybackConnection,
-		authService: AuthService,
-		metadataCacheRepository: MediaMetadataCacheRepository,
-		artworkProvider: ArtworkProvider,
-		metadataProvider: MetadataProvider
+        @ApplicationContext context: Context,
+        coroutineDispatchers: AndroidCoroutineDispatchers,
+        playbackConnection: PlaybackConnection,
+        authService: AuthService,
+        metadataCacheRepository: MediaMetadataCacheRepository,
+        artworkProvider: ArtworkProvider,
+        metadataProvider: MetadataProvider
 	): PlaybackControlPresenter {
 		return ExpectPlaybackControlPresenter(
 			context,
@@ -41,11 +41,11 @@ object Module {
 
 	@Provides
 	internal fun provideQueuePresenter(
-		authService: AuthService,
-		playbackConnection: PlaybackConnection,
-		artworkProvider: ArtworkProvider,
-		metadataProvider: MetadataProvider,
-		metadataCacheRepository: MediaMetadataCacheRepository
+        authService: AuthService,
+        playbackConnection: PlaybackConnection,
+        artworkProvider: ArtworkProvider,
+        metadataProvider: MetadataProvider,
+        metadataCacheRepository: MediaMetadataCacheRepository
 	): QueuePresenter {
 		return ExpectQueuePresenter(
 			authService,

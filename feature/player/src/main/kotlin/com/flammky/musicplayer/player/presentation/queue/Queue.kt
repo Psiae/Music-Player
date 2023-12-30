@@ -32,7 +32,6 @@ import coil.request.ImageRequest
 import com.flammky.android.medialib.common.mediaitem.AudioFileMetadata
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.providers.metadata.VirtualFileMetadata
-import com.flammky.musicplayer.base.R
 import com.flammky.musicplayer.base.compose.NoInlineBox
 import com.flammky.musicplayer.base.compose.NoInlineColumn
 import com.flammky.musicplayer.base.compose.NoInlineRow
@@ -41,6 +40,7 @@ import com.flammky.musicplayer.base.media.playback.OldPlaybackQueue
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.*
 import com.flammky.musicplayer.base.user.User
+import com.flammky.musicplayer.player.R
 import com.flammky.musicplayer.player.presentation.controller.PlaybackController
 import com.flammky.musicplayer.player.presentation.main.compose.TransitioningCompactPlaybackControl
 import com.google.accompanist.placeholder.PlaceholderHighlight
@@ -335,9 +335,9 @@ private fun QueueItem(
 
             val moreResId =
                 if (Theme.isDarkAsState().value) {
-                    com.flammky.musicplayer.base.R.drawable.more_vert_48px
+                    R.drawable.more_vert_48px
                 } else {
-                    com.flammky.musicplayer.base.R.drawable.more_vert_48px_dark
+                    R.drawable.more_vert_48px_dark
                 }
 
             val context = LocalContext.current

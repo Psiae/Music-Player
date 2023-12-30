@@ -47,7 +47,7 @@ class PlaybackPagerController(
     )
 
     val isScrollInProgress: Boolean
-        // TODO: @SnapshotRead
+        @SnapshotRead
         get() = correctingTimeline or userDragScrolling or userDragFlinging or correctingFling
 
     val currentPage: Int
@@ -1963,9 +1963,9 @@ class PlaybackPagerController(
         get() = layoutState.modifier
 
     // maybe: join them
-    private var latestUserDragInstance: UserDragInstance? = null
-    private var latestUserDragFlingInstance: UserDragFlingInstance? = null
-    private var latestUserSwipeInstance: UserSwipeInstance? = null
+    private var latestUserDragInstance: UserDragInstance? by mutableStateOf(null)
+    private var latestUserDragFlingInstance: UserDragFlingInstance? by mutableStateOf(null)
+    private var latestUserSwipeInstance: UserSwipeInstance? by mutableStateOf(null)
 
     fun newUserDragScroll(): UserDragInstance {
         Timber.d("PlaybackPagerController_DEBUG: newUserDragScroll")

@@ -1,6 +1,7 @@
 package com.flammky.musicplayer.dump.mediaplayer.data.source
 
 import android.content.Context
+import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.musicplayer.dump.mediaplayer.data.source.local.MediaStoreSource
 import com.flammky.musicplayer.dump.mediaplayer.data.source.local.MediaStoreSourceImpl
 import dagger.Module
@@ -27,7 +28,7 @@ object SourceModule {
     @Singleton
     fun provideMediaStoreSource(
 			@ApplicationContext context: Context,
-			androidCoroutineDispatchers: com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
+			androidCoroutineDispatchers: AndroidCoroutineDispatchers
     ): MediaStoreSource = MediaStoreSourceImpl(context, androidCoroutineDispatchers)
   }
 }

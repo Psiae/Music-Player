@@ -51,7 +51,6 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
-import com.flammky.musicplayer.base.R as BaseResource
 
 @Composable
 internal fun RootPlaybackControl(
@@ -626,7 +625,7 @@ private fun BoxScope.Toolbar(
         Spacer(modifier = Modifier.weight(2f))
         Icon(
             modifier = Modifier.size(26.dp),
-            painter = painterResource(id = BaseResource.drawable.more_vert_48px),
+            painter = painterResource(id = R.drawable.more_vert_48px),
             contentDescription = "more",
             tint = Theme.backgroundContentColorAsState().value
         )

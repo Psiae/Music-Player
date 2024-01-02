@@ -32,7 +32,7 @@ import com.flammky.musicplayer.base.theme.compose.backgroundColorAsState
 import com.flammky.musicplayer.base.theme.compose.isDarkAsState
 import com.flammky.musicplayer.base.theme.compose.surfaceVariantColorAsState
 import com.flammky.musicplayer.base.theme.compose.surfaceVariantContentColorAsState
-import com.flammky.musicplayer.library.R
+import dev.dexsr.klio.library.R
 import com.flammky.musicplayer.library.dump.localmedia.data.LocalSongModel
 import com.flammky.musicplayer.library.dump.ui.base.LibraryViewModel
 import com.flammky.musicplayer.library.dump.ui.theme.Theme

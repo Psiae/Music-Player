@@ -13,7 +13,7 @@ import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.common.kotlin.coroutines.safeCollect
 import com.flammky.musicplayer.base.auth.AuthService
-import com.flammky.musicplayer.library.BuildConfig
+import dev.dexsr.klio.library.BuildConfig
 import com.flammky.musicplayer.library.dump.localmedia.data.LocalSongModel
 import com.flammky.musicplayer.library.dump.localmedia.data.LocalSongRepository
 import com.flammky.musicplayer.library.dump.localmedia.domain.ObservableLocalSongs

@@ -30,7 +30,7 @@ import com.flammky.musicplayer.common.media.audio.meta_tag.tag.reference.Languag
 import com.flammky.musicplayer.common.media.audio.meta_tag.tag.reference.PictureTypes
 import com.flammky.musicplayer.common.media.audio.meta_tag.utils.ShiftData
 import com.flammky.musicplayer.core.sdk.AndroidAPI
-import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.hasOreo
+import dev.dexsr.klio.core.sdk.AndroidBuildVersion.hasOreo
 import java.io.*
 import java.nio.ByteBuffer
 import java.nio.channels.Channels

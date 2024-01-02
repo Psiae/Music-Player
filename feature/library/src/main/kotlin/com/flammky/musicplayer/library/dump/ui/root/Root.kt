@@ -14,9 +14,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicText
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -33,7 +31,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
-import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -48,9 +45,8 @@ import com.flammky.musicplayer.base.compose.rewrite
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.backgroundContentColorAsState
 import com.flammky.musicplayer.base.theme.compose.surfaceContentColorAsState
-import com.flammky.musicplayer.core.sdk.AndroidAPI
-import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.hasLevel
-import com.flammky.musicplayer.library.R
+import dev.dexsr.klio.core.sdk.AndroidBuildVersion.hasLevel
+import dev.dexsr.klio.library.R
 import com.flammky.musicplayer.library.dump.localmedia.ui.LocalSongDisplay
 import com.flammky.musicplayer.library.dump.localmedia.ui.LocalSongNavigator
 import com.flammky.musicplayer.library.presentation.entry.PermGuard

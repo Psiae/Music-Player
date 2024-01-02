@@ -11,8 +11,21 @@ sealed class AndroidLocalImage<T>(value: T) : LocalImage<T>(value) {
 			return this === other
 		}
 
-		override fun hashCode(): Int {
-			return System.identityHashCode(this)
+		override fun hashCode(): Int = super.hashCode()
+
+		override fun deepEquals(other: LocalImage<*>): Boolean {
+			return other is Bitmap && other.value.sameAs(value)
+		}
+
+		override fun deepHashcode(): Int {
+			var hash = 0
+			for (x in 0 .. value.width) {
+				for (y in 0 .. value.height) {
+					hash *= 31
+					hash += value.getPixel(x, y).hashCode()
+				}
+			}
+			return hash;
 		}
 	}
 
@@ -22,8 +35,12 @@ sealed class AndroidLocalImage<T>(value: T) : LocalImage<T>(value) {
 			return this === other || other is Resource && other.value == value
 		}
 
-		override fun hashCode(): Int {
-			return Objects.hash(value)
+		override fun deepEquals(other: LocalImage<*>): Boolean {
+			return equals(other)
 		}
+
+		override fun deepHashcode(): Int = hashCode()
+
+		override fun hashCode(): Int = value.hashCode()
 	}
 }

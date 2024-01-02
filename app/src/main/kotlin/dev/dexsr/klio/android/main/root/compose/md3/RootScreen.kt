@@ -6,7 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.Layout
 import com.flammky.musicplayer.core.sdk.AndroidAPI
-import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.hasSnowCone
+import dev.dexsr.klio.core.sdk.AndroidBuildVersion.hasSnowCone
 import dev.dexsr.klio.base.compose.ComposableLambda
 import dev.dexsr.klio.base.compose.SimpleStackLayoutMeasurePolicy
 import dev.dexsr.klio.base.theme.md3.compose.DefaultMaterial3Theme

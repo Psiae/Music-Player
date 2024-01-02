@@ -13,7 +13,7 @@ import com.flammky.musicplayer.base.theme.compose.defaultDarkColorScheme
 import com.flammky.musicplayer.base.theme.compose.defaultLightColorScheme
 import com.flammky.musicplayer.base.theme.compose.elevatedTonalPrimarySurfaceAsState
 import com.flammky.musicplayer.core.sdk.AndroidAPI
-import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.hasSnowCone
+import dev.dexsr.klio.core.sdk.AndroidBuildVersion.hasSnowCone
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.google.android.material.color.DynamicColors
 

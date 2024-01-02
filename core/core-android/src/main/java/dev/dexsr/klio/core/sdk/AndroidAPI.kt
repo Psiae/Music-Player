@@ -1,6 +1,8 @@
 package com.flammky.musicplayer.core.sdk
 
 import android.os.Build
+import dev.dexsr.klio.core.BuildConfig
+import dev.dexsr.klio.core.sdk.UpsideDownCake
 
 // maybe: Object receiver instead
 
@@ -22,7 +24,15 @@ abstract class AndroidAPI {
             Pie.buildcode.CODE_INT -> Pie
             Oreo.buildcode.CODE_INT -> Oreo
             Nougat.buildcode.CODE_INT -> Nougat
-            else -> error("Unsupported Android API version: $sdk")
+            else -> if (BuildConfig.DEBUG) {
+                // we don't target these API yet, but build tools run on it
+                when(sdk) {
+                    UpsideDownCake.buildcode.CODE_INT -> UpsideDownCake
+                    else -> error("Unsupported Android API version: $sdk")
+                }
+            } else {
+                error("Unsupported Android API version: $sdk")
+            }
         }
 
         override val buildcode: BuildCode = current.buildcode

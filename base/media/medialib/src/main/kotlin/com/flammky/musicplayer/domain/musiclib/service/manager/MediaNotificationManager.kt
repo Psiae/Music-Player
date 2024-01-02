@@ -27,9 +27,9 @@ import com.flammky.common.kotlin.comparable.clamp
 import com.flammky.common.kotlin.coroutines.AutoCancelJob
 import com.flammky.musicplayer.android.base.activity.ActivityWatcher
 import com.flammky.musicplayer.core.sdk.AndroidAPI
-import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.hasLevel
-import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.hasOreo
-import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.inLevel
+import dev.dexsr.klio.core.sdk.AndroidBuildVersion.hasLevel
+import dev.dexsr.klio.core.sdk.AndroidBuildVersion.hasOreo
+import dev.dexsr.klio.core.sdk.AndroidBuildVersion.inLevel
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemFactory.orEmpty
 import com.flammky.musicplayer.domain.musiclib.media3.mediaitem.MediaItemInfo

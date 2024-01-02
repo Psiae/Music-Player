@@ -17,6 +17,7 @@ import dev.dexsr.klio.base.kt.cast
 import dev.dexsr.klio.library.device.DeviceRootContent
 import dev.dexsr.klio.library.spotify.ui.SpotifyUiRoot
 import dev.dexsr.klio.library.ui.nav.LibraryUiNavigator
+import dev.dexsr.klio.library.user.playlist.YourPlaylistScreen
 import dev.dexsr.klio.library.ytm.ui.YTMusicUiRoot
 import kotlinx.atomicfu.atomic
 
@@ -59,6 +60,15 @@ class LibraryMainNavigator(
 				Snapshot.withoutReadObservation {
 					currentSubDestination = ComposeDestination(
 						content = @Composable { LocalSongListsLegacy() },
+						route = route
+					)
+				}
+				true
+			}
+			"library.user.playlists" -> {
+				Snapshot.withoutReadObservation {
+					currentSubDestination = ComposeDestination(
+						content = @Composable { YourPlaylistScreen(modifier = Modifier) },
 						route = route
 					)
 				}

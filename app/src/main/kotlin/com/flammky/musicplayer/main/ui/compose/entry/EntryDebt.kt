@@ -27,15 +27,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.flammky.android.content.context.ContextHelper
 import com.flammky.android.manifest.permission.AndroidPermission
-import com.flammky.androidx.content.context.findActivity
 import com.flammky.androidx.content.context.findAnyActivity
 import com.flammky.musicplayer.R
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.backgroundContentColorAsState
 import com.flammky.musicplayer.base.theme.compose.surfaceContentColorAsState
 import com.flammky.musicplayer.core.sdk.AndroidAPI
-import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.hasLevel
-import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.isTiramisu
+import dev.dexsr.klio.core.sdk.AndroidBuildVersion.hasLevel
 import com.flammky.musicplayer.core.sdk.tiramisu
 import com.flammky.musicplayer.main.ui.compose.MaterialDesign3Theme
 import com.google.accompanist.pager.ExperimentalPagerApi

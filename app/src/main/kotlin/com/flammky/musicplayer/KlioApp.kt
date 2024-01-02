@@ -1,6 +1,7 @@
 package com.flammky.musicplayer
 
 import android.app.Application
+import androidx.startup.AppInitializer as AndroidStartupInitializer
 import com.flammky.kotlin.common.lazy.LazyConstructor
 import dagger.hilt.android.HiltAndroidApp
 import org.koin.core.context.startKoin
@@ -14,6 +15,9 @@ class KlioApp : Application() {
 		startKoin {
 			// TODO
 		}
+		AndroidStartupInitializer
+			.getInstance(this)
+			.initializeComponent(AppInitializer::class.java)
 	}
 
 	companion object {

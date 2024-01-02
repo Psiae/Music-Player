@@ -2,14 +2,12 @@ package com.flammky.musicplayer.library.presentation.entry
 
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalLifecycleOwner
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ViewModel
 import com.flammky.musicplayer.base.compose.rememberLocalContextHelper
 import com.flammky.musicplayer.core.sdk.AndroidAPI
-import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.hasLevel
-import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.isTiramisu
+import dev.dexsr.klio.core.sdk.AndroidBuildVersion.hasLevel
 import com.flammky.musicplayer.core.sdk.tiramisu
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject

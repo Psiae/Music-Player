@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -34,9 +33,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.flammky.musicplayer.base.theme.Theme
-import com.flammky.musicplayer.base.theme.compose.backgroundContentColorAsState
-import com.flammky.musicplayer.library.R
 import dev.dexsr.klio.base.compose.clickable
 import dev.dexsr.klio.base.compose.nonScaledFontSize
 import dev.dexsr.klio.base.theme.md3.MD3Spec
@@ -53,6 +49,7 @@ import dev.dexsr.klio.base.theme.md3.compose.shape.toComposeShape
 import dev.dexsr.klio.base.theme.md3.compose.surfaceColorAtElevation
 import dev.dexsr.klio.base.theme.md3.compose.surfaceContentColorAsState
 import dev.dexsr.klio.base.theme.md3.compose.toComposePadding
+import dev.dexsr.klio.library.R
 
 @Composable
 fun RootDeviceLibraryPanel(

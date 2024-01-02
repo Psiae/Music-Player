@@ -7,15 +7,27 @@ import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider.Cont
 import com.flammky.common.kotlin.coroutines.safeCollect
 import com.flammky.musicplayer.library.dump.localmedia.data.LocalSongModel
 import com.flammky.musicplayer.library.dump.localmedia.data.LocalSongRepository
+import dev.dexsr.klio.library.BuildConfig
+import dev.dexsr.klio.media.playlist.Playlist
+import dev.dexsr.klio.media.playlist.PlaylistItem
+import dev.dexsr.klio.media.playlist.RealPlaylistRepository
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toPersistentList
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -46,6 +58,8 @@ class RealObservableLocalSongs(
 	private val mediaStore: MediaStoreProvider,
 	private val dispatchers: AndroidCoroutineDispatchers
 ) : ObservableLocalSongs {
+
+	private val playlistRepo = RealPlaylistRepository()
 
 	private val scheduleMutex = Mutex()
 	private var _refreshJob: Job? = null
@@ -114,7 +128,29 @@ class RealObservableLocalSongs(
 			}
 			_refreshJob = ioScope.launch {
 				sendUpdate(remembered, true)
-				sendUpdate(doScheduledRefresh(id), false)
+				sendUpdate(doScheduledRefresh(id).also { songs ->
+					playlistRepo.updateOrCreate(
+						Playlist(
+							// fixme: magic literal
+							id = "device_songlist",
+							snapshotId = "",
+							contents = songs.map { PlaylistItem(id = it.id, contentId = it.id) },
+							displayName = "Local Files",
+							ownerId = "klio:android"
+						)
+					).await()
+						.onSuccess {
+							if (BuildConfig.DEBUG) {
+								Timber.d("ObservableLocalSongs, updateDeviceSongLists success(id=${it.id}, snapshotId=${it.snapshotId}, contents=${it.contents.map { "(id=${it.id}, contentId=${it.contentId})" }})")
+							}
+						}
+						.onFailure { ex ->
+							if (BuildConfig.DEBUG) {
+								Timber.d("ObservableLocalSongs, updateDeviceSongLists fail=$ex")
+								ex.printStackTrace()
+							}
+						}
+				}, false)
 			}
 			_refreshJob!!
 		}
@@ -174,5 +210,6 @@ class RealObservableLocalSongs(
 	override fun release() {
 		ioScope.cancel()
 		mediaStore.audio.removeObserver(observer)
+		playlistRepo.dispose()
 	}
 }

@@ -59,7 +59,7 @@ import com.flammky.common.kotlin.coroutines.safeCollect
 import com.flammky.musicplayer.base.theme.compose.backgroundColorAsState
 import com.flammky.musicplayer.base.theme.compose.backgroundContentColorAsState
 import com.flammky.musicplayer.base.theme.compose.elevatedTonalSurfaceColorAsState
-import com.flammky.musicplayer.library.R
+import dev.dexsr.klio.library.R
 import com.flammky.musicplayer.library.dump.localmedia.data.LocalSongModel
 import com.flammky.musicplayer.library.dump.ui.theme.Theme
 import com.google.accompanist.placeholder.PlaceholderHighlight

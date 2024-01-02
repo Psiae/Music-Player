@@ -36,7 +36,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.backgroundContentColorAsState
-import com.flammky.musicplayer.library.R
+import dev.dexsr.klio.library.R
 import dev.dexsr.klio.base.compose.clickable
 import dev.dexsr.klio.base.compose.nonScaledFontSize
 import dev.dexsr.klio.base.theme.md3.MD3Spec
@@ -54,7 +54,8 @@ import dev.dexsr.klio.base.theme.md3.compose.toComposePadding
 
 @Composable
 fun RootYourLibraryPanel(
-	modifier: Modifier = Modifier
+	modifier: Modifier = Modifier,
+	openPlaylist: (() -> Unit)?
 ) {
 	Column(modifier) {
 		Row(
@@ -84,7 +85,7 @@ fun RootYourLibraryPanel(
 					Modifier
 						.defaultMinSize(95.dp, 95.dp)
 						.sizeIn(maxHeight = 120.dp, maxWidth = 95.dp),
-					onClick = { /*TODO*/ }
+					onClick = openPlaylist
 				)
 				YourAlbums(
 					modifier = Modifier

@@ -92,6 +92,8 @@ dependencies {
     implementation(project(":feature:user"))
     implementation(project(":feature:player"))
 
+    implementation(project(":media:media-android"))
+
     implementation(libs.koin.android)
     implementation(libs.koin.androidx.compose)
 

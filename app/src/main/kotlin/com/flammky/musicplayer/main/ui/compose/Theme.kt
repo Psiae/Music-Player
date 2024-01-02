@@ -4,7 +4,6 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -14,7 +13,7 @@ import com.flammky.musicplayer.base.theme.compose.defaultDarkColorScheme
 import com.flammky.musicplayer.base.theme.compose.defaultLightColorScheme
 import com.flammky.musicplayer.base.theme.compose.elevatedTonalPrimarySurfaceAsState
 import com.flammky.musicplayer.core.sdk.AndroidAPI
-import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.hasSnowCone
+import dev.dexsr.klio.core.sdk.AndroidBuildVersion.hasSnowCone
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.google.android.material.color.DynamicColors
 

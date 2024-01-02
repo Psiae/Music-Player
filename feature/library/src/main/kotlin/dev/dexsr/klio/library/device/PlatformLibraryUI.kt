@@ -5,7 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import com.flammky.musicplayer.base.compose.rememberLocalContextHelper
 import com.flammky.musicplayer.core.sdk.AndroidAPI
-import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.hasLevel
+import dev.dexsr.klio.core.sdk.AndroidBuildVersion.hasLevel
 import com.flammky.musicplayer.core.sdk.tiramisu
 import com.flammky.musicplayer.library.presentation.entry.PermGuard
 

@@ -8,6 +8,7 @@ import com.flammky.musicplayer.home.nav.compose.HomeRootNavigator
 import com.flammky.musicplayer.library.dump.nav.compose.LibraryRootNavigator
 import com.flammky.musicplayer.search.nav.compose.SearchRootNavigator
 import com.flammky.musicplayer.user.nav.compose.UserRootNavigator
+import dev.dexsr.klio.media.MediaAndroidInitializer
 import kotlinx.atomicfu.atomic
 import kotlinx.collections.immutable.persistentListOf
 
@@ -30,6 +31,7 @@ class AppInitializer : Initializer<Unit> {
 				}
 				add(BaseModuleInitializer::class.java)
 				add(BaseModuleFeatureInitializer::class.java)
+				add(MediaAndroidInitializer::class.java)
 			}
 	}
 

@@ -44,8 +44,8 @@ import com.flammky.musicplayer.base.compose.NoInlineColumn
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.backgroundContentColorAsState
 import com.flammky.musicplayer.core.sdk.AndroidAPI
-import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.hasLevel
-import com.flammky.musicplayer.library.R
+import dev.dexsr.klio.core.sdk.AndroidBuildVersion.hasLevel
+import dev.dexsr.klio.library.R
 import com.flammky.musicplayer.library.dump.ui.root.LibraryRootDeviceContents
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
@@ -96,7 +96,9 @@ internal fun DeviceRootContent(
 			}
 		}
 
-		RootYourLibraryPanel()
+		RootYourLibraryPanel(
+			openPlaylist = { navigate("library.user.playlists") }
+		)
 
 		if (hasDevicePermission) {
 			Spacer(modifier = Modifier.height(MD3Theme.dpPaddingIncrementsOf(5)))

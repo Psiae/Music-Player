@@ -10,8 +10,8 @@ import android.provider.MediaStore
 import android.provider.OpenableColumns
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
 import com.flammky.musicplayer.core.sdk.AndroidAPI
-import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.hasQ
-import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.hasR
+import dev.dexsr.klio.core.sdk.AndroidBuildVersion.hasQ
+import dev.dexsr.klio.core.sdk.AndroidBuildVersion.hasR
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File

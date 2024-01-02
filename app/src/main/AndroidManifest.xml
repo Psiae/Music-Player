@@ -24,14 +24,15 @@
         android:theme="@style/Theme.App.SplashScreen"
         android:supportsRtl="false">
 
-        <provider
+        <!--fail when trying to link JNI method-->
+        <!--<provider
             android:name="androidx.startup.InitializationProvider"
             android:authorities="${applicationId}.androidx-startup"
             android:exported="false">
             <meta-data
                 android:name="com.flammky.musicplayer.AppInitializer"
                 android:value="androidx.startup"/>
-        </provider>
+        </provider>-->
 
         <service
             android:name=".domain.musiclib.service.MusicLibraryService"

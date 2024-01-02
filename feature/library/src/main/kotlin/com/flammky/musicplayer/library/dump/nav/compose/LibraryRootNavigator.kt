@@ -7,7 +7,7 @@ import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.compose.composable
 import com.flammky.musicplayer.base.nav.compose.ComposeRootDestination
 import com.flammky.musicplayer.base.nav.compose.ComposeRootNavigator
-import com.flammky.musicplayer.library.R
+import dev.dexsr.klio.library.R
 import com.flammky.musicplayer.library.presentation.Library
 
 object LibraryRootNavigator : ComposeRootNavigator("library") {

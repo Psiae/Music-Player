@@ -31,7 +31,7 @@ import com.flammky.musicplayer.base.compose.NoInline
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.backgroundContentColorAsState
 import com.flammky.musicplayer.base.theme.compose.surfaceContentColorAsState
-import com.flammky.musicplayer.library.R
+import dev.dexsr.klio.library.R
 import dev.dexsr.klio.base.compose.ComposeBackPressRegistry
 import dev.dexsr.klio.base.compose.LocalComposeBackPressRegistry
 import dev.dexsr.klio.base.compose.SimpleStack

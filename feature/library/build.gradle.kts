@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "com.flammky.musicplayer.library"
+    namespace = "dev.dexsr.klio.library"
     compileSdk = 33
 
     defaultConfig {
@@ -33,6 +33,7 @@ android {
 dependencies {
     implementation(project(":base:media"))
     implementation(project(":feature:base"))
+    implementation(project(":media:media-jvm"))
 
     /* android.accompanist */
     dependencies {

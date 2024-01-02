@@ -1,7 +1,18 @@
-package com.flammky.musicplayer.core.sdk
+package dev.dexsr.klio.core.sdk
 
 import android.os.Build
 import androidx.annotation.ChecksSdkIntAtLeast
+import com.flammky.musicplayer.core.sdk.AndroidAPI
+import com.flammky.musicplayer.core.sdk.AndroidR
+import com.flammky.musicplayer.core.sdk.Nougat
+import com.flammky.musicplayer.core.sdk.Nougat_MR1
+import com.flammky.musicplayer.core.sdk.Oreo
+import com.flammky.musicplayer.core.sdk.OreoMR1
+import com.flammky.musicplayer.core.sdk.Pie
+import com.flammky.musicplayer.core.sdk.Q
+import com.flammky.musicplayer.core.sdk.SnowCone
+import com.flammky.musicplayer.core.sdk.SnowConeV2
+import com.flammky.musicplayer.core.sdk.Tiramisu
 
 object AndroidBuildVersion {
 
@@ -147,6 +158,5 @@ object AndroidBuildVersion {
     fun AndroidAPI.inLevel(from: Int, to: Int) = inLevel(from .. to)
 
     @JvmStatic
-    @ChecksSdkIntAtLeast(parameter = 1)
     fun AndroidAPI.inLevel(range: IntRange) = buildcode.CODE_INT in range
 }

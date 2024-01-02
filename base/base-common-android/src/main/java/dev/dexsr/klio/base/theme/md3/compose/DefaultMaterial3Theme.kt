@@ -7,7 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalContext
 import com.flammky.musicplayer.core.sdk.AndroidAPI
-import com.flammky.musicplayer.core.sdk.AndroidBuildVersion.hasSnowCone
+import dev.dexsr.klio.core.sdk.AndroidBuildVersion.hasSnowCone
 import com.google.android.material.color.DynamicColors
 import androidx.compose.material3.MaterialTheme as Material3Theme
 

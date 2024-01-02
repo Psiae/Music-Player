@@ -4,7 +4,7 @@ package dev.dexsr.klio.base
 @Suppress("FunctionName")
 inline fun loop(
     block: LoopScope.() -> Unit
-): Unit = (LoopScope() as Looper).loop(block)
+): Unit = (LoopScope() as LoopScopeImpl).loop(block)
 
 // block must return nothing, that includes call to `breakLoop` or `continueLoop`
 @Suppress("FunctionName")
@@ -12,7 +12,7 @@ inline fun strictLoop(
     block: LoopScope.() -> Nothing
 ): Unit = loop(block)
 
-fun LoopScope(): LoopScope = Looper()
+fun LoopScope(): LoopScope = LoopScopeImpl()
 
 interface LoopScope {
 
@@ -24,7 +24,7 @@ interface LoopScope {
 // TODO: LoopBuilder
 
 // public so we can inline the block
-class Looper internal constructor(): LoopScope {
+class LoopScopeImpl internal constructor(): LoopScope {
 
     inline fun loop(block: LoopScope.() -> Unit): Unit {
         while (true) {

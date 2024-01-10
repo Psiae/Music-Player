@@ -3,6 +3,7 @@ package dev.dexsr.klio.media.db.realm
 import com.flammky.kotlin.common.lazy.LazyConstructor
 import dev.dexsr.klio.media.playlist.realm.RealmPlaylist
 import dev.dexsr.klio.media.playlist.realm.RealmPlaylistItem
+import dev.dexsr.klio.media.playlist.realm.paging.RealmPlaylistContentBucket
 import io.realm.kotlin.Realm
 import io.realm.kotlin.RealmConfiguration
 import kotlinx.atomicfu.atomic
@@ -25,7 +26,8 @@ object RealmDB {
                     setOf(
                         RealmPlaylist::class,
                         RealmPlaylistItem::class,
-                        IncrementalRealmPrimaryKey::class
+                        IncrementalRealmPrimaryKey::class,
+                        RealmPlaylistContentBucket::class
                     )
                 )
                 .name("realm-media")

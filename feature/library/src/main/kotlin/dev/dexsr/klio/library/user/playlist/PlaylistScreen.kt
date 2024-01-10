@@ -1,6 +1,7 @@
 package dev.dexsr.klio.library.user.playlist
 
 import android.content.res.Configuration
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -54,19 +55,24 @@ import dev.dexsr.klio.base.theme.md3.compose.localMaterial3Surface
 import dev.dexsr.klio.library.compose.Playlist
 import dev.dexsr.klio.library.compose.toStablePlaylist
 import dev.dexsr.klio.library.shared.LocalMediaArtwork
-import dev.dexsr.klio.media.playlist.RealPlaylistRepository
+import dev.dexsr.klio.media.playlist.LocalPlaylistRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import timber.log.Timber
 import kotlin.math.ceil
 
 @Composable
 fun YourPlaylistScreen(
 	modifier: Modifier,
+
 ) {
 	val repo = remember {
-		RealPlaylistRepository()
+		LocalPlaylistRepository()
+	}
+	val detailState = remember {
+		mutableStateOf<String?>(null)
 	}
 	YourPlaylistScreen(
 		modifier = modifier
@@ -89,15 +95,24 @@ fun YourPlaylistScreen(
 				top = LocalLayoutVisibility.Top.current + margin,
 				bottom = LocalLayoutVisibility.Bottom.current + margin
 			)
-		}
+		},
+		onClick = { detailState.value = it }
 	)
+	detailState.value?.let { detail ->
+		PlaylistDetailScreen(playlistId = detail)
+		// TODO
+		BackHandler {
+			detailState.value = null
+		}
+	}
 }
 
 @Composable
 fun YourPlaylistScreen(
 	modifier: Modifier,
 	observePlaylist: () -> Flow<List<Playlist>>,
-	contentPaddingValues: PaddingValues
+	contentPaddingValues: PaddingValues,
+	onClick: ((String) -> Unit)?
 ) {
 	Box(modifier.fillMaxSize()) {
 		val gridState = rememberLazyGridState()
@@ -126,8 +141,8 @@ fun YourPlaylistScreen(
 							.fillMaxWidth()
 							.defaultMinSize(90.dp),
 						displayName = "Local Files",
-						trackCount = playlist.contents.size,
-						onClick = {}
+						trackCount = playlist.contentCount,
+						onClick = onClick?.let { { onClick(playlist.id) } }
 					)
 					else -> {
 						YourPlaylistGridItem(
@@ -135,8 +150,8 @@ fun YourPlaylistScreen(
 								.fillMaxWidth()
 								.defaultMinSize(90.dp),
 							displayName = playlist.displayName,
-							trackCount = playlist.contents.size,
-							getTrackId = { trackIndex -> playlist.contents[trackIndex].id },
+							trackCount = playlist.contentCount,
+							getTrackId = { trackIndex -> "" },
 							getTrackArt = { flowOf(LocalMediaArtwork.UNSET) },
 							getCreatorName = { flowOf() },
 							onClick = {}

@@ -12,9 +12,9 @@ fun Modifier.consumeDownGesture(
     eventPass: PointerEventPass = PointerEventPass.Main
 ): Modifier = pointerInput(requireUnconsumed, eventPass) {
     awaitEachGesture {
-			awaitFirstDown(
-				requireUnconsumed = requireUnconsumed,
-				pass = eventPass
-			).apply(PointerInputChange::consume)
+		awaitFirstDown(
+			requireUnconsumed = requireUnconsumed,
+			pass = eventPass
+		).apply(PointerInputChange::consume)
     }
 }

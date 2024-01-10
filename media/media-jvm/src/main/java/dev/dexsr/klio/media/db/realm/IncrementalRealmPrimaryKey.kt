@@ -19,11 +19,11 @@ class IncrementalRealmPrimaryKey(
     }
 }
 
-fun Realm.latestPrimaryKey() = query(
+fun Realm.queryLatestIncrementalPrimaryKey() = query(
     IncrementalRealmPrimaryKey::class,
     "_id == $0",
     IncrementalRealmPrimaryKey.PRIMARY_KEY_VALUE
-)
+).first()
 
 fun IncrementalRealmPrimaryKey.advance() = apply {
     // fixme: check if we need to copy

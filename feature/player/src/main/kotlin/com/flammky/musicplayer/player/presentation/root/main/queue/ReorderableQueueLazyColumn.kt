@@ -355,7 +355,7 @@ private fun QueueItemContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight()
-                .padding(5.dp),
+                .padding(4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {

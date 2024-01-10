@@ -7,10 +7,9 @@ import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider.Cont
 import com.flammky.common.kotlin.coroutines.safeCollect
 import com.flammky.musicplayer.library.dump.localmedia.data.LocalSongModel
 import com.flammky.musicplayer.library.dump.localmedia.data.LocalSongRepository
-import dev.dexsr.klio.library.BuildConfig
-import dev.dexsr.klio.media.playlist.Playlist
 import dev.dexsr.klio.media.playlist.PlaylistItem
-import dev.dexsr.klio.media.playlist.RealPlaylistRepository
+import dev.dexsr.klio.media.playlist.LocalPlaylistRepository
+import dev.dexsr.klio.media.playlist.realm.PlaylistSynchronizeData
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toPersistentList
@@ -59,7 +58,7 @@ class RealObservableLocalSongs(
 	private val dispatchers: AndroidCoroutineDispatchers
 ) : ObservableLocalSongs {
 
-	private val playlistRepo = RealPlaylistRepository()
+	private val playlistRepo = LocalPlaylistRepository()
 
 	private val scheduleMutex = Mutex()
 	private var _refreshJob: Job? = null
@@ -129,27 +128,16 @@ class RealObservableLocalSongs(
 			_refreshJob = ioScope.launch {
 				sendUpdate(remembered, true)
 				sendUpdate(doScheduledRefresh(id).also { songs ->
-					playlistRepo.updateOrCreate(
-						Playlist(
+					playlistRepo.synchronizeOrCreate(
+						PlaylistSynchronizeData(
 							// fixme: magic literal
-							id = "device_songlist",
-							snapshotId = "",
+							playlistId = "device_songlist",
+							playlistSnapshotId = "",
 							contents = songs.map { PlaylistItem(id = it.id, contentId = it.id) },
 							displayName = "Local Files",
 							ownerId = "klio:android"
 						)
 					).await()
-						.onSuccess {
-							if (BuildConfig.DEBUG) {
-								Timber.d("ObservableLocalSongs, updateDeviceSongLists success(id=${it.id}, snapshotId=${it.snapshotId}, contents=${it.contents.map { "(id=${it.id}, contentId=${it.contentId})" }})")
-							}
-						}
-						.onFailure { ex ->
-							if (BuildConfig.DEBUG) {
-								Timber.d("ObservableLocalSongs, updateDeviceSongLists fail=$ex")
-								ex.printStackTrace()
-							}
-						}
 				}, false)
 			}
 			_refreshJob!!

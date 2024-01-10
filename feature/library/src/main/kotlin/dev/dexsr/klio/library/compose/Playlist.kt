@@ -1,13 +1,12 @@
 package dev.dexsr.klio.library.compose
 
 import dev.dexsr.klio.base.UNSET
-import dev.dexsr.klio.media.playlist.PlaylistItem
 
 @ComposeImmutable
 class Playlist(
 	val id: String,
 	val snapshotId: String,
-	val contents: List<PlaylistItem>,
+	val contentCount: Int,
 	val displayName: String,
 	val ownerID: String,
 ): UNSET<Playlist> by Companion {
@@ -17,7 +16,7 @@ class Playlist(
 		override val UNSET: Playlist = Playlist(
 			id = "",
 			snapshotId = "",
-			contents = emptyList(),
+			contentCount = 0,
 			displayName = "",
 			ownerID = "",
 		)
@@ -25,5 +24,5 @@ class Playlist(
 }
 
 fun dev.dexsr.klio.media.playlist.Playlist.toStablePlaylist(): Playlist {
-	return Playlist(id, snapshotId, contents, displayName, ownerId)
+	return Playlist(id, snapshotId, contentCount, displayName, ownerId)
 }

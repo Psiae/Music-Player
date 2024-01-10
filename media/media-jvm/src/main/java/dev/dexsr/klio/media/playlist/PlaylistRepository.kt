@@ -1,5 +1,7 @@
 package dev.dexsr.klio.media.playlist
 
+import dev.dexsr.klio.media.playlist.paging.PlaylistContentBucket
+import dev.dexsr.klio.media.playlist.realm.PlaylistSynchronizeData
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.flow.Flow
 
@@ -9,29 +11,16 @@ interface PlaylistRepository {
         playlistId: String
     ): Flow<Playlist>
 
-    fun update(
-        new: Playlist
+    fun synchronizeOrCreate(
+        synchronizeData: PlaylistSynchronizeData
     ): Deferred<Result<Playlist>>
 
-    fun create(
-        new: Playlist
-    ): Deferred<Result<Playlist>>
-
-    fun updateOrCreate(
-        new: Playlist
-    ): Deferred<Result<Playlist>>
-
-    fun updateOrCreate(
+    suspend fun getPagedPlaylistItems(
         playlistId: String,
-        update: suspend () -> Playlist
-    ): Deferred<Result<Playlist>>
-
-    fun get(id: String): Deferred<Result<Playlist?>>
-
-    fun getOrCreate(
-        id: String,
-        create: suspend () -> Playlist
-    ): Deferred<Result<Playlist>>
+        playlistSnapshotId: String,
+        offset: Int,
+        limit: Int
+    ): Result<PlaylistContentBucket>
 
     fun dispose()
 }

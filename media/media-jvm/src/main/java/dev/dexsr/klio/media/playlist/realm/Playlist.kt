@@ -67,11 +67,18 @@ class RealmPlaylistItem(
 
     @PrimaryKey
     var _id = ""
+
+    // id relative to the [playlistId]
     var id = ""
+
+    // actual content of this item
     var contentId: String = ""
 
-    // playlistId this item belongs to
-    /*var playlistId: String = ""*/
+    // playlist this instance belongs to
+    var playlistId: String = ""
+
+    // index of this item on the [playlistId]
+    var index: Int = -1
 
     constructor(obj: PlaylistItem) : this(id = obj.id, contentId = obj.contentId)
 
@@ -80,11 +87,15 @@ class RealmPlaylistItem(
     constructor(
         _id: String = "",
         id: String = "",
-        contentId: String = ""
+        contentId: String = "",
+        playlistId: String = "",
+        index: Int = -1
     ) : this() {
         this._id = _id
         this.id = id
         this.contentId = contentId
+        this.playlistId = playlistId
+        this.index = index
     }
 
     override fun equals(other: Any?): Boolean {
@@ -102,13 +113,13 @@ class RealmPlaylistItem(
 fun RealmPlaylist.toOriginalType(
     playlistId: String = this.playlistId,
     snapshotId: String = this.snapshotId,
-    contents: RealmList<RealmPlaylistItem> = this.contents,
+    contentCount: Int = this.contents.size,
     displayName: String = this.displayName,
     ownerId: String = this.ownerId
 ): Playlist = Playlist(
     id = playlistId,
     snapshotId = snapshotId,
-    contents = contents.map(RealmPlaylistItem::toOriginalType),
+    contentCount = contentCount,
     displayName = displayName,
     ownerId = ownerId
 )
@@ -117,23 +128,7 @@ fun Playlist.toRealmType(
     _id: String = "",
     playlistId: String = this.id,
     snapshotId: String = this.snapshotId,
-    contents: List<PlaylistItem> = this.contents,
-    displayName: String = this.displayName,
-    creatorId: String = this.ownerId
-): RealmPlaylist = RealmPlaylist(
-    _id,
-    playlistId,
-    snapshotId,
-    contents,
-    displayName,
-    creatorId,
-)
-
-fun Playlist.toRealmType(
-    _id: String = "",
-    playlistId: String = this.id,
-    snapshotId: String = this.snapshotId,
-    contents: RealmList<RealmPlaylistItem>,
+    contents: RealmList<RealmPlaylistItem> = realmListOf(),
     displayName: String = this.displayName,
     creatorId: String = this.ownerId
 ): RealmPlaylist = RealmPlaylist(
@@ -151,12 +146,16 @@ fun RealmPlaylistItem.toOriginalType(
 ): PlaylistItem = PlaylistItem(id = id, contentId = contentId)
 
 fun PlaylistItem.toRealmType(
+    playlistId: String,
+    index: Int = -1,
     id: String = this.id,
     contentId: String = this.contentId
-) = toRealmType("", id, contentId)
+) = toRealmType("", playlistId, index, id, contentId)
 
 fun PlaylistItem.toRealmType(
     _id: String,
+    playlistId: String,
+    index: Int = -1,
     id: String = this.id,
-    contentId: String = this.contentId
-) = RealmPlaylistItem(_id, id, contentId)
+    contentId: String = this.contentId,
+) = RealmPlaylistItem(_id, id, contentId, playlistId, index)

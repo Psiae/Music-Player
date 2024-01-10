@@ -28,25 +28,23 @@ class ResultingLoop internal constructor() {
     inline fun <T> loop(block: ResultingLoopScope<T>.() -> Unit): T {
         return object : ResultingLoopScope<T> {
 
-            // do we really need synchronized FU ?
-            private val state = atomic(loopOpen())
+			@Volatile
+			private var latestState = loopOpen()
 
             fun start() {
-				state.compareAndSet(loopOpen(), loopStart())
+				latestState = loopStart()
 			}
 
             fun end(): T {
-				state.compareAndSet(loopClose(state.value), loopEnd(state.value))
-				return state.value as T
+				return latestState.loopEnd()
 			}
 
             override fun LOOP_BREAK(result: T): Nothing {
-                check(state.compareAndSet(loopStart(), loopClose(result)))
-                breakLoop()
+				latestState = loopClose(result)
+				breakLoop()
             }
 
             override fun LOOP_CONTINUE(): Nothing {
-				check(state.value == loopStart())
                 continueLoop()
             }
         }.run {
@@ -70,13 +68,13 @@ class ResultingLoop internal constructor() {
 	fun loopOpen(): Any = LOOP_OPEN
 	fun loopStart(): Any = LOOP_LOOPING
 	fun loopClose(value: Any?): Any = LOOP_CLOSE(value)
-	fun <T> loopEnd(value: Any): T {
-		return when (val state = value) {
+	fun <T> Any.loopEnd(): T {
+		return when (this) {
 			LOOP_OPEN -> error("Cannot end un-started Loop")
 			LOOP_LOOPING -> error("Cannot end un-closed Loop")
 			is LOOP_CLOSE<*> -> {
 				@Suppress("UNCHECKED_CAST")
-				state.result as? T ?: error("Invalid Loop Result")
+				result as T
 			}
 			else -> error("Invalid Loop State")
 		}

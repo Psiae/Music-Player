@@ -15,7 +15,8 @@ interface PlaylistPagingMediator {
 
 	fun fetchNextAsync(
 		playlistSnapshotId: String,
-		currentOffset: Int
+		currentOffset: Int,
+		limit: Int
 	): Deferred<Result<PagedPlaylistData>>
 
 	fun dispose()
@@ -31,7 +32,8 @@ internal class RealPlaylistPagingMediator(
 
 	override fun fetchNextAsync(
 		playlistSnapshotId: String,
-		currentOffset: Int
+		currentOffset: Int,
+		limit: Int
 	): Deferred<Result<PagedPlaylistData>> {
 		val def = CompletableDeferred<Result<PagedPlaylistData>>()
 
@@ -40,9 +42,9 @@ internal class RealPlaylistPagingMediator(
 			def.complete(
 				runCatching {
 					val data = playlistRepository
-						.getPagedPlaylistItems(playlistId, playlistSnapshotId, currentOffset, 50)
+						.getPagedPlaylistItems(playlistId, playlistSnapshotId, currentOffset, limit)
 						.getOrThrow()
-					PagedPlaylistData(data.playlistId, data.playlistSnapshotId, currentOffset, data.contents, 50)
+					PagedPlaylistData(data.playlistId, data.playlistSnapshotId, currentOffset, data.contents, limit)
 				}
 			)
 

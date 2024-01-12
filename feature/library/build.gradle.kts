@@ -31,6 +31,10 @@ android {
 }
 
 dependencies {
+
+    // include for reference, we won't be using the library
+    implementation("androidx.paging:paging-compose:3.2.0")
+
     implementation(project(":base:media"))
     implementation(project(":feature:base"))
     implementation(project(":media:media-jvm"))

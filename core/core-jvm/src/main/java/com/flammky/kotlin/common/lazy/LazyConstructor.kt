@@ -6,6 +6,7 @@ import kotlin.reflect.KProperty
  * Lazy delegate, but with construct function instead of constructor
  */
 
+// fixme
 class LazyConstructor<T> @JvmOverloads constructor(lock: Any = Any()) {
 
 	/**

@@ -10,9 +10,16 @@ import com.flammky.android.medialib.common.mediaitem.AudioMetadata
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider
 import com.flammky.android.medialib.providers.metadata.VirtualFileMetadata
+import com.flammky.kotlin.common.lazy.LazyConstructor
+import com.flammky.kotlin.common.lazy.LazyConstructor.Companion.valueOrNull
 import com.flammky.musicplayer.base.media.MetadataProvider
 import com.flammky.musicplayer.core.common.sync
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
@@ -151,5 +158,21 @@ class TestMetadataProvider(
 		return try {
 			block()
 		} catch (e: Exception) { null }
+	}
+
+	companion object {
+		private val INSTANCE = LazyConstructor<TestMetadataProvider>()
+
+		fun provide(
+			context: Context,
+			coroutineDispatchers: AndroidCoroutineDispatchers,
+			cacheRepository: MediaMetadataCacheRepository,
+			mediaStoreProvider: MediaStoreProvider
+		) = INSTANCE.construct {
+			TestMetadataProvider(context, coroutineDispatchers, cacheRepository, mediaStoreProvider)
+		}
+
+		fun require(): TestMetadataProvider = INSTANCE.valueOrNull()
+			?: error("TestMetadataProvider wasn't provided")
 	}
 }

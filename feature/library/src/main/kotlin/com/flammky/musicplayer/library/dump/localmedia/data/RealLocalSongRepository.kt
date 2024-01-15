@@ -14,19 +14,29 @@ import com.flammky.android.medialib.providers.metadata.VirtualFileMetadata
 import com.flammky.android.medialib.temp.image.ArtworkProvider
 import com.flammky.android.medialib.temp.image.internal.TestArtworkProvider
 import com.flammky.common.kotlin.coroutines.safeCollect
+import com.flammky.kotlin.common.lazy.LazyConstructor
+import com.flammky.kotlin.common.lazy.LazyConstructor.Companion.valueOrNull
 import com.flammky.musicplayer.base.media.MetadataProvider
 import com.flammky.musicplayer.library.dump.media.MediaConnection
+import dev.dexsr.klio.base.kt.castOrNull
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toPersistentList
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 import kotlin.coroutines.resume
 import kotlin.time.Duration.Companion.milliseconds
@@ -71,6 +81,7 @@ internal class RealLocalSongRepository(
 	@Deprecated("Might trigger ContentObserver on certain device")
 	override suspend fun requestUpdateAsync(): Deferred<List<Uri>> =
 		coroutineScope {
+			error("deprecated")
 			async(dispatchers.io) {
 				suspendCancellableCoroutine { cont ->
 					audioProvider.rescan { cont.resume(it) }
@@ -81,6 +92,7 @@ internal class RealLocalSongRepository(
 	@Deprecated("Might trigger ContentObserver on certain device")
 	override suspend fun requestUpdateAndGetAsync(): Deferred<List<LocalSongModel>> =
 		coroutineScope {
+			error("deprecated")
 			async(dispatchers.io) {
 				requestUpdateAsync().await()
 				getModelsAsync().await()
@@ -304,5 +316,61 @@ internal class RealLocalSongRepository(
 		awaitClose {
 			mediaStoreProvider.audio.removeObserver(observer)
 		}
+	}
+
+	override suspend fun requestMetadata(id: String): Result<AudioMetadata?> {
+		return runCatching {
+			metadataProvider.requestFromMediaStoreIdAsync(id)
+				.await()
+				.castOrNull<AudioMetadata>()
+		}
+	}
+
+	override suspend fun requestArtwork(id: String): Result<Bitmap?> {
+		return runCatching {
+			mediaConnection.repository.getArtwork(id)?.castOrNull<Bitmap>()
+				?: run {
+					val req = ArtworkProvider.Request
+						.Builder(id, Bitmap::class.java)
+						.setMinimumHeight(1)
+						.setMinimumWidth(1)
+						.setMemoryCacheAllowed(true)
+						.setDiskCacheAllowed(true)
+						.setStoreMemoryCacheAllowed(true)
+						.setStoreDiskCacheAllowed(true)
+						.build()
+					artworkProvider.request(req).await().get()
+				}
+		}
+	}
+
+	override fun cachedMetadata(id: String): AudioMetadata? {
+		return mediaConnection.repository.getMetadata(id).castOrNull<AudioMetadata>()
+	}
+
+	override fun cachedArtwork(id: String): Bitmap? {
+		return mediaConnection.repository.getArtwork(id).castOrNull<Bitmap>()
+	}
+
+	companion object {
+		private val INSTANCE = LazyConstructor<RealLocalSongRepository>()
+
+		@Deprecated("migrate to koin")
+		fun provide(
+			context: Context,
+			dispatchers: AndroidCoroutineDispatchers,
+			mediaConnection: MediaConnection,
+			testArtworkProvider: ArtworkProvider,
+			mediaStoreProvider: MediaStoreProvider,
+			metadataProvider: MetadataProvider
+		) = INSTANCE.construct {
+			RealLocalSongRepository(
+				context, dispatchers,
+				testArtworkProvider, metadataProvider, mediaConnection, mediaStoreProvider
+			)
+		}
+
+		fun require(): RealLocalSongRepository = INSTANCE.valueOrNull()
+			?: error("RealLocalSongRepository weren't provided")
 	}
 }

@@ -18,11 +18,11 @@ import kotlinx.coroutines.flow.Flow
 	val repository: Repository
 
 	interface Repository {
-		suspend fun getArtwork(id: String): Any?
+		fun getArtwork(id: String): Any?
 		suspend fun observeArtwork(id: String): Flow<Any?>
 		suspend fun provideArtwork(id: String, artwork: Any?, silent: Boolean)
 		suspend fun evictArtwork(id: String, silent: Boolean)
-		suspend fun getMetadata(id: String): MediaMetadata?
+		fun getMetadata(id: String): MediaMetadata?
 		suspend fun provideMetadata(id: String, metadata: MediaMetadata)
 		suspend fun observeMetadata(id: String): Flow<MediaMetadata?>
 		suspend fun evictMetadata(id: String, silent: Boolean)

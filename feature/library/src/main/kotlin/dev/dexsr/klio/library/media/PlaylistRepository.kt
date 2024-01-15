@@ -1,13 +1,18 @@
 package dev.dexsr.klio.library.media
 
-import dev.dexsr.klio.library.compose.Playlist
+import dev.dexsr.klio.library.compose.PlaylistInfo
 import kotlinx.coroutines.Deferred
 
 interface PlaylistRepository {
 
-	fun pagingMediator(): PlaylistPagingMediator
+	fun pagingMediator(playlistId: String): PlaylistPagingMediator
 
-	fun fetchPlaylistInfoAsync(playlistId: String): Deferred<Result<Playlist>>
+	fun metadataProvider(playlistId: String): PlaylistMetadataProvider
+
+	fun fetchPlaylistInfoAsync(playlistId: String): Deferred<Result<PlaylistInfo>>
+}
+
+interface DisposablePlaylistRepository : PlaylistRepository {
 
 	fun dispose()
 }

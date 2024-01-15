@@ -105,3 +105,6 @@ private class LOOP_CLOSE<T>(val result: T) {
 		return hash
 	}
 }
+
+val <T> ResultingLoopScope<T>.looper
+	get() = this

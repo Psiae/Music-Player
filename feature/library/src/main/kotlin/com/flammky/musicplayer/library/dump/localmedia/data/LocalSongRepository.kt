@@ -18,7 +18,9 @@ interface LocalSongRepository {
 
 	suspend fun collectMetadata(id: String): Flow<AudioMetadata?>
 
+	@Deprecated(message = "don't use", level = DeprecationLevel.ERROR)
 	suspend fun requestUpdateAndGetAsync(): Deferred<List<LocalSongModel>>
+	@Deprecated(message = "don't use", level = DeprecationLevel.ERROR)
 	suspend fun requestUpdateAsync(): Deferred<List<Uri>>
 
 	fun observeAvailable(): Flow<AvailabilityState>
@@ -28,6 +30,14 @@ interface LocalSongRepository {
 	fun refreshArtwork(id: String): Job
 	fun refreshArtwork(id: String, uri: Uri): Job
 	fun refreshArtwork(model: LocalSongModel): Job
+
+	suspend fun requestMetadata(id: String): Result<AudioMetadata?>
+
+	suspend fun requestArtwork(id: String): Result<Bitmap?>
+
+	fun cachedMetadata(id: String): AudioMetadata?
+
+	fun cachedArtwork(id: String): Bitmap?
 
 
 	@Immutable

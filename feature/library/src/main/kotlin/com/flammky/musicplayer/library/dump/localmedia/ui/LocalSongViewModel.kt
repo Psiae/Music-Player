@@ -158,6 +158,24 @@ internal class LocalSongViewModel @Inject constructor(
 		return repository.collectMetadata(model.id)
 	}
 
+	// temp
+
+	suspend fun requestMetadata(id: String): Result<AudioMetadata?> {
+		return repository.requestMetadata(id)
+	}
+
+	suspend fun requestArtwork(id: String): Result<Bitmap?> {
+		return repository.requestArtwork(id)
+	}
+
+	fun cachedMetadata(id: String): AudioMetadata? {
+		return repository.cachedMetadata(id)
+	}
+
+	fun cachedArtwork(id: String): Bitmap? {
+		return repository.cachedArtwork(id)
+	}
+
 	// is explicit write like this better ?
 	@Suppress("NOTHING_TO_INLINE")
 	private inline fun <T> MutableState<T>.overwrite(value: T) {

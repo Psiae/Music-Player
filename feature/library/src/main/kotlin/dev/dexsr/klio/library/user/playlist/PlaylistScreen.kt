@@ -1,7 +1,6 @@
 package dev.dexsr.klio.library.user.playlist
 
 import android.content.res.Configuration
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -24,6 +23,7 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.key
@@ -31,6 +31,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.neverEqualPolicy
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -44,6 +45,8 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.flammky.musicplayer.base.compose.LocalLayoutVisibility
 import com.flammky.musicplayer.base.compose.NoInlineBox
+import dev.dexsr.klio.base.compose.ComposeBackPressRegistry
+import dev.dexsr.klio.base.compose.LocalComposeBackPressRegistry
 import dev.dexsr.klio.base.compose.nonScaledFontSize
 import dev.dexsr.klio.base.theme.md3.MD3Theme
 import dev.dexsr.klio.base.theme.md3.compose.DefaultMaterial3Theme
@@ -52,7 +55,7 @@ import dev.dexsr.klio.base.theme.md3.compose.blackOrWhite
 import dev.dexsr.klio.base.theme.md3.compose.blackOrWhiteContent
 import dev.dexsr.klio.base.theme.md3.compose.dpMarginIncrementsOf
 import dev.dexsr.klio.base.theme.md3.compose.localMaterial3Surface
-import dev.dexsr.klio.library.compose.Playlist
+import dev.dexsr.klio.library.compose.PlaylistInfo
 import dev.dexsr.klio.library.compose.toStablePlaylist
 import dev.dexsr.klio.library.shared.LocalMediaArtwork
 import dev.dexsr.klio.media.playlist.LocalPlaylistRepository
@@ -60,7 +63,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
-import timber.log.Timber
 import kotlin.math.ceil
 
 @Composable
@@ -71,9 +73,26 @@ fun YourPlaylistScreen(
 	val repo = remember {
 		LocalPlaylistRepository()
 	}
-	val detailState = remember {
+	val detailState = rememberSaveable {
 		mutableStateOf<String?>(null)
 	}
+	// TODO
+	val reg = LocalComposeBackPressRegistry.current
+	DisposableEffect(
+		key1 = reg,
+		effect = {
+			if (reg == null) return@DisposableEffect onDispose {  }
+			val callback = ComposeBackPressRegistry.BackPressConsumer {
+				detailState.value?.let {
+					detailState.value = null
+					return@BackPressConsumer true
+				}
+				false
+			}
+			reg.registerBackPressConsumer(callback)
+			onDispose { reg.unregisterBackPressConsumer(callback) }
+		}
+	)
 	YourPlaylistScreen(
 		modifier = modifier
 			.fillMaxSize(),
@@ -100,17 +119,13 @@ fun YourPlaylistScreen(
 	)
 	detailState.value?.let { detail ->
 		PlaylistDetailScreen(playlistId = detail)
-		// TODO
-		BackHandler {
-			detailState.value = null
-		}
 	}
 }
 
 @Composable
 fun YourPlaylistScreen(
 	modifier: Modifier,
-	observePlaylist: () -> Flow<List<Playlist>>,
+	observePlaylist: () -> Flow<List<PlaylistInfo>>,
 	contentPaddingValues: PaddingValues,
 	onClick: ((String) -> Unit)?
 ) {

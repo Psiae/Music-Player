@@ -55,7 +55,7 @@ internal class RealMediaConnection(
 
 
 
-		override suspend fun getArtwork(id: String): Any? {
+		override fun getArtwork(id: String): Any? {
 			return mediaRepo.getArtwork(id)
 		}
 
@@ -80,7 +80,7 @@ internal class RealMediaConnection(
 			}
 		}
 
-		override suspend fun getMetadata(id: String): MediaMetadata? {
+		override fun getMetadata(id: String): MediaMetadata? {
 			return mediaRepo.getMetadata(id)
 		}
 

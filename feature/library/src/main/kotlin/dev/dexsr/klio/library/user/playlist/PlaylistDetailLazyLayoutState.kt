@@ -5,24 +5,33 @@ import androidx.annotation.MainThread
 import androidx.annotation.UiThread
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.RememberObserver
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.util.fastFirstOrNull
 import androidx.compose.ui.util.fastForEach
+import com.flammky.androidx.viewmodel.compose.activityViewModel
+import com.flammky.musicplayer.base.media.r.TestMetadataProvider
+import com.flammky.musicplayer.library.dump.localmedia.ui.LocalSongViewModel
 import dev.dexsr.klio.base.breakLoop
 import dev.dexsr.klio.base.continueLoop
+import dev.dexsr.klio.base.looper
 import dev.dexsr.klio.base.strictResultingLoop
 import dev.dexsr.klio.core.AndroidUiFoundation
 import dev.dexsr.klio.core.isOnUiThread
 import dev.dexsr.klio.library.compose.ComposeImmutable
 import dev.dexsr.klio.library.compose.ComposeStable
 import dev.dexsr.klio.library.compose.PagedPlaylistData
-import dev.dexsr.klio.library.compose.Playlist
+import dev.dexsr.klio.library.compose.PlaylistInfo
 import dev.dexsr.klio.library.compose.toStablePlaylist
+import dev.dexsr.klio.library.media.PlaylistMetadataProvider
 import dev.dexsr.klio.library.media.PlaylistPagingMediator
 import dev.dexsr.klio.library.media.PlaylistRepository
+import dev.dexsr.klio.library.media.PlaylistTrackArtwork
+import dev.dexsr.klio.library.media.PlaylistTrackMetadata
+import dev.dexsr.klio.library.media.RealOldPlaylistMetadataProvider
 import dev.dexsr.klio.library.media.RealPlaylistPagingMediator
 import dev.dexsr.klio.media.playlist.LocalPlaylistRepository
 import kotlinx.coroutines.CoroutineScope
@@ -33,7 +42,10 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlin.math.min
 
@@ -41,24 +53,42 @@ import kotlin.math.min
 fun rememberPlaylistDetailLazyLayoutState(
 	playlistId: String,
 	orderedMeasure: Boolean,
-	playlistRepository: PlaylistRepository = /*runtimeInject()*/ remember {
+	playlistRepository: PlaylistRepository = run {
+		val vm = activityViewModel<LocalSongViewModel>()
+		/*runtimeInject()*/ remember(vm) {
 		// TODO
-		object : PlaylistRepository {
+		object : PlaylistRepository, RememberObserver {
 			val localRepo = LocalPlaylistRepository()
 			val coroutineScope = CoroutineScope(SupervisorJob())
-			override fun pagingMediator(): PlaylistPagingMediator {
+			override fun pagingMediator(playlistId: String): PlaylistPagingMediator {
 				return RealPlaylistPagingMediator(localRepo, playlistId)
 			}
-			override fun fetchPlaylistInfoAsync(playlistId: String): Deferred<Result<Playlist>> {
+
+			override fun metadataProvider(playlistId: String): PlaylistMetadataProvider {
+				return RealOldPlaylistMetadataProvider(
+					vm,
+					lifetime = coroutineScope.coroutineContext.job
+				)
+			}
+
+			override fun fetchPlaylistInfoAsync(playlistId: String): Deferred<Result<PlaylistInfo>> {
 				return coroutineScope.async(Dispatchers.IO) { runCatching {
 					localRepo.observeChanges(playlistId).first().toStablePlaylist()
 				} }
 			}
-			override fun dispose() {
+
+			override fun onForgotten() {
 				localRepo.dispose()
 				coroutineScope.cancel()
 			}
+
+			override fun onAbandoned() {
+			}
+
+			override fun onRemembered() {
+			}
 		}
+	}
 	}
 ): PlaylistDetailLazyLayoutState {
 	return remember(playlistId, orderedMeasure) {
@@ -87,6 +117,7 @@ class PlaylistDetailLazyLayoutState(
 
 	private var _coroutineScope: CoroutineScope? = null
 	private var _pagingMediator: PlaylistPagingMediator? = null
+	private var _metadataProvider: PlaylistMetadataProvider? = null
 
 	private val coroutineScope
 		get() = checkNotNull(_coroutineScope) {
@@ -96,6 +127,11 @@ class PlaylistDetailLazyLayoutState(
 	private val pagingMediator
 		get() = checkNotNull(_pagingMediator) {
 			"pagingMediator wasn't initialized, make sure to call init"
+		}
+
+	private val metadataProvider
+		get() = checkNotNull(_metadataProvider) {
+			"metadataProvider wasn't initialized, make sure to call init"
 		}
 
 	private var init: Job? = null
@@ -111,9 +147,10 @@ class PlaylistDetailLazyLayoutState(
 		check(AndroidUiFoundation.isOnUiThread())
 		check(init == null)
 		_coroutineScope = CoroutineScope(SupervisorJob())
-		_pagingMediator = repository.pagingMediator()
+		_pagingMediator = repository.pagingMediator(playlistId)
+		_metadataProvider = repository.metadataProvider(playlistId)
 		init = coroutineScope.launch(Dispatchers.Main) {
-			val playlistInfo = strictResultingLoop<Playlist> {
+			val playlistInfo = strictResultingLoop<PlaylistInfo> {
 				repository
 					.fetchPlaylistInfoAsync(playlistId)
 					.await()
@@ -132,7 +169,62 @@ class PlaylistDetailLazyLayoutState(
 
 	fun dispose() {
 		_coroutineScope?.cancel()
-		repository.dispose()
+		_pagingMediator?.dispose()
+		_metadataProvider?.dispose()
+	}
+
+	@AnyThread
+	fun cachedTrackMetadata(
+		mediaId: String
+	): PlaylistTrackMetadata? {
+		return metadataProvider.cachedMetadata(mediaId)
+	}
+
+	@AnyThread
+	fun cachedTrackArtwork(
+		mediaId: String
+	): PlaylistTrackArtwork? {
+		return metadataProvider.cachedArtwork(mediaId)
+	}
+
+	fun observeTrackMetadata(
+		mediaId: String
+	): Flow<PlaylistTrackMetadata> {
+
+		return flow {
+			val req = strictResultingLoop<PlaylistTrackMetadata> {
+				metadataProvider.requestMetadataAsync(mediaId).await()
+					.fold(
+						onSuccess = { data -> looper breakLoop data },
+						// fixme: ask user to refresh
+						onFailure = { ex -> looper continueLoop delay(Long.MAX_VALUE)  }
+					)
+			}
+			emit(req)
+			metadataProvider
+				.observeTrackMetadata(mediaId)
+				.collect(this)
+		}
+	}
+
+	fun observeTrackArtwork(
+		mediaId: String
+	): Flow<PlaylistTrackArtwork> {
+
+		return flow {
+			val req = strictResultingLoop<PlaylistTrackArtwork> {
+				metadataProvider.requestArtworkAsync(mediaId).await()
+					.fold(
+						onSuccess = { data -> looper breakLoop data },
+						// fixme: ask user to refresh
+						onFailure = { ex -> looper continueLoop delay(Long.MAX_VALUE)  }
+					)
+			}
+			emit(req)
+			metadataProvider
+				.observeTrackArtwork(mediaId)
+				.collect(this)
+		}
 	}
 
 	@AnyThread
@@ -242,6 +334,7 @@ class PlaylistDetailLazyLayoutState(
 		println("onSegmentUpdated, contentCount=${renderData?.contentCount}, fi=${renderData?.contentFirstIndex}, li=${renderData?.contentLastIndex}, buckets=${renderData?.buckets}")
 	}
 
+	@ComposeImmutable
 	class RenderData(
 		val playlistId: String,
 		val playlistSnapshotId: String,
@@ -312,7 +405,7 @@ fun PlaylistDetailLazyLayoutState.RenderData.getContent(index: Int): String? {
 	return null
 }
 
-private fun Playlist.toRenderData(
+private fun PlaylistInfo.toRenderData(
 	pageSize: Int,
 	intentLoadToOffset: (offset: Int) -> Unit
 ): PlaylistDetailLazyLayoutState.RenderData {

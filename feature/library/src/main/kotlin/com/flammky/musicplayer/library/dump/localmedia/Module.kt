@@ -27,6 +27,6 @@ internal object Module {
         mediaStoreProvider: MediaStoreProvider,
         metadataProvider: MetadataProvider
 	): LocalSongRepository {
-		return RealLocalSongRepository(context, dispatchers, testArtworkProvider, metadataProvider, mediaConnection, mediaStoreProvider)
+		return RealLocalSongRepository.provide(context, dispatchers, mediaConnection, testArtworkProvider, mediaStoreProvider, metadataProvider)
 	}
 }

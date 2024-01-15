@@ -67,6 +67,7 @@ class LocalPlaylistRepository() : PlaylistRepository {
     }
 
     // fixme: magic literal
+    // fixme: there's a bug in synchronizeEntity
     override fun synchronizeOrCreate(
         synchronizeData: PlaylistSynchronizeData
     ): Deferred<Result<Playlist>> {

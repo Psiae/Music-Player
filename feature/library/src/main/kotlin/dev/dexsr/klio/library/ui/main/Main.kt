@@ -1,5 +1,6 @@
 package dev.dexsr.klio.library.ui.main
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
@@ -19,6 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.NonRestartableComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -45,6 +47,18 @@ fun LibraryUiMain(
 	rootNavigator: LibraryRootNavigator
 ) {
 	val navigator = rememberMainNavigator()
+	val bpReg = LocalComposeBackPressRegistry.current
+	DisposableEffect(
+		bpReg,
+		effect = {
+			if (bpReg == null) return@DisposableEffect onDispose {  }
+			val consumer = ComposeBackPressRegistry.BackPressConsumer {
+				navigator.pop()
+			}
+			bpReg.registerBackPressConsumer(consumer)
+			onDispose { bpReg.unregisterBackPressConsumer(consumer) }
+		}
+	)
 	Column(
 		modifier = Modifier
 			.padding(
@@ -59,22 +73,6 @@ fun LibraryUiMain(
 		}
 	}
 	LibraryUiMainSubScreenHost(navigator = navigator)
-
-
-	NoInline {
-		val bpReg = LocalComposeBackPressRegistry.current
-		DisposableEffect(
-			bpReg,
-			effect = {
-				if (bpReg == null) return@DisposableEffect onDispose {  }
-				val consumer = ComposeBackPressRegistry.BackPressConsumer {
-					navigator.pop()
-				}
-				bpReg.registerBackPressConsumer(consumer)
-				onDispose { bpReg.unregisterBackPressConsumer(consumer) }
-			}
-		)
-	}
 }
 
 @Composable

@@ -3,17 +3,23 @@ package com.flammky.musicplayer.library.dump.media
 import android.net.Uri
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
 import com.flammky.musicplayer.base.user.User
+import dev.dexsr.klio.library.playback.PlaylistPlaybackInfo
 import kotlinx.coroutines.flow.Flow
 
 /**
  * Media Connection Interface for this library module
  */
+@Deprecated("refactor (again)")
 /*internal*/ interface MediaConnection {
 	fun play(
 		user: User,
 		queue: List<Pair<String, Uri>>,
 		index: Int
 	)
+
+	fun observePlaylistPlaybackInfo(
+		user: User
+	): Flow<PlaylistPlaybackInfo>
 
 	val repository: Repository
 

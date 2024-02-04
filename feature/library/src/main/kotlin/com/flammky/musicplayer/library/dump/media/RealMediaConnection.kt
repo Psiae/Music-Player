@@ -12,13 +12,17 @@ import com.flammky.musicplayer.base.media.mediaconnection.playback.PlaybackConne
 import com.flammky.musicplayer.base.media.playback.OldPlaybackQueue
 import com.flammky.musicplayer.base.media.r.MediaMetadataCacheRepository
 import com.flammky.musicplayer.base.user.User
+import dev.dexsr.klio.library.playback.PlaylistPlaybackInfo
 import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
+@Deprecated("Redo")
 internal class RealMediaConnection(
     private val artworkProvider: ArtworkProvider,
     private val context: Context,
@@ -47,6 +51,41 @@ internal class RealMediaConnection(
 				val mappedQueue = queue.map { it.first }.toPersistentList()
 				setQueue(OldPlaybackQueue(mappedQueue, index))
 				play()
+			}
+		}
+	}
+
+	override fun observePlaylistPlaybackInfo(
+		user: User
+	): Flow<PlaylistPlaybackInfo> {
+
+		return flow {
+			val channel = Channel<PlaylistPlaybackInfo>(Channel.CONFLATED)
+			var latest = PlaylistPlaybackInfo.UNSET
+
+			try {
+				coroutineScope.launch(Playback.DISPATCHER) {
+					playbackConnection
+						.requestUserSessionAsync(user)
+						.await()
+						.controller.withLooperContext {
+							val owner = Any()
+							val obs = acquireObserver(owner)
+
+							try {
+								obs.observeIsPlaying().collect {
+									val new = latest.copy(playing = it, canPause = true, canPlay = true)
+									latest = new
+									channel.send(new)
+								}
+							} finally {
+								releaseObserver(owner)
+							}
+						}
+				}
+				for (e in channel) { emit(e) }
+			} finally {
+			    channel.close()
 			}
 		}
 	}

@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.checkScrollableContainerConstraints
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.clipScrollableContainer
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.ScrollableDefaults
@@ -37,7 +38,6 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -355,7 +355,11 @@ private fun PlaylistDetailScreenLazyColumn(
 						getCachedMetadata = id?.let {
 							{ state.cachedTrackMetadata(id) }
 						} ?: { null },
-						isPlaying = id?.let { id == screenState.currentlyPlayingTrack } == true
+						isPlaying = id?.let { id == screenState.playbackState.currentlyPlayingTrack } == true,
+						playable = screenState.playbackState.isPlayable == true,
+						play = id?.let {
+							{ screenState.playbackState.playPlaylistFromTrack(id) }
+						} ?: {  },
 					)
 				}
 			}
@@ -364,7 +368,7 @@ private fun PlaylistDetailScreenLazyColumn(
 	LaunchedEffect(
 		screenState,
 		block = {
-			screenState.subscribePlaybackAsFlow().collect {}
+			screenState.playbackState.subscribePlaybackAsFlow().collect {}
 		}
 	)
 }
@@ -382,6 +386,7 @@ private fun PlaylistDetailScreenLazyGrid(
 
 // TODO: share placeholder progress between items
 // TODO: remove the deprecated accompanist-placeholder use and implement our own
+// TODO: isPlaying UI
 @Composable
 private fun PlaylistDetailScreenLazyListItem(
 	modifier: Modifier = Modifier,
@@ -389,13 +394,16 @@ private fun PlaylistDetailScreenLazyListItem(
 	getCachedArtwork: () -> PlaylistTrackArtwork?,
 	observeMetadata: () -> Flow<PlaylistTrackMetadata>,
 	getCachedMetadata: () -> PlaylistTrackMetadata?,
-	isPlaying: Boolean
+	isPlaying: Boolean,
+	playable: Boolean,
+	play: () -> Unit
 ) {
 	val surfaceColor = localShimmerSurface()
 	val highlightColor = localShimmerColor()
 	val ctx = LocalContext.current
 	Box(
 		modifier
+			.clickable(enabled = playable, onClick = play)
 			.background(MD3Theme.surfaceColorAtElevation(elevation = 1.dp))
 			.padding(4.dp)
 			.fillMaxHeight()

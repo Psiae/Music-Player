@@ -7,6 +7,7 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.neverEqualPolicy
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
@@ -20,17 +21,21 @@ import com.flammky.musicplayer.library.dump.localmedia.domain.ObservableLocalSon
 import com.flammky.musicplayer.library.dump.media.MediaConnection
 import com.flammky.musicplayer.library.dump.util.read
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.dexsr.klio.library.playback.PlaylistPlaybackInfo
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flow
 import timber.log.Timber
 import javax.inject.Inject
 
 @HiltViewModel
+@Deprecated("remove ViewModel API usage")
 internal class LocalSongViewModel @Inject constructor(
 	private val authService: AuthService,
 	private val dispatcher: AndroidCoroutineDispatchers,
@@ -45,7 +50,7 @@ internal class LocalSongViewModel @Inject constructor(
 
 	val refreshing = derivedStateOf { _repoRefresh.read() || _localRefresh.read() }
 
-	private val _listState = mutableStateOf<ImmutableList<LocalSongModel>>(persistentListOf())
+	private val _listState = mutableStateOf<ImmutableList<LocalSongModel>>(persistentListOf(), neverEqualPolicy())
 	val listState = _listState.derive()
 
 	private val _loaded = mutableStateOf(false)
@@ -85,7 +90,7 @@ internal class LocalSongViewModel @Inject constructor(
 		artworkCacheStateFlowMap.clear()
 	}
 
-	// queue should be recognized instead
+	// TODO: queue should be recognized instead
 	fun play(queue: List<LocalSongModel>, index: Int) {
 		val user = authService.currentUser
 		if (index !in queue.indices || user == null) return
@@ -95,6 +100,57 @@ internal class LocalSongViewModel @Inject constructor(
 			cut.map { it.id to it.uri },
 			index
 		)
+	}
+
+	fun play(index: Int) {
+		if (index < 0) return
+		val user = authService.currentUser ?: return
+		mediaConnection.play(
+			user = user,
+			_listState.value.map { it.id to it.uri },
+			index
+		)
+	}
+
+	fun play(id: String) {
+		val user = authService.currentUser ?: return
+		val list = _listState.value
+		val index = list.indexOfFirst { it.id == id }
+		if (index < 0) return
+		mediaConnection.play(
+			user = user,
+			list.map { it.id to it.uri },
+			index
+		)
+	}
+
+	fun observePlaylistPlaybackInfo(): Flow<PlaylistPlaybackInfo> {
+
+		return flow {
+			val channel = Channel<PlaylistPlaybackInfo>(Channel.CONFLATED)
+			val task = viewModelScope.launch {
+				var c: Job? = null
+				authService.observeCurrentUser()
+					.collect { user ->
+						c?.cancel()
+						if (user == null) {
+							c = null
+							emit(PlaylistPlaybackInfo.UNSET)
+							return@collect
+						}
+						c = launch {
+							mediaConnection.observePlaylistPlaybackInfo(user)
+								.collect(channel::send)
+						}
+					}
+			}
+			try {
+			    for (e in channel) { emit(e) }
+			} finally {
+				channel.close()
+				task.cancel()
+			}
+		}
 	}
 
 	@MainThread

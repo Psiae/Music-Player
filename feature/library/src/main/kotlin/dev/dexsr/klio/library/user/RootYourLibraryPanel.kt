@@ -37,8 +37,8 @@ import androidx.compose.ui.unit.dp
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.backgroundContentColorAsState
 import dev.dexsr.klio.library.R
-import dev.dexsr.klio.base.compose.clickable
-import dev.dexsr.klio.base.compose.nonScaledFontSize
+import dev.dexsr.klio.base.composeui.clickable
+import dev.dexsr.klio.base.composeui.nonScaledFontSize
 import dev.dexsr.klio.base.theme.md3.MD3Spec
 import dev.dexsr.klio.base.theme.md3.MD3Theme
 import dev.dexsr.klio.base.theme.md3.components.cards.alpha

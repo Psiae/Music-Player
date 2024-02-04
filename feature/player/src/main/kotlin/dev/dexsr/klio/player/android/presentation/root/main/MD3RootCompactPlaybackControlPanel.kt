@@ -43,8 +43,8 @@ import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.player.R
 import com.flammky.musicplayer.player.presentation.root.RootPlaybackControlCompact
 import com.flammky.musicplayer.player.presentation.root.rememberRootPlaybackControlCompactState
-import dev.dexsr.klio.base.compose.SimpleStack
-import dev.dexsr.klio.base.compose.consumeDownGesture
+import dev.dexsr.klio.base.composeui.SimpleStack
+import dev.dexsr.klio.base.composeui.consumeDownGesture
 import dev.dexsr.klio.base.theme.md3.MD3Theme
 import dev.dexsr.klio.base.theme.md3.compose.*
 import dev.dexsr.klio.player.android.presentation.root.compact.PlaybackPagerCompact

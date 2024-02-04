@@ -7,7 +7,7 @@ import com.flammky.musicplayer.android.compose.LocalIntentManager
 import com.flammky.musicplayer.base.compose.LocalFitSystemWindows
 import dev.dexsr.klio.android.main.MainActivity
 import dev.dexsr.klio.android.main.root.compose.md3.MD3RootScreen
-import dev.dexsr.klio.base.compose.ComposableLambda
+import dev.dexsr.klio.base.composeui.ComposableLambda
 
 fun MainActivity.setComposeRootContent(
 	fitSystemWindow: Boolean

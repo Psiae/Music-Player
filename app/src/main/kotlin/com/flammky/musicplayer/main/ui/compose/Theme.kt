@@ -12,16 +12,16 @@ import com.flammky.musicplayer.base.theme.compose.ProvideTheme
 import com.flammky.musicplayer.base.theme.compose.defaultDarkColorScheme
 import com.flammky.musicplayer.base.theme.compose.defaultLightColorScheme
 import com.flammky.musicplayer.base.theme.compose.elevatedTonalPrimarySurfaceAsState
-import com.flammky.musicplayer.core.sdk.AndroidAPI
+import dev.dexsr.klio.core.sdk.AndroidAPI
 import dev.dexsr.klio.core.sdk.AndroidBuildVersion.hasSnowCone
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.google.android.material.color.DynamicColors
 
 @Composable
 fun MaterialDesign3Theme(
-	dynamic: Boolean = AndroidAPI.hasSnowCone(),
-	useDarkTheme: Boolean = isSystemInDarkTheme(),
-	content: @Composable () -> Unit
+    dynamic: Boolean = AndroidAPI.hasSnowCone(),
+    useDarkTheme: Boolean = isSystemInDarkTheme(),
+    content: @Composable () -> Unit
 ) {
 	val lightColors = if (dynamic && DynamicColors.isDynamicColorAvailable()) {
 		dynamicLightColorScheme(LocalContext.current)

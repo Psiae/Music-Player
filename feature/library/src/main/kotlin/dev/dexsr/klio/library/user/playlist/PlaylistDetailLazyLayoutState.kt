@@ -3,6 +3,7 @@ package dev.dexsr.klio.library.user.playlist
 import androidx.annotation.AnyThread
 import androidx.annotation.MainThread
 import androidx.annotation.UiThread
+import androidx.compose.foundation.gestures.FlingBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.RememberObserver
@@ -10,19 +11,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.util.fastFirstOrNull
 import androidx.compose.ui.util.fastForEach
 import com.flammky.androidx.viewmodel.compose.activityViewModel
-import com.flammky.musicplayer.base.media.r.TestMetadataProvider
 import com.flammky.musicplayer.library.dump.localmedia.ui.LocalSongViewModel
 import dev.dexsr.klio.base.breakLoop
+import dev.dexsr.klio.base.composeui.annotations.ComposeUiClass
 import dev.dexsr.klio.base.continueLoop
 import dev.dexsr.klio.base.looper
 import dev.dexsr.klio.base.strictResultingLoop
 import dev.dexsr.klio.core.AndroidUiFoundation
-import dev.dexsr.klio.core.isOnUiThread
+import dev.dexsr.klio.core.isOnUiLooper
 import dev.dexsr.klio.library.compose.ComposeImmutable
-import dev.dexsr.klio.library.compose.ComposeStable
 import dev.dexsr.klio.library.compose.PagedPlaylistData
 import dev.dexsr.klio.library.compose.PlaylistInfo
 import dev.dexsr.klio.library.compose.toStablePlaylist
@@ -53,47 +54,56 @@ import kotlin.math.min
 fun rememberPlaylistDetailLazyLayoutState(
 	playlistId: String,
 	orderedMeasure: Boolean,
-	playlistRepository: PlaylistRepository = run {
+	scrollableState: PlaylistDetailScreenScrollState,
+	playlistRepository: PlaylistRepository = /*runtimeInject()*/ run {
 		val vm = activityViewModel<LocalSongViewModel>()
-		/*runtimeInject()*/ remember(vm) {
-		// TODO
-		object : PlaylistRepository, RememberObserver {
-			val localRepo = LocalPlaylistRepository()
-			val coroutineScope = CoroutineScope(SupervisorJob())
-			override fun pagingMediator(playlistId: String): PlaylistPagingMediator {
-				return RealPlaylistPagingMediator(localRepo, playlistId)
-			}
-
-			override fun metadataProvider(playlistId: String): PlaylistMetadataProvider {
-				return RealOldPlaylistMetadataProvider(
+		remember(vm) {
+			// TODO
+			object : PlaylistRepository, RememberObserver {
+				val localRepo = LocalPlaylistRepository()
+				val coroutineScope = CoroutineScope(SupervisorJob())
+				val metadataProvider = RealOldPlaylistMetadataProvider(
 					vm,
 					lifetime = coroutineScope.coroutineContext.job
 				)
-			}
+				override fun pagingMediator(playlistId: String): PlaylistPagingMediator {
+					return RealPlaylistPagingMediator(localRepo, playlistId)
+				}
 
-			override fun fetchPlaylistInfoAsync(playlistId: String): Deferred<Result<PlaylistInfo>> {
-				return coroutineScope.async(Dispatchers.IO) { runCatching {
-					localRepo.observeChanges(playlistId).first().toStablePlaylist()
-				} }
-			}
+				override fun metadataProvider(playlistId: String): PlaylistMetadataProvider {
+					return metadataProvider
+				}
 
-			override fun onForgotten() {
-				localRepo.dispose()
-				coroutineScope.cancel()
-			}
+				override fun fetchPlaylistInfoAsync(playlistId: String): Deferred<Result<PlaylistInfo>> {
+					return coroutineScope.async(Dispatchers.IO) { runCatching {
+						localRepo.observeChanges(playlistId).first().toStablePlaylist()
+					} }
+				}
 
-			override fun onAbandoned() {
-			}
+				override fun onForgotten() {
+					localRepo.dispose()
+					metadataProvider.dispose()
+					coroutineScope.cancel()
+				}
 
-			override fun onRemembered() {
+				override fun onAbandoned() {
+				}
+
+				override fun onRemembered() {
+				}
 			}
 		}
-	}
-	}
+	},
+	flingBehavior: FlingBehavior
 ): PlaylistDetailLazyLayoutState {
-	return remember(playlistId, orderedMeasure) {
-		PlaylistDetailLazyLayoutState(playlistId, orderedMeasure, playlistRepository)
+	return remember(playlistId, orderedMeasure, scrollableState) {
+		PlaylistDetailLazyLayoutState(
+			playlistId,
+			orderedMeasure,
+			playlistRepository,
+		)
 	}.apply {
+
 		DisposableEffect(key1 = this, effect = {
 			init()
 			onDispose(this@apply::dispose)
@@ -101,17 +111,21 @@ fun rememberPlaylistDetailLazyLayoutState(
 	}
 }
 
-@ComposeStable
+/*@ComposeStable*/
+@ComposeUiClass
 class PlaylistDetailLazyLayoutState(
 	private val playlistId: String,
 	private val orderedMeasure: Boolean,
 	private val repository: PlaylistRepository,
-	private val batchIntervalSize: Int = BATCH_DEFAULT_INTERVAL_SIZE
+	private val batchIntervalSize: Int = BATCH_DEFAULT_INTERVAL_SIZE,
 ) {
 
 	init {
-	    check(batchIntervalSize > 0) {
+		check(batchIntervalSize > 0) {
 			"batchIntervalSize must be at least 1"
+		}
+		check(orderedMeasure) {
+			"NoImpl"
 		}
 	}
 
@@ -144,7 +158,7 @@ class PlaylistDetailLazyLayoutState(
 
 	@UiThread
 	fun init() {
-		check(AndroidUiFoundation.isOnUiThread())
+		check(AndroidUiFoundation.isOnUiLooper())
 		check(init == null)
 		_coroutineScope = CoroutineScope(SupervisorJob())
 		_pagingMediator = repository.pagingMediator(playlistId)
@@ -348,7 +362,7 @@ class PlaylistDetailLazyLayoutState(
 	)
 
 	// fetching is not necessarily ordered, bucket has no skips
-	// TODO: for now assume that every page is of same size and that they are all full expect last page
+	// TODO: for now assume that every page is of same size and that they are all full except last page
 	@ComposeImmutable
 	class PageBucket(
 		private val pages: List<PagedPlaylistData>,
@@ -356,12 +370,18 @@ class PlaylistDetailLazyLayoutState(
 		val pageSize: Int
 	) {
 
-		val pageTotal = pages.sumOf { it.data.size }
+		@Volatile
+		var _pageTotal: Int? = null
+
+		val pageTotal
+			@AnyThread get() = _pageTotal
+				?: pages.sumOf { it.data.size }
+					.also { _pageTotal = it }
 
 		val pageLastIndex: Int
 			get() = pageFirstIndex + pageTotal - 1
 
-		fun getByRawIndex(index: Int): String? {
+		fun getByRawIndexOrNull(index: Int): String? {
 			if (index < pageFirstIndex || index > pageLastIndex) return null
 			val relativeIndex = index - pageFirstIndex
 			val segment = relativeIndex / pageSize
@@ -379,13 +399,14 @@ class PlaylistDetailLazyLayoutState(
 @AnyThread
 fun PlaylistDetailLazyLayoutState.RenderData.peekContent(index: Int): String? {
 	if (index < 0) throw IndexOutOfBoundsException("cannot access index=$index")
-	if (buckets.isEmpty()) return null
-	val firstBucket = buckets.first()
-	if (index < firstBucket.pageFirstIndex) return null
-	val lastBucket = buckets.last()
-	if (index > lastBucket.pageLastIndex) return null
+	if (buckets.isEmpty() ||
+		index < buckets.first().pageFirstIndex ||
+		index > buckets.last().pageLastIndex
+	) {
+		return null
+	}
 	// array backed
-	buckets.fastForEach { bucket -> bucket.getByRawIndex(index)?.let { return it } }
+	buckets.fastForEach { bucket -> bucket.getByRawIndexOrNull(index)?.let { return it } }
 	return null
 }
 
@@ -400,7 +421,7 @@ fun PlaylistDetailLazyLayoutState.RenderData.getContent(index: Int): String? {
 		return null
 	}
 	// array backed
-	buckets.fastForEach { bucket -> bucket.getByRawIndex(index)?.let { return it } }
+	buckets.fastForEach { bucket -> bucket.getByRawIndexOrNull(index)?.let { return it } }
 	intentLoadToOffset(index)
 	return null
 }

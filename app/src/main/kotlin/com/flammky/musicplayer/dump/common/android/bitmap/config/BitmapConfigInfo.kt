@@ -1,7 +1,7 @@
 package com.flammky.musicplayer.dump.common.android.bitmap.config
 
 import android.graphics.Bitmap
-import com.flammky.musicplayer.core.sdk.AndroidAPI
+import dev.dexsr.klio.core.sdk.AndroidAPI
 import dev.dexsr.klio.core.sdk.AndroidBuildVersion.hasSnowCone
 
 object BitmapConfigInfo {

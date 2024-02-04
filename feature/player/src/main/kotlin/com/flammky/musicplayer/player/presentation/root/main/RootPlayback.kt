@@ -15,7 +15,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModelStoreOwner
 import com.flammky.android.medialib.common.mediaitem.MediaMetadata
-import dev.dexsr.klio.base.compose.ComposeBackPressRegistry
+import dev.dexsr.klio.base.composeui.ComposeBackPressRegistry
 import com.flammky.musicplayer.base.media.playback.OldPlaybackQueue
 import com.flammky.musicplayer.base.media.playback.PlaybackProperties
 import com.flammky.musicplayer.base.user.User

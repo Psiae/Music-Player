@@ -22,8 +22,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.dexsr.klio.android.base.checkInMainLooper
-import dev.dexsr.klio.base.compose.clickable
-import dev.dexsr.klio.base.compose.rememberWithCustomEquality
+import dev.dexsr.klio.base.composeui.clickable
+import dev.dexsr.klio.base.composeui.rememberWithCustomEquality
 import dev.dexsr.klio.base.kt.referentialEqualityFun
 import dev.dexsr.klio.base.theme.md3.compose.MaterialTheme3
 import dev.dexsr.klio.player.android.presentation.root.main.RootCompactPlaybackControlPanelState

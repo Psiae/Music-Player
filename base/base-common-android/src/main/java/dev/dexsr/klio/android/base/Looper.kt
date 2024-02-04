@@ -1,8 +1,10 @@
 package dev.dexsr.klio.android.base
 
 import android.os.Looper
+import androidx.compose.ui.platform.AndroidUiDispatcher
 
 fun inMainLooper(): Boolean {
+	AndroidUiDispatcher
     return Looper.myLooper()
         ?.let { looper ->
             looper == Looper.getMainLooper()

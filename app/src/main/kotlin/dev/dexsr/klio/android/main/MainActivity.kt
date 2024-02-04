@@ -13,7 +13,7 @@ import com.flammky.android.content.intent.isActionMain
 import com.flammky.musicplayer.android.activity.ActivityCompanion
 import com.flammky.musicplayer.android.activity.RequireLauncher
 import com.flammky.musicplayer.android.main.IntentManager
-import com.flammky.musicplayer.core.sdk.AndroidAPI
+import dev.dexsr.klio.core.sdk.AndroidAPI
 import com.flammky.musicplayer.main.ui.MainViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import dev.dexsr.klio.android.main.root.compose.setComposeRootContent

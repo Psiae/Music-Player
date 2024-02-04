@@ -24,7 +24,7 @@ import com.flammky.common.kotlin.coroutines.safeCollect
 import com.flammky.musicplayer.android.base.activity.ActivityWatcher
 import com.flammky.musicplayer.base.media.r.MediaContentWatcher
 import com.flammky.musicplayer.base.media.r.MediaMetadataCacheRepository
-import com.flammky.musicplayer.core.sdk.AndroidAPI
+import dev.dexsr.klio.core.sdk.AndroidAPI
 import dev.dexsr.klio.core.sdk.AndroidBuildVersion.hasQ
 import dev.dexsr.klio.core.sdk.AndroidBuildVersion.hasSnowCone
 import com.flammky.musicplayer.domain.musiclib.service.manager.MediaNotificationManager

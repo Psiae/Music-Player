@@ -18,10 +18,10 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.flammky.musicplayer.base.compose.LocalLayoutVisibility
-import dev.dexsr.klio.base.compose.ComposeBackPressRegistry
-import dev.dexsr.klio.base.compose.clickable
-import dev.dexsr.klio.base.compose.horizontalBiasAlignment
-import dev.dexsr.klio.base.compose.ifUnspecified
+import dev.dexsr.klio.base.composeui.ComposeBackPressRegistry
+import dev.dexsr.klio.base.composeui.clickable
+import dev.dexsr.klio.base.composeui.horizontalBiasAlignment
+import dev.dexsr.klio.base.composeui.ifUnspecified
 import dev.dexsr.klio.base.theme.md3.MD3Spec
 import dev.dexsr.klio.base.theme.md3.MD3Theme
 import dev.dexsr.klio.base.theme.md3.components.sheet.bottomSheet

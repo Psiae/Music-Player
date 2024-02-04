@@ -10,7 +10,7 @@ import androidx.compose.ui.layout.Remeasurement
 import androidx.compose.ui.layout.RemeasurementModifier
 import androidx.compose.ui.unit.Density
 import dev.dexsr.klio.android.base.checkInMainLooper
-import dev.dexsr.klio.base.compose.SnapshotRead
+import dev.dexsr.klio.base.composeui.SnapshotRead
 import timber.log.Timber
 import kotlin.math.abs
 

@@ -1,8 +1,8 @@
 package dev.dexsr.klio.player.android.presentation.root.main
 
 import androidx.compose.runtime.*
-import dev.dexsr.klio.base.compose.ComposeBackPressRegistry
-import dev.dexsr.klio.base.compose.SnapshotRead
+import dev.dexsr.klio.base.composeui.ComposeBackPressRegistry
+import dev.dexsr.klio.base.composeui.SnapshotRead
 
 abstract class RootPlaybackControlScreenState {
 

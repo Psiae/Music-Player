@@ -1,6 +1,13 @@
 package dev.dexsr.klio.library.user.playlist
 
+import android.annotation.SuppressLint
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.checkScrollableContainerConstraints
+import androidx.compose.foundation.clipScrollableContainer
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.ScrollableDefaults
+import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,19 +27,34 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.overscroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.SubcomposeLayout
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.fastForEach
+import androidx.compose.ui.util.fastMap
+import androidx.compose.ui.util.fastMaxBy
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.flammky.musicplayer.base.compose.LocalLayoutVisibility
@@ -61,43 +83,251 @@ fun PlaylistDetailScreen(
 	modifier
 		.fillMaxSize()
 		.localMaterial3Surface()
-) { Column {
-	val state = rememberPlaylistDetailScreenState(playlistId = playlistId)
+) {
+	val state =
+		rememberPlaylistDetailScreenState(playlistId = playlistId)
+	SubcomposeLayout(
+		modifier = Modifier
+			.fillMaxSize()
+			.playlistDetailScreenRootScrollable(state.scrollState),
+		measurePolicy = { constraints ->
 
-	run {
-		val lazyLayoutState = rememberPlaylistDetailLazyLayoutState(
-			playlistId = playlistId,
-			orderedMeasure = true
+			val contentConstraints = constraints.copy(
+				minHeight = 0,
+				minWidth = 0
+			)
+
+			val innerScrollableConstraints = contentConstraints.copy(
+				maxHeight = constraints.minHeight,
+			)
+
+			val topPadding = subcompose(
+				"TopPadding",
+				content = {
+					Spacer(modifier = Modifier.height(LocalLayoutVisibility.Top.current))
+				}
+			).fastMap { it.measure(contentConstraints) }
+
+			val description = subcompose(
+				slotId = "Description",
+				content = {
+					PlaylistDetailScreenDescription(
+						playlistId = playlistId,
+					)
+				}
+			).fastMap { it.measure(contentConstraints) }
+
+			val column = subcompose(
+				slotId = "LazyLayout",
+				content = {
+					CompositionLocalProvider(
+						LocalLayoutVisibility.Bottom provides 0.dp,
+						LocalLayoutVisibility.Top provides 0.dp
+					) {
+						PlaylistDetailScreenLazyLayout(
+							playlistId = playlistId,
+							screenState = state
+						)
+					}
+				}
+			).fastMap { it.measure(innerScrollableConstraints) }
+
+			val bottomPadding = subcompose(
+				"BottomPadding",
+				content = {
+					Spacer(modifier = Modifier.height(LocalLayoutVisibility.Bottom.current))
+				}
+			).fastMap { it.measure(contentConstraints) }
+
+			val spacing = MD3Theme.dpPaddingIncrementsOf(2).roundToPx()
+
+			val topPaddingHeight = topPadding.fastMaxBy { it.height }?.height
+			val descriptionHeight = description.fastMaxBy { it.height }?.height
+			val columnHeight = column.fastMaxBy { it.height }?.height
+			val bottomPaddingHeight = bottomPadding.fastMaxBy { it.height }?.height
+
+			Snapshot.withoutReadObservation {
+				state.scrollState.root.onChildsMeasure(
+					topPadding = PlaylistDetailScreenScrollState.ChildLayout(topPaddingHeight ?: 0, spacing),
+					bottomPadding = PlaylistDetailScreenScrollState.ChildLayout(bottomPaddingHeight ?: 0, 0),
+					desc = PlaylistDetailScreenScrollState.ChildLayout(descriptionHeight ?: 0, spacing),
+					playlist = PlaylistDetailScreenScrollState.ChildLayout(columnHeight ?: 0, spacing),
+				)
+			}
+
+			layout(
+				constraints.maxWidth,
+				listOfNotNull<Int>(topPaddingHeight, descriptionHeight, columnHeight, bottomPaddingHeight)
+					.run { sum() + (spacing * lastIndex) },
+				placementBlock = {
+					var h = 0
+					var s = 0
+
+					if (topPaddingHeight != null && topPaddingHeight > 0) {
+						topPadding.fastForEach { placeable ->
+							placeable.place(
+								0,
+								h + s
+							)
+						}
+						h += topPaddingHeight + spacing
+						s = spacing
+					}
+
+					if (descriptionHeight != null && descriptionHeight > 0) {
+						description.fastForEach { placeable ->
+							placeable.place(
+								0,
+								h + s
+							)
+						}
+						h += descriptionHeight + s
+						s = spacing
+					}
+
+					if (columnHeight != null && columnHeight > 0) {
+						column.fastForEach { placeable ->
+							placeable.place(
+								0,
+								h + s
+							)
+						}
+						h += columnHeight + s
+						s = spacing
+					}
+
+					if (bottomPaddingHeight != null && bottomPaddingHeight > 0) {
+						bottomPadding.fastForEach { placeable ->
+							placeable.place(
+								0,
+								h + s
+							)
+						}
+						h += bottomPaddingHeight
+					}
+				}
+			)
+		}
+	)
+}}}
+
+@OptIn(ExperimentalFoundationApi::class)
+private fun Modifier.playlistDetailScreenRootScrollable(
+	state: PlaylistDetailScreenScrollState
+): Modifier = composed {
+	val overscrollEffect = ScrollableDefaults.overscrollEffect()
+	Modifier
+		// measurement updater
+		.layout { measurable, constraints ->
+			checkScrollableContainerConstraints(
+				constraints,
+				Orientation.Vertical
+			)
+
+			val childConstraints = constraints.copy(
+				maxHeight = Constraints.Infinity,
+				maxWidth = constraints.maxWidth
+			)
+			val placeable = measurable.measure(childConstraints)
+			val width = placeable.width.coerceAtMost(constraints.maxWidth)
+			val height = placeable.height.coerceAtMost(constraints.maxHeight)
+			val scrollHeight = placeable.height - height
+			val scrollWidth = placeable.width - width
+			val side = scrollHeight
+			// The max value must be updated before returning from the measure block so that any other
+			// chained RemeasurementModifiers that try to perform scrolling based on the new
+			// measurements inside onRemeasured are able to scroll to the new max based on the newly-
+			// measured size.
+			Snapshot.withoutReadObservation {
+				state.root.onScrollMeasure(
+					constraints = constraints,
+					height = placeable.height,
+					width = width,
+					viewport = height
+				)
+			}
+			layout(width, height) {
+				val scroll = state.root.value.coerceAtMost(side)
+				val absScroll = -scroll
+				val xOffset = 0
+				val yOffset = absScroll
+				placeable.placeWithLayer(xOffset, yOffset)
+			}
+		}
+		.draggable(
+			state = state.root.userLayoutDraggable,
+			orientation = Orientation.Vertical,
+			startDragImmediately = state.root.isScrollInProgress,
+			onDragStarted = {},
+			onDragStopped = { velocity ->
+				state.root.performFling(Velocity(0f, velocity))
+			},
 		)
-		when (val type = "list") {
-			"list" -> PlaylistDetailScreenLazyColumn(
-				Modifier,
+		.clipScrollableContainer(
+			orientation = Orientation.Vertical,
+		)
+		.overscroll(overscrollEffect)
+		// fixme: don't use nested scroll API
+		.nestedScroll(
+			state.rootNestedScrollConnection,
+			dispatcher = null
+		)
+}
+
+@Composable
+private fun PlaylistDetailScreenLazyLayout(
+	playlistId: String,
+	screenState: PlaylistDetailScreenState
+) {
+	PlaylistDetailScreenLazyLayout(playlistId = playlistId, "list", screenState)
+}
+
+@Composable
+private fun PlaylistDetailScreenLazyLayout(
+	playlistId: String,
+	type: String,
+	screenState: PlaylistDetailScreenState
+) {
+	val lazyLayoutState = rememberPlaylistDetailLazyLayoutState(
+		playlistId = playlistId,
+		orderedMeasure = true,
+		scrollableState = screenState.scrollState,
+		flingBehavior = ScrollableDefaults.flingBehavior()
+	)
+	when (type) {
+		"list" -> run {
+			val lazyListState = rememberLazyListState()
+			PlaylistDetailScreenLazyColumn(
+				Modifier
+					.playlistDetailScreenPlaylistsScrollableModifier(screenState.scrollState, lazyListState),
 				contentPadding = PaddingValues(
 					top = LocalLayoutVisibility.Top.current,
 					bottom = LocalLayoutVisibility.Bottom.current
 				),
-				state = lazyLayoutState
-			)
-			"grid" -> PlaylistDetailScreenLazyGrid(
-				Modifier,
-				contentPadding = PaddingValues(),
+				state = lazyLayoutState,
+				layoutState = lazyListState,
+				screenState = screenState
 			)
 		}
+		"grid" -> PlaylistDetailScreenLazyGrid(
+			Modifier,
+			contentPadding = PaddingValues(),
+		)
 	}
-} }}}
+}
 
 @Composable
-private fun  PlaylistDetailScreenLazyColumn(
+private fun PlaylistDetailScreenLazyColumn(
 	modifier: Modifier = Modifier,
 	state: PlaylistDetailLazyLayoutState,
 	layoutState: LazyListState = rememberLazyListState(),
+	screenState: PlaylistDetailScreenState,
 	contentPadding: PaddingValues,
 ) {
 	val renderData = state.renderData
 		?: return
 	LazyColumn(
-		modifier = modifier
-			.fillMaxSize(),
+		modifier = modifier,
 		state = layoutState,
 		contentPadding = contentPadding,
 		// we can force remeasurement by updating this lambda
@@ -125,9 +355,16 @@ private fun  PlaylistDetailScreenLazyColumn(
 						getCachedMetadata = id?.let {
 							{ state.cachedTrackMetadata(id) }
 						} ?: { null },
+						isPlaying = id?.let { id == screenState.currentlyPlayingTrack } == true
 					)
 				}
 			}
+		}
+	)
+	LaunchedEffect(
+		screenState,
+		block = {
+			screenState.subscribePlaybackAsFlow().collect {}
 		}
 	)
 }
@@ -139,6 +376,7 @@ private fun PlaylistDetailScreenLazyGrid(
 	contentPadding: PaddingValues,
 ) {
 	// TODO: impl
+
 }
 
 
@@ -150,7 +388,8 @@ private fun PlaylistDetailScreenLazyListItem(
 	observeArtwork: () -> Flow<PlaylistTrackArtwork>,
 	getCachedArtwork: () -> PlaylistTrackArtwork?,
 	observeMetadata: () -> Flow<PlaylistTrackMetadata>,
-	getCachedMetadata: () -> PlaylistTrackMetadata?
+	getCachedMetadata: () -> PlaylistTrackMetadata?,
+	isPlaying: Boolean
 ) {
 	val surfaceColor = localShimmerSurface()
 	val highlightColor = localShimmerColor()
@@ -365,5 +604,28 @@ fun localShimmerColor(): Color {
 	}
 	return remember(sf, content) {
 		content.copy(alpha = 0.45f).compositeOver(sf)
+	}
+}
+
+@Composable
+private fun PlaylistDetailScreenDescription(
+	playlistId: String,
+) = PlaylistDetailScreenDescription(
+	modifier = Modifier.padding(horizontal = MD3Theme.dpPaddingIncrementsOf(2)),
+	playlistId,
+)
+
+@SuppressLint("UnnecessaryComposedModifier")
+private fun Modifier.playlistDetailScreenPlaylistsScrollableModifier(
+	scrollableState: PlaylistDetailScreenScrollState,
+	lazyLayoutState: LazyListState
+): Modifier {
+	return composed {
+		SideEffect {
+			scrollableState
+				.root
+				.updatePlaylistScrollable(lazyLayoutState)
+		}
+		Modifier
 	}
 }

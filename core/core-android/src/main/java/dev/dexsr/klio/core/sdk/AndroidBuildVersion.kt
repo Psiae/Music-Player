@@ -2,7 +2,6 @@ package dev.dexsr.klio.core.sdk
 
 import android.os.Build
 import androidx.annotation.ChecksSdkIntAtLeast
-import com.flammky.musicplayer.core.sdk.AndroidAPI
 import com.flammky.musicplayer.core.sdk.AndroidR
 import com.flammky.musicplayer.core.sdk.Nougat
 import com.flammky.musicplayer.core.sdk.Nougat_MR1

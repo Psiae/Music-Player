@@ -9,8 +9,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.AndroidUiDispatcher
 import androidx.compose.ui.unit.Density
 import dev.dexsr.klio.android.base.checkInMainLooper
-import dev.dexsr.klio.base.compose.SnapshotRead
-import dev.dexsr.klio.base.compose.SnapshotWrite
+import dev.dexsr.klio.base.composeui.SnapshotRead
+import dev.dexsr.klio.base.composeui.SnapshotWrite
 import dev.dexsr.klio.base.kt.castOrNull
 import kotlinx.coroutines.*
 import timber.log.Timber

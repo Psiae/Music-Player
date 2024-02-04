@@ -8,7 +8,7 @@ import android.provider.MediaStore
 import android.provider.OpenableColumns
 import androidx.core.net.toUri
 import com.flammky.android.medialib.BuildConfig
-import com.flammky.musicplayer.core.sdk.AndroidAPI
+import dev.dexsr.klio.core.sdk.AndroidAPI
 import dev.dexsr.klio.core.sdk.AndroidBuildVersion.hasR
 import com.flammky.musicplayer.dump.mediaplayer.helper.Preconditions.checkArgument
 import okio.IOException

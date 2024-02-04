@@ -6,7 +6,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ViewModel
 import com.flammky.musicplayer.base.compose.rememberLocalContextHelper
-import com.flammky.musicplayer.core.sdk.AndroidAPI
+import dev.dexsr.klio.core.sdk.AndroidAPI
 import dev.dexsr.klio.core.sdk.AndroidBuildVersion.hasLevel
 import com.flammky.musicplayer.core.sdk.tiramisu
 import dagger.hilt.android.lifecycle.HiltViewModel

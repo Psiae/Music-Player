@@ -7,7 +7,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.flammky.android.content.context.ContextHelper
 import com.flammky.android.manifest.permission.AndroidPermission
 import com.flammky.musicplayer.R
-import com.flammky.musicplayer.core.sdk.AndroidAPI
+import dev.dexsr.klio.core.sdk.AndroidAPI
 import com.flammky.musicplayer.main.ui.compose.entry.EntryPermissionPager
 import com.flammky.musicplayer.main.ui.compose.entry.PermissionPageItem
 import kotlinx.collections.immutable.persistentListOf

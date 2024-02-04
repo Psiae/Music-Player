@@ -32,11 +32,11 @@ import com.flammky.musicplayer.main.presentation.root.MaterialDesign3Theme
 import dev.dexsr.klio.android.base.resource.AndroidLocalImage
 import dev.dexsr.klio.android.base.systeminsets.compose.systemNavigationBarsPadding
 import dev.dexsr.klio.android.main.root.compose.OldRootNavHost
-import dev.dexsr.klio.base.compose.ComposableLambda
-import dev.dexsr.klio.base.compose.ComposeBackPressRegistry
-import dev.dexsr.klio.base.compose.NoOpPainter
-import dev.dexsr.klio.base.compose.checkedDpStatic
-import dev.dexsr.klio.base.compose.combineIf
+import dev.dexsr.klio.base.composeui.ComposableLambda
+import dev.dexsr.klio.base.composeui.ComposeBackPressRegistry
+import dev.dexsr.klio.base.composeui.NoOpPainter
+import dev.dexsr.klio.base.composeui.checkedDpStatic
+import dev.dexsr.klio.base.composeui.combineIf
 import dev.dexsr.klio.base.resource.LocalImage
 import dev.dexsr.klio.base.theme.md3.MD3Spec
 import dev.dexsr.klio.base.theme.md3.MD3Theme

@@ -8,11 +8,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.flammky.musicplayer.base.auth.AuthService
 import com.flammky.musicplayer.base.user.User
 import com.flammky.musicplayer.player.presentation.main.PlaybackControlViewModel
-import dev.dexsr.klio.base.compose.ComposeBackPressRegistry
+import dev.dexsr.klio.base.composeui.ComposeBackPressRegistry
 import dev.dexsr.klio.android.base.checkInMainLooper
-import dev.dexsr.klio.base.compose.SnapshotRead
-import dev.dexsr.klio.base.compose.SnapshotWrite
-import dev.dexsr.klio.base.compose.rememberWithCompositionObserver
+import dev.dexsr.klio.base.composeui.SnapshotRead
+import dev.dexsr.klio.base.composeui.SnapshotWrite
+import dev.dexsr.klio.base.composeui.rememberWithCompositionObserver
 import dev.dexsr.klio.player.android.presentation.root.bw.OldMediaMetadataProvider
 import dev.dexsr.klio.player.android.presentation.root.bw.OldPlaybackController
 

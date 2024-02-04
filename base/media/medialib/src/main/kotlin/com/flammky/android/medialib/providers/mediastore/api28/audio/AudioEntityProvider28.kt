@@ -11,7 +11,7 @@ import com.flammky.android.medialib.BuildConfig
 import com.flammky.android.medialib.providers.mediastore.MediaStoreContext
 import com.flammky.android.medialib.providers.mediastore.MediaStoreContext.Companion.android
 import com.flammky.android.medialib.providers.mediastore.api28.MediaStore28
-import com.flammky.musicplayer.core.sdk.AndroidAPI
+import dev.dexsr.klio.core.sdk.AndroidAPI
 import dev.dexsr.klio.core.sdk.AndroidBuildVersion.hasLevel
 import com.flammky.musicplayer.core.sdk.tiramisu
 

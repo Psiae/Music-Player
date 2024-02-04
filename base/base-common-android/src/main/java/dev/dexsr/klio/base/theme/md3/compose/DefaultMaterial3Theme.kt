@@ -6,16 +6,16 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalContext
-import com.flammky.musicplayer.core.sdk.AndroidAPI
+import dev.dexsr.klio.core.sdk.AndroidAPI
 import dev.dexsr.klio.core.sdk.AndroidBuildVersion.hasSnowCone
 import com.google.android.material.color.DynamicColors
 import androidx.compose.material3.MaterialTheme as Material3Theme
 
 @Composable
 fun DefaultMaterial3Theme(
-	dynamic: Boolean = AndroidAPI.hasSnowCone(),
-	dark: Boolean = isSystemInDarkTheme(),
-	content: @Composable () -> Unit,
+    dynamic: Boolean = AndroidAPI.hasSnowCone(),
+    dark: Boolean = isSystemInDarkTheme(),
+    content: @Composable () -> Unit,
 ) {
     val lightColors = if (dynamic && DynamicColors.isDynamicColorAvailable()) {
         dynamicLightColorScheme(LocalContext.current)

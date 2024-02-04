@@ -10,8 +10,8 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import com.flammky.musicplayer.base.compose.LocalLayoutVisibility
 import com.flammky.musicplayer.base.nav.compose.ComposeRootNavigation
-import dev.dexsr.klio.base.compose.ComposeBackPressRegistry
-import dev.dexsr.klio.base.compose.LocalComposeBackPressRegistry
+import dev.dexsr.klio.base.composeui.ComposeBackPressRegistry
+import dev.dexsr.klio.base.composeui.LocalComposeBackPressRegistry
 
 
 @Composable

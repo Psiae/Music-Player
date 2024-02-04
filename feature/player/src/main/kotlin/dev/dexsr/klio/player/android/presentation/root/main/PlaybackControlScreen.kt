@@ -11,7 +11,7 @@ import androidx.compose.ui.platform.AndroidUiDispatcher
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.util.fastForEach
 import androidx.compose.ui.util.fastMap
-import dev.dexsr.klio.base.compose.SimpleStack
+import dev.dexsr.klio.base.composeui.SimpleStack
 import dev.dexsr.klio.player.android.presentation.root.upnext.UpNextBottomSheet
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.distinctUntilChanged

@@ -5,10 +5,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.Layout
-import com.flammky.musicplayer.core.sdk.AndroidAPI
+import dev.dexsr.klio.core.sdk.AndroidAPI
 import dev.dexsr.klio.core.sdk.AndroidBuildVersion.hasSnowCone
-import dev.dexsr.klio.base.compose.ComposableLambda
-import dev.dexsr.klio.base.compose.SimpleStackLayoutMeasurePolicy
+import dev.dexsr.klio.base.composeui.ComposableLambda
+import dev.dexsr.klio.base.composeui.SimpleStackLayoutMeasurePolicy
 import dev.dexsr.klio.base.theme.md3.compose.DefaultMaterial3Theme
 import dev.dexsr.klio.base.theme.md3.compose.localMaterial3Background
 

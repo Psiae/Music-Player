@@ -9,7 +9,7 @@ import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import com.flammky.android.kotlin.coroutine.AndroidCoroutineDispatchers
-import com.flammky.musicplayer.core.sdk.AndroidAPI
+import dev.dexsr.klio.core.sdk.AndroidAPI
 import dev.dexsr.klio.core.sdk.AndroidBuildVersion.hasQ
 import dev.dexsr.klio.core.sdk.AndroidBuildVersion.hasR
 import kotlinx.coroutines.withContext
@@ -37,7 +37,7 @@ object DocumentProviderHelper {
 
   @JvmStatic
   val storagePath
-    get() = if (com.flammky.musicplayer.core.sdk.AndroidAPI.hasR()) {
+    get() = if (AndroidAPI.hasR()) {
       Environment.getStorageDirectory().toString()
     } else {
       "/storage"

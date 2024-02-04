@@ -18,7 +18,7 @@ import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider.Cont
 import com.flammky.android.medialib.providers.mediastore.MediaStoreProvider.ContentObserver.Flag.Companion.isUnknown
 import com.flammky.android.medialib.providers.mediastore.api28.MediaStore28
 import com.flammky.android.medialib.providers.mediastore.api28.MediaStoreProvider28
-import com.flammky.musicplayer.core.sdk.AndroidAPI
+import dev.dexsr.klio.core.sdk.AndroidAPI
 import dev.dexsr.klio.core.sdk.AndroidBuildVersion.hasLevel
 import com.flammky.musicplayer.core.sdk.tiramisu
 import kotlinx.coroutines.CoroutineScope

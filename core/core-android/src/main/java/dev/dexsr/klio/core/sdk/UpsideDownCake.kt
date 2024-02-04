@@ -1,6 +1,5 @@
 package dev.dexsr.klio.core.sdk
 
-import com.flammky.musicplayer.core.sdk.AndroidAPI
 import com.flammky.musicplayer.core.sdk.BuildCode
 
 // we don't target this API yet, for build tools compatibility

@@ -1,7 +1,7 @@
 package com.flammky.musicplayer.main.presentation.root
 
 import androidx.compose.runtime.Composable
-import com.flammky.musicplayer.core.sdk.AndroidAPI
+import dev.dexsr.klio.core.sdk.AndroidAPI
 
 @Composable
 fun AndroidPermissionRequestScreen(

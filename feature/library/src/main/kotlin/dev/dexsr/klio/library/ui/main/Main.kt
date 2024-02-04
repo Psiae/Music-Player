@@ -1,6 +1,5 @@
 package dev.dexsr.klio.library.ui.main
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
@@ -20,7 +19,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.NonRestartableComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -29,14 +27,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.flammky.musicplayer.base.compose.LocalLayoutVisibility
-import com.flammky.musicplayer.base.compose.NoInline
 import com.flammky.musicplayer.base.theme.Theme
 import com.flammky.musicplayer.base.theme.compose.backgroundContentColorAsState
 import com.flammky.musicplayer.base.theme.compose.surfaceContentColorAsState
 import dev.dexsr.klio.library.R
-import dev.dexsr.klio.base.compose.ComposeBackPressRegistry
-import dev.dexsr.klio.base.compose.LocalComposeBackPressRegistry
-import dev.dexsr.klio.base.compose.SimpleStack
+import dev.dexsr.klio.base.composeui.ComposeBackPressRegistry
+import dev.dexsr.klio.base.composeui.LocalComposeBackPressRegistry
+import dev.dexsr.klio.base.composeui.SimpleStack
 import dev.dexsr.klio.base.theme.md3.MD3Theme
 import dev.dexsr.klio.base.theme.md3.compose.localMaterial3Surface
 import dev.dexsr.klio.base.theme.md3.compose.primaryColorAsState

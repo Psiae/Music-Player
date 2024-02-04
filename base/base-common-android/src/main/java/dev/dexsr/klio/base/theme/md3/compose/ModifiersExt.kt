@@ -13,8 +13,8 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import dev.dexsr.klio.base.compose.consumeDownGesture
-import dev.dexsr.klio.base.compose.ifUnspecified
+import dev.dexsr.klio.base.composeui.consumeDownGesture
+import dev.dexsr.klio.base.composeui.ifUnspecified
 import dev.dexsr.klio.base.theme.md3.MD3Theme
 import dev.dexsr.klio.base.theme.md3.uxsystem.*
 import kotlin.math.ln

@@ -11,8 +11,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Modifier
 import com.flammky.musicplayer.library.dump.localmedia.ui.LocalSongListsLegacy
-import dev.dexsr.klio.base.compose.SnapshotRead
-import dev.dexsr.klio.base.compose.navigation.ComposeDestination
+import dev.dexsr.klio.base.composeui.SnapshotRead
+import dev.dexsr.klio.base.composeui.navigation.ComposeDestination
 import dev.dexsr.klio.base.kt.cast
 import dev.dexsr.klio.library.device.DeviceRootContent
 import dev.dexsr.klio.library.spotify.ui.SpotifyUiRoot

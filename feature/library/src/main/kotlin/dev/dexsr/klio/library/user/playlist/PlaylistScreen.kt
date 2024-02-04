@@ -1,5 +1,6 @@
 package dev.dexsr.klio.library.user.playlist
 
+import android.content.Intent
 import android.content.res.Configuration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -45,9 +46,9 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.flammky.musicplayer.base.compose.LocalLayoutVisibility
 import com.flammky.musicplayer.base.compose.NoInlineBox
-import dev.dexsr.klio.base.compose.ComposeBackPressRegistry
-import dev.dexsr.klio.base.compose.LocalComposeBackPressRegistry
-import dev.dexsr.klio.base.compose.nonScaledFontSize
+import dev.dexsr.klio.base.composeui.ComposeBackPressRegistry
+import dev.dexsr.klio.base.composeui.LocalComposeBackPressRegistry
+import dev.dexsr.klio.base.composeui.nonScaledFontSize
 import dev.dexsr.klio.base.theme.md3.MD3Theme
 import dev.dexsr.klio.base.theme.md3.compose.DefaultMaterial3Theme
 import dev.dexsr.klio.base.theme.md3.compose.MaterialTheme3
@@ -59,10 +60,12 @@ import dev.dexsr.klio.library.compose.PlaylistInfo
 import dev.dexsr.klio.library.compose.toStablePlaylist
 import dev.dexsr.klio.library.shared.LocalMediaArtwork
 import dev.dexsr.klio.media.playlist.LocalPlaylistRepository
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import kotlin.math.ceil
 
 @Composable

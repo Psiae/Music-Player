@@ -26,7 +26,7 @@ import com.flammky.android.medialib.providers.metadata.VirtualFileMetadata
 import com.flammky.common.kotlin.comparable.clamp
 import com.flammky.common.kotlin.coroutines.AutoCancelJob
 import com.flammky.musicplayer.android.base.activity.ActivityWatcher
-import com.flammky.musicplayer.core.sdk.AndroidAPI
+import dev.dexsr.klio.core.sdk.AndroidAPI
 import dev.dexsr.klio.core.sdk.AndroidBuildVersion.hasLevel
 import dev.dexsr.klio.core.sdk.AndroidBuildVersion.hasOreo
 import dev.dexsr.klio.core.sdk.AndroidBuildVersion.inLevel

@@ -1,3 +1,7 @@
+> NOTICE: the project will not be worked on for some time because of my other project [Toolbox](https://github.com/flammky/PalTrainer).
+> 
+> but I will be planning to deploy this music player project on every KMP platform as well
+
 App Name Coming Soon
 
 Simple Music Player `100% Made in Kotlin` with Jetpack Compose & AndroidX Media3.
